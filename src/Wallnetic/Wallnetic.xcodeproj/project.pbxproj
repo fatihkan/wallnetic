@@ -1,0 +1,423 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */; };
+		2124DE0A8E8717475F30D34C /* WallpaperGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */; };
+		284D0925EA9AEC2B302910D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BF36E216B5F900C62E824B59 /* Assets.xcassets */; };
+		40D40FD944D13CCAF633E4A9 /* Wallpaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */; };
+		4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */; };
+		53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */; };
+		61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B106464A071BF6E736C3272 /* MenuBarView.swift */; };
+		7B8DE2A0443E6DC55D750FCB /* WallpaperManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532FE0E3069C64B6236A343C /* WallpaperManager.swift */; };
+		A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250C1B481393050C099266A2 /* SettingsView.swift */; };
+		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
+		EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperGridView.swift; sourceTree = "<group>"; };
+		250C1B481393050C099266A2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticApp.swift; sourceTree = "<group>"; };
+		532FE0E3069C64B6236A343C /* WallpaperManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperManager.swift; sourceTree = "<group>"; };
+		5B106464A071BF6E736C3272 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopWindowController.swift; sourceTree = "<group>"; };
+		843AD85E0F38C70B7B33DE40 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		85B6064EF5DE550677698666 /* Wallnetic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Wallnetic.entitlements; sourceTree = "<group>"; };
+		9065D39D45D04ED947D1507D /* Wallnetic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wallnetic.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF36E216B5F900C62E824B59 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRenderer.swift; sourceTree = "<group>"; };
+		DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
+		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		08B0E4CD6509EAA15E90424B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9065D39D45D04ED947D1507D /* Wallnetic.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0E5C0332A18B5850B0997A7A /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		1BE37129FFCF799850FBB994 /* Engine */ = {
+			isa = PBXGroup;
+			children = (
+				5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */,
+				C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */,
+			);
+			path = Engine;
+			sourceTree = "<group>";
+		};
+		28FBE419A416F64CC9C1E9AC /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		2A35F6E908D5FD9D6914BBC7 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				532FE0E3069C64B6236A343C /* WallpaperManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		535A9501C7CEE862EAB25CF6 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				EA19F4DBD0636536454696F3 /* ContentView.swift */,
+				5B106464A071BF6E736C3272 /* MenuBarView.swift */,
+				250C1B481393050C099266A2 /* SettingsView.swift */,
+				0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		60B418A213DB42CB90372D7D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				6D154AD72514800F57D7A3AE /* Components */,
+				535A9501C7CEE862EAB25CF6 /* Main */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		6BE87A6F82CB3CA3F7C62588 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		6D154AD72514800F57D7A3AE /* Components */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		BBDA8D67F414F740791849C4 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BF36E216B5F900C62E824B59 /* Assets.xcassets */,
+				843AD85E0F38C70B7B33DE40 /* Info.plist */,
+				85B6064EF5DE550677698666 /* Wallnetic.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		BD8907F7DF05CB6D5F152AD4 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */,
+				4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C8908E2BDDC9E1346ADF3F25 = {
+			isa = PBXGroup;
+			children = (
+				BD8907F7DF05CB6D5F152AD4 /* App */,
+				1BE37129FFCF799850FBB994 /* Engine */,
+				6BE87A6F82CB3CA3F7C62588 /* Models */,
+				BBDA8D67F414F740791849C4 /* Resources */,
+				2A35F6E908D5FD9D6914BBC7 /* Services */,
+				0E5C0332A18B5850B0997A7A /* Utils */,
+				28FBE419A416F64CC9C1E9AC /* ViewModels */,
+				60B418A213DB42CB90372D7D /* Views */,
+				08B0E4CD6509EAA15E90424B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9D9A6596302C548CCE03E80C /* Wallnetic */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EDFE862674562A4F9FF50B02 /* Build configuration list for PBXNativeTarget "Wallnetic" */;
+			buildPhases = (
+				E337824E3D9C1469B2F66753 /* Sources */,
+				10AD7C60366FC496616DAC6C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Wallnetic;
+			packageProductDependencies = (
+			);
+			productName = Wallnetic;
+			productReference = 9065D39D45D04ED947D1507D /* Wallnetic.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C3FDEDD03026A1192EC29C7E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					9D9A6596302C548CCE03E80C = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 377A09A73862D3931BF23234 /* Build configuration list for PBXProject "Wallnetic" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C8908E2BDDC9E1346ADF3F25;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 08B0E4CD6509EAA15E90424B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9D9A6596302C548CCE03E80C /* Wallnetic */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		10AD7C60366FC496616DAC6C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				284D0925EA9AEC2B302910D1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E337824E3D9C1469B2F66753 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */,
+				D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */,
+				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
+				61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */,
+				A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */,
+				EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */,
+				4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */,
+				40D40FD944D13CCAF633E4A9 /* Wallpaper.swift in Sources */,
+				2124DE0A8E8717475F30D34C /* WallpaperGridView.swift in Sources */,
+				7B8DE2A0443E6DC55D750FCB /* WallpaperManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2531360BC1FBAFCE2EB921D7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app;
+				PRODUCT_NAME = Wallnetic;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		617455C451321F6E79DD3191 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		938F800F3499A07C57DC241B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app;
+				PRODUCT_NAME = Wallnetic;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		FEA5B00DFDF0BD6DEED8E58B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		377A09A73862D3931BF23234 /* Build configuration list for PBXProject "Wallnetic" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				617455C451321F6E79DD3191 /* Debug */,
+				FEA5B00DFDF0BD6DEED8E58B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EDFE862674562A4F9FF50B02 /* Build configuration list for PBXNativeTarget "Wallnetic" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2531360BC1FBAFCE2EB921D7 /* Debug */,
+				938F800F3499A07C57DC241B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C3FDEDD03026A1192EC29C7E /* Project object */;
+}
