@@ -4,18 +4,37 @@ struct WallpaperGridView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Binding var selectedWallpaper: Wallpaper?
     let searchText: String
+    let filter: SidebarSelection
 
     private let columns = [
         GridItem(.adaptive(minimum: 200, maximum: 300), spacing: 16)
     ]
 
     var filteredWallpapers: [Wallpaper] {
-        if searchText.isEmpty {
-            return wallpaperManager.wallpapers
+        var wallpapers = wallpaperManager.wallpapers
+
+        // Apply sidebar filter
+        switch filter {
+        case .all:
+            break // Show all wallpapers
+        case .favorites:
+            wallpapers = wallpapers.filter { $0.isFavorite }
+        case .recent:
+            // Show wallpapers added in the last 7 days, sorted by date
+            let oneWeekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
+            wallpapers = wallpapers
+                .filter { $0.dateAdded > oneWeekAgo }
+                .sorted { $0.dateAdded > $1.dateAdded }
         }
-        return wallpaperManager.wallpapers.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText)
+
+        // Apply search filter
+        if !searchText.isEmpty {
+            wallpapers = wallpapers.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText)
+            }
         }
+
+        return wallpapers
     }
 
     var body: some View {
@@ -135,6 +154,15 @@ struct WallpaperContextMenu: View {
             wallpaperManager.setWallpaper(wallpaper)
         } label: {
             Label("Set as Wallpaper", systemImage: "photo.on.rectangle")
+        }
+
+        Button {
+            wallpaperManager.toggleFavorite(wallpaper)
+        } label: {
+            Label(
+                wallpaper.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                systemImage: wallpaper.isFavorite ? "heart.fill" : "heart"
+            )
         }
 
         Divider()

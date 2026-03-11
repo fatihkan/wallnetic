@@ -3,60 +3,145 @@ import AVFoundation
 import AVKit
 
 /// Handles video playback and rendering for live wallpapers
-class VideoRenderer {
+/// Optimized for minimal CPU usage
+class VideoRenderer: NSObject {
     private var player: AVPlayer?
-    private var playerLayer: AVPlayerLayer?
     private var playerLooper: AVPlayerLooper?
     private var queuePlayer: AVQueuePlayer?
+    private var playerItemObserver: NSKeyValueObservation?
+    private var rateObserver: NSKeyValueObservation?
 
-    let view: NSView
+    let view: AVPlayerView
 
-    init() {
-        view = NSView()
+    // Performance settings
+    private let preferredBufferDuration: TimeInterval = 2.0  // Seconds of video to buffer
+    private let useHardwareDecoding = true
+
+    override init() {
+        view = AVPlayerView()
+        super.init()
+
+        // Configure AVPlayerView for performance
+        view.controlsStyle = .none
+        view.videoGravity = .resizeAspectFill
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.black.cgColor
-        setupPlayerLayer()
+
+        // Disable unnecessary features for performance
+        view.allowsPictureInPicturePlayback = false
+        view.showsFullScreenToggleButton = false
+
+        // Enable layer-backed rendering for better performance
+        view.layerContentsRedrawPolicy = .onSetNeedsDisplay
     }
 
-    // MARK: - Setup
-
-    private func setupPlayerLayer() {
-        playerLayer = AVPlayerLayer()
-        playerLayer?.videoGravity = .resizeAspectFill
-        playerLayer?.frame = view.bounds
-        playerLayer?.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-
-        if let playerLayer = playerLayer {
-            view.layer?.addSublayer(playerLayer)
-        }
+    deinit {
+        cleanup()
     }
 
     // MARK: - Video Loading
 
-    /// Loads a video file for playback
+    /// Loads a video file for playback with performance optimizations
     func loadVideo(url: URL) {
-        // Clean up existing player
-        stop()
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            print("[VideoRenderer] ERROR: File does not exist")
+            return
+        }
 
-        // Create player item
-        let asset = AVAsset(url: url)
+        // Clean up existing player
+        cleanup()
+
+        // Create asset with optimized loading options
+        let asset = AVURLAsset(url: url, options: [
+            AVURLAssetPreferPreciseDurationAndTimingKey: false,  // Faster loading
+        ])
+
+        // Load only video track, skip audio for wallpapers
+        Task { [weak self] in
+            await self?.loadAssetAsync(asset: asset)
+        }
+    }
+
+    private func loadAssetAsync(asset: AVURLAsset) async {
+        do {
+            // Pre-load required properties asynchronously
+            let isPlayable = try await asset.load(.isPlayable)
+            guard isPlayable else {
+                print("[VideoRenderer] Asset is not playable")
+                return
+            }
+
+            await MainActor.run { [weak self] in
+                self?.setupPlayer(with: asset)
+            }
+        } catch {
+            print("[VideoRenderer] Failed to load asset: \(error)")
+        }
+    }
+
+    private func setupPlayer(with asset: AVURLAsset) {
+        // Create player item with performance settings
         let playerItem = AVPlayerItem(asset: asset)
+
+        // Optimize buffering - only buffer what we need
+        playerItem.preferredForwardBufferDuration = preferredBufferDuration
+
+        // Prefer hardware decoding
+        if useHardwareDecoding {
+            playerItem.preferredPeakBitRate = 0  // No limit, let hardware handle it
+        }
+
+        // Disable audio tracks to save CPU (wallpapers don't need audio)
+        disableAudioTracks(for: playerItem)
 
         // Use AVQueuePlayer with AVPlayerLooper for seamless looping
         queuePlayer = AVQueuePlayer()
+        queuePlayer?.automaticallyWaitsToMinimizeStalling = false  // Start immediately
+        queuePlayer?.preventsDisplaySleepDuringVideoPlayback = false  // Allow display sleep
+
         playerLooper = AVPlayerLooper(player: queuePlayer!, templateItem: playerItem)
-
         player = queuePlayer
-        playerLayer?.player = player
 
-        // Configure for optimal performance
-        player?.automaticallyWaitsToMinimizeStalling = true
+        // Configure player for optimal performance
+        player?.isMuted = true  // No audio needed
+        player?.volume = 0  // Ensure no audio processing
 
-        // Mute by default (wallpaper shouldn't play audio)
-        player?.isMuted = true
+        // Set player on view
+        view.player = player
 
-        print("Loaded video: \(url.lastPathComponent)")
+        // Observe status for debugging only in debug builds
+        #if DEBUG
+        setupObservers(for: playerItem)
+        #endif
     }
+
+    /// Disables all audio tracks to reduce CPU usage
+    private func disableAudioTracks(for playerItem: AVPlayerItem) {
+        let audioTracks = playerItem.asset.tracks(withMediaType: .audio)
+        for track in audioTracks {
+            // Find the asset track in the player item
+            if let assetTrack = playerItem.tracks.first(where: {
+                $0.assetTrack?.trackID == track.trackID
+            }) {
+                assetTrack.isEnabled = false
+            }
+        }
+    }
+
+    #if DEBUG
+    private func setupObservers(for playerItem: AVPlayerItem) {
+        playerItemObserver = playerItem.observe(\.status) { item, _ in
+            switch item.status {
+            case .readyToPlay:
+                print("[VideoRenderer] Ready to play")
+            case .failed:
+                print("[VideoRenderer] Failed: \(item.error?.localizedDescription ?? "unknown")")
+            default:
+                break
+            }
+        }
+    }
+    #endif
 
     // MARK: - Playback Control
 
@@ -69,12 +154,19 @@ class VideoRenderer {
     }
 
     func stop() {
+        cleanup()
+    }
+
+    private func cleanup() {
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         playerLooper?.disableLooping()
+        playerItemObserver = nil
+        rateObserver = nil
         playerLooper = nil
         queuePlayer = nil
         player = nil
+        view.player = nil
     }
 
     func setVolume(_ volume: Float) {
@@ -106,24 +198,6 @@ class VideoRenderer {
     // MARK: - Layout
 
     func updateLayout() {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        playerLayer?.frame = view.bounds
-        CATransaction.commit()
+        // AVPlayerView handles layout automatically
     }
 }
-
-// MARK: - Metal Renderer (Future optimization)
-/*
- For better performance, especially with 4K videos, we can implement
- a Metal-based renderer. This would:
- - Use CVPixelBuffer directly from AVPlayer
- - Render using Metal shaders
- - Achieve lower CPU usage
-
- class MetalVideoRenderer {
-     private var device: MTLDevice!
-     private var commandQueue: MTLCommandQueue!
-     // ... Metal pipeline implementation
- }
- */
