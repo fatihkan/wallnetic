@@ -10,7 +10,9 @@
 [![App Store](https://img.shields.io/badge/App%20Store-Coming%20Soon-blue.svg?style=flat&logo=app-store)](https://apps.apple.com)
 
 <p align="center">
-  <img src="docs/assets/hero-demo.gif" alt="Wallnetic Demo" width="800"/>
+  <video src="https://github.com/fatihkan/wallnetic/raw/main/docs/assets/demo-video.mp4" width="800" autoplay loop muted playsinline>
+    Your browser does not support the video tag.
+  </video>
 </p>
 
 ## What is Wallnetic?
