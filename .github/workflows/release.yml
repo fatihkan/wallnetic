@@ -152,5 +152,6 @@ jobs:
           prerelease: false
           files: |
             artifacts/**/*.dmg
+            docs/assets/demo-video.mp4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
