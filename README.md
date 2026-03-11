@@ -67,14 +67,48 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 ## Installation
 
 ### Requirements
-- macOS 13.0 (Ventura) or later
-- Apple Silicon (M1/M2/M3) or Intel Mac
+
+| Component | Requirement |
+|-----------|-------------|
+| macOS | 13.0 (Ventura) or later |
+| Processor | Apple Silicon (M1/M2/M3) or Intel |
+| RAM | 4GB minimum |
+| Storage | 50MB |
 
 ### Download
 
-| Version | Download |
-|---------|----------|
-| v1.0.0 | [Coming Soon on App Store](#) |
+| Platform | Architecture | Download |
+|----------|--------------|----------|
+| macOS | Apple Silicon (M1/M2/M3) | [Wallnetic_1.0.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS | Intel | [Wallnetic_1.0.0_x64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| App Store | Universal | Coming Soon |
+
+### macOS Installation
+
+1. **Download** the DMG file for your Mac (Apple Silicon or Intel)
+
+2. **Open** the DMG and drag Wallnetic to Applications folder
+
+3. **First Launch** - Since the app is not signed with an Apple Developer certificate, you'll need to bypass Gatekeeper:
+
+   **Option A: Right-click method**
+   ```
+   Right-click on Wallnetic.app → Click "Open" → Click "Open" again in the dialog
+   ```
+
+   **Option B: Terminal method**
+   ```bash
+   xattr -cr /Applications/Wallnetic.app
+   ```
+
+   **Option C: System Settings**
+   ```
+   System Settings → Privacy & Security → Scroll down → Click "Open Anyway"
+   ```
+
+4. **Grant Permissions** - When prompted, allow:
+   - Screen Recording (required for desktop wallpaper)
+   - Accessibility (optional, for keyboard shortcuts)
 
 ### Build from Source
 
@@ -88,6 +122,8 @@ open src/Wallnetic/Wallnetic.xcodeproj
 
 # Build and run (⌘ + R)
 ```
+
+> **Note:** Building from source requires Xcode 15.0+ and macOS 13.0+
 
 ---
 
