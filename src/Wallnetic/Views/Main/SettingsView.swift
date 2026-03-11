@@ -24,7 +24,7 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 450, height: 300)
+        .frame(width: 500, height: 380)
     }
 }
 
@@ -102,13 +102,10 @@ struct PlaybackSettingsView: View {
             }
 
             Section("Performance") {
-                Picker("Video Quality", selection: .constant("High")) {
-                    Text("Low").tag("Low")
-                    Text("Medium").tag("Medium")
-                    Text("High").tag("High")
-                }
+                Toggle("Use Metal Renderer", isOn: $wallpaperManager.useMetalRenderer)
+                    .help("Metal provides better GPU acceleration. Restart app after changing.")
 
-                Text("Higher quality uses more system resources")
+                Text("Metal renderer uses GPU for video playback (recommended)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -120,49 +117,237 @@ struct PlaybackSettingsView: View {
 // MARK: - Display Settings
 
 struct DisplaySettingsView: View {
+    @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var screens = NSScreen.screens
+    @State private var selectedScreen: NSScreen?
+    @State private var showingWallpaperPicker = false
 
     var body: some View {
         Form {
             Section("Connected Displays") {
                 ForEach(screens, id: \.self) { screen in
-                    HStack {
-                        Image(systemName: "display")
-                        VStack(alignment: .leading) {
-                            Text(screen.localizedName)
-                            Text("\(Int(screen.frame.width))×\(Int(screen.frame.height))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        if screen == NSScreen.main {
-                            Text("Main")
-                                .font(.caption)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.accentColor.opacity(0.2))
-                                .cornerRadius(4)
+                    ScreenRow(
+                        screen: screen,
+                        wallpaper: wallpaperManager.wallpaper(for: screen),
+                        isSelected: selectedScreen == screen,
+                        showDifferentMode: wallpaperManager.wallpaperMode == .different
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if wallpaperManager.wallpaperMode == .different {
+                            selectedScreen = screen
+                            showingWallpaperPicker = true
                         }
                     }
                 }
             }
 
             Section("Options") {
-                Picker("Wallpaper Mode", selection: .constant("same")) {
-                    Text("Same on all displays").tag("same")
-                    Text("Different per display").tag("different")
+                Picker("Wallpaper Mode", selection: $wallpaperManager.wallpaperMode) {
+                    ForEach(WallpaperMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .onChange(of: wallpaperManager.wallpaperMode) { newMode in
+                    wallpaperManager.setWallpaperMode(newMode)
                 }
 
-                Picker("Scaling", selection: .constant("fill")) {
-                    Text("Fill").tag("fill")
-                    Text("Fit").tag("fit")
-                    Text("Stretch").tag("stretch")
+                if wallpaperManager.wallpaperMode == .different {
+                    Text("Click on a display above to set its wallpaper")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
         }
         .formStyle(.grouped)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
             screens = NSScreen.screens
+        }
+        .sheet(isPresented: $showingWallpaperPicker) {
+            if let screen = selectedScreen {
+                ScreenWallpaperPickerView(screen: screen)
+                    .environmentObject(wallpaperManager)
+            }
+        }
+    }
+}
+
+// MARK: - Screen Row
+
+struct ScreenRow: View {
+    let screen: NSScreen
+    let wallpaper: Wallpaper?
+    let isSelected: Bool
+    let showDifferentMode: Bool
+
+    var body: some View {
+        HStack {
+            Image(systemName: "display")
+                .font(.title2)
+                .foregroundColor(.accentColor)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(screen.localizedName)
+                        .fontWeight(.medium)
+
+                    if screen == NSScreen.main {
+                        Text("Main")
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.2))
+                            .cornerRadius(4)
+                    }
+                }
+
+                Text("\(Int(screen.frame.width))×\(Int(screen.frame.height))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            if showDifferentMode {
+                if let wallpaper = wallpaper {
+                    HStack(spacing: 8) {
+                        AsyncThumbnailView(
+                            wallpaper: wallpaper,
+                            size: CGSize(width: 48, height: 27)
+                        )
+                        .cornerRadius(4)
+
+                        Text(wallpaper.name)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .frame(maxWidth: 100)
+                    }
+                } else {
+                    Text("Not set")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Screen Wallpaper Picker
+
+struct ScreenWallpaperPickerView: View {
+    @EnvironmentObject var wallpaperManager: WallpaperManager
+    @Environment(\.dismiss) var dismiss
+    let screen: NSScreen
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 12)
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Select Wallpaper")
+                        .font(.headline)
+                    Text("for \(screen.localizedName)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Button("Done") {
+                    dismiss()
+                }
+                .keyboardShortcut(.escape)
+            }
+            .padding()
+            .background(.bar)
+
+            Divider()
+
+            // Wallpaper Grid
+            if wallpaperManager.wallpapers.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+
+                    Text("No wallpapers in library")
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(wallpaperManager.wallpapers) { wallpaper in
+                            WallpaperPickerCard(
+                                wallpaper: wallpaper,
+                                isSelected: wallpaperManager.screenWallpapers[screen.localizedName] == wallpaper.id
+                            )
+                            .onTapGesture {
+                                wallpaperManager.setWallpaper(wallpaper, for: screen)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+        .frame(width: 500, height: 400)
+    }
+}
+
+// MARK: - Wallpaper Picker Card
+
+struct WallpaperPickerCard: View {
+    let wallpaper: Wallpaper
+    let isSelected: Bool
+    @State private var thumbnail: NSImage?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack {
+                if let thumbnail = thumbnail {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(16/9, contentMode: .fill)
+                        .clipped()
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .aspectRatio(16/9, contentMode: .fit)
+                        .overlay {
+                            ProgressView()
+                        }
+                }
+
+                if isSelected {
+                    Color.accentColor.opacity(0.3)
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title)
+                        .foregroundColor(.white)
+                }
+            }
+            .cornerRadius(6)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+            )
+
+            Text(wallpaper.name)
+                .font(.caption)
+                .lineLimit(1)
+        }
+        .task {
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 200, height: 112))
         }
     }
 }

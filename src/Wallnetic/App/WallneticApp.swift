@@ -7,12 +7,13 @@ struct WallneticApp: App {
 
     var body: some Scene {
         // Main Window
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(wallpaperManager)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        .defaultPosition(.center)
         .commands {
             CommandGroup(replacing: .newItem) { }
         }

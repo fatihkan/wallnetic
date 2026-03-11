@@ -3,7 +3,7 @@ import AVFoundation
 import AppKit
 
 /// Represents a wallpaper in the library
-struct Wallpaper: Identifiable, Equatable, Hashable {
+struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     let id: UUID
     let url: URL
     let name: String
@@ -11,12 +11,14 @@ struct Wallpaper: Identifiable, Equatable, Hashable {
     let duration: Double?
     let resolution: CGSize?
     let dateAdded: Date
+    var isFavorite: Bool
 
-    init(url: URL) {
+    init(url: URL, isFavorite: Bool = false) {
         self.id = UUID()
         self.url = url
         self.name = url.deletingPathExtension().lastPathComponent
         self.dateAdded = Date()
+        self.isFavorite = isFavorite
 
         // Get file size
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
@@ -55,19 +57,9 @@ struct Wallpaper: Identifiable, Equatable, Hashable {
 
     // MARK: - Thumbnail Generation
 
+    /// Generates or retrieves cached thumbnail
     func generateThumbnail(size: CGSize = CGSize(width: 320, height: 180)) async -> NSImage? {
-        let asset = AVAsset(url: url)
-        let imageGenerator = AVAssetImageGenerator(asset: asset)
-        imageGenerator.appliesPreferredTrackTransform = true
-        imageGenerator.maximumSize = size
-
-        do {
-            let cgImage = try imageGenerator.copyCGImage(at: .zero, actualTime: nil)
-            return NSImage(cgImage: cgImage, size: size)
-        } catch {
-            print("Failed to generate thumbnail: \(error)")
-            return nil
-        }
+        return await ThumbnailCache.shared.thumbnail(for: url, size: size)
     }
 
     // MARK: - Equatable & Hashable

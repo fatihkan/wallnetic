@@ -4,6 +4,31 @@ struct MenuBarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Environment(\.openWindow) var openWindow
 
+    private func openMainWindow() {
+        // Check if main window already exists
+        let existingWindow = NSApp.windows.first { window in
+            // Skip menu bar windows and settings
+            guard window.level == .normal,
+                  !window.title.isEmpty || window.contentView != nil else {
+                return false
+            }
+            // Check for our main window
+            return window.styleMask.contains(.borderless) == false ||
+                   window.frame.width >= 800
+        }
+
+        if let window = existingWindow {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            // Open new window using WindowGroup ID
+            openWindow(id: "main")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Current wallpaper info
@@ -35,21 +60,25 @@ struct MenuBarView: View {
 
             // Quick access
             Button {
-                NSApp.activate(ignoringOtherApps: true)
-                if let window = NSApp.windows.first(where: { $0.title == "Wallnetic" }) {
-                    window.makeKeyAndOrderFront(nil)
-                }
+                openMainWindow()
             } label: {
                 Label("Open Wallnetic", systemImage: "rectangle.on.rectangle")
             }
             .keyboardShortcut("o", modifiers: .command)
 
-            Button {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            } label: {
-                Label("Settings...", systemImage: "gear")
+            if #available(macOS 14.0, *) {
+                SettingsLink {
+                    Label("Settings...", systemImage: "gear")
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            } else {
+                Button {
+                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                } label: {
+                    Label("Settings...", systemImage: "gear")
+                }
+                .keyboardShortcut(",", modifiers: .command)
             }
-            .keyboardShortcut(",", modifiers: .command)
 
             Divider()
 

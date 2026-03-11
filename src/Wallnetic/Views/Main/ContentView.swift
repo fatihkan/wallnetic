@@ -1,24 +1,32 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum SidebarSelection: Hashable {
+    case all
+    case favorites
+    case recent
+}
+
 struct ContentView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var selectedWallpaper: Wallpaper?
     @State private var isImporting = false
     @State private var searchText = ""
+    @State private var sidebarSelection: SidebarSelection? = .all
 
     var body: some View {
         NavigationSplitView {
             // Sidebar
-            SidebarView(selectedWallpaper: $selectedWallpaper)
+            SidebarView(selection: $sidebarSelection)
         } detail: {
-            // Main content
+            // Main content based on sidebar selection
             if wallpaperManager.wallpapers.isEmpty {
                 EmptyLibraryView(isImporting: $isImporting)
             } else {
                 WallpaperGridView(
                     selectedWallpaper: $selectedWallpaper,
-                    searchText: searchText
+                    searchText: searchText,
+                    filter: sidebarSelection ?? .all
                 )
             }
         }
@@ -97,28 +105,19 @@ struct ContentView: View {
 
 struct SidebarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
-    @Binding var selectedWallpaper: Wallpaper?
+    @Binding var selection: SidebarSelection?
 
     var body: some View {
-        List {
+        List(selection: $selection) {
             Section("Library") {
-                NavigationLink {
-                    Text("All Wallpapers")
-                } label: {
-                    Label("All", systemImage: "photo.on.rectangle")
-                }
+                Label("All", systemImage: "photo.on.rectangle")
+                    .tag(SidebarSelection.all)
 
-                NavigationLink {
-                    Text("Favorites")
-                } label: {
-                    Label("Favorites", systemImage: "heart")
-                }
+                Label("Favorites", systemImage: "heart")
+                    .tag(SidebarSelection.favorites)
 
-                NavigationLink {
-                    Text("Recent")
-                } label: {
-                    Label("Recent", systemImage: "clock")
-                }
+                Label("Recent", systemImage: "clock")
+                    .tag(SidebarSelection.recent)
             }
 
             Section("Info") {

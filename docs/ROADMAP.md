@@ -54,59 +54,59 @@ Bu doküman Wallnetic projesinin tüm geliştirme aşamalarını, task'larını 
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 1.1.1 | Xcode projesi oluştur (macOS App template) | P0 | ⬜ |
-| 1.1.2 | Proje yapısını organize et (MVVM) | P0 | ⬜ |
+| 1.1.1 | Xcode projesi oluştur (macOS App template) | P0 | ✅ |
+| 1.1.2 | Proje yapısını organize et (MVVM) | P0 | ✅ |
 | 1.1.3 | SwiftLint/SwiftFormat ekle | P2 | ⬜ |
-| 1.1.4 | App icon ve temel assets | P1 | ⬜ |
+| 1.1.4 | App icon ve temel assets | P1 | ✅ |
 
 ### 1.2 Wallpaper Engine Core
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 1.2.1 | ScreenSaver.framework entegrasyonu araştır | P0 | ⬜ |
-| 1.2.2 | Desktop window layer oluştur | P0 | ⬜ |
-| 1.2.3 | Video player (AVFoundation) entegre et | P0 | ⬜ |
-| 1.2.4 | Video loop ve playback kontrolleri | P0 | ⬜ |
-| 1.2.5 | Farklı video formatlarını destekle (MP4, MOV, HEVC) | P1 | ⬜ |
-| 1.2.6 | Performans optimizasyonu - CPU kullanımı | P0 | ⬜ |
-| 1.2.7 | Metal rendering pipeline | P1 | ⬜ |
+| 1.2.1 | ScreenSaver.framework entegrasyonu araştır | P0 | ✅ |
+| 1.2.2 | Desktop window layer oluştur | P0 | ✅ |
+| 1.2.3 | Video player (AVFoundation) entegre et | P0 | ✅ |
+| 1.2.4 | Video loop ve playback kontrolleri | P0 | ✅ |
+| 1.2.5 | Farklı video formatlarını destekle (MP4, MOV, HEVC) | P1 | ✅ |
+| 1.2.6 | Performans optimizasyonu - CPU kullanımı | P0 | ✅ |
+| 1.2.7 | Metal rendering pipeline | P1 | ✅ |
 
 ### 1.3 Kullanıcı Arayüzü (v1)
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 1.3.1 | Ana pencere tasarımı (SwiftUI) | P0 | ⬜ |
-| 1.3.2 | Video seçme/import özelliği | P0 | ⬜ |
-| 1.3.3 | Wallpaper önizleme | P1 | ⬜ |
-| 1.3.4 | Play/Pause/Stop kontrolleri | P0 | ⬜ |
-| 1.3.5 | Menu bar app (background running) | P0 | ⬜ |
+| 1.3.1 | Ana pencere tasarımı (SwiftUI) | P0 | ✅ |
+| 1.3.2 | Video seçme/import özelliği | P0 | ✅ |
+| 1.3.3 | Wallpaper önizleme (thumbnail) | P1 | ✅ |
+| 1.3.4 | Play/Pause/Stop kontrolleri | P0 | ✅ |
+| 1.3.5 | Menu bar app (background running) | P0 | ✅ |
 | 1.3.6 | System Preferences entegrasyonu | P2 | ⬜ |
 
 ### 1.4 Multi-Monitor Desteği
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 1.4.1 | Birden fazla ekran algılama | P1 | ⬜ |
-| 1.4.2 | Her ekrana farklı wallpaper atama | P1 | ⬜ |
-| 1.4.3 | Ekran ekleme/çıkarma handling | P2 | ⬜ |
+| 1.4.1 | Birden fazla ekran algılama | P1 | ✅ |
+| 1.4.2 | Her ekrana farklı wallpaper atama | P1 | ✅ |
+| 1.4.3 | Ekran ekleme/çıkarma handling | P2 | ✅ |
 
 ### 1.5 Sistem Entegrasyonu
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 1.5.1 | Login'de otomatik başlatma | P0 | ⬜ |
-| 1.5.2 | Pil modunda otomatik duraklatma | P0 | ⬜ |
-| 1.5.3 | Tam ekran uygulama algılama (pause) | P1 | ⬜ |
-| 1.5.4 | Memory leak kontrolü ve optimizasyon | P0 | ⬜ |
+| 1.5.1 | Login'de otomatik başlatma | P0 | ✅ |
+| 1.5.2 | Pil modunda otomatik duraklatma | P0 | ✅ |
+| 1.5.3 | Tam ekran uygulama algılama (pause) | P1 | ✅ |
+| 1.5.4 | Memory leak kontrolü ve optimizasyon | P0 | ✅ |
 
 ### 1.6 MVP Test & Release
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 1.6.1 | Internal testing (Alpha) | P0 | ⬜ |
-| 1.6.2 | Bug fixes | P0 | ⬜ |
-| 1.6.3 | TestFlight beta release | P1 | ⬜ |
-| 1.6.4 | Beta feedback toplama | P1 | ⬜ |
+| 1.6.1 | Internal testing (Alpha) | P0 | ✅ |
+| 1.6.2 | Bug fixes | P0 | ✅ |
+| 1.6.3 | TestFlight beta release | P1 | ✅ |
+| 1.6.4 | App Store submission | P1 | ✅ |
 
 ---
 
@@ -266,12 +266,12 @@ Bu doküman Wallnetic projesinin tüm geliştirme aşamalarını, task'larını 
 
 | Milestone | Hedef Tarih | Durum |
 |-----------|-------------|-------|
-| Phase 0 Complete (Swift öğrenme) | +3 hafta | ⬜ |
-| Phase 1 MVP Alpha | +8 hafta | ⬜ |
-| Phase 1 MVP Beta | +10 hafta | ⬜ |
-| Phase 2 AI Integration | +14 hafta | ⬜ |
-| Phase 3 Motion | +18 hafta | ⬜ |
-| Phase 4 App Store Launch | +20 hafta | ⬜ |
+| Phase 0 Complete (Swift öğrenme) | - | ✅ |
+| Phase 1 MVP Alpha | - | ✅ |
+| Phase 1 MVP Beta & App Store | 10 Mart 2026 | ✅ |
+| Phase 2 AI Integration | 🔄 In Progress | 🔄 |
+| Phase 3 Motion | - | ⬜ |
+| Phase 4 Monetization | - | ⬜ |
 
 ---
 
