@@ -1,0 +1,156 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  APP_NAME: Wallnetic
+  SCHEME: Wallnetic
+  PROJECT_PATH: src/Wallnetic/Wallnetic.xcodeproj
+
+jobs:
+  build:
+    name: Build macOS App
+    runs-on: macos-14
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            arch_name: Apple Silicon
+          - arch: x86_64
+            arch_name: Intel
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update version in project
+        run: |
+          cd src/Wallnetic
+          agvtool new-marketing-version ${{ steps.version.outputs.VERSION }}
+          agvtool new-version -all ${{ github.run_number }}
+
+      - name: Build for ${{ matrix.arch_name }}
+        run: |
+          xcodebuild -project ${{ env.PROJECT_PATH }} \
+            -scheme ${{ env.SCHEME }} \
+            -configuration Release \
+            -arch ${{ matrix.arch }} \
+            -derivedDataPath build \
+            clean build \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Create DMG
+        run: |
+          APP_PATH="build/Build/Products/Release/${{ env.APP_NAME }}.app"
+          DMG_NAME="${{ env.APP_NAME }}_${{ steps.version.outputs.VERSION }}_${{ matrix.arch }}.dmg"
+
+          # Create temporary directory for DMG contents
+          mkdir -p dmg_contents
+          cp -R "$APP_PATH" dmg_contents/
+
+          # Create symbolic link to Applications folder
+          ln -s /Applications dmg_contents/Applications
+
+          # Create DMG
+          hdiutil create -volname "${{ env.APP_NAME }}" \
+            -srcfolder dmg_contents \
+            -ov -format UDZO \
+            "$DMG_NAME"
+
+          echo "DMG_PATH=$DMG_NAME" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}_${{ matrix.arch }}
+          path: "*.dmg"
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$PREV_TAG" ]; then
+            # First release - get all commits
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            # Get commits since last tag
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+          fi
+
+          # Create release notes
+          cat << EOF > release_notes.md
+          ## What's New in v${{ steps.version.outputs.VERSION }}
+
+          ### Changes
+          $COMMITS
+
+          ---
+
+          ## Installation
+
+          1. Download the DMG file for your Mac:
+             - **Apple Silicon** (M1/M2/M3): \`Wallnetic_${{ steps.version.outputs.VERSION }}_arm64.dmg\`
+             - **Intel**: \`Wallnetic_${{ steps.version.outputs.VERSION }}_x86_64.dmg\`
+
+          2. Open the DMG and drag Wallnetic to Applications
+
+          3. First launch: Right-click → Open → Open
+
+          ---
+
+          ## Requirements
+          - macOS 13.0 (Ventura) or later
+          - Apple Silicon or Intel Mac
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "${{ env.APP_NAME }} v${{ steps.version.outputs.VERSION }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/**/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
