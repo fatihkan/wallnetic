@@ -223,6 +223,97 @@ If you're building something, I'd love to hear about it in the comments!
 
 ---
 
+## LinkedIn Postları (Türkçe)
+
+### Profesyonel Lansman Postu
+
+```
+Wallnetic'i duyurmaktan heyecan duyuyorum - macOS için native bir canlı video duvar kağıdı uygulaması.
+
+Problem:
+Windows kullanıcıları yıllardır Wallpaper Engine'e (40M+ indirme) sahip. Mac kullanıcıları ise statik arka planlarla veya pil tüketen web tabanlı çözümlerle sınırlı kaldı.
+
+Çözüm:
+Wallnetic, macOS için sıfırdan şu teknolojilerle geliştirildi:
+• Native performans için Swift 5.9 ve SwiftUI
+• Akıcı video oynatma için AVFoundation
+• GPU hızlandırmalı render için Metal
+• Akıllı güç yönetimi (pilde otomatik duraklatma)
+
+Temel Özellikler:
+✅ Herhangi bir video dosyasını masaüstü arka planı olarak oynat
+✅ Ekran başına farklı duvar kağıdı ile çoklu monitör desteği
+✅ Minimum kaynak kullanımı (~%2-5 CPU)
+✅ Hızlı erişim için menü çubuğu uygulaması
+
+Proje tamamen açık kaynak! Geliştirici arkadaşlardan geri bildirim almak isterim.
+
+🔗 GitHub: github.com/fatihkan/wallnetic
+
+Yakında Mac App Store'da!
+
+#macOS #Swift #SwiftUI #AçıkKaynak #Yazılım #UygulamaGeliştirme
+```
+
+### Geliştirici Odaklı Post
+
+```
+Native bir macOS video duvar kağıdı motoru geliştirmek, düşük seviye macOS geliştirme hakkında bana çok şey öğretti.
+
+Çözdüğüm ilginç zorluklar:
+
+1️⃣ Masaüstü Seviyesi Pencereler
+Tüm içeriğin arkasında kalan pencereler oluşturmak, CGWindowLevel'a dalmayı ve dikkatli NSWindow yapılandırması gerektirdi.
+
+2️⃣ Video Performansı
+4K video döngüleri oynatırken <%5 CPU kullanımı sağlamak için AVFoundation ve Metal rendering kullandım.
+
+3️⃣ Akıllı Duraklatma Algılama
+Finder, Dock veya Kontrol Merkezi'nden yanlış pozitifler almadan tam ekran uygulamaları algılayıp duvar kağıtlarını otomatik duraklatma.
+
+4️⃣ Çoklu Monitör Desteği
+Bağımsız oynatma durumlarıyla ekran başına ayrı video oynatıcıları yönetme.
+
+Sonuç: Wallnetic - Mac için açık kaynaklı bir canlı duvar kağıdı motoru.
+
+Implementasyonu incelemek isterseniz kod GitHub'da: github.com/fatihkan/wallnetic
+
+Son zamanlarda karşılaştığınız en ilginç macOS zorluğu neydi?
+
+#macOS #Swift #YazılımMühendisliği #AçıkKaynak
+```
+
+### Indie Hacker Yolculuğu Postu
+
+```
+Fikirden App Store'a 3 ayda 🚀
+
+Wallnetic'i - Mac için Canlı Duvar Kağıtları - App Store'a gönderdim.
+
+Yolculuk:
+📚 Swift'i sıfırdan öğrendim (web geliştirmeden geliyorum)
+🛠️ 6 haftada çalışan bir MVP oluşturdum
+🐛 Sayısız bug düzelttim (tam ekran algılama zordu!)
+📱 App Store'a gönderdim
+
+Öğrendiklerim:
+• SwiftUI, macOS uygulamaları için inanılmaz güçlü
+• Mac geliştirici topluluğu sıcak ve yardımsever
+• Açık geliştirme yapmak sizi sorumlu tutuyor
+
+Sonraki aşama: Yapay zeka destekli duvar kağıdı üretimi!
+
+Proje açık kaynak. Katkıda bulunabilir veya sadece kodu inceleyebilirsiniz.
+
+GitHub: github.com/fatihkan/wallnetic
+
+Siz de bir şey geliştiriyorsanız, yorumlarda duymak isterim!
+
+#IndieHacker #macOS #AçıkGeliştirme #AçıkKaynak #Girişimcilik
+```
+
+---
+
 ## Hashtag Reference
 
 ### Twitter/X
