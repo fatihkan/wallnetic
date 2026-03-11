@@ -10,7 +10,7 @@
 [![App Store](https://img.shields.io/badge/App%20Store-Coming%20Soon-blue.svg?style=flat&logo=app-store)](https://apps.apple.com)
 
 <p align="center">
-  <img src="docs/assets/hero-banner.png" alt="Wallnetic Hero" width="800"/>
+  <img src="docs/assets/hero-demo.gif" alt="Wallnetic Demo" width="800"/>
 </p>
 
 ## What is Wallnetic?
