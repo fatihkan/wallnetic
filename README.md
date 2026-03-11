@@ -79,9 +79,11 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
-| macOS | Apple Silicon (M1/M2/M3) | [Wallnetic_1.0.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS | Intel | [Wallnetic_1.0.0_x64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS | Apple Silicon (M1/M2/M3) | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS | Intel | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
 | App Store | Universal | Coming Soon |
+
+> **Latest Version:** Check [Releases](https://github.com/fatihkan/wallnetic/releases) for the latest version
 
 ### macOS Installation
 
