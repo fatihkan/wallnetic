@@ -31,6 +31,13 @@
 		BFHISTV13W1234567890ABCD /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1HISTV13W12345678901234 /* HistoryView.swift */; };
 		BFSCHEDSRVC123456789012 /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSRVC12345678901A /* SchedulerService.swift */; };
 		BFSCHEDSETTV1234567890AB /* SchedulerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */; };
+		BFFAVSTYLMGR123456789012 /* FavoriteStylesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FAVSTYLMGR12345678901A /* FavoriteStylesManager.swift */; };
+		BFCOLLMGR12345678901234 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMGR1234567890123A /* CollectionManager.swift */; };
+		BFCOLLMDL12345678901234 /* WallpaperCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMDL1234567890123A /* WallpaperCollection.swift */; };
+		BFCOLLVIEW123456789012 /* CollectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLVIEW12345678901A /* CollectionsView.swift */; };
+		BFCOLLDTLV123456789012 /* CollectionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLDTLV12345678901A /* CollectionDetailView.swift */; };
+		BFTHEMEMGR12345678901234 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1THEMEMGR1234567890123A /* ThemeManager.swift */; };
+		BFNOTIFMGR12345678901234 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1NOTIFMGR1234567890123A /* NotificationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +68,13 @@
 		A1HISTV13W12345678901234 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		A1SCHEDSRVC12345678901A /* SchedulerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerService.swift; sourceTree = "<group>"; };
 		A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
+		A1FAVSTYLMGR12345678901A /* FavoriteStylesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStylesManager.swift; sourceTree = "<group>"; };
+		A1COLLMGR1234567890123A /* CollectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionManager.swift; sourceTree = "<group>"; };
+		A1COLLMDL1234567890123A /* WallpaperCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperCollection.swift; sourceTree = "<group>"; };
+		A1COLLVIEW12345678901A /* CollectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsView.swift; sourceTree = "<group>"; };
+		A1COLLDTLV12345678901A /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
+		A1THEMEMGR1234567890123A /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
+		A1NOTIFMGR1234567890123A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -101,8 +115,12 @@
 			isa = PBXGroup;
 			children = (
 				C3D4E5F6789012A1SERV1CE /* AIService.swift */,
+				A1COLLMGR1234567890123A /* CollectionManager.swift */,
+				A1FAVSTYLMGR12345678901A /* FavoriteStylesManager.swift */,
 				B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */,
+				A1NOTIFMGR1234567890123A /* NotificationManager.swift */,
 				A1SCHEDSRVC12345678901A /* SchedulerService.swift */,
+				A1THEMEMGR1234567890123A /* ThemeManager.swift */,
 				11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */,
 				532FE0E3069C64B6236A343C /* WallpaperManager.swift */,
 			);
@@ -126,11 +144,21 @@
 		60B418A213DB42CB90372D7D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				A1COLLGRP12345678901234 /* Collections */,
 				6D154AD72514800F57D7A3AE /* Components */,
 				535A9501C7CEE862EAB25CF6 /* Main */,
 				A1SETT1NGSGRP1234567890A /* Settings */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		A1COLLGRP12345678901234 /* Collections */ = {
+			isa = PBXGroup;
+			children = (
+				A1COLLDTLV12345678901A /* CollectionDetailView.swift */,
+				A1COLLVIEW12345678901A /* CollectionsView.swift */,
+			);
+			path = Collections;
 			sourceTree = "<group>";
 		};
 		A1SETT1NGSGRP1234567890A /* Settings */ = {
@@ -148,6 +176,7 @@
 				A1STYL3M0D3L12345678901A /* AIStyle.swift */,
 				A1GENH1ST0RY12345678901A /* GenerationHistory.swift */,
 				DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */,
+				A1COLLMDL1234567890123A /* WallpaperCollection.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -266,21 +295,28 @@
 				BFA1SERV1CE123456789012 /* AIService.swift in Sources */,
 				BFA1STYL3M0D3L1234567890 /* AIStyle.swift in Sources */,
 				53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */,
+				BFCOLLDTLV123456789012 /* CollectionDetailView.swift in Sources */,
+				BFCOLLMGR12345678901234 /* CollectionManager.swift in Sources */,
+				BFCOLLVIEW123456789012 /* CollectionsView.swift in Sources */,
 				D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */,
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
+				BFFAVSTYLMGR123456789012 /* FavoriteStylesManager.swift in Sources */,
 				BFGENH1ST0RY123456789012 /* GenerationHistory.swift in Sources */,
 				BFHISTV13W1234567890ABCD /* HistoryView.swift in Sources */,
 				BFKEYM1NGR12345678901234 /* KeychainManager.swift in Sources */,
 				61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */,
+				BFNOTIFMGR12345678901234 /* NotificationManager.swift in Sources */,
 				B528C1F69B3CD9B3914A58A6 /* PowerManager.swift in Sources */,
 				BFSCHEDSRVC123456789012 /* SchedulerService.swift in Sources */,
 				BFSCHEDSETTV1234567890AB /* SchedulerSettingsView.swift in Sources */,
 				A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */,
 				BFA1STYL3S3L3CT12345678 /* StyleSelectionView.swift in Sources */,
+				BFTHEMEMGR12345678901234 /* ThemeManager.swift in Sources */,
 				F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */,
 				EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */,
 				4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */,
 				40D40FD944D13CCAF633E4A9 /* Wallpaper.swift in Sources */,
+				BFCOLLMDL12345678901234 /* WallpaperCollection.swift in Sources */,
 				2124DE0A8E8717475F30D34C /* WallpaperGridView.swift in Sources */,
 				7B8DE2A0443E6DC55D750FCB /* WallpaperManager.swift in Sources */,
 				9B1BEBA4320103CA6744839B /* MetalVideoRenderer.swift in Sources */,

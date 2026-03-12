@@ -7,6 +7,8 @@ enum SidebarSelection: Hashable {
     case recent
     case aiGenerate
     case aiHistory
+    case collections
+    case collection(UUID)
 }
 
 struct ContentView: View {
@@ -27,6 +29,10 @@ struct ContentView: View {
                 AIGenerateView()
             case .aiHistory:
                 HistoryView()
+            case .collections:
+                CollectionsView()
+            case .collection(let collectionId):
+                CollectionDetailView(collectionId: collectionId)
             case .all, .favorites, .recent, .none:
                 if wallpaperManager.wallpapers.isEmpty {
                     EmptyLibraryView(isImporting: $isImporting)
@@ -115,6 +121,7 @@ struct ContentView: View {
 struct SidebarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @ObservedObject var scheduler = SchedulerService.shared
+    @ObservedObject var collectionManager = CollectionManager.shared
     @Binding var selection: SidebarSelection?
     @State private var showingSchedulerSettings = false
 
@@ -129,6 +136,16 @@ struct SidebarView: View {
 
                 Label("Recent", systemImage: "clock")
                     .tag(SidebarSelection.recent)
+            }
+
+            Section("Collections") {
+                Label("All Collections", systemImage: "folder")
+                    .tag(SidebarSelection.collections)
+
+                ForEach(collectionManager.collections) { collection in
+                    Label(collection.name, systemImage: collection.icon)
+                        .tag(SidebarSelection.collection(collection.id))
+                }
             }
 
             Section("AI") {
