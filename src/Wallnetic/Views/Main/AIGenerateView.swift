@@ -8,6 +8,7 @@ struct AIGenerateView: View {
     @State private var isDragging = false
     @State private var errorMessage: String?
     @State private var isValidImage = false
+    @State private var showStyleSelection = false
 
     // Supported image types
     private let supportedTypes: [UTType] = [.jpeg, .png, .heic, .heif, .tiff]
@@ -33,6 +34,14 @@ struct AIGenerateView: View {
             allowsMultipleSelection: false
         ) { result in
             handleImageImport(result)
+        }
+        .sheet(isPresented: $showStyleSelection) {
+            if let image = selectedImage {
+                StyleSelectionView(
+                    sourceImage: image,
+                    isPresented: $showStyleSelection
+                )
+            }
         }
     }
 
@@ -173,7 +182,7 @@ struct AIGenerateView: View {
                 .buttonStyle(.bordered)
 
                 Button("Continue to Style Selection") {
-                    // TODO: Navigate to style selection (#37)
+                    showStyleSelection = true
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!isValidImage)
