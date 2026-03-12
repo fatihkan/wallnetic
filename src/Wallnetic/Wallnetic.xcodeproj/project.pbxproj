@@ -29,6 +29,8 @@
 		F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */; };
 		BFGENH1ST0RY123456789012 /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1GENH1ST0RY12345678901A /* GenerationHistory.swift */; };
 		BFHISTV13W1234567890ABCD /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1HISTV13W12345678901234 /* HistoryView.swift */; };
+		BFSCHEDSRVC123456789012 /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSRVC12345678901A /* SchedulerService.swift */; };
+		BFSCHEDSETTV1234567890AB /* SchedulerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +59,8 @@
 		FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A1GENH1ST0RY12345678901A /* GenerationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationHistory.swift; sourceTree = "<group>"; };
 		A1HISTV13W12345678901234 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		A1SCHEDSRVC12345678901A /* SchedulerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerService.swift; sourceTree = "<group>"; };
+		A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -98,6 +102,7 @@
 			children = (
 				C3D4E5F6789012A1SERV1CE /* AIService.swift */,
 				B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */,
+				A1SCHEDSRVC12345678901A /* SchedulerService.swift */,
 				11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */,
 				532FE0E3069C64B6236A343C /* WallpaperManager.swift */,
 			);
@@ -123,8 +128,17 @@
 			children = (
 				6D154AD72514800F57D7A3AE /* Components */,
 				535A9501C7CEE862EAB25CF6 /* Main */,
+				A1SETT1NGSGRP1234567890A /* Settings */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		A1SETT1NGSGRP1234567890A /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		6BE87A6F82CB3CA3F7C62588 /* Models */ = {
@@ -259,6 +273,8 @@
 				BFKEYM1NGR12345678901234 /* KeychainManager.swift in Sources */,
 				61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */,
 				B528C1F69B3CD9B3914A58A6 /* PowerManager.swift in Sources */,
+				BFSCHEDSRVC123456789012 /* SchedulerService.swift in Sources */,
+				BFSCHEDSETTV1234567890AB /* SchedulerSettingsView.swift in Sources */,
 				A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */,
 				BFA1STYL3S3L3CT12345678 /* StyleSelectionView.swift in Sources */,
 				F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */,
