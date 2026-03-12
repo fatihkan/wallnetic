@@ -1,12 +1,15 @@
 import SwiftUI
 
 struct StyleSelectionView: View {
-    let sourceImage: NSImage
+    let sourceImage: NSImage?
     @Binding var isPresented: Bool
+    var onGenerate: ((AIStyle, String) -> Void)?
+
     @State private var selectedStyle: AIStyle?
     @State private var showCustomPrompt = false
     @State private var customPrompt = ""
     @State private var customNegativePrompt = ""
+    @State private var additionalPrompt = ""
 
     private let columns = [
         GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 16)
@@ -70,33 +73,56 @@ struct StyleSelectionView: View {
 
     // MARK: - Source Image Section
 
+    @ViewBuilder
     private var sourceImageSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Source Image")
+            Text(sourceImage != nil ? "Source Image" : "Text-to-Image Generation")
                 .font(.headline)
 
             HStack(spacing: 16) {
-                Image(nsImage: sourceImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 120, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                if let image = sourceImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 120, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(Int(sourceImage.size.width)) × \(Int(sourceImage.size.height))")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    if let style = selectedStyle {
-                        HStack {
-                            Image(systemName: style.icon)
-                                .foregroundColor(style.color)
-                            Text(style.name)
-                                .fontWeight(.medium)
-                        }
-                    } else {
-                        Text("No style selected")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(Int(image.size.width)) × \(Int(image.size.height))")
+                            .font(.subheadline)
                             .foregroundColor(.secondary)
+
+                        if let style = selectedStyle {
+                            HStack {
+                                Image(systemName: style.icon)
+                                    .foregroundColor(style.color)
+                                Text(style.name)
+                                    .fontWeight(.medium)
+                            }
+                        } else {
+                            Text("No style selected")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    // Text-to-image mode
+                    VStack(alignment: .leading, spacing: 8) {
+                        let resolution = AIService.screenResolution
+                        Text("Output: \(resolution.width) × \(resolution.height)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+
+                        if let style = selectedStyle {
+                            HStack {
+                                Image(systemName: style.icon)
+                                    .foregroundColor(style.color)
+                                Text(style.name)
+                                    .fontWeight(.medium)
+                            }
+                        }
+
+                        TextField("Describe your wallpaper...", text: $additionalPrompt)
+                            .textFieldStyle(.roundedBorder)
                     }
                 }
 
@@ -237,9 +263,12 @@ struct StyleSelectionView: View {
 
     private func startGeneration() {
         guard let style = selectedStyle else { return }
-        // TODO: Navigate to generation view (#38, #40)
-        print("Starting generation with style: \(style.name)")
-        print("Prompt: \(style.prompt)")
+
+        // Build the final prompt
+        var finalPrompt = additionalPrompt.isEmpty ? "" : additionalPrompt
+
+        // Call the generate callback
+        onGenerate?(style, finalPrompt)
         isPresented = false
     }
 }
@@ -300,7 +329,7 @@ struct StyleCard: View {
 
 #Preview {
     StyleSelectionView(
-        sourceImage: NSImage(systemSymbolName: "photo", accessibilityDescription: nil)!,
+        sourceImage: nil,
         isPresented: .constant(true)
     )
 }

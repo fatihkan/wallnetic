@@ -2,6 +2,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct AIGenerateView: View {
+    @EnvironmentObject var wallpaperManager: WallpaperManager
+    @AppStorage("aiProvider") private var aiProviderRaw: String = AIProvider.replicate.rawValue
+
     @State private var selectedImage: NSImage?
     @State private var selectedImageURL: URL?
     @State private var isImporting = false
@@ -9,6 +12,17 @@ struct AIGenerateView: View {
     @State private var errorMessage: String?
     @State private var isValidImage = false
     @State private var showStyleSelection = false
+    @State private var showTextToImage = false
+
+    // Generation state
+    @State private var isGenerating = false
+    @State private var generationProgress: Double = 0
+    @State private var generationStatus: String = ""
+    @State private var generatedImage: NSImage?
+
+    private var aiProvider: AIProvider {
+        AIProvider(rawValue: aiProviderRaw) ?? .replicate
+    }
 
     // Supported image types
     private let supportedTypes: [UTType] = [.jpeg, .png, .heic, .heif, .tiff]
@@ -21,7 +35,11 @@ struct AIGenerateView: View {
             Divider()
 
             // Main content
-            if let image = selectedImage {
+            if isGenerating {
+                generationProgressView
+            } else if let generated = generatedImage {
+                generatedImageView(generated)
+            } else if let image = selectedImage {
                 imagePreviewView(image)
             } else {
                 dropZoneView
@@ -36,12 +54,22 @@ struct AIGenerateView: View {
             handleImageImport(result)
         }
         .sheet(isPresented: $showStyleSelection) {
-            if let image = selectedImage {
-                StyleSelectionView(
-                    sourceImage: image,
-                    isPresented: $showStyleSelection
-                )
-            }
+            StyleSelectionView(
+                sourceImage: selectedImage,
+                isPresented: $showStyleSelection,
+                onGenerate: { style, additionalPrompt in
+                    startGeneration(style: style, additionalPrompt: additionalPrompt)
+                }
+            )
+        }
+        .sheet(isPresented: $showTextToImage) {
+            StyleSelectionView(
+                sourceImage: nil,
+                isPresented: $showTextToImage,
+                onGenerate: { style, additionalPrompt in
+                    startGeneration(style: style, additionalPrompt: additionalPrompt)
+                }
+            )
         }
     }
 
@@ -98,13 +126,20 @@ struct AIGenerateView: View {
                         Text("or")
                             .foregroundColor(.secondary)
 
-                        Button("Choose File") {
-                            isImporting = true
+                        HStack(spacing: 12) {
+                            Button("Choose File") {
+                                isImporting = true
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            Button("Text to Image") {
+                                showTextToImage = true
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .buttonStyle(.borderedProminent)
                     }
 
-                    Text("Supports JPEG, PNG, HEIC")
+                    Text("Supports JPEG, PNG, HEIC • Or generate from text")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -310,6 +345,159 @@ struct AIGenerateView: View {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .file
         return formatter.string(fromByteCount: Int64(fileSize))
+    }
+
+    // MARK: - Generation Progress View
+
+    private var generationProgressView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            ProgressView(value: generationProgress) {
+                Text("Generating...")
+                    .font(.headline)
+            } currentValueLabel: {
+                Text(generationStatus)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .progressViewStyle(.linear)
+            .frame(maxWidth: 300)
+
+            Text("\(Int(generationProgress * 100))%")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.accentColor)
+
+            Button("Cancel") {
+                // TODO: Cancel generation
+                isGenerating = false
+            }
+            .buttonStyle(.bordered)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+
+    // MARK: - Generated Image View
+
+    private func generatedImageView(_ image: NSImage) -> some View {
+        VStack(spacing: 20) {
+            // Image preview
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.black.opacity(0.05))
+
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .cornerRadius(8)
+                    .padding()
+            }
+            .frame(maxWidth: 500, maxHeight: 350)
+            .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
+
+            // Success message
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                Text("Generation complete!")
+                    .fontWeight(.medium)
+            }
+
+            // Action buttons
+            HStack(spacing: 16) {
+                Button("Generate Another") {
+                    generatedImage = nil
+                    clearSelection()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Apply as Wallpaper") {
+                    applyGeneratedWallpaper(image)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+
+    // MARK: - Generation
+
+    private func startGeneration(style: AIStyle, additionalPrompt: String) {
+        isGenerating = true
+        generationProgress = 0
+        generationStatus = "Starting..."
+        errorMessage = nil
+
+        let resolution = AIService.screenResolution
+        let request = GenerationRequest(
+            prompt: additionalPrompt,
+            style: style,
+            width: resolution.width,
+            height: resolution.height
+        )
+
+        Task {
+            do {
+                let result = try await AIService.shared.generateImage(
+                    request: request,
+                    provider: aiProvider
+                ) { progress, status in
+                    Task { @MainActor in
+                        self.generationProgress = progress
+                        self.generationStatus = status
+                    }
+                }
+
+                await MainActor.run {
+                    isGenerating = false
+                    if let localURL = result.localURL,
+                       let image = NSImage(contentsOf: localURL) {
+                        generatedImage = image
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isGenerating = false
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func applyGeneratedWallpaper(_ image: NSImage) {
+        // Save to library and apply
+        Task {
+            do {
+                // Save image to library folder
+                let libraryURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+                    .appendingPathComponent("Wallnetic/Library")
+                try FileManager.default.createDirectory(at: libraryURL, withIntermediateDirectories: true)
+
+                let filename = "AI_Generated_\(Date().timeIntervalSince1970).png"
+                let fileURL = libraryURL.appendingPathComponent(filename)
+
+                if let tiffData = image.tiffRepresentation,
+                   let bitmap = NSBitmapImageRep(data: tiffData),
+                   let pngData = bitmap.representation(using: .png, properties: [:]) {
+                    try pngData.write(to: fileURL)
+
+                    // Refresh library
+                    await MainActor.run {
+                        wallpaperManager.loadWallpapers()
+                        generatedImage = nil
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to save wallpaper: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 }
 
