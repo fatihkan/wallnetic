@@ -629,6 +629,18 @@ struct AIGenerateView: View {
                     if let localURL = result.localURL,
                        let image = NSImage(contentsOf: localURL) {
                         generatedImage = image
+
+                        // Save to history
+                        GenerationHistoryManager.shared.addGeneration(
+                            image: image,
+                            prompt: additionalPrompt,
+                            style: style,
+                            provider: aiProvider,
+                            width: request.width,
+                            height: request.height,
+                            strength: sourceImage != nil ? strength : nil,
+                            wasImg2Img: sourceImage != nil
+                        )
                     }
                 }
             } catch {

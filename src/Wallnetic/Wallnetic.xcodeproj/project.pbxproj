@@ -27,6 +27,8 @@
 		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
 		EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */; };
 		F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */; };
+		BFGENH1ST0RY123456789012 /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1GENH1ST0RY12345678901A /* GenerationHistory.swift */; };
+		BFHISTV13W1234567890ABCD /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1HISTV13W12345678901234 /* HistoryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +55,8 @@
 		DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
 		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A1GENH1ST0RY12345678901A /* GenerationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationHistory.swift; sourceTree = "<group>"; };
+		A1HISTV13W12345678901234 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -105,6 +109,7 @@
 			children = (
 				A1GENERAT3V13W1234567890 /* AIGenerateView.swift */,
 				EA19F4DBD0636536454696F3 /* ContentView.swift */,
+				A1HISTV13W12345678901234 /* HistoryView.swift */,
 				5B106464A071BF6E736C3272 /* MenuBarView.swift */,
 				250C1B481393050C099266A2 /* SettingsView.swift */,
 				A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */,
@@ -127,6 +132,7 @@
 			children = (
 				A1B2C3D4E5F67890A1P70VDR /* AIProvider.swift */,
 				A1STYL3M0D3L12345678901A /* AIStyle.swift */,
+				A1GENH1ST0RY12345678901A /* GenerationHistory.swift */,
 				DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */,
 			);
 			path = Models;
@@ -248,6 +254,8 @@
 				53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */,
 				D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */,
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
+				BFGENH1ST0RY123456789012 /* GenerationHistory.swift in Sources */,
+				BFHISTV13W1234567890ABCD /* HistoryView.swift in Sources */,
 				BFKEYM1NGR12345678901234 /* KeychainManager.swift in Sources */,
 				61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */,
 				B528C1F69B3CD9B3914A58A6 /* PowerManager.swift in Sources */,
