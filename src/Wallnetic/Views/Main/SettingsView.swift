@@ -117,57 +117,44 @@ struct AppearanceSettingsView: View {
     var body: some View {
         Form {
             Section("Theme") {
-                Picker("Appearance", selection: $themeManager.appearanceMode) {
-                    ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                        HStack {
-                            Image(systemName: mode.icon)
+                ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                    HStack {
+                        Image(systemName: mode.icon)
+                            .foregroundColor(mode == .dark ? .purple : (mode == .light ? .orange : .accentColor))
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(mode.rawValue)
+                            Text(descriptionFor(mode))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .tag(mode)
+
+                        Spacer()
+
+                        if themeManager.appearanceMode == mode {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        themeManager.appearanceMode = mode
                     }
                 }
-                .pickerStyle(.segmented)
-
-                Text(appearanceDescription)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Section("Accent Color") {
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(36)), count: 5), spacing: 8) {
-                    ForEach(Array(ThemeManager.accentColors.enumerated()), id: \.offset) { index, colorInfo in
-                        Circle()
-                            .fill(colorInfo.color)
-                            .frame(width: 32, height: 32)
-                            .overlay {
-                                if themeManager.accentColorIndex == index {
-                                    Image(systemName: "checkmark")
-                                        .font(.caption.bold())
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .onTapGesture {
-                                themeManager.accentColorIndex = index
-                            }
-                    }
-                }
-
-                Text("Note: System accent color is used by default. Custom accent colors may not apply to all UI elements.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
         }
         .formStyle(.grouped)
     }
 
-    private var appearanceDescription: String {
-        switch themeManager.appearanceMode {
+    private func descriptionFor(_ mode: AppearanceMode) -> String {
+        switch mode {
         case .system:
-            return "Wallnetic will follow your system appearance setting."
+            return "Follow system appearance"
         case .light:
-            return "Always use light mode, regardless of system settings."
+            return "Always use light mode"
         case .dark:
-            return "Always use dark mode, regardless of system settings."
+            return "Always use dark mode"
         }
     }
 }

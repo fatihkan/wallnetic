@@ -26,33 +26,8 @@ class ThemeManager: ObservableObject {
         }
     }
 
-    @Published var accentColorIndex: Int {
-        didSet {
-            saveAccentColor()
-        }
-    }
-
     private let defaults = UserDefaults.standard
     private let appearanceKey = "appearanceMode"
-    private let accentColorKey = "accentColorIndex"
-
-    /// Available accent colors
-    static let accentColors: [(name: String, color: Color)] = [
-        ("Blue", .blue),
-        ("Purple", .purple),
-        ("Pink", .pink),
-        ("Red", .red),
-        ("Orange", .orange),
-        ("Yellow", .yellow),
-        ("Green", .green),
-        ("Teal", .teal),
-        ("Cyan", .cyan),
-        ("Indigo", .indigo)
-    ]
-
-    var selectedAccentColor: Color {
-        ThemeManager.accentColors[safe: accentColorIndex]?.color ?? .blue
-    }
 
     private init() {
         // Load saved appearance
@@ -63,8 +38,6 @@ class ThemeManager: ObservableObject {
             appearanceMode = .system
         }
 
-        accentColorIndex = defaults.integer(forKey: accentColorKey)
-
         applyAppearance()
     }
 
@@ -72,10 +45,6 @@ class ThemeManager: ObservableObject {
 
     private func saveAppearance() {
         defaults.set(appearanceMode.rawValue, forKey: appearanceKey)
-    }
-
-    private func saveAccentColor() {
-        defaults.set(accentColorIndex, forKey: accentColorKey)
     }
 
     // MARK: - Apply Theme
@@ -91,13 +60,5 @@ class ThemeManager: ObservableObject {
                 NSApp.appearance = NSAppearance(named: .darkAqua)
             }
         }
-    }
-}
-
-// MARK: - Safe Array Access
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }
