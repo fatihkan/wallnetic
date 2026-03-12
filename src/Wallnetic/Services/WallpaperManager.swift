@@ -199,9 +199,18 @@ class WallpaperManager: ObservableObject {
         // Save for persistence
         lastWallpaperURL = wallpaper.url.path
 
+        // Auto-play when wallpaper is applied
+        isPlaying = true
+
         NotificationCenter.default.post(
             name: .wallpaperDidChange,
             object: wallpaper
+        )
+
+        // Ensure playback state is synced
+        NotificationCenter.default.post(
+            name: .playbackStateDidChange,
+            object: true
         )
     }
 
@@ -213,9 +222,18 @@ class WallpaperManager: ObservableObject {
         screenWallpapers[screenName] = wallpaper.id
         saveScreenWallpapers()
 
+        // Auto-play when wallpaper is applied
+        isPlaying = true
+
         NotificationCenter.default.post(
             name: .screenWallpaperDidChange,
             object: ScreenWallpaperInfo(wallpaper: wallpaper, screen: screen)
+        )
+
+        // Ensure playback state is synced
+        NotificationCenter.default.post(
+            name: .playbackStateDidChange,
+            object: true
         )
     }
 
