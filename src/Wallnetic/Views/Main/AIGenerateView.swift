@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 struct AIGenerateView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
-    @AppStorage("aiProvider") private var aiProviderRaw: String = AIProvider.replicate.rawValue
+    @AppStorage("selectedVideoModel") private var selectedModelRaw: String = VideoModel.klingStandard.rawValue
 
     @State private var selectedImage: NSImage?
     @State private var selectedImageURL: URL?
@@ -11,24 +11,26 @@ struct AIGenerateView: View {
     @State private var isDragging = false
     @State private var errorMessage: String?
     @State private var isValidImage = false
-    @State private var showStyleSelection = false
-    @State private var showTextToImage = false
+
+    // Prompt state
+    @State private var prompt: String = ""
+    @State private var selectedDuration: Int = 5
+    @State private var selectedAspectRatio: String = "16:9"
 
     // Generation state
     @State private var isGenerating = false
     @State private var generationProgress: Double = 0
     @State private var generationStatus: String = ""
-    @State private var generatedImage: NSImage?
+    @State private var generatedVideoURL: URL?
     @State private var generationTask: Task<Void, Never>?
     @State private var generationStartTime: Date?
     @State private var estimatedTimeRemaining: String = ""
-    @State private var lastGenerationParams: (style: AIStyle, prompt: String, strength: Double, sourceImage: NSImage?)?
 
-    private var aiProvider: AIProvider {
-        AIProvider(rawValue: aiProviderRaw) ?? .replicate
+    private var selectedModel: VideoModel {
+        VideoModel(rawValue: selectedModelRaw) ?? .klingStandard
     }
 
-    // Supported image types
+    // Supported image types for image-to-video
     private let supportedTypes: [UTType] = [.jpeg, .png, .heic, .heif, .tiff]
 
     var body: some View {
@@ -41,14 +43,12 @@ struct AIGenerateView: View {
             // Main content
             if isGenerating {
                 generationProgressView
-            } else if let generated = generatedImage {
-                generatedImageView(generated)
-            } else if errorMessage != nil && !isValidImage {
+            } else if let videoURL = generatedVideoURL {
+                generatedVideoView(videoURL)
+            } else if errorMessage != nil && !isValidImage && selectedImage != nil {
                 errorView
-            } else if let image = selectedImage {
-                imagePreviewView(image)
             } else {
-                dropZoneView
+                promptInputView
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -59,24 +59,6 @@ struct AIGenerateView: View {
         ) { result in
             handleImageImport(result)
         }
-        .sheet(isPresented: $showStyleSelection) {
-            StyleSelectionView(
-                sourceImage: selectedImage,
-                isPresented: $showStyleSelection,
-                onGenerate: { style, additionalPrompt, strength in
-                    startGeneration(style: style, additionalPrompt: additionalPrompt, strength: strength, sourceImage: selectedImage)
-                }
-            )
-        }
-        .sheet(isPresented: $showTextToImage) {
-            StyleSelectionView(
-                sourceImage: nil,
-                isPresented: $showTextToImage,
-                onGenerate: { style, additionalPrompt, strength in
-                    startGeneration(style: style, additionalPrompt: additionalPrompt, strength: strength, sourceImage: nil)
-                }
-            )
-        }
     }
 
     // MARK: - Header
@@ -84,273 +66,286 @@ struct AIGenerateView: View {
     private var headerView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("AI Generate")
+                Text("AI Video Generator")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("Upload an image to generate AI wallpapers")
+                Text("Create anime & loop videos with AI")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
 
             Spacer()
 
-            if selectedImage != nil {
-                Button("Clear") {
-                    clearSelection()
+            // Model selector
+            Menu {
+                ForEach(VideoModel.allCases, id: \.self) { model in
+                    Button {
+                        selectedModelRaw = model.rawValue
+                    } label: {
+                        HStack {
+                            if model == selectedModel {
+                                Image(systemName: "checkmark")
+                            }
+                            Text(model.displayName)
+                            if model.isAnimeOptimized {
+                                Text("🎨")
+                            }
+                        }
+                    }
                 }
+            } label: {
+                HStack {
+                    Image(systemName: selectedModel.icon)
+                    Text(selectedModel.displayName)
+                    Image(systemName: "chevron.down")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.accentColor.opacity(0.1))
+                .cornerRadius(8)
             }
         }
         .padding()
     }
 
-    // MARK: - Drop Zone
+    // MARK: - Prompt Input View
 
-    private var dropZoneView: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(
-                        isDragging ? Color.accentColor : Color.secondary.opacity(0.3),
-                        style: StrokeStyle(lineWidth: 2, dash: [8])
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(isDragging ? Color.accentColor.opacity(0.1) : Color.clear)
-                    )
+    private var promptInputView: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Optional source image
+                sourceImageSection
 
-                VStack(spacing: 16) {
-                    Image(systemName: "photo.badge.plus")
-                        .font(.system(size: 48))
-                        .foregroundColor(isDragging ? .accentColor : .secondary)
+                // Prompt input
+                promptSection
 
-                    VStack(spacing: 8) {
-                        Text("Drop an image here")
-                            .font(.headline)
-                            .foregroundColor(isDragging ? .accentColor : .primary)
+                // Settings
+                settingsSection
 
-                        Text("or")
+                // Generate button
+                generateButton
+            }
+            .padding()
+        }
+    }
+
+    private var sourceImageSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Source Image")
+                    .font(.headline)
+                Text("(Optional)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            if let image = selectedImage {
+                HStack(spacing: 16) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 120, maxHeight: 80)
+                        .cornerRadius(8)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let url = selectedImageURL {
+                            Text(url.lastPathComponent)
+                                .lineLimit(1)
+                        }
+                        Text("\(Int(image.size.width)) × \(Int(image.size.height))")
+                            .font(.caption)
                             .foregroundColor(.secondary)
 
-                        HStack(spacing: 12) {
-                            Button("Choose File") {
-                                isImporting = true
-                            }
-                            .buttonStyle(.borderedProminent)
-
-                            Button("Text to Image") {
-                                showTextToImage = true
-                            }
-                            .buttonStyle(.bordered)
+                        if isValidImage {
+                            Label("Ready", systemImage: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
                         }
                     }
 
-                    Text("Supports JPEG, PNG, HEIC • Or generate from text")
+                    Spacer()
+
+                    Button("Remove") {
+                        clearImage()
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding()
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(12)
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(
+                            isDragging ? Color.accentColor : Color.secondary.opacity(0.3),
+                            style: StrokeStyle(lineWidth: 2, dash: [6])
+                        )
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(isDragging ? Color.accentColor.opacity(0.1) : Color.clear)
+                        )
+
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+
+                        Text("Drop image or")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Button("Choose File") {
+                            isImporting = true
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding()
+                }
+                .frame(height: 120)
+                .onDrop(of: [.image, .fileURL], isTargeted: $isDragging) { providers in
+                    handleDrop(providers)
+                    return true
+                }
+            }
+
+            Text("Add an image to animate it into a video, or leave empty for text-to-video")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var promptSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Prompt")
+                .font(.headline)
+
+            TextEditor(text: $prompt)
+                .font(.body)
+                .frame(minHeight: 80, maxHeight: 120)
+                .padding(8)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+
+            // Prompt suggestions
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(promptSuggestions, id: \.self) { suggestion in
+                        Button(suggestion) {
+                            prompt = suggestion
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+            }
+        }
+    }
+
+    private var promptSuggestions: [String] {
+        if selectedModel.isAnimeOptimized {
+            return [
+                "Anime girl with flowing hair in the wind, cherry blossoms falling",
+                "Cyberpunk city at night with neon lights, rain falling",
+                "Magical forest with glowing fireflies, anime style",
+                "Ocean waves under moonlight, peaceful loop animation",
+                "Cozy lo-fi room with rain on window, warm lighting"
+            ]
+        } else {
+            return [
+                "Cinematic landscape with moving clouds, golden hour",
+                "Abstract flowing particles, vibrant colors",
+                "Underwater scene with rays of light",
+                "Northern lights dancing over mountains",
+                "Fireplace with flickering flames, cozy atmosphere"
+            ]
+        }
+    }
+
+    private var settingsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Settings")
+                .font(.headline)
+
+            HStack(spacing: 24) {
+                // Duration
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Duration")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Picker("Duration", selection: $selectedDuration) {
+                        Text("5 sec").tag(5)
+                        if selectedModel.maxDuration >= 10 {
+                            Text("10 sec").tag(10)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 150)
+                }
+
+                // Aspect Ratio
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Aspect Ratio")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Picker("Aspect Ratio", selection: $selectedAspectRatio) {
+                        ForEach(selectedModel.supportedAspectRatios, id: \.self) { ratio in
+                            Text(ratio).tag(ratio)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 200)
+                }
+
+                Spacer()
+            }
+
+            // Cost estimate
+            HStack {
+                Image(systemName: "dollarsign.circle")
+                    .foregroundColor(.secondary)
+                Text("Estimated cost: $\(String(format: "%.2f", selectedModel.costPerSecond * Double(selectedDuration)))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .background(Color.secondary.opacity(0.05))
+        .cornerRadius(12)
+    }
+
+    private var generateButton: some View {
+        VStack(spacing: 12) {
+            Button {
+                startGeneration()
+            } label: {
+                HStack {
+                    Image(systemName: "wand.and.stars")
+                    Text("Generate Video")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(prompt.isEmpty || !KeychainManager.shared.hasAPIKey(for: .falai))
+
+            if !KeychainManager.shared.hasAPIKey(for: .falai) {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text("Please add your fal.ai API key in Settings")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .frame(maxWidth: 400, maxHeight: 300)
-            .onDrop(of: [.image, .fileURL], isTargeted: $isDragging) { providers in
-                handleDrop(providers)
-                return true
-            }
-
-            if let error = errorMessage {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                    Text(error)
-                        .foregroundColor(.secondary)
-                }
-                .font(.caption)
-            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-
-    // MARK: - Image Preview
-
-    private func imagePreviewView(_ image: NSImage) -> some View {
-        VStack(spacing: 20) {
-            // Image preview
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.black.opacity(0.05))
-
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .cornerRadius(8)
-                    .padding()
-            }
-            .frame(maxWidth: 500, maxHeight: 350)
-            .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
-
-            // Image info
-            if let url = selectedImageURL {
-                VStack(spacing: 8) {
-                    Text(url.lastPathComponent)
-                        .font(.headline)
-                        .lineLimit(1)
-
-                    HStack(spacing: 16) {
-                        Label("\(Int(image.size.width)) × \(Int(image.size.height))", systemImage: "aspectratio")
-                        Label(formatFileSize(url), systemImage: "doc")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
-            }
-
-            // Validation status
-            if isValidImage {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("Image ready for AI generation")
-                        .foregroundColor(.secondary)
-                }
-                .font(.caption)
-            }
-
-            // Action buttons
-            HStack(spacing: 16) {
-                Button("Choose Different Image") {
-                    isImporting = true
-                }
-                .buttonStyle(.bordered)
-
-                Button("Continue to Style Selection") {
-                    showStyleSelection = true
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!isValidImage)
-            }
-            .padding(.top)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-
-    // MARK: - Image Handling
-
-    private func handleImageImport(_ result: Result<[URL], Error>) {
-        errorMessage = nil
-
-        switch result {
-        case .success(let urls):
-            guard let url = urls.first else { return }
-            loadImage(from: url)
-
-        case .failure(let error):
-            errorMessage = "Failed to open file: \(error.localizedDescription)"
-        }
-    }
-
-    private func handleDrop(_ providers: [NSItemProvider]) {
-        errorMessage = nil
-
-        guard let provider = providers.first else { return }
-
-        // Try loading as image first
-        if provider.canLoadObject(ofClass: NSImage.self) {
-            provider.loadObject(ofClass: NSImage.self) { image, error in
-                DispatchQueue.main.async {
-                    if let nsImage = image as? NSImage {
-                        self.selectedImage = nsImage
-                        self.selectedImageURL = nil
-                        self.validateImage(nsImage)
-                    } else if let error = error {
-                        self.errorMessage = "Failed to load image: \(error.localizedDescription)"
-                    }
-                }
-            }
-            return
-        }
-
-        // Try loading as file URL
-        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
-            DispatchQueue.main.async {
-                guard let data = item as? Data,
-                      let url = URL(dataRepresentation: data, relativeTo: nil) else {
-                    self.errorMessage = "Invalid file"
-                    return
-                }
-                self.loadImage(from: url)
-            }
-        }
-    }
-
-    private func loadImage(from url: URL) {
-        // Check if URL is accessible
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer {
-            if accessing {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
-
-        // Validate file type
-        guard let typeIdentifier = try? url.resourceValues(forKeys: [.typeIdentifierKey]).typeIdentifier,
-              let utType = UTType(typeIdentifier),
-              supportedTypes.contains(where: { utType.conforms(to: $0) }) else {
-            errorMessage = "Unsupported file format. Please use JPEG, PNG, or HEIC."
-            return
-        }
-
-        // Load image
-        guard let image = NSImage(contentsOf: url) else {
-            errorMessage = "Failed to load image from file"
-            return
-        }
-
-        selectedImage = image
-        selectedImageURL = url
-        validateImage(image)
-    }
-
-    private func validateImage(_ image: NSImage) {
-        // Check minimum dimensions (at least 512x512 for good AI results)
-        let minDimension: CGFloat = 512
-        let width = image.size.width
-        let height = image.size.height
-
-        if width < minDimension || height < minDimension {
-            errorMessage = "Image too small. Minimum size is \(Int(minDimension))×\(Int(minDimension)) pixels."
-            isValidImage = false
-            return
-        }
-
-        // Check maximum dimensions (limit for API)
-        let maxDimension: CGFloat = 8192
-        if width > maxDimension || height > maxDimension {
-            errorMessage = "Image too large. Maximum size is \(Int(maxDimension))×\(Int(maxDimension)) pixels."
-            isValidImage = false
-            return
-        }
-
-        isValidImage = true
-        errorMessage = nil
-    }
-
-    private func clearSelection() {
-        selectedImage = nil
-        selectedImageURL = nil
-        isValidImage = false
-        errorMessage = nil
-    }
-
-    private func formatFileSize(_ url: URL) -> String {
-        guard let resources = try? url.resourceValues(forKeys: [.fileSizeKey]),
-              let fileSize = resources.fileSize else {
-            return "Unknown size"
-        }
-
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: Int64(fileSize))
     }
 
     // MARK: - Generation Progress View
@@ -361,22 +356,26 @@ struct AIGenerateView: View {
 
             // Animated icon
             if #available(macOS 14.0, *) {
-                Image(systemName: "wand.and.stars")
+                Image(systemName: "film.stack")
                     .font(.system(size: 48))
                     .foregroundColor(.accentColor)
                     .symbolEffect(.pulse)
             } else {
-                Image(systemName: "wand.and.stars")
+                Image(systemName: "film.stack")
                     .font(.system(size: 48))
                     .foregroundColor(.accentColor)
             }
 
             VStack(spacing: 8) {
-                Text("Generating...")
+                Text("Generating Video...")
                     .font(.headline)
 
                 Text(generationStatus)
                     .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                Text("Using \(selectedModel.displayName)")
+                    .font(.caption)
                     .foregroundColor(.secondary)
             }
 
@@ -403,6 +402,10 @@ struct AIGenerateView: View {
                 .frame(maxWidth: 300)
             }
 
+            Text("Video generation can take 1-3 minutes")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
             // Cancel button
             Button(action: cancelGeneration) {
                 HStack {
@@ -419,89 +422,38 @@ struct AIGenerateView: View {
         .padding()
     }
 
-    // MARK: - Generated Image View
+    // MARK: - Generated Video View
 
-    private func generatedImageView(_ image: NSImage) -> some View {
+    private func generatedVideoView(_ videoURL: URL) -> some View {
         VStack(spacing: 20) {
-            // Before/After comparison or single preview
-            if let original = selectedImage {
-                // Before/After comparison view
+            // Video preview (thumbnail for now)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.black)
+
+                // Video player or thumbnail would go here
                 VStack(spacing: 12) {
-                    Text("Before & After")
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 64))
+                        .foregroundColor(.white)
+
+                    Text("Video Generated!")
                         .font(.headline)
+                        .foregroundColor(.white)
 
-                    HStack(spacing: 16) {
-                        // Before (Original)
-                        VStack(spacing: 8) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.black.opacity(0.05))
-
-                                Image(nsImage: original)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .cornerRadius(6)
-                                    .padding(8)
-                            }
-                            .frame(maxWidth: 240, maxHeight: 160)
-                            .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
-
-                            Text("Original")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        Image(systemName: "arrow.right")
-                            .font(.title2)
-                            .foregroundColor(.accentColor)
-
-                        // After (Generated)
-                        VStack(spacing: 8) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.black.opacity(0.05))
-
-                                Image(nsImage: image)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .cornerRadius(6)
-                                    .padding(8)
-                            }
-                            .frame(maxWidth: 240, maxHeight: 160)
-                            .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.accentColor, lineWidth: 2)
-                            )
-
-                            Text("Transformed")
-                                .font(.caption)
-                                .foregroundColor(.accentColor)
-                                .fontWeight(.medium)
-                        }
-                    }
+                    Text(videoURL.lastPathComponent)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
                 }
-            } else {
-                // Single image preview (text-to-image)
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.black.opacity(0.05))
-
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .cornerRadius(8)
-                        .padding()
-                }
-                .frame(maxWidth: 500, maxHeight: 350)
-                .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
             }
+            .frame(maxWidth: 400, maxHeight: 250)
+            .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
 
             // Success message
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
-                Text(selectedImage != nil ? "Style transfer complete!" : "Generation complete!")
+                Text("Video generation complete!")
                     .fontWeight(.medium)
             }
 
@@ -509,39 +461,31 @@ struct AIGenerateView: View {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
                     Button {
-                        applyAsWallpaper(image)
+                        addToLibrary(videoURL)
                     } label: {
                         HStack {
-                            Image(systemName: "desktopcomputer")
-                            Text("Set as Wallpaper")
+                            Image(systemName: "square.and.arrow.down")
+                            Text("Add to Library")
                         }
                     }
                     .buttonStyle(.borderedProminent)
 
                     Button {
-                        saveToLibrary(image)
+                        NSWorkspace.shared.activateFileViewerSelecting([videoURL])
                     } label: {
                         HStack {
-                            Image(systemName: "square.and.arrow.down")
-                            Text("Save to Library")
+                            Image(systemName: "folder")
+                            Text("Show in Finder")
                         }
                     }
                     .buttonStyle(.bordered)
                 }
 
-                HStack(spacing: 12) {
-                    Button("Regenerate") {
-                        regenerate()
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button("Start Over") {
-                        generatedImage = nil
-                        clearSelection()
-                    }
-                    .buttonStyle(.bordered)
-                    .foregroundColor(.secondary)
+                Button("Generate Another") {
+                    generatedVideoURL = nil
                 }
+                .buttonStyle(.bordered)
+                .foregroundColor(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -569,13 +513,15 @@ struct AIGenerateView: View {
 
             HStack(spacing: 12) {
                 Button("Try Again") {
-                    regenerate()
+                    errorMessage = nil
+                    startGeneration()
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button("Start Over") {
                     errorMessage = nil
-                    clearSelection()
+                    clearImage()
+                    prompt = ""
                 }
                 .buttonStyle(.bordered)
             }
@@ -584,34 +530,122 @@ struct AIGenerateView: View {
         .padding()
     }
 
+    // MARK: - Image Handling
+
+    private func handleImageImport(_ result: Result<[URL], Error>) {
+        errorMessage = nil
+
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            loadImage(from: url)
+
+        case .failure(let error):
+            errorMessage = "Failed to open file: \(error.localizedDescription)"
+        }
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) {
+        errorMessage = nil
+
+        guard let provider = providers.first else { return }
+
+        if provider.canLoadObject(ofClass: NSImage.self) {
+            provider.loadObject(ofClass: NSImage.self) { image, error in
+                DispatchQueue.main.async {
+                    if let nsImage = image as? NSImage {
+                        self.selectedImage = nsImage
+                        self.selectedImageURL = nil
+                        self.validateImage(nsImage)
+                    } else if let error = error {
+                        self.errorMessage = "Failed to load image: \(error.localizedDescription)"
+                    }
+                }
+            }
+            return
+        }
+
+        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
+            DispatchQueue.main.async {
+                guard let data = item as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else {
+                    self.errorMessage = "Invalid file"
+                    return
+                }
+                self.loadImage(from: url)
+            }
+        }
+    }
+
+    private func loadImage(from url: URL) {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let typeIdentifier = try? url.resourceValues(forKeys: [.typeIdentifierKey]).typeIdentifier,
+              let utType = UTType(typeIdentifier),
+              supportedTypes.contains(where: { utType.conforms(to: $0) }) else {
+            errorMessage = "Unsupported file format. Please use JPEG, PNG, or HEIC."
+            return
+        }
+
+        guard let image = NSImage(contentsOf: url) else {
+            errorMessage = "Failed to load image from file"
+            return
+        }
+
+        selectedImage = image
+        selectedImageURL = url
+        validateImage(image)
+    }
+
+    private func validateImage(_ image: NSImage) {
+        let minDimension: CGFloat = 256
+        let width = image.size.width
+        let height = image.size.height
+
+        if width < minDimension || height < minDimension {
+            errorMessage = "Image too small. Minimum size is \(Int(minDimension))×\(Int(minDimension)) pixels."
+            isValidImage = false
+            return
+        }
+
+        isValidImage = true
+        errorMessage = nil
+    }
+
+    private func clearImage() {
+        selectedImage = nil
+        selectedImageURL = nil
+        isValidImage = false
+        errorMessage = nil
+    }
+
     // MARK: - Generation
 
-    private func startGeneration(style: AIStyle, additionalPrompt: String, strength: Double, sourceImage: NSImage?) {
-        // Save params for regenerate
-        lastGenerationParams = (style: style, prompt: additionalPrompt, strength: strength, sourceImage: sourceImage)
-
+    private func startGeneration() {
         isGenerating = true
         generationProgress = 0
-        generationStatus = sourceImage != nil ? "Preparing style transfer..." : "Starting..."
+        generationStatus = "Starting..."
         generationStartTime = Date()
         estimatedTimeRemaining = ""
         errorMessage = nil
 
-        let resolution = AIService.screenResolution
-        let request = GenerationRequest(
-            prompt: additionalPrompt,
-            style: style,
-            width: resolution.width,
-            height: resolution.height,
-            sourceImage: sourceImage,
-            strength: strength
+        let request = VideoGenerationRequest(
+            prompt: prompt,
+            model: selectedModel,
+            duration: selectedDuration,
+            aspectRatio: selectedAspectRatio,
+            sourceImage: selectedImage
         )
 
         generationTask = Task {
             do {
-                let result = try await AIService.shared.generateImage(
-                    request: request,
-                    provider: aiProvider
+                let result = try await AIService.shared.generateVideo(
+                    request: request
                 ) { progress, status in
                     Task { @MainActor in
                         self.generationProgress = progress
@@ -620,28 +654,12 @@ struct AIGenerateView: View {
                     }
                 }
 
-                // Check if task was cancelled
                 if Task.isCancelled { return }
 
                 await MainActor.run {
                     isGenerating = false
                     generationTask = nil
-                    if let localURL = result.localURL,
-                       let image = NSImage(contentsOf: localURL) {
-                        generatedImage = image
-
-                        // Save to history
-                        GenerationHistoryManager.shared.addGeneration(
-                            image: image,
-                            prompt: additionalPrompt,
-                            style: style,
-                            provider: aiProvider,
-                            width: request.width,
-                            height: request.height,
-                            strength: sourceImage != nil ? strength : nil,
-                            wasImg2Img: sourceImage != nil
-                        )
-                    }
+                    generatedVideoURL = result.localURL
                 }
             } catch {
                 if Task.isCancelled { return }
@@ -664,18 +682,6 @@ struct AIGenerateView: View {
         estimatedTimeRemaining = ""
     }
 
-    private func regenerate() {
-        guard let params = lastGenerationParams else { return }
-        generatedImage = nil
-        errorMessage = nil
-        startGeneration(
-            style: params.style,
-            additionalPrompt: params.prompt,
-            strength: params.strength,
-            sourceImage: params.sourceImage
-        )
-    }
-
     private func updateEstimatedTime(progress: Double) {
         guard progress > 0.1,
               let startTime = generationStartTime else {
@@ -687,7 +693,7 @@ struct AIGenerateView: View {
         let estimatedTotal = elapsed / progress
         let remaining = estimatedTotal - elapsed
 
-        if remaining > 0 && remaining < 300 {  // Less than 5 minutes
+        if remaining > 0 && remaining < 600 {
             let seconds = Int(remaining)
             if seconds >= 60 {
                 let minutes = seconds / 60
@@ -701,67 +707,31 @@ struct AIGenerateView: View {
         }
     }
 
-    // MARK: - Save & Apply
+    // MARK: - Library
 
-    private func saveToLibrary(_ image: NSImage) {
-        Task {
-            do {
-                _ = try await saveImageToLibrary(image)
-                await MainActor.run {
-                    wallpaperManager.loadWallpapers()
-                    generatedImage = nil
-                    clearSelection()
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to save: \(error.localizedDescription)"
-                }
-            }
-        }
-    }
-
-    private func applyAsWallpaper(_ image: NSImage) {
-        Task {
-            do {
-                let fileURL = try await saveImageToLibrary(image)
-
-                // Apply to all screens
-                try await MainActor.run {
-                    for screen in NSScreen.screens {
-                        try NSWorkspace.shared.setDesktopImageURL(fileURL, for: screen, options: [:])
-                    }
-                    wallpaperManager.loadWallpapers()
-                    generatedImage = nil
-                    clearSelection()
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to apply wallpaper: \(error.localizedDescription)"
-                }
-            }
-        }
-    }
-
-    private func saveImageToLibrary(_ image: NSImage) async throws -> URL {
+    private func addToLibrary(_ videoURL: URL) {
         let libraryURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Wallnetic/Library")
-        try FileManager.default.createDirectory(at: libraryURL, withIntermediateDirectories: true)
 
-        let filename = "AI_Generated_\(Date().timeIntervalSince1970).png"
-        let fileURL = libraryURL.appendingPathComponent(filename)
+        do {
+            try FileManager.default.createDirectory(at: libraryURL, withIntermediateDirectories: true)
 
-        guard let tiffData = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            throw NSError(domain: "AIGenerateView", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image"])
+            let filename = "AI_Video_\(Date().timeIntervalSince1970).mp4"
+            let destinationURL = libraryURL.appendingPathComponent(filename)
+
+            try FileManager.default.copyItem(at: videoURL, to: destinationURL)
+
+            wallpaperManager.loadWallpapers()
+            generatedVideoURL = nil
+            prompt = ""
+            clearImage()
+        } catch {
+            errorMessage = "Failed to add to library: \(error.localizedDescription)"
         }
-
-        try pngData.write(to: fileURL)
-        return fileURL
     }
 }
 
 #Preview {
     AIGenerateView()
-        .frame(width: 600, height: 500)
+        .frame(width: 600, height: 600)
 }
