@@ -17,6 +17,9 @@ class VideoRenderer: NSObject {
     private let preferredBufferDuration: TimeInterval = 2.0  // Seconds of video to buffer
     private let useHardwareDecoding = true
 
+    // Flag to auto-play when video is ready
+    private var shouldPlayWhenReady = false
+
     override init() {
         view = AVPlayerView()
         super.init()
@@ -113,6 +116,15 @@ class VideoRenderer: NSObject {
         #if DEBUG
         setupObservers(for: playerItem)
         #endif
+
+        // Auto-play if requested before video was ready
+        if shouldPlayWhenReady {
+            player?.play()
+            shouldPlayWhenReady = false
+            #if DEBUG
+            print("[VideoRenderer] Auto-playing after video ready")
+            #endif
+        }
     }
 
     /// Disables all audio tracks to reduce CPU usage
@@ -146,10 +158,19 @@ class VideoRenderer: NSObject {
     // MARK: - Playback Control
 
     func play() {
-        player?.play()
+        if player != nil {
+            player?.play()
+        } else {
+            // Video not ready yet, play when ready
+            shouldPlayWhenReady = true
+            #if DEBUG
+            print("[VideoRenderer] Play requested, will auto-play when ready")
+            #endif
+        }
     }
 
     func pause() {
+        shouldPlayWhenReady = false
         player?.pause()
     }
 
@@ -158,6 +179,7 @@ class VideoRenderer: NSObject {
     }
 
     private func cleanup() {
+        shouldPlayWhenReady = false
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         playerLooper?.disableLooping()
