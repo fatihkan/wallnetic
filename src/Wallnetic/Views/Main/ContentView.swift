@@ -5,6 +5,7 @@ enum SidebarSelection: Hashable {
     case all
     case favorites
     case recent
+    case aiGenerate
 }
 
 struct ContentView: View {
@@ -20,14 +21,19 @@ struct ContentView: View {
             SidebarView(selection: $sidebarSelection)
         } detail: {
             // Main content based on sidebar selection
-            if wallpaperManager.wallpapers.isEmpty {
-                EmptyLibraryView(isImporting: $isImporting)
-            } else {
-                WallpaperGridView(
-                    selectedWallpaper: $selectedWallpaper,
-                    searchText: searchText,
-                    filter: sidebarSelection ?? .all
-                )
+            switch sidebarSelection {
+            case .aiGenerate:
+                AIGenerateView()
+            case .all, .favorites, .recent, .none:
+                if wallpaperManager.wallpapers.isEmpty {
+                    EmptyLibraryView(isImporting: $isImporting)
+                } else {
+                    WallpaperGridView(
+                        selectedWallpaper: $selectedWallpaper,
+                        searchText: searchText,
+                        filter: sidebarSelection ?? .all
+                    )
+                }
             }
         }
         .navigationTitle("Wallnetic")
@@ -118,6 +124,11 @@ struct SidebarView: View {
 
                 Label("Recent", systemImage: "clock")
                     .tag(SidebarSelection.recent)
+            }
+
+            Section("AI") {
+                Label("Generate", systemImage: "wand.and.stars")
+                    .tag(SidebarSelection.aiGenerate)
             }
 
             Section("Info") {
