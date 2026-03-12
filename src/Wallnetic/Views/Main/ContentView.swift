@@ -6,6 +6,7 @@ enum SidebarSelection: Hashable {
     case favorites
     case recent
     case aiGenerate
+    case aiHistory
 }
 
 struct ContentView: View {
@@ -24,6 +25,8 @@ struct ContentView: View {
             switch sidebarSelection {
             case .aiGenerate:
                 AIGenerateView()
+            case .aiHistory:
+                HistoryView()
             case .all, .favorites, .recent, .none:
                 if wallpaperManager.wallpapers.isEmpty {
                     EmptyLibraryView(isImporting: $isImporting)
@@ -129,6 +132,9 @@ struct SidebarView: View {
             Section("AI") {
                 Label("Generate", systemImage: "wand.and.stars")
                     .tag(SidebarSelection.aiGenerate)
+
+                Label("History", systemImage: "clock.arrow.circlepath")
+                    .tag(SidebarSelection.aiHistory)
             }
 
             Section("Info") {
