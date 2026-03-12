@@ -112,6 +112,106 @@ struct AIStyle: Identifiable, Hashable {
         color: Color(red: 0.2, green: 0.1, blue: 0.4)
     )
 
+    static let noir = AIStyle(
+        id: "noir",
+        name: "Noir",
+        description: "Dark, moody film noir atmosphere",
+        icon: "theatermasks.fill",
+        prompt: "film noir style, dramatic shadows, high contrast, black and white, moody atmosphere, cinematic, mysterious, rainy streets",
+        negativePrompt: "colorful, bright, cheerful, cartoon",
+        color: Color(red: 0.2, green: 0.2, blue: 0.2)
+    )
+
+    static let steampunk = AIStyle(
+        id: "steampunk",
+        name: "Steampunk",
+        description: "Victorian era meets mechanical fantasy",
+        icon: "gearshape.2.fill",
+        prompt: "steampunk aesthetic, victorian era, brass gears, copper pipes, steam machinery, clockwork mechanisms, industrial revolution, ornate details",
+        negativePrompt: "modern, digital, minimalist, nature",
+        color: Color(red: 0.7, green: 0.5, blue: 0.3)
+    )
+
+    static let tropical = AIStyle(
+        id: "tropical",
+        name: "Tropical",
+        description: "Paradise beaches and ocean views",
+        icon: "beach.umbrella.fill",
+        prompt: "tropical paradise, pristine beach, crystal clear water, palm trees, turquoise ocean, white sand, sunset, maldives style, travel photography",
+        negativePrompt: "urban, cold, winter, snow",
+        color: Color(red: 0.0, green: 0.8, blue: 0.8)
+    )
+
+    static let gothic = AIStyle(
+        id: "gothic",
+        name: "Gothic",
+        description: "Dark medieval architecture",
+        icon: "building.columns.fill",
+        prompt: "gothic architecture, dark cathedral, medieval castle, dramatic lighting, mysterious atmosphere, gargoyles, stained glass, moonlit night",
+        negativePrompt: "modern, bright, cheerful, minimalist",
+        color: Color(red: 0.3, green: 0.1, blue: 0.3)
+    )
+
+    static let ukiyoe = AIStyle(
+        id: "ukiyoe",
+        name: "Ukiyo-e",
+        description: "Traditional Japanese woodblock art",
+        icon: "mountain.2.fill",
+        prompt: "ukiyo-e style, japanese woodblock print, traditional japanese art, hokusai inspired, waves, mount fuji, cherry blossoms, elegant composition",
+        negativePrompt: "photorealistic, modern, western, 3d render",
+        color: Color(red: 0.8, green: 0.2, blue: 0.2)
+    )
+
+    static let neon = AIStyle(
+        id: "neon",
+        name: "Neon",
+        description: "Vibrant neon glow effects",
+        icon: "lightbulb.fill",
+        prompt: "neon lights, glowing colors, dark background, vibrant pink blue purple, electric atmosphere, night scene, light trails, synthwave",
+        negativePrompt: "daylight, natural, muted colors, vintage",
+        color: Color(red: 1.0, green: 0.0, blue: 0.5)
+    )
+
+    static let vintage = AIStyle(
+        id: "vintage",
+        name: "Vintage",
+        description: "Nostalgic retro photography",
+        icon: "camera.aperture",
+        prompt: "vintage photography, retro aesthetic, film grain, faded colors, 1970s style, nostalgic, polaroid look, warm tones, analog feel",
+        negativePrompt: "modern, digital, sharp, vibrant",
+        color: Color(red: 0.8, green: 0.7, blue: 0.5)
+    )
+
+    static let surreal = AIStyle(
+        id: "surreal",
+        name: "Surreal",
+        description: "Dreamlike surrealist art",
+        icon: "eye.fill",
+        prompt: "surrealist art, salvador dali inspired, dreamlike scene, impossible architecture, melting objects, floating elements, subconscious imagery, artistic masterpiece",
+        negativePrompt: "realistic, ordinary, simple, minimalist",
+        color: Color(red: 0.6, green: 0.3, blue: 0.6)
+    )
+
+    static let geometric = AIStyle(
+        id: "geometric",
+        name: "Geometric",
+        description: "Bold geometric patterns",
+        icon: "triangle.fill",
+        prompt: "geometric art, bold shapes, triangles, hexagons, symmetrical patterns, modern design, colorful gradients, mathematical precision, isometric",
+        negativePrompt: "organic, natural, realistic, photographic",
+        color: Color(red: 0.9, green: 0.3, blue: 0.3)
+    )
+
+    static let aurora = AIStyle(
+        id: "aurora",
+        name: "Aurora",
+        description: "Northern lights and night skies",
+        icon: "sparkle",
+        prompt: "aurora borealis, northern lights, night sky, stars, green and purple lights, arctic landscape, snowy mountains, magical atmosphere, long exposure",
+        negativePrompt: "daylight, urban, buildings, people",
+        color: Color(red: 0.2, green: 0.8, blue: 0.5)
+    )
+
     // MARK: - All Styles
 
     static let allStyles: [AIStyle] = [
@@ -124,7 +224,17 @@ struct AIStyle: Identifiable, Hashable {
         .nature,
         .vaporwave,
         .watercolor,
-        .space
+        .space,
+        .noir,
+        .steampunk,
+        .tropical,
+        .gothic,
+        .ukiyoe,
+        .neon,
+        .vintage,
+        .surreal,
+        .geometric,
+        .aurora
     ]
 
     // MARK: - Custom Style
