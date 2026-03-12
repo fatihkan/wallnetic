@@ -5,6 +5,7 @@ struct StyleSelectionView: View {
     @Binding var isPresented: Bool
     var onGenerate: ((AIStyle, String, Double) -> Void)?  // style, prompt, strength
 
+    @ObservedObject private var favoritesManager = FavoriteStylesManager.shared
     @State private var selectedStyle: AIStyle?
     @State private var showCustomPrompt = false
     @State private var customPrompt = ""
@@ -195,6 +196,42 @@ struct StyleSelectionView: View {
             Text("Choose a Style")
                 .font(.headline)
 
+            // Favorites section (if any)
+            if !favoritesManager.favoriteStyles.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: "heart.fill")
+                            .foregroundColor(.red)
+                        Text("Favorites")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                    }
+
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(favoritesManager.favoriteStyles) { style in
+                            StyleCard(
+                                style: style,
+                                isSelected: selectedStyle?.id == style.id,
+                                isFavorite: true,
+                                onFavoriteToggle: { favoritesManager.toggleFavorite(style) }
+                            )
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedStyle = style
+                                    showCustomPrompt = false
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.bottom, 8)
+
+                Divider()
+                    .padding(.vertical, 8)
+            }
+
+            // All categories
             ForEach(StyleCategory.allCases, id: \.self) { category in
                 if let styles = AIStyle.stylesByCategory[category], !styles.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -209,7 +246,9 @@ struct StyleSelectionView: View {
                             ForEach(styles) { style in
                                 StyleCard(
                                     style: style,
-                                    isSelected: selectedStyle?.id == style.id
+                                    isSelected: selectedStyle?.id == style.id,
+                                    isFavorite: favoritesManager.isFavorite(style),
+                                    onFavoriteToggle: { favoritesManager.toggleFavorite(style) }
                                 )
                                 .onTapGesture {
                                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -346,6 +385,10 @@ struct StyleSelectionView: View {
 struct StyleCard: View {
     let style: AIStyle
     let isSelected: Bool
+    var isFavorite: Bool = false
+    var onFavoriteToggle: (() -> Void)?
+
+    @State private var isHovered = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -363,6 +406,29 @@ struct StyleCard: View {
                 Image(systemName: style.icon)
                     .font(.system(size: 32))
                     .foregroundColor(style.color)
+
+                // Favorite button (top right)
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.spring(response: 0.3)) {
+                                onFavoriteToggle?()
+                            }
+                        } label: {
+                            Image(systemName: isFavorite ? "heart.fill" : "heart")
+                                .font(.system(size: 14))
+                                .foregroundColor(isFavorite ? .red : .white.opacity(0.8))
+                                .padding(6)
+                                .background(Color.black.opacity(0.3))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .opacity(isHovered || isFavorite ? 1 : 0)
+                    }
+                    Spacer()
+                }
+                .padding(6)
             }
             .frame(height: 80)
 
@@ -390,6 +456,9 @@ struct StyleCard: View {
         )
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .shadow(color: isSelected ? style.color.opacity(0.3) : .clear, radius: 8)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 

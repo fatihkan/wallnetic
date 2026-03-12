@@ -9,6 +9,11 @@ struct SettingsView: View {
                     Label("General", systemImage: "gear")
                 }
 
+            AppearanceSettingsView()
+                .tabItem {
+                    Label("Appearance", systemImage: "paintbrush")
+                }
+
             PlaybackSettingsView()
                 .tabItem {
                     Label("Playback", systemImage: "play.circle")
@@ -24,12 +29,146 @@ struct SettingsView: View {
                     Label("AI", systemImage: "wand.and.stars")
                 }
 
+            NotificationSettingsView()
+                .tabItem {
+                    Label("Notifications", systemImage: "bell")
+                }
+
             AboutSettingsView()
                 .tabItem {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 500, height: 420)
+        .frame(width: 500, height: 480)
+    }
+}
+
+// MARK: - Notification Settings
+
+struct NotificationSettingsView: View {
+    @ObservedObject private var notificationManager = NotificationManager.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Enable Notifications", isOn: $notificationManager.notificationsEnabled)
+
+                if notificationManager.notificationsEnabled && !notificationManager.isAuthorized {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.yellow)
+
+                        Text("Notifications are not authorized. Please enable in System Settings.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Spacer()
+
+                        Button("Open Settings") {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+
+            if notificationManager.notificationsEnabled {
+                Section("Notification Types") {
+                    ForEach(NotificationType.allCases, id: \.self) { type in
+                        Toggle(isOn: Binding(
+                            get: { notificationManager.isEnabled(type) },
+                            set: { notificationManager.setEnabled(type, enabled: $0) }
+                        )) {
+                            HStack {
+                                Image(systemName: type.icon)
+                                    .foregroundColor(.accentColor)
+                                    .frame(width: 24)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(type.rawValue)
+                                    Text(type.description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section("Options") {
+                    Toggle("Play Sound", isOn: $notificationManager.soundEnabled)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear {
+            notificationManager.checkAuthorization()
+        }
+    }
+}
+
+// MARK: - Appearance Settings
+
+struct AppearanceSettingsView: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
+    var body: some View {
+        Form {
+            Section("Theme") {
+                Picker("Appearance", selection: $themeManager.appearanceMode) {
+                    ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                        HStack {
+                            Image(systemName: mode.icon)
+                            Text(mode.rawValue)
+                        }
+                        .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(appearanceDescription)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section("Accent Color") {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(36)), count: 5), spacing: 8) {
+                    ForEach(Array(ThemeManager.accentColors.enumerated()), id: \.offset) { index, colorInfo in
+                        Circle()
+                            .fill(colorInfo.color)
+                            .frame(width: 32, height: 32)
+                            .overlay {
+                                if themeManager.accentColorIndex == index {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .onTapGesture {
+                                themeManager.accentColorIndex = index
+                            }
+                    }
+                }
+
+                Text("Note: System accent color is used by default. Custom accent colors may not apply to all UI elements.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var appearanceDescription: String {
+        switch themeManager.appearanceMode {
+        case .system:
+            return "Wallnetic will follow your system appearance setting."
+        case .light:
+            return "Always use light mode, regardless of system settings."
+        case .dark:
+            return "Always use dark mode, regardless of system settings."
+        }
     }
 }
 
