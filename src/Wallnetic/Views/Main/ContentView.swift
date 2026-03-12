@@ -114,7 +114,9 @@ struct ContentView: View {
 
 struct SidebarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @ObservedObject var scheduler = SchedulerService.shared
     @Binding var selection: SidebarSelection?
+    @State private var showingSchedulerSettings = false
 
     var body: some View {
         List(selection: $selection) {
@@ -137,6 +139,42 @@ struct SidebarView: View {
                     .tag(SidebarSelection.aiHistory)
             }
 
+            Section("Scheduler") {
+                Button {
+                    showingSchedulerSettings = true
+                } label: {
+                    HStack {
+                        Label("Daily Wallpaper", systemImage: scheduler.isEnabled ? "clock.badge.checkmark" : "clock")
+                            .foregroundColor(scheduler.isEnabled ? .accentColor : .primary)
+
+                        Spacer()
+
+                        if scheduler.isEnabled {
+                            Text(scheduler.formattedScheduleTime)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if scheduler.isEnabled {
+                    if scheduler.isGenerating {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                            Text("Generating...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    } else if let nextTime = scheduler.formattedNextScheduledTime {
+                        Text("Next: \(nextTime)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
             Section("Info") {
                 HStack {
                     Text("Wallpapers")
@@ -148,6 +186,9 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .frame(minWidth: 180)
+        .sheet(isPresented: $showingSchedulerSettings) {
+            SchedulerSettingsView()
+        }
     }
 }
 
