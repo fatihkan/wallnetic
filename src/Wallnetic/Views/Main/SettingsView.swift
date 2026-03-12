@@ -486,15 +486,17 @@ struct WallpaperPickerCard: View {
 // MARK: - AI Settings
 
 struct AISettingsView: View {
-    @AppStorage("aiProvider") private var aiProviderRaw: String = AIProvider.replicate.rawValue
+    @AppStorage("selectedVideoModel") private var selectedModelRaw: String = VideoModel.klingStandard.rawValue
     @State private var apiKey: String = ""
     @State private var isValidating = false
     @State private var validationStatus: ValidationStatus = .notValidated
     @State private var showingAPIKey = false
 
-    private var aiProvider: AIProvider {
-        get { AIProvider(rawValue: aiProviderRaw) ?? .replicate }
-        set { aiProviderRaw = newValue.rawValue }
+    private let apiProvider = APIProvider.falai
+
+    private var selectedModel: VideoModel {
+        get { VideoModel(rawValue: selectedModelRaw) ?? .klingStandard }
+        set { selectedModelRaw = newValue.rawValue }
     }
 
     enum ValidationStatus {
@@ -533,39 +535,15 @@ struct AISettingsView: View {
 
     var body: some View {
         Form {
-            Section("AI Provider") {
-                Picker("Provider", selection: Binding(
-                    get: { aiProvider },
-                    set: { newValue in
-                        aiProviderRaw = newValue.rawValue
-                        // Clear key when switching providers
-                        apiKey = ""
-                        validationStatus = .notValidated
-                        loadAPIKey()
-                    }
-                )) {
-                    ForEach(AIProvider.allCases, id: \.self) { provider in
-                        Text(provider.displayName).tag(provider)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                Text(aiProvider == .replicate
-                    ? "Replicate offers Stable Diffusion, FLUX, and more models"
-                    : "fal.ai provides fast inference with FLUX models")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Section("API Key") {
+            Section("fal.ai API Key") {
                 HStack {
                     if showingAPIKey {
-                        TextField(aiProvider.apiKeyPlaceholder, text: $apiKey)
-                            .textFieldStyle(.plain)
+                        TextField(apiProvider.apiKeyPlaceholder, text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
                             .font(.system(.body, design: .monospaced))
                     } else {
-                        SecureField(aiProvider.apiKeyPlaceholder, text: $apiKey)
-                            .textFieldStyle(.plain)
+                        SecureField(apiProvider.apiKeyPlaceholder, text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
                     }
 
                     Button {
@@ -574,7 +552,7 @@ struct AISettingsView: View {
                         Image(systemName: showingAPIKey ? "eye.slash" : "eye")
                             .foregroundColor(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
                 }
 
                 HStack {
@@ -606,15 +584,70 @@ struct AISettingsView: View {
 
                     Spacer()
 
-                    Link("Get API Key", destination: aiProvider.signupURL)
+                    Link("Get API Key", destination: apiProvider.signupURL)
                         .font(.caption)
+                }
+
+                Text("fal.ai provides access to multiple video AI models with a single API key.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section("Default Video Model") {
+                ForEach(VideoModel.allCases, id: \.self) { model in
+                    HStack {
+                        Image(systemName: model.icon)
+                            .foregroundColor(model.isAnimeOptimized ? .pink : .blue)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(model.displayName)
+                                if model.isAnimeOptimized {
+                                    Text("ANIME")
+                                        .font(.caption2)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.pink.opacity(0.2))
+                                        .cornerRadius(3)
+                                }
+                            }
+                            Text(model.description)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing) {
+                            Text("$\(String(format: "%.2f", model.costPerSecond))/s")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("≤\(model.maxDuration)s")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+
+                        if selectedModel == model {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedModelRaw = model.rawValue
+                    }
                 }
             }
 
-            Section("Usage Info") {
+            Section("Status") {
                 if case .valid = validationStatus {
                     LabeledContent("Provider") {
-                        Text(aiProvider.displayName)
+                        Text("fal.ai")
+                    }
+
+                    LabeledContent("Default Model") {
+                        Text(selectedModel.displayName)
                     }
 
                     LabeledContent("Status") {
@@ -626,13 +659,12 @@ struct AISettingsView: View {
                         }
                     }
                 } else {
-                    Text("Enter your API key above to enable AI wallpaper generation.")
+                    Text("Enter your fal.ai API key above to enable AI video generation.")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    Text("You can get a free API key from \(aiProvider.displayName)'s website.")
+                    Link("Sign up for free at fal.ai", destination: apiProvider.signupURL)
                         .font(.caption)
-                        .foregroundColor(.secondary)
                 }
             }
         }
@@ -643,7 +675,7 @@ struct AISettingsView: View {
     }
 
     private func loadAPIKey() {
-        if let key = KeychainManager.shared.getAPIKey(for: aiProvider) {
+        if let key = KeychainManager.shared.getAPIKey(for: apiProvider) {
             apiKey = key
             validationStatus = .valid
         } else {
@@ -660,12 +692,12 @@ struct AISettingsView: View {
 
         Task {
             do {
-                let isValid = try await AIService.shared.validateAPIKey(apiKey, provider: aiProvider)
+                let isValid = try await AIService.shared.validateAPIKey(apiKey)
 
                 await MainActor.run {
                     isValidating = false
                     if isValid {
-                        KeychainManager.shared.saveAPIKey(apiKey, for: aiProvider)
+                        KeychainManager.shared.saveAPIKey(apiKey, for: apiProvider)
                         validationStatus = .valid
                     } else {
                         validationStatus = .invalid("Invalid API key")
@@ -682,7 +714,7 @@ struct AISettingsView: View {
 
     private func clearAPIKey() {
         apiKey = ""
-        KeychainManager.shared.deleteAPIKey(for: aiProvider)
+        KeychainManager.shared.deleteAPIKey(for: apiProvider)
         validationStatus = .notValidated
     }
 }

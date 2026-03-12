@@ -13,7 +13,7 @@ class KeychainManager {
 
     /// Saves an API key for the specified provider
     @discardableResult
-    func saveAPIKey(_ apiKey: String, for provider: AIProvider) -> Bool {
+    func saveAPIKey(_ apiKey: String, for provider: APIProvider) -> Bool {
         let account = provider.rawValue
 
         // Delete existing key first
@@ -43,7 +43,7 @@ class KeychainManager {
     }
 
     /// Retrieves the API key for the specified provider
-    func getAPIKey(for provider: AIProvider) -> String? {
+    func getAPIKey(for provider: APIProvider) -> String? {
         let account = provider.rawValue
 
         let query: [String: Any] = [
@@ -68,7 +68,7 @@ class KeychainManager {
 
     /// Deletes the API key for the specified provider
     @discardableResult
-    func deleteAPIKey(for provider: AIProvider) -> Bool {
+    func deleteAPIKey(for provider: APIProvider) -> Bool {
         let account = provider.rawValue
 
         let query: [String: Any] = [
@@ -82,7 +82,7 @@ class KeychainManager {
     }
 
     /// Checks if an API key exists for the specified provider
-    func hasAPIKey(for provider: AIProvider) -> Bool {
+    func hasAPIKey(for provider: APIProvider) -> Bool {
         return getAPIKey(for: provider) != nil
     }
 }

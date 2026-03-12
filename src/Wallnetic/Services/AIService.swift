@@ -1,232 +1,333 @@
 import Foundation
 import AppKit
 
-/// Generation request parameters
-struct GenerationRequest {
+/// Video generation request parameters
+struct VideoGenerationRequest {
     let prompt: String
     let negativePrompt: String
-    let style: AIStyle?
-    let width: Int
-    let height: Int
-    let steps: Int
-    let guidanceScale: Double
-    let sourceImage: NSImage?
-    let strength: Double  // 0.0 to 1.0, how much to transform the source image
+    let model: VideoModel
+    let duration: Int  // seconds (5 or 10)
+    let aspectRatio: String  // "16:9", "9:16", "1:1"
+    let sourceImage: NSImage?  // For image-to-video
 
     init(
         prompt: String,
         negativePrompt: String = "",
-        style: AIStyle? = nil,
-        width: Int = 1920,
-        height: Int = 1080,
-        steps: Int = 28,
-        guidanceScale: Double = 7.5,
-        sourceImage: NSImage? = nil,
-        strength: Double = 0.75
+        model: VideoModel = .klingStandard,
+        duration: Int = 5,
+        aspectRatio: String = "16:9",
+        sourceImage: NSImage? = nil
     ) {
         self.prompt = prompt
         self.negativePrompt = negativePrompt
-        self.style = style
-        self.width = width
-        self.height = height
-        self.steps = steps
-        self.guidanceScale = guidanceScale
+        self.model = model
+        self.duration = min(duration, model.maxDuration)
+        self.aspectRatio = aspectRatio
         self.sourceImage = sourceImage
-        self.strength = strength
     }
 
-    /// Whether this is an image-to-image request
-    var isImg2Img: Bool {
+    /// Whether this is an image-to-video request
+    var isImg2Vid: Bool {
         sourceImage != nil
     }
 
-    /// Build full prompt with style
-    var fullPrompt: String {
-        if let style = style {
-            return "\(style.prompt), \(prompt)"
-        }
-        return prompt
-    }
-
-    /// Build full negative prompt with style
-    var fullNegativePrompt: String {
-        if let style = style {
-            return [style.negativePrompt, negativePrompt]
-                .filter { !$0.isEmpty }
-                .joined(separator: ", ")
-        }
-        return negativePrompt
+    /// Estimated cost for this generation
+    var estimatedCost: Double {
+        return model.costPerSecond * Double(duration)
     }
 }
 
-/// Generation result
-struct GenerationResult {
-    let imageURL: URL
-    let localURL: URL?
+/// Video generation result
+struct VideoGenerationResult {
+    let videoURL: URL
+    let localURL: URL
     let prompt: String
-    let provider: AIProvider
+    let model: VideoModel
+    let duration: Int
     let generatedAt: Date
 }
 
-/// Service for AI provider interactions
+/// Service for video AI generation via fal.ai
 class AIService {
     static let shared = AIService()
 
+    private let baseURL = "https://queue.fal.run"
+    private let statusBaseURL = "https://queue.fal.run"
+
     private init() {}
 
-    // MARK: - Screen Resolution
+    // MARK: - Video Generation
 
-    /// Get the main screen resolution for wallpaper generation
-    static var screenResolution: (width: Int, height: Int) {
-        if let screen = NSScreen.main {
-            let scale = screen.backingScaleFactor
-            let width = Int(screen.frame.width * scale)
-            let height = Int(screen.frame.height * scale)
-            // Round to nearest 64 for AI model compatibility
-            return (
-                width: (width / 64) * 64,
-                height: (height / 64) * 64
-            )
-        }
-        return (1920, 1080)
-    }
-
-    // MARK: - Text-to-Image Generation
-
-    /// Generate an image from text prompt
-    func generateImage(
-        request: GenerationRequest,
-        provider: AIProvider,
+    /// Generate a video from text or image
+    func generateVideo(
+        request: VideoGenerationRequest,
         progressHandler: ((Double, String) -> Void)? = nil
-    ) async throws -> GenerationResult {
+    ) async throws -> VideoGenerationResult {
         // Get API key
-        guard let apiKey = KeychainManager.shared.getAPIKey(for: provider) else {
-            throw AIServiceError.invalidAPIKey
+        guard let apiKey = KeychainManager.shared.getAPIKey(for: .falai) else {
+            throw AIServiceError.noAPIKey
         }
 
-        switch provider {
-        case .replicate:
-            return try await generateWithReplicate(request: request, apiKey: apiKey, progressHandler: progressHandler)
-        case .falai:
-            return try await generateWithFalAI(request: request, apiKey: apiKey, progressHandler: progressHandler)
+        progressHandler?(0.05, "Preparing request...")
+
+        // Build request
+        let endpoint = request.isImg2Vid ? request.model.falImg2VidEndpoint : request.model.falEndpoint
+        guard let url = URL(string: "\(baseURL)/\(endpoint)") else {
+            throw AIServiceError.invalidURL
         }
-    }
 
-    // MARK: - Replicate Generation
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("Key \(apiKey)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.timeoutInterval = 30
 
-    private func generateWithReplicate(
-        request: GenerationRequest,
-        apiKey: String,
-        progressHandler: ((Double, String) -> Void)?
-    ) async throws -> GenerationResult {
-        progressHandler?(0.1, "Starting generation...")
+        // Build body based on model
+        let body = try buildRequestBody(for: request)
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        // Create prediction using FLUX model
-        let createURL = URL(string: "https://api.replicate.com/v1/predictions")!
+        progressHandler?(0.1, "Submitting to \(request.model.displayName)...")
 
-        var createRequest = URLRequest(url: createURL)
-        createRequest.httpMethod = "POST"
-        createRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        createRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Submit request
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
-        var body: [String: Any]
-
-        if request.isImg2Img, let sourceImage = request.sourceImage {
-            // Image-to-image using FLUX Redux (style transfer)
-            guard let imageDataURL = imageToBase64DataURL(sourceImage) else {
-                throw AIServiceError.generationFailed("Failed to encode source image")
-            }
-
-            body = [
-                "version": "black-forest-labs/flux-redux-dev",
-                "input": [
-                    "image": imageDataURL,
-                    "prompt": request.fullPrompt,
-                    "num_outputs": 1,
-                    "aspect_ratio": aspectRatioString(width: request.width, height: request.height),
-                    "output_format": "png",
-                    "output_quality": 90,
-                    "prompt_strength": request.strength
-                ]
-            ]
-        } else {
-            // Text-to-image
-            body = [
-                "version": "black-forest-labs/flux-schnell",
-                "input": [
-                    "prompt": request.fullPrompt,
-                    "num_outputs": 1,
-                    "aspect_ratio": aspectRatioString(width: request.width, height: request.height),
-                    "output_format": "png",
-                    "output_quality": 90
-                ]
-            ]
-        }
-        createRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        progressHandler?(0.2, "Sending request to Replicate...")
-
-        let (createData, createResponse) = try await URLSession.shared.data(for: createRequest)
-
-        guard let httpResponse = createResponse as? HTTPURLResponse else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw AIServiceError.invalidResponse
         }
 
-        guard httpResponse.statusCode == 201 || httpResponse.statusCode == 200 else {
+        // Handle non-2xx responses
+        if httpResponse.statusCode >= 400 {
+            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let detail = errorJson["detail"] as? String {
+                throw AIServiceError.generationFailed(detail)
+            }
             throw AIServiceError.serverError(httpResponse.statusCode)
         }
 
-        guard let json = try JSONSerialization.jsonObject(with: createData) as? [String: Any],
-              let predictionId = json["id"] as? String else {
+        // Parse queue response
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let requestId = json["request_id"] as? String else {
+            print("[AIService] Failed to parse queue response: \(String(data: data, encoding: .utf8) ?? "nil")")
             throw AIServiceError.invalidResponse
         }
 
-        progressHandler?(0.3, "Generation started...")
+        let statusURL = json["status_url"] as? String
+        let responseURL = json["response_url"] as? String
+
+        progressHandler?(0.2, "Queued, waiting for processing...")
 
         // Poll for completion
-        let pollURL = URL(string: "https://api.replicate.com/v1/predictions/\(predictionId)")!
-        var pollRequest = URLRequest(url: pollURL)
-        pollRequest.httpMethod = "GET"
-        pollRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        let result = try await pollForCompletion(
+            requestId: requestId,
+            statusURL: statusURL,
+            responseURL: responseURL,
+            apiKey: apiKey,
+            request: request,
+            progressHandler: progressHandler
+        )
 
+        return result
+    }
+
+    // MARK: - Request Body Builders
+
+    private func buildRequestBody(for request: VideoGenerationRequest) throws -> [String: Any] {
+        var body: [String: Any] = [:]
+
+        switch request.model {
+        case .klingStandard, .klingPro:
+            body = buildKlingBody(for: request)
+        case .minimax:
+            body = buildMinimaxBody(for: request)
+        case .lumaRay:
+            body = buildLumaBody(for: request)
+        case .runway:
+            body = buildRunwayBody(for: request)
+        case .pika:
+            body = buildPikaBody(for: request)
+        case .wan:
+            body = buildWanBody(for: request)
+        }
+
+        // Add source image if present
+        if let sourceImage = request.sourceImage {
+            if let imageDataURL = imageToBase64DataURL(sourceImage) {
+                body["image_url"] = imageDataURL
+            }
+        }
+
+        return body
+    }
+
+    private func buildKlingBody(for request: VideoGenerationRequest) -> [String: Any] {
+        return [
+            "prompt": request.prompt,
+            "negative_prompt": request.negativePrompt,
+            "duration": request.duration <= 5 ? "5" : "10",
+            "aspect_ratio": request.aspectRatio
+        ]
+    }
+
+    private func buildMinimaxBody(for request: VideoGenerationRequest) -> [String: Any] {
+        return [
+            "prompt": request.prompt,
+            "prompt_optimizer": true
+        ]
+    }
+
+    private func buildLumaBody(for request: VideoGenerationRequest) -> [String: Any] {
+        return [
+            "prompt": request.prompt,
+            "aspect_ratio": request.aspectRatio,
+            "loop": true  // Enable looping for wallpapers
+        ]
+    }
+
+    private func buildRunwayBody(for request: VideoGenerationRequest) -> [String: Any] {
+        return [
+            "prompt": request.prompt,
+            "duration": request.duration <= 5 ? 5 : 10,
+            "aspect_ratio": request.aspectRatio == "9:16" ? "9:16" : "16:9"
+        ]
+    }
+
+    private func buildPikaBody(for request: VideoGenerationRequest) -> [String: Any] {
+        return [
+            "prompt": request.prompt,
+            "negative_prompt": request.negativePrompt,
+            "style": "anime",  // Default to anime style
+            "aspect_ratio": request.aspectRatio
+        ]
+    }
+
+    private func buildWanBody(for request: VideoGenerationRequest) -> [String: Any] {
+        // Calculate resolution from aspect ratio
+        let resolution: [String: Int]
+        switch request.aspectRatio {
+        case "9:16":
+            resolution = ["width": 480, "height": 832]
+        case "1:1":
+            resolution = ["width": 640, "height": 640]
+        default: // 16:9
+            resolution = ["width": 832, "height": 480]
+        }
+
+        return [
+            "prompt": request.prompt,
+            "negative_prompt": request.negativePrompt,
+            "resolution": resolution,
+            "num_frames": request.duration <= 5 ? 81 : 161  // ~5s or ~10s at 16fps
+        ]
+    }
+
+    // MARK: - Polling
+
+    private func pollForCompletion(
+        requestId: String,
+        statusURL: String?,
+        responseURL: String?,
+        apiKey: String,
+        request: VideoGenerationRequest,
+        progressHandler: ((Double, String) -> Void)?
+    ) async throws -> VideoGenerationResult {
+        let maxAttempts = 120  // 4 minutes max (2s intervals)
         var attempts = 0
-        let maxAttempts = 60 // 2 minutes max
+
+        // Use status URL or construct one
+        let pollURL: URL
+        if let statusURL = statusURL, let url = URL(string: statusURL) {
+            pollURL = url
+        } else {
+            pollURL = URL(string: "\(statusBaseURL)/\(request.model.falEndpoint)/requests/\(requestId)/status")!
+        }
 
         while attempts < maxAttempts {
-            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            try await Task.sleep(nanoseconds: 2_000_000_000)  // 2 seconds
             attempts += 1
 
-            let progress = 0.3 + (Double(attempts) / Double(maxAttempts)) * 0.5
-            progressHandler?(progress, "Generating... (\(attempts * 2)s)")
+            // Calculate progress (20% to 90% during polling)
+            let progress = 0.2 + (Double(attempts) / Double(maxAttempts)) * 0.7
+            progressHandler?(min(progress, 0.9), "Generating video... (\(attempts * 2)s)")
 
-            let (pollData, _) = try await URLSession.shared.data(for: pollRequest)
+            // Create status request
+            var statusRequest = URLRequest(url: pollURL)
+            statusRequest.httpMethod = "GET"
+            statusRequest.setValue("Key \(apiKey)", forHTTPHeaderField: "Authorization")
+            statusRequest.timeoutInterval = 10
 
-            guard let pollJson = try JSONSerialization.jsonObject(with: pollData) as? [String: Any],
-                  let status = pollJson["status"] as? String else {
+            let (data, _) = try await URLSession.shared.data(for: statusRequest)
+
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let status = json["status"] as? String else {
                 continue
             }
 
-            switch status {
-            case "succeeded":
-                progressHandler?(0.9, "Downloading image...")
-                if let output = pollJson["output"] as? [String],
-                   let imageURLString = output.first,
-                   let imageURL = URL(string: imageURLString) {
-                    let localURL = try await downloadImage(from: imageURL)
-                    progressHandler?(1.0, "Complete!")
-                    return GenerationResult(
-                        imageURL: imageURL,
-                        localURL: localURL,
-                        prompt: request.fullPrompt,
-                        provider: .replicate,
-                        generatedAt: Date()
-                    )
-                }
-                throw AIServiceError.invalidResponse
+            switch status.uppercased() {
+            case "COMPLETED":
+                progressHandler?(0.95, "Downloading video...")
 
-            case "failed", "canceled":
-                let error = pollJson["error"] as? String ?? "Generation failed"
+                // Get response URL
+                let resultURL: URL
+                if let responseURL = responseURL, let url = URL(string: responseURL) {
+                    resultURL = url
+                } else if let respURL = json["response_url"] as? String, let url = URL(string: respURL) {
+                    resultURL = url
+                } else {
+                    // Try to get video directly from response
+                    if let video = json["video"] as? [String: Any],
+                       let videoURLString = video["url"] as? String,
+                       let videoURL = URL(string: videoURLString) {
+                        let localURL = try await downloadVideo(from: videoURL)
+                        progressHandler?(1.0, "Complete!")
+                        return VideoGenerationResult(
+                            videoURL: videoURL,
+                            localURL: localURL,
+                            prompt: request.prompt,
+                            model: request.model,
+                            duration: request.duration,
+                            generatedAt: Date()
+                        )
+                    }
+                    throw AIServiceError.invalidResponse
+                }
+
+                // Fetch the full response
+                var resultRequest = URLRequest(url: resultURL)
+                resultRequest.httpMethod = "GET"
+                resultRequest.setValue("Key \(apiKey)", forHTTPHeaderField: "Authorization")
+
+                let (resultData, _) = try await URLSession.shared.data(for: resultRequest)
+
+                guard let resultJson = try JSONSerialization.jsonObject(with: resultData) as? [String: Any] else {
+                    throw AIServiceError.invalidResponse
+                }
+
+                // Extract video URL (different models have different response formats)
+                let videoURL = try extractVideoURL(from: resultJson, model: request.model)
+                let localURL = try await downloadVideo(from: videoURL)
+
+                progressHandler?(1.0, "Complete!")
+
+                return VideoGenerationResult(
+                    videoURL: videoURL,
+                    localURL: localURL,
+                    prompt: request.prompt,
+                    model: request.model,
+                    duration: request.duration,
+                    generatedAt: Date()
+                )
+
+            case "FAILED":
+                let error = json["error"] as? String ?? "Generation failed"
                 throw AIServiceError.generationFailed(error)
+
+            case "IN_QUEUE", "IN_PROGRESS":
+                // Get queue position if available
+                if let logs = json["logs"] as? [[String: Any]], let lastLog = logs.last,
+                   let message = lastLog["message"] as? String {
+                    progressHandler?(min(progress, 0.9), message)
+                }
+                continue
 
             default:
                 continue
@@ -236,106 +337,60 @@ class AIService {
         throw AIServiceError.timeout
     }
 
-    // MARK: - fal.ai Generation
+    // MARK: - Response Parsing
 
-    private func generateWithFalAI(
-        request: GenerationRequest,
-        apiKey: String,
-        progressHandler: ((Double, String) -> Void)?
-    ) async throws -> GenerationResult {
-        progressHandler?(0.1, "Starting generation...")
-
-        var url: URL
-        var body: [String: Any]
-
-        if request.isImg2Img, let sourceImage = request.sourceImage {
-            // Image-to-image using FLUX Redux
-            url = URL(string: "https://fal.run/fal-ai/flux/dev/redux")!
-
-            guard let imageDataURL = imageToBase64DataURL(sourceImage) else {
-                throw AIServiceError.generationFailed("Failed to encode source image")
-            }
-
-            body = [
-                "image_url": imageDataURL,
-                "prompt": request.fullPrompt,
-                "image_size": [
-                    "width": request.width,
-                    "height": request.height
-                ],
-                "num_inference_steps": request.steps,
-                "num_images": 1,
-                "strength": request.strength,
-                "enable_safety_checker": false
-            ]
-        } else {
-            // Text-to-image
-            url = URL(string: "https://fal.run/fal-ai/flux/schnell")!
-
-            body = [
-                "prompt": request.fullPrompt,
-                "image_size": [
-                    "width": request.width,
-                    "height": request.height
-                ],
-                "num_inference_steps": request.steps,
-                "num_images": 1,
-                "enable_safety_checker": false
-            ]
+    private func extractVideoURL(from json: [String: Any], model: VideoModel) throws -> URL {
+        // Try common response formats
+        if let video = json["video"] as? [String: Any],
+           let urlString = video["url"] as? String,
+           let url = URL(string: urlString) {
+            return url
         }
 
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("Key \(apiKey)", forHTTPHeaderField: "Authorization")
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.timeoutInterval = 120
-        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        progressHandler?(0.3, "Generating with fal.ai...")
-
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIServiceError.invalidResponse
+        if let urlString = json["video_url"] as? String,
+           let url = URL(string: urlString) {
+            return url
         }
 
-        guard httpResponse.statusCode == 200 else {
-            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let detail = errorJson["detail"] as? String {
-                throw AIServiceError.generationFailed(detail)
-            }
-            throw AIServiceError.serverError(httpResponse.statusCode)
+        if let videos = json["videos"] as? [[String: Any]],
+           let first = videos.first,
+           let urlString = first["url"] as? String,
+           let url = URL(string: urlString) {
+            return url
         }
 
-        progressHandler?(0.8, "Processing response...")
-
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let images = json["images"] as? [[String: Any]],
-              let firstImage = images.first,
-              let imageURLString = firstImage["url"] as? String,
-              let imageURL = URL(string: imageURLString) else {
-            throw AIServiceError.invalidResponse
+        if let output = json["output"] as? [String: Any],
+           let urlString = output["video_url"] as? String,
+           let url = URL(string: urlString) {
+            return url
         }
 
-        progressHandler?(0.9, "Downloading image...")
-        let localURL = try await downloadImage(from: imageURL)
+        // Log for debugging
+        print("[AIService] Unknown response format. Keys: \(json.keys)")
+        throw AIServiceError.invalidResponse
+    }
 
-        progressHandler?(1.0, "Complete!")
+    // MARK: - Download
 
-        return GenerationResult(
-            imageURL: imageURL,
-            localURL: localURL,
-            prompt: request.fullPrompt,
-            provider: .falai,
-            generatedAt: Date()
-        )
+    private func downloadVideo(from url: URL) async throws -> URL {
+        let (data, _) = try await URLSession.shared.data(from: url)
+
+        // Save to Application Support
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let wallneticDir = appSupport.appendingPathComponent("Wallnetic/Generated")
+
+        try FileManager.default.createDirectory(at: wallneticDir, withIntermediateDirectories: true)
+
+        let filename = "video_\(UUID().uuidString).mp4"
+        let localURL = wallneticDir.appendingPathComponent(filename)
+
+        try data.write(to: localURL)
+        return localURL
     }
 
     // MARK: - Image Encoding
 
-    /// Convert NSImage to base64 data URL for API upload
-    private func imageToBase64DataURL(_ image: NSImage, maxSize: Int = 1536) -> String? {
-        // Resize if needed
+    private func imageToBase64DataURL(_ image: NSImage, maxSize: Int = 1024) -> String? {
         let resizedImage = resizeImage(image, maxSize: maxSize)
 
         guard let tiffData = resizedImage.tiffRepresentation,
@@ -348,7 +403,6 @@ class AIService {
         return "data:image/png;base64,\(base64)"
     }
 
-    /// Resize image to fit within maxSize while maintaining aspect ratio
     private func resizeImage(_ image: NSImage, maxSize: Int) -> NSImage {
         let width = image.size.width
         let height = image.size.height
@@ -371,80 +425,11 @@ class AIService {
         return newImage
     }
 
-    // MARK: - Helpers
-
-    private func aspectRatioString(width: Int, height: Int) -> String {
-        let ratio = Double(width) / Double(height)
-        if abs(ratio - 16.0/9.0) < 0.1 { return "16:9" }
-        if abs(ratio - 9.0/16.0) < 0.1 { return "9:16" }
-        if abs(ratio - 4.0/3.0) < 0.1 { return "4:3" }
-        if abs(ratio - 3.0/4.0) < 0.1 { return "3:4" }
-        if abs(ratio - 1.0) < 0.1 { return "1:1" }
-        if abs(ratio - 21.0/9.0) < 0.1 { return "21:9" }
-        return "16:9" // Default
-    }
-
-    private func downloadImage(from url: URL) async throws -> URL {
-        let (data, _) = try await URLSession.shared.data(from: url)
-
-        // Save to temporary location
-        let tempDir = FileManager.default.temporaryDirectory
-        let filename = "wallnetic_generated_\(UUID().uuidString).png"
-        let localURL = tempDir.appendingPathComponent(filename)
-
-        try data.write(to: localURL)
-        return localURL
-    }
-
     // MARK: - API Key Validation
 
-    /// Validates an API key for the specified provider
-    func validateAPIKey(_ apiKey: String, provider: AIProvider) async throws -> Bool {
-        switch provider {
-        case .replicate:
-            return try await validateReplicateAPIKey(apiKey)
-        case .falai:
-            return try await validateFalAIKey(apiKey)
-        }
-    }
-
-    // MARK: - Replicate Validation
-
-    private func validateReplicateAPIKey(_ apiKey: String) async throws -> Bool {
-        // Replicate API: GET /v1/account to verify token
-        guard let url = URL(string: "https://api.replicate.com/v1/account") else {
-            throw AIServiceError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 10
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AIServiceError.invalidResponse
-        }
-
-        switch httpResponse.statusCode {
-        case 200:
-            return true
-        case 401:
-            throw AIServiceError.invalidAPIKey
-        case 429:
-            throw AIServiceError.rateLimited
-        default:
-            throw AIServiceError.serverError(httpResponse.statusCode)
-        }
-    }
-
-    // MARK: - fal.ai Validation
-
-    private func validateFalAIKey(_ apiKey: String) async throws -> Bool {
-        // fal.ai: Use a simple endpoint to verify the key
-        guard let url = URL(string: "https://fal.run/fal-ai/flux/dev") else {
+    func validateAPIKey(_ apiKey: String) async throws -> Bool {
+        // Use a simple endpoint to verify the key
+        guard let url = URL(string: "https://fal.run/fal-ai/flux/schnell") else {
             throw AIServiceError.invalidURL
         }
 
@@ -452,17 +437,18 @@ class AIService {
         request.httpMethod = "POST"
         request.setValue("Key \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 10
+        request.timeoutInterval = 15
 
-        // Send minimal payload to check auth
+        // Minimal payload to test auth
         let body: [String: Any] = [
             "prompt": "test",
             "num_inference_steps": 1,
-            "image_size": "square_hd"
+            "num_images": 1,
+            "image_size": ["width": 256, "height": 256]
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIServiceError.invalidResponse
@@ -470,15 +456,14 @@ class AIService {
 
         switch httpResponse.statusCode {
         case 200, 201, 202:
-            // Success or queued - API key is valid
             return true
         case 401, 403:
             throw AIServiceError.invalidAPIKey
+        case 422, 400:
+            // Auth succeeded but validation error - key is valid
+            return true
         case 429:
             throw AIServiceError.rateLimited
-        case 400:
-            // Bad request but auth succeeded - key is valid
-            return true
         default:
             throw AIServiceError.serverError(httpResponse.statusCode)
         }
@@ -517,7 +502,7 @@ enum AIServiceError: LocalizedError {
         case .timeout:
             return "Generation timed out - please try again"
         case .noAPIKey:
-            return "No API key configured - please add your API key in Settings"
+            return "No API key configured - please add your fal.ai API key in Settings"
         }
     }
 }
