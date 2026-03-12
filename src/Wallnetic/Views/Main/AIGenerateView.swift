@@ -57,8 +57,8 @@ struct AIGenerateView: View {
             StyleSelectionView(
                 sourceImage: selectedImage,
                 isPresented: $showStyleSelection,
-                onGenerate: { style, additionalPrompt in
-                    startGeneration(style: style, additionalPrompt: additionalPrompt)
+                onGenerate: { style, additionalPrompt, strength in
+                    startGeneration(style: style, additionalPrompt: additionalPrompt, strength: strength, sourceImage: selectedImage)
                 }
             )
         }
@@ -66,8 +66,8 @@ struct AIGenerateView: View {
             StyleSelectionView(
                 sourceImage: nil,
                 isPresented: $showTextToImage,
-                onGenerate: { style, additionalPrompt in
-                    startGeneration(style: style, additionalPrompt: additionalPrompt)
+                onGenerate: { style, additionalPrompt, strength in
+                    startGeneration(style: style, additionalPrompt: additionalPrompt, strength: strength, sourceImage: nil)
                 }
             )
         }
@@ -385,25 +385,85 @@ struct AIGenerateView: View {
 
     private func generatedImageView(_ image: NSImage) -> some View {
         VStack(spacing: 20) {
-            // Image preview
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.black.opacity(0.05))
+            // Before/After comparison or single preview
+            if let original = selectedImage {
+                // Before/After comparison view
+                VStack(spacing: 12) {
+                    Text("Before & After")
+                        .font(.headline)
 
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .cornerRadius(8)
-                    .padding()
+                    HStack(spacing: 16) {
+                        // Before (Original)
+                        VStack(spacing: 8) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.black.opacity(0.05))
+
+                                Image(nsImage: original)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .cornerRadius(6)
+                                    .padding(8)
+                            }
+                            .frame(maxWidth: 240, maxHeight: 160)
+                            .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
+
+                            Text("Original")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Image(systemName: "arrow.right")
+                            .font(.title2)
+                            .foregroundColor(.accentColor)
+
+                        // After (Generated)
+                        VStack(spacing: 8) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.black.opacity(0.05))
+
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .cornerRadius(6)
+                                    .padding(8)
+                            }
+                            .frame(maxWidth: 240, maxHeight: 160)
+                            .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.accentColor, lineWidth: 2)
+                            )
+
+                            Text("Transformed")
+                                .font(.caption)
+                                .foregroundColor(.accentColor)
+                                .fontWeight(.medium)
+                        }
+                    }
+                }
+            } else {
+                // Single image preview (text-to-image)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.black.opacity(0.05))
+
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .cornerRadius(8)
+                        .padding()
+                }
+                .frame(maxWidth: 500, maxHeight: 350)
+                .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
             }
-            .frame(maxWidth: 500, maxHeight: 350)
-            .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
 
             // Success message
             HStack {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
-                Text("Generation complete!")
+                Text(selectedImage != nil ? "Style transfer complete!" : "Generation complete!")
                     .fontWeight(.medium)
             }
 
@@ -415,7 +475,7 @@ struct AIGenerateView: View {
                 }
                 .buttonStyle(.bordered)
 
-                Button("Apply as Wallpaper") {
+                Button("Save to Library") {
                     applyGeneratedWallpaper(image)
                 }
                 .buttonStyle(.borderedProminent)
@@ -427,10 +487,10 @@ struct AIGenerateView: View {
 
     // MARK: - Generation
 
-    private func startGeneration(style: AIStyle, additionalPrompt: String) {
+    private func startGeneration(style: AIStyle, additionalPrompt: String, strength: Double, sourceImage: NSImage?) {
         isGenerating = true
         generationProgress = 0
-        generationStatus = "Starting..."
+        generationStatus = sourceImage != nil ? "Preparing style transfer..." : "Starting..."
         errorMessage = nil
 
         let resolution = AIService.screenResolution
@@ -438,7 +498,9 @@ struct AIGenerateView: View {
             prompt: additionalPrompt,
             style: style,
             width: resolution.width,
-            height: resolution.height
+            height: resolution.height,
+            sourceImage: sourceImage,
+            strength: strength
         )
 
         Task {
