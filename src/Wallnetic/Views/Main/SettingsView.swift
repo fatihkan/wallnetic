@@ -19,12 +19,17 @@ struct SettingsView: View {
                     Label("Display", systemImage: "display")
                 }
 
+            AISettingsView()
+                .tabItem {
+                    Label("AI", systemImage: "wand.and.stars")
+                }
+
             AboutSettingsView()
                 .tabItem {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 500, height: 380)
+        .frame(width: 500, height: 420)
     }
 }
 
@@ -349,6 +354,210 @@ struct WallpaperPickerCard: View {
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 200, height: 112))
         }
+    }
+}
+
+// MARK: - AI Settings
+
+struct AISettingsView: View {
+    @AppStorage("aiProvider") private var aiProviderRaw: String = AIProvider.replicate.rawValue
+    @State private var apiKey: String = ""
+    @State private var isValidating = false
+    @State private var validationStatus: ValidationStatus = .notValidated
+    @State private var showingAPIKey = false
+
+    private var aiProvider: AIProvider {
+        get { AIProvider(rawValue: aiProviderRaw) ?? .replicate }
+        set { aiProviderRaw = newValue.rawValue }
+    }
+
+    enum ValidationStatus {
+        case notValidated
+        case validating
+        case valid
+        case invalid(String)
+
+        var color: Color {
+            switch self {
+            case .notValidated: return .secondary
+            case .validating: return .orange
+            case .valid: return .green
+            case .invalid: return .red
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .notValidated: return "questionmark.circle"
+            case .validating: return "arrow.clockwise"
+            case .valid: return "checkmark.circle.fill"
+            case .invalid: return "xmark.circle.fill"
+            }
+        }
+
+        var message: String {
+            switch self {
+            case .notValidated: return "Not validated"
+            case .validating: return "Validating..."
+            case .valid: return "Connected"
+            case .invalid(let error): return error
+            }
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section("AI Provider") {
+                Picker("Provider", selection: Binding(
+                    get: { aiProvider },
+                    set: { newValue in
+                        aiProviderRaw = newValue.rawValue
+                        // Clear key when switching providers
+                        apiKey = ""
+                        validationStatus = .notValidated
+                        loadAPIKey()
+                    }
+                )) {
+                    ForEach(AIProvider.allCases, id: \.self) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(aiProvider == .replicate
+                    ? "Replicate offers Stable Diffusion, FLUX, and more models"
+                    : "fal.ai provides fast inference with FLUX models")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section("API Key") {
+                HStack {
+                    if showingAPIKey {
+                        TextField(aiProvider.apiKeyPlaceholder, text: $apiKey)
+                            .textFieldStyle(.plain)
+                            .font(.system(.body, design: .monospaced))
+                    } else {
+                        SecureField(aiProvider.apiKeyPlaceholder, text: $apiKey)
+                            .textFieldStyle(.plain)
+                    }
+
+                    Button {
+                        showingAPIKey.toggle()
+                    } label: {
+                        Image(systemName: showingAPIKey ? "eye.slash" : "eye")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack {
+                    Image(systemName: validationStatus.icon)
+                        .foregroundColor(validationStatus.color)
+
+                    Text(validationStatus.message)
+                        .foregroundColor(validationStatus.color)
+                        .font(.caption)
+
+                    Spacer()
+
+                    if case .validating = validationStatus {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+                }
+
+                HStack {
+                    Button("Validate & Save") {
+                        validateAndSaveAPIKey()
+                    }
+                    .disabled(apiKey.isEmpty || isValidating)
+
+                    Button("Clear") {
+                        clearAPIKey()
+                    }
+                    .disabled(apiKey.isEmpty)
+
+                    Spacer()
+
+                    Link("Get API Key", destination: aiProvider.signupURL)
+                        .font(.caption)
+                }
+            }
+
+            Section("Usage Info") {
+                if case .valid = validationStatus {
+                    LabeledContent("Provider") {
+                        Text(aiProvider.displayName)
+                    }
+
+                    LabeledContent("Status") {
+                        HStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 8, height: 8)
+                            Text("Ready")
+                        }
+                    }
+                } else {
+                    Text("Enter your API key above to enable AI wallpaper generation.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("You can get a free API key from \(aiProvider.displayName)'s website.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear {
+            loadAPIKey()
+        }
+    }
+
+    private func loadAPIKey() {
+        if let key = KeychainManager.shared.getAPIKey(for: aiProvider) {
+            apiKey = key
+            validationStatus = .valid
+        } else {
+            apiKey = ""
+            validationStatus = .notValidated
+        }
+    }
+
+    private func validateAndSaveAPIKey() {
+        guard !apiKey.isEmpty else { return }
+
+        isValidating = true
+        validationStatus = .validating
+
+        Task {
+            do {
+                let isValid = try await AIService.shared.validateAPIKey(apiKey, provider: aiProvider)
+
+                await MainActor.run {
+                    isValidating = false
+                    if isValid {
+                        KeychainManager.shared.saveAPIKey(apiKey, for: aiProvider)
+                        validationStatus = .valid
+                    } else {
+                        validationStatus = .invalid("Invalid API key")
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isValidating = false
+                    validationStatus = .invalid(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func clearAPIKey() {
+        apiKey = ""
+        KeychainManager.shared.deleteAPIKey(for: aiProvider)
+        validationStatus = .notValidated
     }
 }
 

@@ -18,6 +18,9 @@
 		9B1BEBA4320103CA6744839B /* MetalVideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0C1260A8361C60E7C46C98 /* MetalVideoRenderer.swift */; };
 		A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250C1B481393050C099266A2 /* SettingsView.swift */; };
 		B528C1F69B3CD9B3914A58A6 /* PowerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4C04ED28406292407FFBD0 /* PowerManager.swift */; };
+		BFA1P70VDR1234567890ABCD /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F67890A1P70VDR /* AIProvider.swift */; };
+		BFA1SERV1CE123456789012 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6789012A1SERV1CE /* AIService.swift */; };
+		BFKEYM1NGR12345678901234 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */; };
 		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
 		EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */; };
 		F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */; };
@@ -35,9 +38,12 @@
 		85B6064EF5DE550677698666 /* Wallnetic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Wallnetic.entitlements; sourceTree = "<group>"; };
 		9065D39D45D04ED947D1507D /* Wallnetic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wallnetic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9E4C04ED28406292407FFBD0 /* PowerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F67890A1P70VDR /* AIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProvider.swift; sourceTree = "<group>"; };
+		B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		BB0C1260A8361C60E7C46C98 /* MetalVideoRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetalVideoRenderer.swift; sourceTree = "<group>"; };
 		BF36E216B5F900C62E824B59 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRenderer.swift; sourceTree = "<group>"; };
+		C3D4E5F6789012A1SERV1CE /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
 		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -80,6 +86,8 @@
 		2A35F6E908D5FD9D6914BBC7 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				C3D4E5F6789012A1SERV1CE /* AIService.swift */,
+				B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */,
 				11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */,
 				532FE0E3069C64B6236A343C /* WallpaperManager.swift */,
 			);
@@ -109,6 +117,7 @@
 		6BE87A6F82CB3CA3F7C62588 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F67890A1P70VDR /* AIProvider.swift */,
 				DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */,
 			);
 			path = Models;
@@ -223,9 +232,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BFA1P70VDR1234567890ABCD /* AIProvider.swift in Sources */,
+				BFA1SERV1CE123456789012 /* AIService.swift in Sources */,
 				53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */,
 				D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */,
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
+				BFKEYM1NGR12345678901234 /* KeychainManager.swift in Sources */,
 				61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */,
 				B528C1F69B3CD9B3914A58A6 /* PowerManager.swift in Sources */,
 				A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */,
