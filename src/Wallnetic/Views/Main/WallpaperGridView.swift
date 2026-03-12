@@ -25,6 +25,8 @@ struct WallpaperGridView: View {
             wallpapers = wallpapers
                 .filter { $0.dateAdded > oneWeekAgo }
                 .sorted { $0.dateAdded > $1.dateAdded }
+        case .aiGenerate:
+            break // Not used in grid view
         }
 
         // Apply search filter
