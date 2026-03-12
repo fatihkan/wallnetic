@@ -122,8 +122,6 @@ class DesktopWindowController {
 
     /// Starts playback on all screens
     func play() {
-        guard !isPlaying else { return }
-
         isPlaying = true
         for renderer in renderers.values {
             renderer.play()
