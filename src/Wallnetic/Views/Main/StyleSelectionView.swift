@@ -191,22 +191,36 @@ struct StyleSelectionView: View {
     // MARK: - Style Grid
 
     private var styleGridSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Choose a Style")
                 .font(.headline)
 
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(AIStyle.allStyles) { style in
-                    StyleCard(
-                        style: style,
-                        isSelected: selectedStyle?.id == style.id
-                    )
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedStyle = style
-                            showCustomPrompt = false
+            ForEach(StyleCategory.allCases, id: \.self) { category in
+                if let styles = AIStyle.stylesByCategory[category], !styles.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Category header
+                        Text(category.rawValue)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+
+                        // Styles in this category
+                        LazyVGrid(columns: columns, spacing: 12) {
+                            ForEach(styles) { style in
+                                StyleCard(
+                                    style: style,
+                                    isSelected: selectedStyle?.id == style.id
+                                )
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selectedStyle = style
+                                        showCustomPrompt = false
+                                    }
+                                }
+                            }
                         }
                     }
+                    .padding(.bottom, 8)
                 }
             }
         }
