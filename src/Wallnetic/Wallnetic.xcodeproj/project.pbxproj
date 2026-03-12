@@ -9,8 +9,6 @@
 /* Begin PBXBuildFile section */
 		0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */; };
 		2124DE0A8E8717475F30D34C /* WallpaperGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */; };
-		BFA1STYL3M0D3L1234567890 /* AIStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1STYL3M0D3L12345678901A /* AIStyle.swift */; };
-		BFA1STYL3S3L3CT12345678 /* StyleSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */; };
 		284D0925EA9AEC2B302910D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BF36E216B5F900C62E824B59 /* Assets.xcassets */; };
 		40D40FD944D13CCAF633E4A9 /* Wallpaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */; };
 		4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */; };
@@ -23,28 +21,28 @@
 		BFA1GENERAT3V13W12345678 /* AIGenerateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1GENERAT3V13W1234567890 /* AIGenerateView.swift */; };
 		BFA1P70VDR1234567890ABCD /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F67890A1P70VDR /* AIProvider.swift */; };
 		BFA1SERV1CE123456789012 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6789012A1SERV1CE /* AIService.swift */; };
+		BFA1STYL3M0D3L1234567890 /* AIStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1STYL3M0D3L12345678901A /* AIStyle.swift */; };
+		BFA1STYL3S3L3CT12345678 /* StyleSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */; };
+		BFCOLLDTLV123456789012 /* CollectionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLDTLV12345678901A /* CollectionDetailView.swift */; };
+		BFCOLLMDL12345678901234 /* WallpaperCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMDL1234567890123A /* WallpaperCollection.swift */; };
+		BFCOLLMGR12345678901234 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMGR1234567890123A /* CollectionManager.swift */; };
+		BFCOLLVIEW123456789012 /* CollectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLVIEW12345678901A /* CollectionsView.swift */; };
+		BFFAVSTYLMGR123456789012 /* FavoriteStylesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FAVSTYLMGR12345678901A /* FavoriteStylesManager.swift */; };
+		BFGENH1ST0RY123456789012 /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1GENH1ST0RY12345678901A /* GenerationHistory.swift */; };
+		BFHISTV13W1234567890ABCD /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1HISTV13W12345678901234 /* HistoryView.swift */; };
 		BFKEYM1NGR12345678901234 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */; };
+		BFNOTIFMGR12345678901234 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1NOTIFMGR1234567890123A /* NotificationManager.swift */; };
+		BFSCHEDSETTV1234567890AB /* SchedulerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */; };
+		BFSCHEDSRVC123456789012 /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSRVC12345678901A /* SchedulerService.swift */; };
+		BFTHEMEMGR12345678901234 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1THEMEMGR1234567890123A /* ThemeManager.swift */; };
 		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
 		EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */; };
 		F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */; };
-		BFGENH1ST0RY123456789012 /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1GENH1ST0RY12345678901A /* GenerationHistory.swift */; };
-		BFHISTV13W1234567890ABCD /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1HISTV13W12345678901234 /* HistoryView.swift */; };
-		BFSCHEDSRVC123456789012 /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSRVC12345678901A /* SchedulerService.swift */; };
-		BFSCHEDSETTV1234567890AB /* SchedulerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */; };
-		BFFAVSTYLMGR123456789012 /* FavoriteStylesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FAVSTYLMGR12345678901A /* FavoriteStylesManager.swift */; };
-		BFCOLLMGR12345678901234 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMGR1234567890123A /* CollectionManager.swift */; };
-		BFCOLLMDL12345678901234 /* WallpaperCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMDL1234567890123A /* WallpaperCollection.swift */; };
-		BFCOLLVIEW123456789012 /* CollectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLVIEW12345678901A /* CollectionsView.swift */; };
-		BFCOLLDTLV123456789012 /* CollectionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLDTLV12345678901A /* CollectionDetailView.swift */; };
-		BFTHEMEMGR12345678901234 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1THEMEMGR1234567890123A /* ThemeManager.swift */; };
-		BFNOTIFMGR12345678901234 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1NOTIFMGR1234567890123A /* NotificationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperGridView.swift; sourceTree = "<group>"; };
 		11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
-		A1STYL3M0D3L12345678901A /* AIStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStyle.swift; sourceTree = "<group>"; };
-		A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSelectionView.swift; sourceTree = "<group>"; };
 		250C1B481393050C099266A2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticApp.swift; sourceTree = "<group>"; };
 		532FE0E3069C64B6236A343C /* WallpaperManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperManager.swift; sourceTree = "<group>"; };
@@ -55,7 +53,20 @@
 		9065D39D45D04ED947D1507D /* Wallnetic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wallnetic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9E4C04ED28406292407FFBD0 /* PowerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F67890A1P70VDR /* AIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProvider.swift; sourceTree = "<group>"; };
+		A1COLLDTLV12345678901A /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
+		A1COLLMDL1234567890123A /* WallpaperCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperCollection.swift; sourceTree = "<group>"; };
+		A1COLLMGR1234567890123A /* CollectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionManager.swift; sourceTree = "<group>"; };
+		A1COLLVIEW12345678901A /* CollectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsView.swift; sourceTree = "<group>"; };
+		A1FAVSTYLMGR12345678901A /* FavoriteStylesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStylesManager.swift; sourceTree = "<group>"; };
 		A1GENERAT3V13W1234567890 /* AIGenerateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerateView.swift; sourceTree = "<group>"; };
+		A1GENH1ST0RY12345678901A /* GenerationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationHistory.swift; sourceTree = "<group>"; };
+		A1HISTV13W12345678901234 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		A1NOTIFMGR1234567890123A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
+		A1SCHEDSRVC12345678901A /* SchedulerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerService.swift; sourceTree = "<group>"; };
+		A1STYL3M0D3L12345678901A /* AIStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStyle.swift; sourceTree = "<group>"; };
+		A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSelectionView.swift; sourceTree = "<group>"; };
+		A1THEMEMGR1234567890123A /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		BB0C1260A8361C60E7C46C98 /* MetalVideoRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetalVideoRenderer.swift; sourceTree = "<group>"; };
 		BF36E216B5F900C62E824B59 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -64,17 +75,6 @@
 		DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
 		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A1GENH1ST0RY12345678901A /* GenerationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationHistory.swift; sourceTree = "<group>"; };
-		A1HISTV13W12345678901234 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
-		A1SCHEDSRVC12345678901A /* SchedulerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerService.swift; sourceTree = "<group>"; };
-		A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
-		A1FAVSTYLMGR12345678901A /* FavoriteStylesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStylesManager.swift; sourceTree = "<group>"; };
-		A1COLLMGR1234567890123A /* CollectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionManager.swift; sourceTree = "<group>"; };
-		A1COLLMDL1234567890123A /* WallpaperCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperCollection.swift; sourceTree = "<group>"; };
-		A1COLLVIEW12345678901A /* CollectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsView.swift; sourceTree = "<group>"; };
-		A1COLLDTLV12345678901A /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
-		A1THEMEMGR1234567890123A /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
-		A1NOTIFMGR1234567890123A /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -152,23 +152,6 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		A1COLLGRP12345678901234 /* Collections */ = {
-			isa = PBXGroup;
-			children = (
-				A1COLLDTLV12345678901A /* CollectionDetailView.swift */,
-				A1COLLVIEW12345678901A /* CollectionsView.swift */,
-			);
-			path = Collections;
-			sourceTree = "<group>";
-		};
-		A1SETT1NGSGRP1234567890A /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */,
-			);
-			path = Settings;
-			sourceTree = "<group>";
-		};
 		6BE87A6F82CB3CA3F7C62588 /* Models */ = {
 			isa = PBXGroup;
 			children = (
@@ -186,6 +169,23 @@
 			children = (
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		A1COLLGRP12345678901234 /* Collections */ = {
+			isa = PBXGroup;
+			children = (
+				A1COLLDTLV12345678901A /* CollectionDetailView.swift */,
+				A1COLLVIEW12345678901A /* CollectionsView.swift */,
+			);
+			path = Collections;
+			sourceTree = "<group>";
+		};
+		A1SETT1NGSGRP1234567890A /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		BBDA8D67F414F740791849C4 /* Resources */ = {
