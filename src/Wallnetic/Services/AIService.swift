@@ -10,6 +10,8 @@ struct GenerationRequest {
     let height: Int
     let steps: Int
     let guidanceScale: Double
+    let sourceImage: NSImage?
+    let strength: Double  // 0.0 to 1.0, how much to transform the source image
 
     init(
         prompt: String,
@@ -18,7 +20,9 @@ struct GenerationRequest {
         width: Int = 1920,
         height: Int = 1080,
         steps: Int = 28,
-        guidanceScale: Double = 7.5
+        guidanceScale: Double = 7.5,
+        sourceImage: NSImage? = nil,
+        strength: Double = 0.75
     ) {
         self.prompt = prompt
         self.negativePrompt = negativePrompt
@@ -27,6 +31,13 @@ struct GenerationRequest {
         self.height = height
         self.steps = steps
         self.guidanceScale = guidanceScale
+        self.sourceImage = sourceImage
+        self.strength = strength
+    }
+
+    /// Whether this is an image-to-image request
+    var isImg2Img: Bool {
+        sourceImage != nil
     }
 
     /// Build full prompt with style
@@ -118,16 +129,39 @@ class AIService {
         createRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         createRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body: [String: Any] = [
-            "version": "black-forest-labs/flux-schnell",
-            "input": [
-                "prompt": request.fullPrompt,
-                "num_outputs": 1,
-                "aspect_ratio": aspectRatioString(width: request.width, height: request.height),
-                "output_format": "png",
-                "output_quality": 90
+        var body: [String: Any]
+
+        if request.isImg2Img, let sourceImage = request.sourceImage {
+            // Image-to-image using FLUX Redux (style transfer)
+            guard let imageDataURL = imageToBase64DataURL(sourceImage) else {
+                throw AIServiceError.generationFailed("Failed to encode source image")
+            }
+
+            body = [
+                "version": "black-forest-labs/flux-redux-dev",
+                "input": [
+                    "image": imageDataURL,
+                    "prompt": request.fullPrompt,
+                    "num_outputs": 1,
+                    "aspect_ratio": aspectRatioString(width: request.width, height: request.height),
+                    "output_format": "png",
+                    "output_quality": 90,
+                    "prompt_strength": request.strength
+                ]
             ]
-        ]
+        } else {
+            // Text-to-image
+            body = [
+                "version": "black-forest-labs/flux-schnell",
+                "input": [
+                    "prompt": request.fullPrompt,
+                    "num_outputs": 1,
+                    "aspect_ratio": aspectRatioString(width: request.width, height: request.height),
+                    "output_format": "png",
+                    "output_quality": 90
+                ]
+            ]
+        }
         createRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         progressHandler?(0.2, "Sending request to Replicate...")
@@ -211,24 +245,50 @@ class AIService {
     ) async throws -> GenerationResult {
         progressHandler?(0.1, "Starting generation...")
 
-        let url = URL(string: "https://fal.run/fal-ai/flux/schnell")!
+        var url: URL
+        var body: [String: Any]
+
+        if request.isImg2Img, let sourceImage = request.sourceImage {
+            // Image-to-image using FLUX Redux
+            url = URL(string: "https://fal.run/fal-ai/flux/dev/redux")!
+
+            guard let imageDataURL = imageToBase64DataURL(sourceImage) else {
+                throw AIServiceError.generationFailed("Failed to encode source image")
+            }
+
+            body = [
+                "image_url": imageDataURL,
+                "prompt": request.fullPrompt,
+                "image_size": [
+                    "width": request.width,
+                    "height": request.height
+                ],
+                "num_inference_steps": request.steps,
+                "num_images": 1,
+                "strength": request.strength,
+                "enable_safety_checker": false
+            ]
+        } else {
+            // Text-to-image
+            url = URL(string: "https://fal.run/fal-ai/flux/schnell")!
+
+            body = [
+                "prompt": request.fullPrompt,
+                "image_size": [
+                    "width": request.width,
+                    "height": request.height
+                ],
+                "num_inference_steps": request.steps,
+                "num_images": 1,
+                "enable_safety_checker": false
+            ]
+        }
 
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("Key \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.timeoutInterval = 120
-
-        let body: [String: Any] = [
-            "prompt": request.fullPrompt,
-            "image_size": [
-                "width": request.width,
-                "height": request.height
-            ],
-            "num_inference_steps": request.steps,
-            "num_images": 1,
-            "enable_safety_checker": false
-        ]
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         progressHandler?(0.3, "Generating with fal.ai...")
@@ -269,6 +329,46 @@ class AIService {
             provider: .falai,
             generatedAt: Date()
         )
+    }
+
+    // MARK: - Image Encoding
+
+    /// Convert NSImage to base64 data URL for API upload
+    private func imageToBase64DataURL(_ image: NSImage, maxSize: Int = 1536) -> String? {
+        // Resize if needed
+        let resizedImage = resizeImage(image, maxSize: maxSize)
+
+        guard let tiffData = resizedImage.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+            return nil
+        }
+
+        let base64 = pngData.base64EncodedString()
+        return "data:image/png;base64,\(base64)"
+    }
+
+    /// Resize image to fit within maxSize while maintaining aspect ratio
+    private func resizeImage(_ image: NSImage, maxSize: Int) -> NSImage {
+        let width = image.size.width
+        let height = image.size.height
+
+        guard width > CGFloat(maxSize) || height > CGFloat(maxSize) else {
+            return image
+        }
+
+        let ratio = min(CGFloat(maxSize) / width, CGFloat(maxSize) / height)
+        let newSize = NSSize(width: width * ratio, height: height * ratio)
+
+        let newImage = NSImage(size: newSize)
+        newImage.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: newSize),
+                   from: NSRect(origin: .zero, size: image.size),
+                   operation: .copy,
+                   fraction: 1.0)
+        newImage.unlockFocus()
+
+        return newImage
     }
 
     // MARK: - Helpers

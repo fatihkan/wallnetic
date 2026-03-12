@@ -3,13 +3,14 @@ import SwiftUI
 struct StyleSelectionView: View {
     let sourceImage: NSImage?
     @Binding var isPresented: Bool
-    var onGenerate: ((AIStyle, String) -> Void)?
+    var onGenerate: ((AIStyle, String, Double) -> Void)?  // style, prompt, strength
 
     @State private var selectedStyle: AIStyle?
     @State private var showCustomPrompt = false
     @State private var customPrompt = ""
     @State private var customNegativePrompt = ""
     @State private var additionalPrompt = ""
+    @State private var transformStrength: Double = 0.75  // 0.0 to 1.0
 
     private let columns = [
         GridItem(.adaptive(minimum: 140, maximum: 180), spacing: 16)
@@ -27,6 +28,11 @@ struct StyleSelectionView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     // Source image preview
                     sourceImageSection
+
+                    // Strength slider (only for img2img)
+                    if sourceImage != nil {
+                        strengthSliderSection
+                    }
 
                     // Style grid
                     styleGridSection
@@ -130,6 +136,54 @@ struct StyleSelectionView: View {
             }
             .padding()
             .background(Color.secondary.opacity(0.1))
+            .cornerRadius(12)
+        }
+    }
+
+    // MARK: - Strength Slider
+
+    private var strengthSliderSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Transformation Strength")
+                    .font(.headline)
+
+                Spacer()
+
+                Text("\(Int(transformStrength * 100))%")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.accentColor)
+                    .frame(width: 50, alignment: .trailing)
+            }
+
+            VStack(spacing: 8) {
+                Slider(value: $transformStrength, in: 0.1...1.0, step: 0.05)
+
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Subtle")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                        Text("Keeps more of original")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing) {
+                        Text("Strong")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                        Text("More stylized result")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .background(Color.secondary.opacity(0.05))
             .cornerRadius(12)
         }
     }
@@ -265,10 +319,10 @@ struct StyleSelectionView: View {
         guard let style = selectedStyle else { return }
 
         // Build the final prompt
-        var finalPrompt = additionalPrompt.isEmpty ? "" : additionalPrompt
+        let finalPrompt = additionalPrompt.isEmpty ? "" : additionalPrompt
 
-        // Call the generate callback
-        onGenerate?(style, finalPrompt)
+        // Call the generate callback with strength
+        onGenerate?(style, finalPrompt, transformStrength)
         isPresented = false
     }
 }
