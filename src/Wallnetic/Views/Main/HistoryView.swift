@@ -1,4 +1,5 @@
 import SwiftUI
+import AVKit
 
 struct HistoryView: View {
     @ObservedObject private var historyManager = GenerationHistoryManager.shared
@@ -10,7 +11,7 @@ struct HistoryView: View {
     @State private var itemToDelete: GenerationHistoryItem?
 
     private let columns = [
-        GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 16)
+        GridItem(.adaptive(minimum: 180, maximum: 220), spacing: 16)
     ]
 
     var body: some View {
@@ -31,7 +32,7 @@ struct HistoryView: View {
         .sheet(item: $selectedItem) { item in
             HistoryDetailView(item: item, onDismiss: { selectedItem = nil })
         }
-        .alert("Delete Generation", isPresented: $showingDeleteConfirmation) {
+        .alert("Delete Video", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
                 if let item = itemToDelete {
@@ -39,7 +40,7 @@ struct HistoryView: View {
                 }
             }
         } message: {
-            Text("Are you sure you want to delete this generation? This cannot be undone.")
+            Text("Are you sure you want to delete this video? This cannot be undone.")
         }
         .alert("Clear All History", isPresented: $showingClearAllConfirmation) {
             Button("Cancel", role: .cancel) {}
@@ -47,7 +48,7 @@ struct HistoryView: View {
                 historyManager.clearAll()
             }
         } message: {
-            Text("Are you sure you want to delete all generation history? This cannot be undone.")
+            Text("Are you sure you want to delete all video history? This cannot be undone.")
         }
     }
 
@@ -56,11 +57,11 @@ struct HistoryView: View {
     private var headerView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Generation History")
+                Text("Video Generation History")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("\(historyManager.items.count) generations")
+                Text("\(historyManager.items.count) videos")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -83,15 +84,15 @@ struct HistoryView: View {
 
     private var emptyStateView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "clock.arrow.circlepath")
+            Image(systemName: "film.stack")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
 
             VStack(spacing: 8) {
-                Text("No Generation History")
+                Text("No Video History")
                     .font(.headline)
 
-                Text("Your AI-generated wallpapers will appear here")
+                Text("Your AI-generated videos will appear here")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -107,7 +108,7 @@ struct HistoryView: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(historyManager.items) { item in
-                    HistoryItemCard(
+                    VideoHistoryCard(
                         item: item,
                         thumbnail: historyManager.getThumbnail(for: item),
                         onTap: { selectedItem = item },
@@ -123,9 +124,9 @@ struct HistoryView: View {
     }
 }
 
-// MARK: - History Item Card
+// MARK: - Video History Card
 
-struct HistoryItemCard: View {
+struct VideoHistoryCard: View {
     let item: GenerationHistoryItem
     let thumbnail: NSImage?
     let onTap: () -> Void
@@ -135,35 +136,47 @@ struct HistoryItemCard: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            // Thumbnail
+            // Thumbnail with video indicator
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.black.opacity(0.05))
+                    .fill(Color.black.opacity(0.1))
 
                 if let thumb = thumbnail {
                     Image(nsImage: thumb)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(height: 100)
+                        .frame(height: 110)
                         .clipped()
                         .cornerRadius(8)
                 } else {
-                    Image(systemName: "photo")
+                    Image(systemName: "film")
                         .font(.system(size: 32))
                         .foregroundColor(.secondary)
+                }
+
+                // Play icon overlay
+                if !isHovering {
+                    Circle()
+                        .fill(Color.black.opacity(0.5))
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            Image(systemName: "play.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16))
+                        )
                 }
 
                 // Hover overlay
                 if isHovering {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.black.opacity(0.4))
+                        .fill(Color.black.opacity(0.5))
 
-                    HStack(spacing: 16) {
+                    HStack(spacing: 20) {
                         Button {
                             onTap()
                         } label: {
-                            Image(systemName: "eye.fill")
-                                .font(.title3)
+                            Image(systemName: "play.circle.fill")
+                                .font(.title)
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(.white)
@@ -172,41 +185,68 @@ struct HistoryItemCard: View {
                             onDelete()
                         } label: {
                             Image(systemName: "trash.fill")
-                                .font(.title3)
+                                .font(.title2)
                         }
                         .buttonStyle(.plain)
                         .foregroundColor(.red)
                     }
                 }
 
-                // Style badge
+                // Duration badge
                 VStack {
                     HStack {
                         Spacer()
-                        if item.wasImg2Img {
-                            Image(systemName: "arrow.triangle.2.circlepath")
+                        HStack(spacing: 2) {
+                            Image(systemName: "clock")
                                 .font(.caption2)
-                                .padding(4)
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(4)
+                            Text("\(item.duration)s")
+                                .font(.caption2)
                         }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(4)
                     }
                     Spacer()
                 }
                 .padding(6)
+
+                // Img2Vid badge
+                if item.wasImg2Vid {
+                    VStack {
+                        HStack {
+                            Image(systemName: "photo.badge.arrow.down")
+                                .font(.caption2)
+                                .padding(4)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(4)
+                            Spacer()
+                        }
+                        Spacer()
+                    }
+                    .padding(6)
+                }
             }
-            .frame(height: 100)
+            .frame(height: 110)
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.styleName)
+                Text(item.modelDisplayName)
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .lineLimit(1)
 
-                Text(item.relativeDate)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                HStack {
+                    Text(item.relativeDate)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    Text(item.aspectRatio)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -237,8 +277,8 @@ struct HistoryDetailView: View {
     let onDismiss: () -> Void
 
     @ObservedObject private var historyManager = GenerationHistoryManager.shared
-    @State private var fullImage: NSImage?
-    @State private var isApplying = false
+    @State private var player: AVPlayer?
+    @State private var isImporting = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -256,7 +296,7 @@ struct HistoryDetailView: View {
 
                 Spacer()
 
-                Text("Generation Details")
+                Text("Video Details")
                     .font(.headline)
 
                 Spacer()
@@ -273,18 +313,19 @@ struct HistoryDetailView: View {
             // Content
             ScrollView {
                 VStack(spacing: 24) {
-                    // Image preview
-                    if let image = fullImage {
-                        Image(nsImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 300)
+                    // Video player
+                    if let player = player {
+                        VideoPlayer(player: player)
+                            .frame(height: 280)
                             .cornerRadius(12)
                             .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
+                            .onAppear {
+                                player.play()
+                            }
                     } else {
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color.secondary.opacity(0.1))
-                            .frame(height: 200)
+                            .frame(height: 280)
                             .overlay(
                                 ProgressView()
                             )
@@ -292,19 +333,11 @@ struct HistoryDetailView: View {
 
                     // Details
                     VStack(alignment: .leading, spacing: 16) {
-                        DetailRow(label: "Style", value: item.styleName)
-                        DetailRow(label: "Provider", value: item.provider)
-                        DetailRow(label: "Resolution", value: "\(item.width) × \(item.height)")
-                        DetailRow(label: "Created", value: item.formattedDate)
-
-                        if item.wasImg2Img {
-                            DetailRow(label: "Type", value: "Image-to-Image")
-                            if let strength = item.strength {
-                                DetailRow(label: "Strength", value: "\(Int(strength * 100))%")
-                            }
-                        } else {
-                            DetailRow(label: "Type", value: "Text-to-Image")
-                        }
+                        VideoDetailRow(label: "Model", value: item.modelDisplayName)
+                        VideoDetailRow(label: "Duration", value: "\(item.duration) seconds")
+                        VideoDetailRow(label: "Aspect Ratio", value: item.aspectRatio)
+                        VideoDetailRow(label: "Created", value: item.formattedDate)
+                        VideoDetailRow(label: "Type", value: item.wasImg2Vid ? "Image-to-Video" : "Text-to-Video")
 
                         if !item.prompt.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
@@ -347,64 +380,75 @@ struct HistoryDetailView: View {
                 Spacer()
 
                 Button {
-                    applyAsWallpaper()
+                    importToLibrary()
                 } label: {
                     HStack {
-                        if isApplying {
+                        if isImporting {
                             ProgressView()
                                 .scaleEffect(0.7)
                         } else {
-                            Image(systemName: "desktopcomputer")
+                            Image(systemName: "square.and.arrow.down")
                         }
-                        Text("Set as Wallpaper")
+                        Text("Add to Library")
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(fullImage == nil || isApplying)
+                .disabled(player == nil || isImporting)
             }
             .padding()
         }
-        .frame(width: 500, height: 600)
+        .frame(width: 550, height: 650)
         .onAppear {
-            loadFullImage()
+            loadVideo()
+        }
+        .onDisappear {
+            player?.pause()
+            player = nil
         }
     }
 
-    private func loadFullImage() {
-        fullImage = historyManager.getImage(for: item)
+    private func loadVideo() {
+        guard let videoURL = item.videoURL else { return }
+        player = AVPlayer(url: videoURL)
+        player?.actionAtItemEnd = .none
+
+        // Loop the video
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player?.currentItem,
+            queue: .main
+        ) { _ in
+            player?.seek(to: .zero)
+            player?.play()
+        }
     }
 
-    private func applyAsWallpaper() {
-        guard let image = fullImage,
-              let imageURL = item.imageURL else { return }
+    private func importToLibrary() {
+        guard let videoURL = item.videoURL else { return }
 
-        isApplying = true
+        isImporting = true
         errorMessage = nil
 
         Task {
             do {
-                try await MainActor.run {
-                    for screen in NSScreen.screens {
-                        try NSWorkspace.shared.setDesktopImageURL(imageURL, for: screen, options: [:])
-                    }
-                }
+                _ = try await WallpaperManager.shared.importVideo(from: videoURL)
                 await MainActor.run {
-                    isApplying = false
+                    isImporting = false
                     onDismiss()
                 }
             } catch {
                 await MainActor.run {
-                    isApplying = false
-                    errorMessage = "Failed to apply: \(error.localizedDescription)"
+                    isImporting = false
+                    errorMessage = "Failed to import: \(error.localizedDescription)"
                 }
             }
         }
     }
 }
 
-// MARK: - Detail Row
+// MARK: - Video Detail Row
 
-struct DetailRow: View {
+struct VideoDetailRow: View {
     let label: String
     let value: String
 
@@ -413,7 +457,7 @@ struct DetailRow: View {
             Text(label)
                 .font(.caption)
                 .foregroundColor(.secondary)
-                .frame(width: 80, alignment: .leading)
+                .frame(width: 100, alignment: .leading)
 
             Text(value)
                 .font(.subheadline)
@@ -425,5 +469,5 @@ struct DetailRow: View {
 
 #Preview {
     HistoryView()
-        .frame(width: 600, height: 500)
+        .frame(width: 700, height: 500)
 }

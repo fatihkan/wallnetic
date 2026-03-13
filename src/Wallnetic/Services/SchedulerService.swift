@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 import UserNotifications
 
-/// Service for scheduling automatic wallpaper generation
+/// Service for scheduling automatic video wallpaper generation
 class SchedulerService: ObservableObject {
     static let shared = SchedulerService()
 
@@ -20,15 +20,15 @@ class SchedulerService: ObservableObject {
         didSet { saveSettings() }
     }
 
-    @Published var useRandomStyle: Bool {
+    @Published var useRandomModel: Bool {
         didSet { saveSettings() }
     }
 
-    @Published var selectedStyleId: String {
+    @Published var selectedModel: VideoModel {
         didSet { saveSettings() }
     }
 
-    @Published var selectedProvider: AIProvider {
+    @Published var videoDuration: Int {
         didSet { saveSettings() }
     }
 
@@ -46,10 +46,22 @@ class SchedulerService: ObservableObject {
     private let enabledKey = "scheduler.isEnabled"
     private let hourKey = "scheduler.hour"
     private let minuteKey = "scheduler.minute"
-    private let randomStyleKey = "scheduler.useRandomStyle"
-    private let styleIdKey = "scheduler.styleId"
-    private let providerKey = "scheduler.provider"
+    private let randomModelKey = "scheduler.useRandomModel"
+    private let modelKey = "scheduler.videoModel"
+    private let durationKey = "scheduler.videoDuration"
     private let lastGenKey = "scheduler.lastGenerationDate"
+
+    // Anime-optimized prompts for scheduled generation
+    private let animePrompts = [
+        "beautiful anime landscape, cherry blossoms falling, soft pink sky, studio ghibli style, looping animation",
+        "anime night city skyline, neon lights reflecting on water, cyberpunk aesthetic, seamless loop",
+        "peaceful anime forest scene, fireflies floating, magical atmosphere, gentle wind, loop",
+        "anime ocean waves at sunset, golden hour lighting, calm and serene, perfect loop",
+        "cozy anime room interior, rain on window, warm lighting, lo-fi aesthetic, seamless loop",
+        "anime mountain scenery, clouds moving slowly, peaceful meditation scene, loop animation",
+        "anime starry night sky, shooting stars, northern lights, cosmic atmosphere, looping",
+        "anime sakura tree in wind, petals floating, spring scene, tranquil mood, seamless loop"
+    ]
 
     // MARK: - Initialization
 
@@ -58,14 +70,14 @@ class SchedulerService: ObservableObject {
         self.isEnabled = defaults.bool(forKey: enabledKey)
         self.scheduleHour = defaults.object(forKey: hourKey) as? Int ?? 9  // Default: 9 AM
         self.scheduleMinute = defaults.object(forKey: minuteKey) as? Int ?? 0
-        self.useRandomStyle = defaults.object(forKey: randomStyleKey) as? Bool ?? true
-        self.selectedStyleId = defaults.string(forKey: styleIdKey) ?? AIStyle.nature.id
+        self.useRandomModel = defaults.object(forKey: randomModelKey) as? Bool ?? true
+        self.videoDuration = defaults.object(forKey: durationKey) as? Int ?? 5
 
-        if let providerString = defaults.string(forKey: providerKey),
-           let provider = AIProvider(rawValue: providerString) {
-            self.selectedProvider = provider
+        if let modelString = defaults.string(forKey: modelKey),
+           let model = VideoModel(rawValue: modelString) {
+            self.selectedModel = model
         } else {
-            self.selectedProvider = .replicate
+            self.selectedModel = .klingStandard
         }
 
         if let lastGen = defaults.object(forKey: lastGenKey) as? Date {
@@ -197,55 +209,43 @@ class SchedulerService: ObservableObject {
         isGenerating = true
         lastError = nil
 
-        // Select style
-        let style: AIStyle
-        if useRandomStyle {
-            style = AIStyle.allStyles.randomElement() ?? .nature
+        // Select model
+        let model: VideoModel
+        if useRandomModel {
+            // Prefer anime-optimized models for scheduled generation
+            let animeModels: [VideoModel] = [.klingStandard, .klingPro, .minimax, .pika]
+            model = animeModels.randomElement() ?? .klingStandard
         } else {
-            style = AIStyle.allStyles.first { $0.id == selectedStyleId } ?? .nature
+            model = selectedModel
         }
 
-        // Get screen resolution
-        let resolution = AIService.screenResolution
+        // Select random anime prompt
+        let prompt = animePrompts.randomElement() ?? animePrompts[0]
 
-        // Create request
-        let request = GenerationRequest(
-            prompt: "beautiful wallpaper, high quality, stunning",
-            style: style,
-            width: resolution.width,
-            height: resolution.height
+        // Create video request
+        let request = VideoGenerationRequest(
+            prompt: prompt,
+            negativePrompt: "blurry, low quality, static, no motion, distorted",
+            model: model,
+            duration: min(videoDuration, model.maxDuration),
+            aspectRatio: "16:9",
+            sourceImage: nil
         )
 
         do {
             // Check if API key is available
-            guard KeychainManager.shared.getAPIKey(for: selectedProvider) != nil else {
+            guard KeychainManager.shared.getAPIKey(for: .falai) != nil else {
                 throw AIServiceError.noAPIKey
             }
 
-            // Generate image
-            let result = try await AIService.shared.generateImage(
-                request: request,
-                provider: selectedProvider
-            )
+            // Generate video
+            let result = try await AIService.shared.generateVideo(request: request)
 
-            // Set as wallpaper
-            if let localURL = result.localURL {
-                try await setAsWallpaper(localURL)
-            }
+            // Import to wallpaper library
+            _ = try await WallpaperManager.shared.importVideo(from: result.localURL)
 
             // Save to history
-            if let localURL = result.localURL,
-               let imageData = try? Data(contentsOf: localURL),
-               let image = NSImage(data: imageData) {
-                GenerationHistoryManager.shared.addGeneration(
-                    image: image,
-                    prompt: "Scheduled generation",
-                    style: style,
-                    provider: selectedProvider,
-                    width: request.width,
-                    height: request.height
-                )
-            }
+            GenerationHistoryManager.shared.addGeneration(from: result, aspectRatio: "16:9")
 
             // Update last generation date
             lastGenerationDate = Date()
@@ -253,8 +253,8 @@ class SchedulerService: ObservableObject {
 
             // Show notification
             showNotification(
-                title: "Wallpaper Updated",
-                body: "New \(style.name) wallpaper has been set!"
+                title: "Video Wallpaper Ready",
+                body: "New \(model.displayName) wallpaper has been generated!"
             )
 
             // Update next scheduled time
@@ -263,18 +263,12 @@ class SchedulerService: ObservableObject {
         } catch {
             lastError = error.localizedDescription
             showNotification(
-                title: "Wallpaper Generation Failed",
+                title: "Video Generation Failed",
                 body: error.localizedDescription
             )
         }
 
         isGenerating = false
-    }
-
-    private func setAsWallpaper(_ url: URL) async throws {
-        for screen in NSScreen.screens {
-            try NSWorkspace.shared.setDesktopImageURL(url, for: screen, options: [:])
-        }
     }
 
     // MARK: - Notifications
@@ -309,9 +303,9 @@ class SchedulerService: ObservableObject {
         defaults.set(isEnabled, forKey: enabledKey)
         defaults.set(scheduleHour, forKey: hourKey)
         defaults.set(scheduleMinute, forKey: minuteKey)
-        defaults.set(useRandomStyle, forKey: randomStyleKey)
-        defaults.set(selectedStyleId, forKey: styleIdKey)
-        defaults.set(selectedProvider.rawValue, forKey: providerKey)
+        defaults.set(useRandomModel, forKey: randomModelKey)
+        defaults.set(selectedModel.rawValue, forKey: modelKey)
+        defaults.set(videoDuration, forKey: durationKey)
 
         // Restart timer if needed
         if isEnabled {

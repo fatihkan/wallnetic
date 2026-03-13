@@ -656,6 +656,13 @@ struct AIGenerateView: View {
 
                 if Task.isCancelled { return }
 
+                // Save to history
+                GenerationHistoryManager.shared.addGeneration(
+                    from: result,
+                    wasImg2Vid: selectedImage != nil,
+                    aspectRatio: selectedAspectRatio
+                )
+
                 await MainActor.run {
                     isGenerating = false
                     generationTask = nil

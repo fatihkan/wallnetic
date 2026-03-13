@@ -25,13 +25,13 @@ struct SchedulerSettingsView: View {
 
                         Divider()
 
-                        // Style selection
-                        styleSection
+                        // Video model selection
+                        modelSection
 
                         Divider()
 
-                        // Provider selection
-                        providerSection
+                        // Duration selection
+                        durationSection
 
                         Divider()
 
@@ -47,7 +47,7 @@ struct SchedulerSettingsView: View {
             // Footer
             footerView
         }
-        .frame(width: 400, height: 500)
+        .frame(width: 420, height: 550)
         .onAppear {
             scheduler.requestNotificationPermission()
         }
@@ -62,10 +62,10 @@ struct SchedulerSettingsView: View {
                 .foregroundColor(.accentColor)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Scheduled Generation")
+                Text("Scheduled Video Generation")
                     .font(.headline)
 
-                Text("Auto-generate wallpaper at a specific time")
+                Text("Auto-generate anime wallpaper videos daily")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -80,11 +80,11 @@ struct SchedulerSettingsView: View {
     private var enableSection: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Enable Scheduler")
+                Text("Enable Daily Scheduler")
                     .font(.subheadline)
                     .fontWeight(.medium)
 
-                Text("Automatically generate and set wallpaper")
+                Text("Generate anime video wallpapers automatically")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -150,64 +150,85 @@ struct SchedulerSettingsView: View {
         }
     }
 
-    // MARK: - Style Section
+    // MARK: - Model Section
 
-    private var styleSection: some View {
+    private var modelSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Image(systemName: "paintpalette")
+                Image(systemName: "sparkles.tv")
                     .foregroundColor(.accentColor)
-                Text("Style")
+                Text("Video Model")
                     .font(.subheadline)
                     .fontWeight(.medium)
             }
 
-            Toggle("Use random style", isOn: $scheduler.useRandomStyle)
+            Toggle("Use random anime model", isOn: $scheduler.useRandomModel)
 
-            if !scheduler.useRandomStyle {
-                Picker("Style", selection: $scheduler.selectedStyleId) {
-                    ForEach(AIStyle.allStyles) { style in
+            if !scheduler.useRandomModel {
+                Picker("Model", selection: $scheduler.selectedModel) {
+                    ForEach(VideoModel.allCases, id: \.self) { model in
                         HStack {
-                            Image(systemName: style.icon)
-                            Text(style.name)
+                            Image(systemName: model.icon)
+                            Text(model.displayName)
+                            if model.isAnimeOptimized {
+                                Text("Anime")
+                                    .font(.caption2)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.pink.opacity(0.2))
+                                    .cornerRadius(4)
+                            }
                         }
-                        .tag(style.id)
+                        .tag(model)
                     }
                 }
                 .pickerStyle(.menu)
-            }
-        }
-    }
 
-    // MARK: - Provider Section
-
-    private var providerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "cpu")
-                    .foregroundColor(.accentColor)
-                Text("AI Provider")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                Text(scheduler.selectedModel.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Text("Random anime-optimized models: Kling, Minimax, Pika")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
-
-            Picker("Provider", selection: $scheduler.selectedProvider) {
-                ForEach(AIProvider.allCases, id: \.self) { provider in
-                    Text(provider.displayName).tag(provider)
-                }
-            }
-            .pickerStyle(.segmented)
 
             // Check API key status
-            if KeychainManager.shared.getAPIKey(for: scheduler.selectedProvider) == nil {
+            if KeychainManager.shared.getAPIKey(for: .falai) == nil {
                 HStack {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundColor(.orange)
-                    Text("No API key configured for \(scheduler.selectedProvider.displayName)")
+                    Text("No fal.ai API key configured")
                         .font(.caption)
                         .foregroundColor(.orange)
                 }
             }
+        }
+    }
+
+    // MARK: - Duration Section
+
+    private var durationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "timer")
+                    .foregroundColor(.accentColor)
+                Text("Video Duration")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+
+            Picker("Duration", selection: $scheduler.videoDuration) {
+                Text("5 seconds").tag(5)
+                Text("10 seconds").tag(10)
+            }
+            .pickerStyle(.segmented)
+
+            // Cost estimate
+            let estimatedCost = scheduler.selectedModel.costPerSecond * Double(scheduler.videoDuration)
+            Text("Estimated cost: $\(String(format: "%.2f", estimatedCost)) per generation")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
 
@@ -248,7 +269,7 @@ struct SchedulerSettingsView: View {
                     HStack {
                         ProgressView()
                             .scaleEffect(0.7)
-                        Text("Generating...")
+                        Text("Generating video...")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
