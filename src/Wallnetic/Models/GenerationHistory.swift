@@ -1,52 +1,46 @@
 import Foundation
 import AppKit
+import AVFoundation
 
-/// Represents a single AI generation entry in history
+/// Represents a single AI video generation entry in history
 struct GenerationHistoryItem: Identifiable, Codable {
     let id: UUID
     let prompt: String
-    let styleId: String
-    let styleName: String
-    let provider: String
-    let imageFilename: String
+    let model: String
+    let modelDisplayName: String
+    let videoFilename: String
     let thumbnailFilename: String
-    let width: Int
-    let height: Int
-    let strength: Double?
-    let wasImg2Img: Bool
+    let duration: Int
+    let aspectRatio: String
+    let wasImg2Vid: Bool
     let createdAt: Date
 
     init(
         id: UUID = UUID(),
         prompt: String,
-        styleId: String,
-        styleName: String,
-        provider: String,
-        imageFilename: String,
+        model: VideoModel,
+        videoFilename: String,
         thumbnailFilename: String,
-        width: Int,
-        height: Int,
-        strength: Double? = nil,
-        wasImg2Img: Bool = false,
+        duration: Int,
+        aspectRatio: String,
+        wasImg2Vid: Bool = false,
         createdAt: Date = Date()
     ) {
         self.id = id
         self.prompt = prompt
-        self.styleId = styleId
-        self.styleName = styleName
-        self.provider = provider
-        self.imageFilename = imageFilename
+        self.model = model.rawValue
+        self.modelDisplayName = model.displayName
+        self.videoFilename = videoFilename
         self.thumbnailFilename = thumbnailFilename
-        self.width = width
-        self.height = height
-        self.strength = strength
-        self.wasImg2Img = wasImg2Img
+        self.duration = duration
+        self.aspectRatio = aspectRatio
+        self.wasImg2Vid = wasImg2Vid
         self.createdAt = createdAt
     }
 
-    /// Full path to the generated image
-    var imageURL: URL? {
-        GenerationHistoryManager.historyDirectory?.appendingPathComponent(imageFilename)
+    /// Full path to the generated video
+    var videoURL: URL? {
+        GenerationHistoryManager.historyDirectory?.appendingPathComponent(videoFilename)
     }
 
     /// Full path to the thumbnail
@@ -68,16 +62,26 @@ struct GenerationHistoryItem: Identifiable, Codable {
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: createdAt, relativeTo: Date())
     }
+
+    /// Duration formatted as string
+    var formattedDuration: String {
+        "\(duration)s"
+    }
+
+    /// Get VideoModel enum from stored string
+    var videoModel: VideoModel? {
+        VideoModel(rawValue: model)
+    }
 }
 
-/// Manager for storing and retrieving generation history
+/// Manager for storing and retrieving video generation history
 class GenerationHistoryManager: ObservableObject {
     static let shared = GenerationHistoryManager()
 
     @Published private(set) var items: [GenerationHistoryItem] = []
 
-    private let historyFilename = "generation_history.json"
-    private let maxHistoryItems = 100
+    private let historyFilename = "video_generation_history.json"
+    private let maxHistoryItems = 50  // Videos are larger, keep fewer
 
     static var historyDirectory: URL? {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
@@ -138,54 +142,45 @@ class GenerationHistoryManager: ObservableObject {
 
     // MARK: - Public Methods
 
-    /// Add a new generation to history
+    /// Add a new video generation to history
     func addGeneration(
-        image: NSImage,
+        videoURL: URL,
         prompt: String,
-        style: AIStyle,
-        provider: AIProvider,
-        width: Int,
-        height: Int,
-        strength: Double? = nil,
-        wasImg2Img: Bool = false
+        model: VideoModel,
+        duration: Int,
+        aspectRatio: String,
+        wasImg2Vid: Bool = false
     ) {
         guard let directory = Self.historyDirectory else { return }
 
         let id = UUID()
         let timestamp = Date().timeIntervalSince1970
-        let imageFilename = "gen_\(timestamp)_\(id.uuidString).png"
-        let thumbnailFilename = "thumb_\(timestamp)_\(id.uuidString).png"
+        let videoFilename = "video_\(timestamp)_\(id.uuidString).mp4"
+        let thumbnailFilename = "thumb_\(timestamp)_\(id.uuidString).jpg"
 
-        // Save full image
-        let imageURL = directory.appendingPathComponent(imageFilename)
-        if let tiffData = image.tiffRepresentation,
-           let bitmap = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmap.representation(using: .png, properties: [:]) {
-            try? pngData.write(to: imageURL)
+        // Copy video to history directory
+        let destVideoURL = directory.appendingPathComponent(videoFilename)
+        do {
+            try FileManager.default.copyItem(at: videoURL, to: destVideoURL)
+        } catch {
+            print("Failed to copy video: \(error)")
+            return
         }
 
-        // Create and save thumbnail
-        let thumbnail = createThumbnail(from: image, maxSize: 200)
+        // Generate thumbnail from video
         let thumbnailURL = directory.appendingPathComponent(thumbnailFilename)
-        if let tiffData = thumbnail.tiffRepresentation,
-           let bitmap = NSBitmapImageRep(data: tiffData),
-           let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) {
-            try? jpegData.write(to: thumbnailURL)
-        }
+        generateThumbnail(from: destVideoURL, to: thumbnailURL)
 
         // Create history item
         let item = GenerationHistoryItem(
             id: id,
             prompt: prompt,
-            styleId: style.id,
-            styleName: style.name,
-            provider: provider.rawValue,
-            imageFilename: imageFilename,
+            model: model,
+            videoFilename: videoFilename,
             thumbnailFilename: thumbnailFilename,
-            width: width,
-            height: height,
-            strength: strength,
-            wasImg2Img: wasImg2Img
+            duration: duration,
+            aspectRatio: aspectRatio,
+            wasImg2Vid: wasImg2Vid
         )
 
         // Add to beginning of list
@@ -198,6 +193,18 @@ class GenerationHistoryManager: ObservableObject {
         }
 
         saveHistory()
+    }
+
+    /// Add from VideoGenerationResult
+    func addGeneration(from result: VideoGenerationResult, wasImg2Vid: Bool = false, aspectRatio: String = "16:9") {
+        addGeneration(
+            videoURL: result.localURL,
+            prompt: result.prompt,
+            model: result.model,
+            duration: result.duration,
+            aspectRatio: aspectRatio,
+            wasImg2Vid: wasImg2Vid
+        )
     }
 
     /// Delete a specific history item
@@ -216,12 +223,6 @@ class GenerationHistoryManager: ObservableObject {
         saveHistory()
     }
 
-    /// Get image for a history item
-    func getImage(for item: GenerationHistoryItem) -> NSImage? {
-        guard let url = item.imageURL else { return nil }
-        return NSImage(contentsOf: url)
-    }
-
     /// Get thumbnail for a history item
     func getThumbnail(for item: GenerationHistoryItem) -> NSImage? {
         guard let url = item.thumbnailURL else { return nil }
@@ -231,31 +232,31 @@ class GenerationHistoryManager: ObservableObject {
     // MARK: - Private Helpers
 
     private func deleteFiles(for item: GenerationHistoryItem) {
-        if let imageURL = item.imageURL {
-            try? FileManager.default.removeItem(at: imageURL)
+        if let videoURL = item.videoURL {
+            try? FileManager.default.removeItem(at: videoURL)
         }
         if let thumbnailURL = item.thumbnailURL {
             try? FileManager.default.removeItem(at: thumbnailURL)
         }
     }
 
-    private func createThumbnail(from image: NSImage, maxSize: CGFloat) -> NSImage {
-        let width = image.size.width
-        let height = image.size.height
+    private func generateThumbnail(from videoURL: URL, to thumbnailURL: URL) {
+        let asset = AVAsset(url: videoURL)
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        imageGenerator.appliesPreferredTrackTransform = true
+        imageGenerator.maximumSize = CGSize(width: 320, height: 320)
 
-        let ratio = min(maxSize / width, maxSize / height)
-        let newSize = NSSize(width: width * ratio, height: height * ratio)
+        do {
+            let cgImage = try imageGenerator.copyCGImage(at: .zero, actualTime: nil)
+            let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
 
-        let thumbnail = NSImage(size: newSize)
-        thumbnail.lockFocus()
-        image.draw(
-            in: NSRect(origin: .zero, size: newSize),
-            from: NSRect(origin: .zero, size: image.size),
-            operation: .copy,
-            fraction: 1.0
-        )
-        thumbnail.unlockFocus()
-
-        return thumbnail
+            if let tiffData = nsImage.tiffRepresentation,
+               let bitmap = NSBitmapImageRep(data: tiffData),
+               let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) {
+                try jpegData.write(to: thumbnailURL)
+            }
+        } catch {
+            print("Failed to generate thumbnail: \(error)")
+        }
     }
 }
