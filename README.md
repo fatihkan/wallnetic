@@ -10,7 +10,8 @@
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/tag/v1.0.0)
 
 <p align="center">
-  <img src="docs/assets/wallnetic-banner.png" alt="Wallnetic Banner" width="800"/>
+  <video src="https://github.com/user-attachments/assets/fdb62e04-455d-43e5-8b8f-6dbee796dc90" width="800" autoplay loop muted playsinline>
+  </video>
 </p>
 
 ## What is Wallnetic?
@@ -62,7 +63,7 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 ## Screenshots
 
 <p align="center">
-  <img src="docs/assets/screenshot-library.png" alt="Library View" width="700"/>
+  <img src="docs/assets/screenshot-main.png" alt="Main Window" width="600"/>
 </p>
 
 <p align="center">
@@ -84,20 +85,40 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 
 ### Download
 
-| Source | Download |
-|--------|----------|
-| GitHub Releases | [Download v1.0.0](https://github.com/fatihkan/wallnetic/releases/tag/v1.0.0) |
-| Mac App Store | Coming Soon |
+| Platform | Architecture | Download |
+|----------|--------------|----------|
+| macOS | Apple Silicon (M1/M2/M3/M4) | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS | Intel | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
+| App Store | Universal | Coming Soon |
+
+> **Latest Version:** Check [Releases](https://github.com/fatihkan/wallnetic/releases) for the latest version
 
 ### macOS Installation
 
-1. **Download** the latest release from [Releases](https://github.com/fatihkan/wallnetic/releases)
+1. **Download** the DMG file for your Mac (Apple Silicon or Intel)
 
 2. **Open** the DMG and drag Wallnetic to Applications folder
 
-3. **First Launch** - Right-click on Wallnetic.app → Click "Open" → Click "Open" again
+3. **First Launch** - Since the app is not signed with an Apple Developer certificate, you'll need to bypass Gatekeeper:
 
-4. **Import Videos** - Drag and drop your video files or use the Import button
+   **Option A: Right-click method**
+   ```
+   Right-click on Wallnetic.app → Click "Open" → Click "Open" again in the dialog
+   ```
+
+   **Option B: Terminal method**
+   ```bash
+   xattr -cr /Applications/Wallnetic.app
+   ```
+
+   **Option C: System Settings**
+   ```
+   System Settings → Privacy & Security → Scroll down → Click "Open Anyway"
+   ```
+
+4. **Grant Permissions** - When prompted, allow:
+   - Screen Recording (required for desktop wallpaper)
+   - Accessibility (optional, for keyboard shortcuts)
 
 ### Build from Source
 
@@ -150,6 +171,8 @@ open src/Wallnetic/Wallnetic.xcodeproj
 - [ ] Audio-reactive animations
 - [ ] Wallpaper marketplace
 
+See [ROADMAP.md](docs/ROADMAP.md) for the full development plan.
+
 ---
 
 ## Project Structure
@@ -199,8 +222,9 @@ If you find this project useful, consider supporting its development:
 
 **Fatih Kan**
 
-- GitHub: [@fatihkan](https://github.com/fatihkan)
 - Twitter: [@pariloapp](https://twitter.com/pariloapp)
+- GitHub: [@fatihkan](https://github.com/fatihkan)
+- LinkedIn: [Fatih Kan](https://linkedin.com/in/fatihkan)
 
 ---
 
