@@ -24,10 +24,13 @@ struct SettingsView: View {
                     Label("Display", systemImage: "display")
                 }
 
+            // Phase 2: AI features
+            /*
             AISettingsView()
                 .tabItem {
                     Label("AI", systemImage: "wand.and.stars")
                 }
+            */
 
             NotificationSettingsView()
                 .tabItem {
@@ -735,7 +738,7 @@ struct AboutSettingsView: View {
             Text("Version 1.0.0 (Build 1)")
                 .foregroundColor(.secondary)
 
-            Text("AI-Powered Live Wallpapers for macOS")
+            Text("Live Video Wallpapers for macOS")
                 .font(.subheadline)
 
             Divider()
@@ -748,6 +751,27 @@ struct AboutSettingsView: View {
             .font(.caption)
 
             Spacer()
+
+            // Buy Me a Coffee
+            Link(destination: URL(string: "https://buymeacoffee.com/fatihkan")!) {
+                HStack(spacing: 8) {
+                    Image(systemName: "cup.and.saucer.fill")
+                        .foregroundColor(.orange)
+                    Text("Buy me a coffee")
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.orange.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
 
             Text("© 2026 Wallnetic. All rights reserved.")
                 .font(.caption2)

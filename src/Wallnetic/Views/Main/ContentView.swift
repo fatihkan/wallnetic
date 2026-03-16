@@ -5,8 +5,9 @@ enum SidebarSelection: Hashable {
     case all
     case favorites
     case recent
-    case aiGenerate
-    case aiHistory
+    // Phase 2: AI features
+    // case aiGenerate
+    // case aiHistory
     case collections
     case collection(UUID)
 }
@@ -25,10 +26,11 @@ struct ContentView: View {
         } detail: {
             // Main content based on sidebar selection
             switch sidebarSelection {
-            case .aiGenerate:
-                AIGenerateView()
-            case .aiHistory:
-                HistoryView()
+            // Phase 2: AI features
+            // case .aiGenerate:
+            //     AIGenerateView()
+            // case .aiHistory:
+            //     HistoryView()
             case .collections:
                 CollectionsView()
             case .collection(let collectionId):
@@ -120,91 +122,135 @@ struct ContentView: View {
 
 struct SidebarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
-    @ObservedObject var scheduler = SchedulerService.shared
     @ObservedObject var collectionManager = CollectionManager.shared
     @Binding var selection: SidebarSelection?
-    @State private var showingSchedulerSettings = false
 
     var body: some View {
-        List(selection: $selection) {
-            Section("Library") {
-                Label("All", systemImage: "photo.on.rectangle")
-                    .tag(SidebarSelection.all)
+        VStack(spacing: 0) {
+            List(selection: $selection) {
+                Section("Library") {
+                    Label("All", systemImage: "photo.on.rectangle")
+                        .tag(SidebarSelection.all)
 
-                Label("Favorites", systemImage: "heart")
-                    .tag(SidebarSelection.favorites)
+                    Label("Favorites", systemImage: "heart")
+                        .tag(SidebarSelection.favorites)
 
-                Label("Recent", systemImage: "clock")
-                    .tag(SidebarSelection.recent)
-            }
-
-            Section("Collections") {
-                Label("All Collections", systemImage: "folder")
-                    .tag(SidebarSelection.collections)
-
-                ForEach(collectionManager.collections) { collection in
-                    Label(collection.name, systemImage: collection.icon)
-                        .tag(SidebarSelection.collection(collection.id))
+                    Label("Recent", systemImage: "clock")
+                        .tag(SidebarSelection.recent)
                 }
-            }
 
-            Section("AI") {
-                Label("Generate", systemImage: "wand.and.stars")
-                    .tag(SidebarSelection.aiGenerate)
+                Section("Collections") {
+                    Label("All Collections", systemImage: "folder")
+                        .tag(SidebarSelection.collections)
 
-                Label("History", systemImage: "clock.arrow.circlepath")
-                    .tag(SidebarSelection.aiHistory)
-            }
+                    ForEach(collectionManager.collections) { collection in
+                        Label(collection.name, systemImage: collection.icon)
+                            .tag(SidebarSelection.collection(collection.id))
+                    }
+                }
 
-            Section("Scheduler") {
-                Button {
-                    showingSchedulerSettings = true
-                } label: {
-                    HStack {
-                        Label("Daily Wallpaper", systemImage: scheduler.isEnabled ? "clock.badge.checkmark" : "clock")
-                            .foregroundColor(scheduler.isEnabled ? .accentColor : .primary)
+                // Phase 2: AI features
+                /*
+                Section("AI") {
+                    Label("Generate", systemImage: "wand.and.stars")
+                        .tag(SidebarSelection.aiGenerate)
 
-                        Spacer()
+                    Label("History", systemImage: "clock.arrow.circlepath")
+                        .tag(SidebarSelection.aiHistory)
+                }
 
-                        if scheduler.isEnabled {
-                            Text(scheduler.formattedScheduleTime)
-                                .font(.caption)
+                Section("Scheduler") {
+                    Button {
+                        showingSchedulerSettings = true
+                    } label: {
+                        HStack {
+                            Label("Daily Wallpaper", systemImage: scheduler.isEnabled ? "clock.badge.checkmark" : "clock")
+                                .foregroundColor(scheduler.isEnabled ? .accentColor : .primary)
+
+                            Spacer()
+
+                            if scheduler.isEnabled {
+                                Text(scheduler.formattedScheduleTime)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    if scheduler.isEnabled {
+                        if scheduler.isGenerating {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                Text("Generating...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        } else if let nextTime = scheduler.formattedNextScheduledTime {
+                            Text("Next: \(nextTime)")
+                                .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
-                .buttonStyle(.plain)
+                */
 
-                if scheduler.isEnabled {
-                    if scheduler.isGenerating {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                            Text("Generating...")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    } else if let nextTime = scheduler.formattedNextScheduledTime {
-                        Text("Next: \(nextTime)")
-                            .font(.caption2)
+                Section("Info") {
+                    HStack {
+                        Text("Wallpapers")
+                        Spacer()
+                        Text("\(wallpaperManager.wallpapers.count)")
                             .foregroundColor(.secondary)
                     }
                 }
             }
+            .listStyle(.sidebar)
 
-            Section("Info") {
-                HStack {
-                    Text("Wallpapers")
-                    Spacer()
-                    Text("\(wallpaperManager.wallpapers.count)")
-                        .foregroundColor(.secondary)
-                }
-            }
+            Divider()
+
+            // Buy Me a Coffee
+            BuyMeCoffeeButton()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
         }
-        .listStyle(.sidebar)
         .frame(minWidth: 180)
-        .sheet(isPresented: $showingSchedulerSettings) {
-            SchedulerSettingsView()
+    }
+}
+
+// MARK: - Buy Me a Coffee Button
+
+struct BuyMeCoffeeButton: View {
+    @State private var isHovering = false
+
+    var body: some View {
+        Link(destination: URL(string: "https://buymeacoffee.com/fatihkan")!) {
+            HStack(spacing: 8) {
+                Image(systemName: "cup.and.saucer.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.orange)
+
+                Text("Buy me a coffee")
+                    .font(.caption)
+                    .fontWeight(.medium)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovering ? Color.orange.opacity(0.15) : Color.secondary.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.orange.opacity(isHovering ? 0.5 : 0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
         }
     }
 }
