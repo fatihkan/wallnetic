@@ -22,7 +22,6 @@
 		BFA1P70VDR1234567890ABCD /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F67890A1P70VDR /* AIProvider.swift */; };
 		BFA1SERV1CE123456789012 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6789012A1SERV1CE /* AIService.swift */; };
 		BFA1STYL3M0D3L1234567890 /* AIStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1STYL3M0D3L12345678901A /* AIStyle.swift */; };
-		BFA1STYL3S3L3CT12345678 /* StyleSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */; };
 		BFCOLLDTLV123456789012 /* CollectionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLDTLV12345678901A /* CollectionDetailView.swift */; };
 		BFCOLLMDL12345678901234 /* WallpaperCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMDL1234567890123A /* WallpaperCollection.swift */; };
 		BFCOLLMGR12345678901234 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1COLLMGR1234567890123A /* CollectionManager.swift */; };
@@ -65,7 +64,6 @@
 		A1SCHEDSETTV123456789012 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
 		A1SCHEDSRVC12345678901A /* SchedulerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerService.swift; sourceTree = "<group>"; };
 		A1STYL3M0D3L12345678901A /* AIStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStyle.swift; sourceTree = "<group>"; };
-		A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleSelectionView.swift; sourceTree = "<group>"; };
 		A1THEMEMGR1234567890123A /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		B2C3D4E5F678901KEYM1NGR /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		BB0C1260A8361C60E7C46C98 /* MetalVideoRenderer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MetalVideoRenderer.swift; sourceTree = "<group>"; };
@@ -135,7 +133,6 @@
 				A1HISTV13W12345678901234 /* HistoryView.swift */,
 				5B106464A071BF6E736C3272 /* MenuBarView.swift */,
 				250C1B481393050C099266A2 /* SettingsView.swift */,
-				A1STYL3S3L3CT1234567890 /* StyleSelectionView.swift */,
 				0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */,
 			);
 			path = Main;
@@ -310,7 +307,6 @@
 				BFSCHEDSRVC123456789012 /* SchedulerService.swift in Sources */,
 				BFSCHEDSETTV1234567890AB /* SchedulerSettingsView.swift in Sources */,
 				A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */,
-				BFA1STYL3S3L3CT12345678 /* StyleSelectionView.swift in Sources */,
 				BFTHEMEMGR12345678901234 /* ThemeManager.swift in Sources */,
 				F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */,
 				EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */,
