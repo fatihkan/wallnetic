@@ -222,9 +222,9 @@ If you find this project useful, consider supporting its development:
 
 **Fatih Kan**
 
-- Twitter: [@pariloapp](https://twitter.com/pariloapp)
+- Twitter: [@KanFatih](https://twitter.com/KanFatih)
 - GitHub: [@fatihkan](https://github.com/fatihkan)
-- LinkedIn: [Fatih Kan](https://linkedin.com/in/fatihkan)
+- LinkedIn: [Fatih Kan](https://www.linkedin.com/in/fatihkan)
 
 ---
 
