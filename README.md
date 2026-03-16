@@ -1,17 +1,16 @@
 # Wallnetic
 
-> **AI-Powered Live Wallpaper Engine for macOS**
+> **Live Video Wallpaper Engine for macOS**
 
 [![macOS](https://img.shields.io/badge/macOS-13.0+-black.svg?style=flat&logo=apple)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-F05138.svg?style=flat&logo=swift&logoColor=white)](https://swift.org/)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-blue.svg?style=flat&logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![Metal](https://img.shields.io/badge/Metal-GPU-8E8E93.svg?style=flat&logo=apple)](https://developer.apple.com/metal/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![App Store](https://img.shields.io/badge/App%20Store-Coming%20Soon-blue.svg?style=flat&logo=app-store)](https://apps.apple.com)
+[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/tag/v1.0.0)
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/fdb62e04-455d-43e5-8b8f-6dbee796dc90" width="800" autoplay loop muted playsinline>
-  </video>
+  <img src="docs/assets/wallnetic-banner.png" alt="Wallnetic Banner" width="800"/>
 </p>
 
 ## What is Wallnetic?
@@ -25,14 +24,21 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 ## Features
 
 ### Live Video Wallpapers
-- Play any video file (MP4, MOV, HEVC) as your desktop background
+- Play any video file (MP4, MOV, M4V) as your desktop background
 - Smooth looping with no stuttering
-- Works on all your displays simultaneously
+- Drag & drop video import
+
+### Library Management
+- Organize wallpapers in custom collections
+- Mark favorites for quick access
+- Search and filter your library
+- Recently added section
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
+- Same wallpaper across all monitors option
 - Automatic screen detection
-- Per-display wallpaper management
+- Per-display control
 
 ### Smart Power Management
 - Auto-pause when on battery power
@@ -47,16 +53,16 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 
 ### Native macOS Experience
 - Built with SwiftUI
+- Dark, Light, and System theme support
 - Menu bar app for quick access
-- Keyboard shortcuts
-- Launch at login
+- Launch at login option
 
 ---
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/assets/screenshot-main.png" alt="Main Window" width="600"/>
+  <img src="docs/assets/screenshot-library.png" alt="Library View" width="700"/>
 </p>
 
 <p align="center">
@@ -72,46 +78,26 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 | Component | Requirement |
 |-----------|-------------|
 | macOS | 13.0 (Ventura) or later |
-| Processor | Apple Silicon (M1/M2/M3) or Intel |
+| Processor | Apple Silicon (M1/M2/M3/M4) or Intel |
 | RAM | 4GB minimum |
-| Storage | 50MB |
+| Storage | 50MB + your video files |
 
 ### Download
 
-| Platform | Architecture | Download |
-|----------|--------------|----------|
-| macOS | Apple Silicon (M1/M2/M3) | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS | Intel | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
-| App Store | Universal | Coming Soon |
-
-> **Latest Version:** Check [Releases](https://github.com/fatihkan/wallnetic/releases) for the latest version
+| Source | Download |
+|--------|----------|
+| GitHub Releases | [Download v1.0.0](https://github.com/fatihkan/wallnetic/releases/tag/v1.0.0) |
+| Mac App Store | Coming Soon |
 
 ### macOS Installation
 
-1. **Download** the DMG file for your Mac (Apple Silicon or Intel)
+1. **Download** the latest release from [Releases](https://github.com/fatihkan/wallnetic/releases)
 
 2. **Open** the DMG and drag Wallnetic to Applications folder
 
-3. **First Launch** - Since the app is not signed with an Apple Developer certificate, you'll need to bypass Gatekeeper:
+3. **First Launch** - Right-click on Wallnetic.app → Click "Open" → Click "Open" again
 
-   **Option A: Right-click method**
-   ```
-   Right-click on Wallnetic.app → Click "Open" → Click "Open" again in the dialog
-   ```
-
-   **Option B: Terminal method**
-   ```bash
-   xattr -cr /Applications/Wallnetic.app
-   ```
-
-   **Option C: System Settings**
-   ```
-   System Settings → Privacy & Security → Scroll down → Click "Open Anyway"
-   ```
-
-4. **Grant Permissions** - When prompted, allow:
-   - Screen Recording (required for desktop wallpaper)
-   - Accessibility (optional, for keyboard shortcuts)
+4. **Import Videos** - Drag and drop your video files or use the Import button
 
 ### Build from Source
 
@@ -144,25 +130,25 @@ open src/Wallnetic/Wallnetic.xcodeproj
 
 ## Roadmap
 
-### Phase 1: MVP - Live Wallpapers
+### Phase 1: MVP - Live Wallpapers ✅
 - [x] Video playback engine
 - [x] Multi-monitor support
-- [x] Menu bar app
+- [x] Library with collections & favorites
 - [x] Power management
 - [x] Metal rendering
+- [x] Theme support (Dark/Light/System)
 - [x] App Store submission
 
 ### Phase 2: AI Integration (Coming Soon)
-- [ ] Generate wallpapers from text prompts
-- [ ] Photo-to-wallpaper AI transformation
-- [ ] Multiple style options (Anime, Abstract, etc.)
+- [ ] AI video generation from text prompts
+- [ ] Image-to-video animation
+- [ ] Multiple AI models (Kling, Minimax, Luma, etc.)
+- [ ] Scheduled daily generation
 
-### Phase 3: Motion & Effects
-- [ ] AI video generation
+### Phase 3: Effects & More
 - [ ] Particle effects
 - [ ] Audio-reactive animations
-
-See [ROADMAP.md](docs/ROADMAP.md) for the full development plan.
+- [ ] Wallpaper marketplace
 
 ---
 
@@ -181,6 +167,7 @@ wallnetic/
 │   ├── Services/            # Business logic
 │   └── Models/              # Data models
 ├── docs/                    # Documentation
+├── PRIVACY.md               # Privacy Policy
 └── README.md
 ```
 
@@ -212,15 +199,20 @@ If you find this project useful, consider supporting its development:
 
 **Fatih Kan**
 
-- Twitter: [@pariloapp](https://twitter.com/pariloapp)
 - GitHub: [@fatihkan](https://github.com/fatihkan)
-- LinkedIn: [Fatih Kan](https://linkedin.com/in/fatihkan)
+- Twitter: [@pariloapp](https://twitter.com/pariloapp)
 
 ---
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Privacy
+
+Wallnetic does not collect any user data. See [PRIVACY.md](PRIVACY.md) for details.
 
 ---
 
