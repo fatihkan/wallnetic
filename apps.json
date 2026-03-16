@@ -2,19 +2,10 @@
   "$schema": "https://wvw.dev/apps.schema.json",
   "store": {
     "name": "Wallnetic",
-    "description": "Live Video Wallpaper Engine for macOS",
-    "author": "Fatih Kan",
-    "github": "https://github.com/fatihkan",
-    "twitter": "https://twitter.com/KanFatih",
-    "buymeacoffee": "https://buymeacoffee.com/fatihkan"
+    "developer": "Fatih Kan",
+    "tagline": "Live Video Wallpaper Engine for macOS",
+    "github": "https://github.com/fatihkan"
   },
-  "categories": [
-    {
-      "id": "live-wallpapers",
-      "name": "Live Wallpapers",
-      "description": "Dynamic video wallpapers for your desktop"
-    }
-  ],
   "apps": [
     {
       "id": "wallnetic",
@@ -23,33 +14,33 @@
       "description": "Transform your Mac desktop with stunning live video wallpapers. Metal-powered, multi-monitor support.",
       "longDescription": "Wallnetic brings live video wallpapers to your Mac desktop. Transform your workspace with dynamic, animated backgrounds that run efficiently in the background. Features include multi-monitor support with per-display settings, library management with collections and favorites, smart power management (pause on battery, pause on fullscreen), Metal GPU-accelerated rendering, and native macOS experience with Dark/Light/System theme support. Wallpaper Engine has 40M+ users on Windows - now Mac users finally have a native alternative!",
       "icon": "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/icon.png",
-      "iconEmoji": "🎬",
-      "category": ["graphics-design", "utilities"],
+      "iconStyle": {
+        "scale": 1.3,
+        "objectFit": "cover",
+        "borderRadius": "22%"
+      },
+      "category": ["macos", "graphics-design", "utilities"],
       "platform": "macOS",
       "price": "Free",
       "github": "https://github.com/fatihkan/wallnetic",
       "homepage": "https://github.com/fatihkan/wallnetic",
+      "language": "Swift",
       "downloadUrl": "https://github.com/fatihkan/wallnetic/releases/latest",
+      "requirements": "macOS 13.0 (Ventura) or later",
+      "features": [
+        "Live video wallpapers (MP4, MOV, M4V)",
+        "Multi-monitor support with per-display settings",
+        "Library with collections and favorites",
+        "Metal GPU-accelerated rendering",
+        "Smart power management (pause on battery/fullscreen)",
+        "Dark/Light/System theme support",
+        "Launch at login option",
+        "Drag & drop video import"
+      ],
       "screenshots": [
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/screenshot-main.png",
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/screenshot-settings.png"
-      ],
-      "features": [
-        "Live video wallpapers (MP4, MOV, M4V)",
-        "Multi-monitor support",
-        "Collections & favorites",
-        "Metal GPU acceleration",
-        "Smart power management",
-        "Dark/Light/System themes",
-        "Launch at login",
-        "Drag & drop import"
-      ],
-      "requirements": {
-        "macos": "13.0+",
-        "architecture": ["arm64", "x86_64"]
-      },
-      "version": "1.0.0",
-      "releaseDate": "2026-03-16"
+      ]
     }
   ]
 }
