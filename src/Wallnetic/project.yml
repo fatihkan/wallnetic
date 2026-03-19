@@ -54,12 +54,36 @@ targets:
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.utilities
+    dependencies:
+      - target: WallneticWidget
+        embed: true
+
+  WallneticWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ../WallneticWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.app.WallneticWidget
+        PRODUCT_NAME: WallneticWidget
+        INFOPLIST_FILE: ../WallneticWidget/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ../WallneticWidget/Resources/WallneticWidget.entitlements
+        SKIP_INSTALL: YES
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        LD_RUNPATH_SEARCH_PATHS:
+          - $(inherited)
+          - "@executable_path/../Frameworks"
+          - "@executable_path/../../../../Frameworks"
+    entitlements:
+      path: ../WallneticWidget/Resources/WallneticWidget.entitlements
 
 schemes:
   Wallnetic:
     build:
       targets:
         Wallnetic: all
+        WallneticWidget: all
     run:
       config: Debug
     profile:
