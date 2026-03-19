@@ -35,6 +35,10 @@ class PowerManager {
         // Stop fullscreen monitoring timer
         stopFullscreenMonitoring()
 
+        // Stop debounce timer
+        fullscreenDebounceTimer?.invalidate()
+        fullscreenDebounceTimer = nil
+
         // Remove power source observer
         removePowerSourceObserver()
 
@@ -185,70 +189,88 @@ class PowerManager {
         fullscreenCheckTimer = nil
     }
 
+    private var fullscreenDebounceTimer: Timer?
+
     private func checkFullscreenApps() {
         let wasFullscreen = isFullscreenAppActive
 
         // Get the frontmost app's windows
         guard let frontApp = NSWorkspace.shared.frontmostApplication else {
-            isFullscreenAppActive = false
-            if wasFullscreen != isFullscreenAppActive {
-                handleFullscreenChange()
-            }
+            updateFullscreenState(false, wasFullscreen: wasFullscreen)
             return
         }
 
-        // Skip our own app and Finder (desktop)
+        // Skip our own app and system apps
         let skipBundleIds = [
             Bundle.main.bundleIdentifier,
             "com.apple.finder",
             "com.apple.dock",
             "com.apple.SystemUIServer",
-            "com.apple.controlcenter"
+            "com.apple.controlcenter",
+            "com.apple.notificationcenterui"
         ]
 
         if skipBundleIds.contains(frontApp.bundleIdentifier) {
-            isFullscreenAppActive = false
-            if wasFullscreen != isFullscreenAppActive {
-                handleFullscreenChange()
-            }
+            updateFullscreenState(false, wasFullscreen: wasFullscreen)
             return
         }
 
-        // Check if the frontmost app has a fullscreen window using NSApp presentation options
-        // This is more reliable than checking window bounds
+        // Method 1: Check if app is in native macOS fullscreen mode
+        // This is the most reliable check for true fullscreen
         let options = CGWindowListOption.optionOnScreenOnly
         let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] ?? []
 
-        isFullscreenAppActive = windowList.contains { windowInfo in
-            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? Int32,
-                  ownerPID == frontApp.processIdentifier,
-                  let layer = windowInfo[kCGWindowLayer as String] as? Int,
+        // Filter windows belonging to the front app
+        let appWindows = windowList.filter { windowInfo in
+            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? Int32 else {
+                return false
+            }
+            return ownerPID == frontApp.processIdentifier
+        }
+
+        // Check for true fullscreen windows only
+        // A window is considered fullscreen if it exactly matches screen dimensions
+        // AND covers the full height (including menu bar area)
+        let hasFullscreenWindow = appWindows.contains { windowInfo in
+            guard let layer = windowInfo[kCGWindowLayer as String] as? Int,
                   layer == 0,  // Normal window layer
                   let bounds = windowInfo[kCGWindowBounds as String] as? [String: CGFloat] else {
                 return false
             }
 
+            let windowX = bounds["X"] ?? 0
+            let windowY = bounds["Y"] ?? 0
             let windowWidth = bounds["Width"] ?? 0
             let windowHeight = bounds["Height"] ?? 0
 
-            // Check if window matches any screen size exactly (with small tolerance for menu bar)
+            // Check if window matches any screen size EXACTLY (true fullscreen)
             return NSScreen.screens.contains { screen in
-                let screenWidth = screen.frame.width
-                let screenHeight = screen.frame.height
-                let visibleHeight = screen.visibleFrame.height
+                let screenFrame = screen.frame
 
-                // Window must match screen width exactly and height should be full screen
-                // (either with or without menu bar)
-                let widthMatches = abs(windowWidth - screenWidth) < 2
-                let heightMatchesFull = abs(windowHeight - screenHeight) < 2
-                let heightMatchesVisible = abs(windowHeight - visibleHeight) < 2
+                // True fullscreen: window must start at screen origin and match exact dimensions
+                // This excludes maximized windows that don't cover the menu bar
+                let xMatches = abs(windowX - screenFrame.origin.x) < 2
+                let yMatches = abs(windowY - screenFrame.origin.y) < 2
+                let widthMatches = abs(windowWidth - screenFrame.width) < 2
+                let heightMatches = abs(windowHeight - screenFrame.height) < 2
 
-                return widthMatches && (heightMatchesFull || (heightMatchesVisible && windowHeight > screenHeight * 0.9))
+                // Only true fullscreen (covers entire screen including menu bar)
+                return xMatches && yMatches && widthMatches && heightMatches
             }
         }
 
+        updateFullscreenState(hasFullscreenWindow, wasFullscreen: wasFullscreen)
+    }
+
+    private func updateFullscreenState(_ newState: Bool, wasFullscreen: Bool) {
+        isFullscreenAppActive = newState
+
         if wasFullscreen != isFullscreenAppActive {
-            handleFullscreenChange()
+            // Debounce to prevent rapid state changes
+            fullscreenDebounceTimer?.invalidate()
+            fullscreenDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+                self?.handleFullscreenChange()
+            }
         }
     }
 
