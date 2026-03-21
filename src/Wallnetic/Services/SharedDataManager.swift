@@ -1,37 +1,21 @@
 import Foundation
 import WidgetKit
 
-/// Manages shared data between the main app and widget extension via App Groups
+/// Manages shared data between the main app and widget extension via App Groups.
+/// Uses file-based JSON storage for macOS sandbox compatibility.
 class SharedDataManager {
     static let shared = SharedDataManager()
 
-    // MARK: - Constants
-
-    /// App Group identifier for shared container
-    static let appGroupIdentifier = "group.com.wallnetic.shared"
-
-    /// UserDefaults keys for shared data
-    private enum Keys {
-        static let currentWallpaperID = "currentWallpaperID"
-        static let currentWallpaperName = "currentWallpaperName"
-        static let currentWallpaperThumbnail = "currentWallpaperThumbnail"
-        static let isPlaying = "isPlaying"
-        static let favoriteWallpapers = "favoriteWallpapers"
-        static let recentWallpapers = "recentWallpapers"
-        static let lastUpdated = "lastUpdated"
-    }
-
     // MARK: - Properties
 
-    /// Shared UserDefaults for App Group
-    private let sharedDefaults: UserDefaults?
-
-    /// Shared container URL for files
     var sharedContainerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: Self.appGroupIdentifier)
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SharedConstants.appGroupIdentifier)
     }
 
-    /// Directory for shared thumbnails
+    private var sharedDataFileURL: URL? {
+        sharedContainerURL?.appendingPathComponent(SharedConstants.sharedDataFilename)
+    }
+
     var thumbnailsDirectory: URL? {
         sharedContainerURL?.appendingPathComponent("Thumbnails", isDirectory: true)
     }
@@ -39,195 +23,103 @@ class SharedDataManager {
     // MARK: - Initialization
 
     private init() {
-        sharedDefaults = UserDefaults(suiteName: Self.appGroupIdentifier)
-
-        // Create thumbnails directory if needed
         if let thumbnailsDir = thumbnailsDirectory {
             try? FileManager.default.createDirectory(at: thumbnailsDir, withIntermediateDirectories: true)
+        }
+        NSLog("[SharedDataManager] Container: %@", sharedContainerURL?.path ?? "nil")
+    }
+
+    // MARK: - File-Based Read/Write
+
+    func readSharedData() -> SharedWidgetData {
+        guard let fileURL = sharedDataFileURL,
+              FileManager.default.fileExists(atPath: fileURL.path),
+              let data = try? Data(contentsOf: fileURL),
+              let sharedData = try? JSONDecoder().decode(SharedWidgetData.self, from: data) else {
+            return SharedWidgetData()
+        }
+        return sharedData
+    }
+
+    private func writeSharedData(_ sharedData: SharedWidgetData) {
+        guard let fileURL = sharedDataFileURL else { return }
+        do {
+            let data = try JSONEncoder().encode(sharedData)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            NSLog("[SharedDataManager] Write error: %@", error.localizedDescription)
         }
     }
 
     // MARK: - Current Wallpaper
 
-    /// Updates the current wallpaper information in shared storage
-    func updateCurrentWallpaper(id: UUID?, name: String?, thumbnailData: Data?) {
-        sharedDefaults?.set(id?.uuidString, forKey: Keys.currentWallpaperID)
-        sharedDefaults?.set(name, forKey: Keys.currentWallpaperName)
-        sharedDefaults?.set(thumbnailData, forKey: Keys.currentWallpaperThumbnail)
-        sharedDefaults?.set(Date(), forKey: Keys.lastUpdated)
-
-        // Notify widget to refresh
+    func updateCurrentWallpaper(id: UUID?, name: String?, thumbnailPath: String?) {
+        var data = readSharedData()
+        data.currentWallpaperID = id?.uuidString
+        data.currentWallpaperName = name
+        data.currentThumbnailPath = thumbnailPath
+        data.lastUpdated = Date()
+        writeSharedData(data)
         reloadWidgetTimelines()
-    }
-
-    /// Gets the current wallpaper ID
-    var currentWallpaperID: UUID? {
-        guard let idString = sharedDefaults?.string(forKey: Keys.currentWallpaperID) else {
-            return nil
-        }
-        return UUID(uuidString: idString)
-    }
-
-    /// Gets the current wallpaper name
-    var currentWallpaperName: String? {
-        sharedDefaults?.string(forKey: Keys.currentWallpaperName)
-    }
-
-    /// Gets the current wallpaper thumbnail data
-    var currentWallpaperThumbnail: Data? {
-        sharedDefaults?.data(forKey: Keys.currentWallpaperThumbnail)
     }
 
     // MARK: - Playback State
 
-    /// Updates the playback state
     func updatePlaybackState(isPlaying: Bool) {
-        sharedDefaults?.set(isPlaying, forKey: Keys.isPlaying)
-        sharedDefaults?.set(Date(), forKey: Keys.lastUpdated)
-
+        var data = readSharedData()
+        data.isPlaying = isPlaying
+        data.lastUpdated = Date()
+        writeSharedData(data)
         reloadWidgetTimelines()
     }
 
-    /// Gets the current playback state
-    var isPlaying: Bool {
-        sharedDefaults?.bool(forKey: Keys.isPlaying) ?? false
-    }
+    // MARK: - Favorites
 
-    // MARK: - Favorite Wallpapers
-
-    /// Lightweight wallpaper info for widget display
-    struct WidgetWallpaper: Codable, Identifiable {
-        let id: UUID
-        let name: String
-        let thumbnailPath: String?
-
-        var thumbnailURL: URL? {
-            guard let path = thumbnailPath else { return nil }
-            return SharedDataManager.shared.thumbnailsDirectory?.appendingPathComponent(path)
-        }
-    }
-
-    /// Updates the favorite wallpapers list
-    func updateFavoriteWallpapers(_ wallpapers: [WidgetWallpaper]) {
-        if let data = try? JSONEncoder().encode(wallpapers) {
-            sharedDefaults?.set(data, forKey: Keys.favoriteWallpapers)
-        }
-        sharedDefaults?.set(Date(), forKey: Keys.lastUpdated)
-
+    func updateFavoriteWallpapers(_ wallpapers: [SharedWidgetWallpaper]) {
+        var data = readSharedData()
+        data.favorites = wallpapers
+        data.lastUpdated = Date()
+        writeSharedData(data)
+        NSLog("[SharedDataManager] Saved %d favorites", wallpapers.count)
         reloadWidgetTimelines()
     }
 
-    /// Gets the favorite wallpapers
-    var favoriteWallpapers: [WidgetWallpaper] {
-        guard let data = sharedDefaults?.data(forKey: Keys.favoriteWallpapers),
-              let wallpapers = try? JSONDecoder().decode([WidgetWallpaper].self, from: data) else {
-            return []
-        }
-        return wallpapers
-    }
+    // MARK: - Thumbnails
 
-    // MARK: - Recent Wallpapers
-
-    /// Updates the recent wallpapers list
-    func updateRecentWallpapers(_ wallpapers: [WidgetWallpaper]) {
-        if let data = try? JSONEncoder().encode(wallpapers) {
-            sharedDefaults?.set(data, forKey: Keys.recentWallpapers)
-        }
-        sharedDefaults?.set(Date(), forKey: Keys.lastUpdated)
-
-        reloadWidgetTimelines()
-    }
-
-    /// Gets the recent wallpapers
-    var recentWallpapers: [WidgetWallpaper] {
-        guard let data = sharedDefaults?.data(forKey: Keys.recentWallpapers),
-              let wallpapers = try? JSONDecoder().decode([WidgetWallpaper].self, from: data) else {
-            return []
-        }
-        return wallpapers
-    }
-
-    // MARK: - Thumbnail Management
-
-    /// Saves a thumbnail to the shared container
     func saveThumbnail(data: Data, for wallpaperID: UUID) -> String? {
         guard let thumbnailsDir = thumbnailsDirectory else { return nil }
-
         let filename = "\(wallpaperID.uuidString).jpg"
         let fileURL = thumbnailsDir.appendingPathComponent(filename)
-
         do {
             try data.write(to: fileURL)
             return filename
         } catch {
-            print("[SharedDataManager] Failed to save thumbnail: \(error)")
+            NSLog("[SharedDataManager] Thumbnail save error: %@", error.localizedDescription)
             return nil
         }
     }
 
-    /// Loads a thumbnail from the shared container
-    func loadThumbnail(filename: String) -> Data? {
-        guard let thumbnailsDir = thumbnailsDirectory else { return nil }
+    // MARK: - Widget
 
-        let fileURL = thumbnailsDir.appendingPathComponent(filename)
-        return try? Data(contentsOf: fileURL)
-    }
-
-    /// Removes a thumbnail from the shared container
-    func removeThumbnail(filename: String) {
-        guard let thumbnailsDir = thumbnailsDirectory else { return }
-
-        let fileURL = thumbnailsDir.appendingPathComponent(filename)
-        try? FileManager.default.removeItem(at: fileURL)
-    }
-
-    // MARK: - Widget Communication
-
-    /// Reloads all widget timelines
     func reloadWidgetTimelines() {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Gets the last update timestamp
-    var lastUpdated: Date? {
-        sharedDefaults?.object(forKey: Keys.lastUpdated) as? Date
-    }
+    // MARK: - URL Parsing
 
-    // MARK: - Widget Actions (for URL scheme handling)
-
-    /// Action types that can be triggered from the widget
     enum WidgetAction: String {
-        case setWallpaper = "setWallpaper"
-        case playPause = "playPause"
-        case nextWallpaper = "nextWallpaper"
+        case setWallpaper, playPause, nextWallpaper
     }
 
-    /// Parses a widget action URL
-    /// Format: wallnetic://action?id=xxx
     static func parseWidgetURL(_ url: URL) -> (action: WidgetAction, wallpaperID: UUID?)? {
         guard url.scheme == "wallnetic",
               let actionString = url.host,
               let action = WidgetAction(rawValue: actionString) else {
             return nil
         }
-
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let wallpaperID = components?.queryItems?.first(where: { $0.name == "id" })?.value
             .flatMap { UUID(uuidString: $0) }
-
         return (action, wallpaperID)
-    }
-
-    /// Creates a URL for a widget action
-    static func createWidgetURL(action: WidgetAction, wallpaperID: UUID? = nil) -> URL? {
-        var components = URLComponents()
-        components.scheme = "wallnetic"
-        components.host = action.rawValue
-
-        if let id = wallpaperID {
-            components.queryItems = [URLQueryItem(name: "id", value: id.uuidString)]
-        }
-
-        return components.url
     }
 }

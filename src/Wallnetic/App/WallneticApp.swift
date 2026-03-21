@@ -17,6 +17,7 @@ struct WallneticApp: App {
         .commands {
             CommandGroup(replacing: .newItem) { }
         }
+        .handlesExternalEvents(matching: [])
 
         // Settings Window
         Settings {

@@ -5,9 +5,8 @@ enum SidebarSelection: Hashable {
     case all
     case favorites
     case recent
-    // Phase 2: AI features
-    // case aiGenerate
-    // case aiHistory
+    case aiGenerate
+    case aiHistory
     case collections
     case collection(UUID)
 }
@@ -18,6 +17,8 @@ struct ContentView: View {
     @State private var isImporting = false
     @State private var searchText = ""
     @State private var sidebarSelection: SidebarSelection? = .all
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var showingOnboarding = false
 
     var body: some View {
         NavigationSplitView {
@@ -26,11 +27,10 @@ struct ContentView: View {
         } detail: {
             // Main content based on sidebar selection
             switch sidebarSelection {
-            // Phase 2: AI features
-            // case .aiGenerate:
-            //     AIGenerateView()
-            // case .aiHistory:
-            //     HistoryView()
+            case .aiGenerate:
+                AIGenerateView()
+            case .aiHistory:
+                HistoryView()
             case .collections:
                 CollectionsView()
             case .collection(let collectionId):
@@ -55,6 +55,14 @@ struct ContentView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 200)
 
+                // AI Generate shortcut
+                Button {
+                    withAnimation { sidebarSelection = .aiGenerate }
+                } label: {
+                    Label("Generate", systemImage: "wand.and.stars")
+                }
+                .keyboardShortcut("g", modifiers: .command)
+
                 // Import button
                 Button {
                     isImporting = true
@@ -76,6 +84,15 @@ struct ContentView: View {
             return true
         }
         .frame(minWidth: 800, minHeight: 500)
+        .sheet(isPresented: $showingOnboarding) {
+            OnboardingView(isPresented: $showingOnboarding)
+        }
+        .onAppear {
+            if !hasCompletedOnboarding {
+                showingOnboarding = true
+                hasCompletedOnboarding = true
+            }
+        }
     }
 
     // MARK: - Import Handling
@@ -149,8 +166,6 @@ struct SidebarView: View {
                     }
                 }
 
-                // Phase 2: AI features
-                /*
                 Section("AI") {
                     Label("Generate", systemImage: "wand.and.stars")
                         .tag(SidebarSelection.aiGenerate)
@@ -158,43 +173,6 @@ struct SidebarView: View {
                     Label("History", systemImage: "clock.arrow.circlepath")
                         .tag(SidebarSelection.aiHistory)
                 }
-
-                Section("Scheduler") {
-                    Button {
-                        showingSchedulerSettings = true
-                    } label: {
-                        HStack {
-                            Label("Daily Wallpaper", systemImage: scheduler.isEnabled ? "clock.badge.checkmark" : "clock")
-                                .foregroundColor(scheduler.isEnabled ? .accentColor : .primary)
-
-                            Spacer()
-
-                            if scheduler.isEnabled {
-                                Text(scheduler.formattedScheduleTime)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-
-                    if scheduler.isEnabled {
-                        if scheduler.isGenerating {
-                            HStack {
-                                ProgressView()
-                                    .scaleEffect(0.6)
-                                Text("Generating...")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        } else if let nextTime = scheduler.formattedNextScheduledTime {
-                            Text("Next: \(nextTime)")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                */
 
                 Section("Info") {
                     HStack {
@@ -206,6 +184,7 @@ struct SidebarView: View {
                 }
             }
             .listStyle(.sidebar)
+            .animation(.easeInOut(duration: 0.2), value: selection)
 
             Divider()
 
@@ -261,27 +240,57 @@ struct EmptyLibraryView: View {
     @Binding var isImporting: Bool
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
+        VStack(spacing: 24) {
+            Spacer()
 
-            Text("No Wallpapers")
-                .font(.title2)
-                .fontWeight(.medium)
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(colors: [.purple.opacity(0.1), .blue.opacity(0.1)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .frame(width: 120, height: 120)
 
-            Text("Import video files to use as live wallpapers")
-                .foregroundColor(.secondary)
-
-            Button("Import Videos") {
-                isImporting = true
+                Image(systemName: "photo.on.rectangle.angled")
+                    .font(.system(size: 52))
+                    .foregroundStyle(
+                        LinearGradient(colors: [.purple, .blue],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
 
-            Text("Or drag and drop video files here")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            VStack(spacing: 8) {
+                Text("No Wallpapers Yet")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("Import video files to transform your desktop\nwith stunning live wallpapers")
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+
+            HStack(spacing: 16) {
+                Button {
+                    isImporting = true
+                } label: {
+                    Label("Import Videos", systemImage: "plus.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.down.doc")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+                Text("Or drag and drop video files here")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 4)
+
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

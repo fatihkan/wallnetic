@@ -6,8 +6,14 @@ struct WallneticWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WallpaperTimelineProvider()) { entry in
-            WallneticWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+            if #available(macOS 14.0, *) {
+                WallneticWidgetEntryView(entry: entry)
+                    .containerBackground(.fill.tertiary, for: .widget)
+            } else {
+                WallneticWidgetEntryView(entry: entry)
+                    .padding()
+                    .background(Color(NSColor.windowBackgroundColor))
+            }
         }
         .configurationDisplayName("Wallnetic")
         .description("Control your live wallpapers")
@@ -33,12 +39,14 @@ struct WallneticWidgetEntryView: View {
     }
 }
 
+@available(macOS 14.0, *)
 #Preview(as: .systemSmall) {
     WallneticWidget()
 } timeline: {
     WallpaperEntry(date: .now, currentWallpaper: nil, isPlaying: false, favorites: [])
 }
 
+@available(macOS 14.0, *)
 #Preview(as: .systemMedium) {
     WallneticWidget()
 } timeline: {
