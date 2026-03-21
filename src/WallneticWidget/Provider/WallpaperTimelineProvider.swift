@@ -43,40 +43,52 @@ struct WallpaperTimelineProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WallpaperEntry>) -> Void) {
-        let entry = createEntry()
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: .now) ?? .now
-        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+        let sharedData = loadSharedData()
+        let currentWallpaper = loadCurrentWallpaper(from: sharedData)
+        let favorites = loadFavorites(from: sharedData)
+
+        // Generate entries for the next 60 minutes (one per minute for clock updates)
+        var entries: [WallpaperEntry] = []
+        let now = Date()
+
+        for minuteOffset in 0..<60 {
+            let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: now) ?? now
+            entries.append(WallpaperEntry(
+                date: entryDate,
+                currentWallpaper: currentWallpaper,
+                isPlaying: sharedData.isPlaying,
+                favorites: favorites
+            ))
+        }
+
+        let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now
+        completion(Timeline(entries: entries, policy: .after(nextUpdate)))
     }
 
     // MARK: - Data Loading
 
     private func createEntry() -> WallpaperEntry {
         let sharedData = loadSharedData()
-
-        // Load current wallpaper with pre-loaded image
-        var currentWallpaper: WidgetWallpaperInfo? = nil
-        if let idString = sharedData.currentWallpaperID,
-           let id = UUID(uuidString: idString) {
-            let name = sharedData.currentWallpaperName ?? "Unknown"
-            let image = loadThumbnailImage(sharedData.currentThumbnailPath)
-            currentWallpaper = WidgetWallpaperInfo(id: id, name: name, image: image)
-        }
-
-        // Load favorites with pre-loaded images
-        let favorites = sharedData.favorites.prefix(SharedConstants.maxFavorites).map { fav in
-            WidgetWallpaperInfo(
-                id: fav.id,
-                name: fav.name,
-                image: loadThumbnailImage(fav.thumbnailPath)
-            )
-        }
-
         return WallpaperEntry(
             date: .now,
-            currentWallpaper: currentWallpaper,
+            currentWallpaper: loadCurrentWallpaper(from: sharedData),
             isPlaying: sharedData.isPlaying,
-            favorites: Array(favorites)
+            favorites: loadFavorites(from: sharedData)
         )
+    }
+
+    private func loadCurrentWallpaper(from sharedData: SharedWidgetData) -> WidgetWallpaperInfo? {
+        guard let idString = sharedData.currentWallpaperID,
+              let id = UUID(uuidString: idString) else { return nil }
+        let name = sharedData.currentWallpaperName ?? "Unknown"
+        let image = loadThumbnailImage(sharedData.currentThumbnailPath)
+        return WidgetWallpaperInfo(id: id, name: name, image: image)
+    }
+
+    private func loadFavorites(from sharedData: SharedWidgetData) -> [WidgetWallpaperInfo] {
+        Array(sharedData.favorites.prefix(SharedConstants.maxFavorites).map { fav in
+            WidgetWallpaperInfo(id: fav.id, name: fav.name, image: loadThumbnailImage(fav.thumbnailPath))
+        })
     }
 
     private func loadSharedData() -> SharedWidgetData {
