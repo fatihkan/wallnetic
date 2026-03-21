@@ -56,7 +56,37 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("p", modifiers: .command)
 
+            Button {
+                wallpaperManager.cycleToNextWallpaper()
+            } label: {
+                Label("Next Wallpaper", systemImage: "forward.fill")
+            }
+            .keyboardShortcut("n", modifiers: .command)
+
             Divider()
+
+            // Favorites quick-switch
+            let favorites = wallpaperManager.wallpapers.filter { $0.isFavorite }
+            if !favorites.isEmpty {
+                Menu {
+                    ForEach(favorites.prefix(6)) { wallpaper in
+                        Button {
+                            wallpaperManager.setWallpaper(wallpaper)
+                        } label: {
+                            HStack {
+                                Text(wallpaper.name)
+                                if wallpaper.id == wallpaperManager.currentWallpaper?.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Favorites", systemImage: "heart.fill")
+                }
+
+                Divider()
+            }
 
             // Quick access
             Button {

@@ -28,6 +28,7 @@ targets:
       - path: Engine
       - path: Utils
       - path: Resources
+      - path: ../WallneticWidget/Models/SharedWidgetModels.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.app
@@ -37,8 +38,6 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_HARDENED_RUNTIME: YES
-    entitlements:
-      path: Resources/Wallnetic.entitlements
     info:
       path: Resources/Info.plist
       properties:
@@ -54,6 +53,11 @@ targets:
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.utilities
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.wallnetic.app
+            CFBundleURLSchemes:
+              - wallnetic
     dependencies:
       - target: WallneticWidget
         embed: true
@@ -75,8 +79,6 @@ targets:
           - $(inherited)
           - "@executable_path/../Frameworks"
           - "@executable_path/../../../../Frameworks"
-    entitlements:
-      path: ../WallneticWidget/Resources/WallneticWidget.entitlements
 
 schemes:
   Wallnetic:

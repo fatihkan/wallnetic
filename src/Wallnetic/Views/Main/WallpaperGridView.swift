@@ -5,6 +5,7 @@ struct WallpaperGridView: View {
     @Binding var selectedWallpaper: Wallpaper?
     let searchText: String
     let filter: SidebarSelection
+    @State private var previewWallpaper: Wallpaper?
 
     private let columns = [
         GridItem(.adaptive(minimum: 200, maximum: 300), spacing: 16)
@@ -16,17 +17,16 @@ struct WallpaperGridView: View {
         // Apply sidebar filter
         switch filter {
         case .all:
-            break // Show all wallpapers
+            break
         case .favorites:
             wallpapers = wallpapers.filter { $0.isFavorite }
         case .recent:
-            // Show wallpapers added in the last 7 days, sorted by date
             let oneWeekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
             wallpapers = wallpapers
                 .filter { $0.dateAdded > oneWeekAgo }
                 .sorted { $0.dateAdded > $1.dateAdded }
-        case .collections, .collection:
-            break // Not used in grid view
+        case .collections, .collection, .aiGenerate, .aiHistory:
+            break
         }
 
         // Apply search filter
@@ -40,32 +40,78 @@ struct WallpaperGridView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(filteredWallpapers) { wallpaper in
-                    WallpaperCard(
-                        wallpaper: wallpaper,
-                        isSelected: selectedWallpaper?.id == wallpaper.id
-                    )
-                    .onTapGesture {
-                        selectedWallpaper = wallpaper
-                    }
-                    .onTapGesture(count: 2) {
-                        wallpaperManager.setWallpaper(wallpaper)
-                    }
-                    .contextMenu {
-                        WallpaperContextMenu(wallpaper: wallpaper)
+        VStack(spacing: 0) {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
+                        WallpaperCard(
+                            wallpaper: wallpaper,
+                            isSelected: selectedWallpaper?.id == wallpaper.id
+                        )
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedWallpaper = wallpaper
+                            }
+                        }
+                        .onTapGesture(count: 2) {
+                            wallpaperManager.setWallpaper(wallpaper)
+                        }
+                        .contextMenu {
+                            WallpaperContextMenu(wallpaper: wallpaper) {
+                                withAnimation { previewWallpaper = wallpaper }
+                            }
+                        }
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
                 }
+                .padding()
+                .animation(.easeInOut(duration: 0.3), value: filteredWallpapers.map(\.id))
             }
-            .padding()
-        }
-        .background(Color(nsColor: .controlBackgroundColor))
+            .background(Color(nsColor: .controlBackgroundColor))
 
-        // Bottom bar with selected wallpaper info
-        if let selected = selectedWallpaper {
-            SelectedWallpaperBar(wallpaper: selected)
+            // Bottom bar with selected wallpaper info
+            if let selected = selectedWallpaper {
+                SelectedWallpaperBar(wallpaper: selected)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedWallpaper?.id)
+        .overlay {
+            if let preview = previewWallpaper {
+                VideoPreviewView(
+                    wallpaper: preview,
+                    onApply: {
+                        wallpaperManager.setWallpaper(preview)
+                    },
+                    onDismiss: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            previewWallpaper = nil
+                        }
+                    }
+                )
+                .transition(.opacity)
+            }
+        }
+        .modifier(KeyPressModifier(
+            onSpace: {
+                if let selected = selectedWallpaper {
+                    withAnimation(.easeIn(duration: 0.2)) { previewWallpaper = selected }
+                }
+            },
+            onEscape: {
+                if previewWallpaper != nil {
+                    withAnimation(.easeOut(duration: 0.2)) { previewWallpaper = nil }
+                }
+            },
+            onReturn: {
+                if let preview = previewWallpaper {
+                    wallpaperManager.setWallpaper(preview)
+                    withAnimation { previewWallpaper = nil }
+                } else if let selected = selectedWallpaper {
+                    wallpaperManager.setWallpaper(selected)
+                }
+            }
+        ))
     }
 }
 
@@ -136,8 +182,12 @@ struct WallpaperCard: View {
                     .foregroundColor(.secondary)
             }
         }
+        .scaleEffect(isHovering ? 1.03 : 1.0)
+        .shadow(color: .black.opacity(isHovering ? 0.2 : 0), radius: 8, y: 4)
         .onHover { hovering in
-            isHovering = hovering
+            withAnimation(.easeOut(duration: 0.2)) {
+                isHovering = hovering
+            }
         }
         .task {
             thumbnail = await wallpaper.generateThumbnail()
@@ -150,6 +200,7 @@ struct WallpaperCard: View {
 struct WallpaperContextMenu: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     let wallpaper: Wallpaper
+    var onPreview: (() -> Void)? = nil
 
     var body: some View {
         Button {
@@ -158,8 +209,18 @@ struct WallpaperContextMenu: View {
             Label("Set as Wallpaper", systemImage: "photo.on.rectangle")
         }
 
+        if let onPreview = onPreview {
+            Button {
+                onPreview()
+            } label: {
+                Label("Preview", systemImage: "eye")
+            }
+        }
+
         Button {
-            wallpaperManager.toggleFavorite(wallpaper)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                wallpaperManager.toggleFavorite(wallpaper)
+            }
         } label: {
             Label(
                 wallpaper.isFavorite ? "Remove from Favorites" : "Add to Favorites",
@@ -244,6 +305,26 @@ struct AsyncThumbnailView: View {
         }
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: size)
+        }
+    }
+}
+
+// MARK: - Key Press Modifier (macOS 13+ compatible)
+
+struct KeyPressModifier: ViewModifier {
+    let onSpace: () -> Void
+    let onEscape: () -> Void
+    let onReturn: () -> Void
+
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content
+                .onKeyPress(.space) { onSpace(); return .handled }
+                .onKeyPress(.escape) { onEscape(); return .handled }
+                .onKeyPress(.return) { onReturn(); return .handled }
+        } else {
+            content
+                .onExitCommand { onEscape() }
         }
     }
 }

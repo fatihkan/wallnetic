@@ -24,13 +24,10 @@ struct SettingsView: View {
                     Label("Display", systemImage: "display")
                 }
 
-            // Phase 2: AI features
-            /*
             AISettingsView()
                 .tabItem {
                     Label("AI", systemImage: "wand.and.stars")
                 }
-            */
 
             NotificationSettingsView()
                 .tabItem {

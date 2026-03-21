@@ -14,7 +14,6 @@ struct MediumWidgetView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            // Header
             HStack {
                 Image(systemName: "photo.stack")
                     .foregroundColor(.secondary)
@@ -24,25 +23,14 @@ struct MediumWidgetView: View {
 
                 Spacer()
 
-                // Play/pause button
-                if #available(macOS 14.0, *) {
-                    Button(intent: PlayPauseIntent()) {
-                        Image(systemName: entry.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.accentColor)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Link(destination: URL(string: "wallnetic://playPause")!) {
-                        Image(systemName: entry.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.accentColor)
-                    }
+                Link(destination: URL(string: "wallnetic://playPause")!) {
+                    Image(systemName: entry.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
                 }
             }
             .padding(.horizontal, 4)
 
-            // Wallpaper grid
             if entry.favorites.isEmpty {
                 emptyState
             } else {
@@ -57,26 +45,15 @@ struct MediumWidgetView: View {
     }
 
     private func wallpaperThumbnail(_ wallpaper: WidgetWallpaperInfo) -> some View {
-        Group {
-            if #available(macOS 14.0, *) {
-                Button(intent: SetWallpaperIntent(wallpaperID: wallpaper.id.uuidString)) {
-                    thumbnailContent(wallpaper)
-                }
-                .buttonStyle(.plain)
-            } else {
-                Link(destination: URL(string: "wallnetic://setWallpaper?id=\(wallpaper.id.uuidString)")!) {
-                    thumbnailContent(wallpaper)
-                }
-            }
+        Link(destination: URL(string: "wallnetic://setWallpaper?id=\(wallpaper.id.uuidString)")!) {
+            thumbnailContent(wallpaper)
         }
     }
 
     private func thumbnailContent(_ wallpaper: WidgetWallpaperInfo) -> some View {
         ZStack {
-            if let thumbnailURL = wallpaper.thumbnailURL,
-               let imageData = try? Data(contentsOf: thumbnailURL),
-               let nsImage = NSImage(data: imageData) {
-                Image(nsImage: nsImage)
+            if let image = wallpaper.image {
+                Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
@@ -87,7 +64,6 @@ struct MediumWidgetView: View {
                 )
             }
 
-            // Current indicator
             if wallpaper.id == entry.currentWallpaper?.id {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color.accentColor, lineWidth: 3)

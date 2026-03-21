@@ -146,6 +146,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    // MARK: - URL Handling
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard url.scheme == "wallnetic" else { continue }
+
+            // Handle widget actions without opening main window
+            let host = url.host ?? ""
+            NSLog("[AppDelegate] Handling URL: %@ (host: %@)", url.absoluteString, host)
+
+            // Don't open main window for widget actions
+            if host == "playPause" || host == "nextWallpaper" || host == "setWallpaper" {
+                WallpaperManager.shared.handleWidgetURL(url)
+            }
+        }
+    }
+
     // MARK: - Power Manager
 
     private func setupPowerManager() {

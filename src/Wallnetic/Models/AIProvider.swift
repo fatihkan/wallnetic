@@ -129,17 +129,27 @@ enum VideoModel: String, CaseIterable, Codable {
 /// API Provider for authentication
 enum APIProvider: String, CaseIterable {
     case falai = "fal.ai"
+    case supabase = "supabase"
 
     var displayName: String {
-        return "fal.ai"
+        switch self {
+        case .falai: return "fal.ai"
+        case .supabase: return "Supabase"
+        }
     }
 
     var apiKeyPlaceholder: String {
-        return "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        switch self {
+        case .falai: return "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        case .supabase: return "session-token"
+        }
     }
 
     var signupURL: URL {
-        return URL(string: "https://fal.ai/dashboard/keys")!
+        switch self {
+        case .falai: return URL(string: "https://fal.ai/dashboard/keys")!
+        case .supabase: return URL(string: "https://supabase.com")!
+        }
     }
 }
 

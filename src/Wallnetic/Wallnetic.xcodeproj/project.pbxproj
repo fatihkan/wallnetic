@@ -22,26 +22,33 @@
 		559304CF4E8C6C1F05A97B59 /* CollectionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5D74A5C252020316F511D6 /* CollectionDetailView.swift */; };
 		56536B0F8F2E2B9076BA08EE /* WallneticWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 594B87C7E7B68A1E23F136C4 /* WallneticWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B106464A071BF6E736C3272 /* MenuBarView.swift */; };
-		6D3AD0723F48F5FF139FF134 /* WidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1E0F391FB635598A7C2969 /* WidgetIntents.swift */; };
+		6A650CD75C4B32AB9889A6A7 /* SharedWidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */; };
 		71B0E8B741F75A6147C62611 /* MetalVideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */; };
 		71CE2A10CE71B016228E091D /* SchedulerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF980A4142FBBE468FBBD05 /* SchedulerSettingsView.swift */; };
 		72F4CF08714A41746B6A0258 /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7021318E82664A8754F5FF1 /* AIProvider.swift */; };
 		73849203691B6B9B27EF0384 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1849D0D4B8C207540818A7E8 /* CollectionManager.swift */; };
 		7B8DE2A0443E6DC55D750FCB /* WallpaperManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532FE0E3069C64B6236A343C /* WallpaperManager.swift */; };
 		7CD2350BE3D4A9216B849C69 /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */; };
+		84ACCBC72C120B8B6E00A64F /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CEBCAF9E5F767C08A15158C /* SupabaseClient.swift */; };
 		8BED6ED6D599D3F3C32821D5 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32AE3710192737ABA41FDA0 /* HistoryView.swift */; };
+		93BC58F85DF7EBC9B6D3970F /* SharedWidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */; };
 		9D898F865EED9BB751EBF7EF /* AIGenerateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B502C8C68ABF2CD503030E /* AIGenerateView.swift */; };
 		A0A7D57E670326EECB26D581 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140AE9B28FFA1BF12B3651C5 /* NotificationManager.swift */; };
+		A2F0F37DC65A20D1B7086146 /* UsageTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA624026F461BCF47C3E39D5 /* UsageTracker.swift */; };
 		A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250C1B481393050C099266A2 /* SettingsView.swift */; };
 		AE9FCE08CE4EDEECE7A843BD /* SharedDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CE6EB39E15687BF3655B8C /* SharedDataManager.swift */; };
+		B34E2B3843447164873423D8 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5391D519B2B4F2D898BEDB0F /* AuthManager.swift */; };
+		B4147A0425D06A4CAD8EDE77 /* CloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */; };
 		B42A0A282FC2AA2D1C21B83F /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A3CC73608BAFA155E615F1B /* SchedulerService.swift */; };
 		B528C1F69B3CD9B3914A58A6 /* PowerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4C04ED28406292407FFBD0 /* PowerManager.swift */; };
+		BED9A1AD659C124D26D37355 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8E25061D17472552507DF7 /* OnboardingView.swift */; };
 		C45BE528ECCD2D35E95ED1C4 /* WallpaperTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6730B13258B7FB98C75E2BD6 /* WallpaperTimelineProvider.swift */; };
 		C703D713F68746183202C7DE /* AIStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B98ABE56A3B186B1C7AFA43 /* AIStyle.swift */; };
 		CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0F02714B57C6B710BFA04 /* FavoriteStylesManager.swift */; };
 		D536FC913069CBC74CD142D2 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C46699BC859D4FABE71BB58F /* LargeWidgetView.swift */; };
 		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
 		DCAD65468ADF42075E87EF0B /* WallneticWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */; };
+		E5D27A6DCFBE34596D43A293 /* VideoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 632C30C0743E0B8691AFD923 /* VideoPreviewView.swift */; };
 		E670DC0DFE3A0970082E73EF /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE414F5FC0D738D8D7593A2E /* GenerationHistory.swift */; };
 		EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */; };
 		F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */; };
@@ -85,16 +92,19 @@
 		31C51D17BDBBADCDF4D5CB43 /* CollectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsView.swift; sourceTree = "<group>"; };
 		3A5D74A5C252020316F511D6 /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticApp.swift; sourceTree = "<group>"; };
-		4F1E0F391FB635598A7C2969 /* WidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntents.swift; sourceTree = "<group>"; };
 		51A337D506233D372B7187D6 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		52CE6EB39E15687BF3655B8C /* SharedDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedDataManager.swift; sourceTree = "<group>"; };
 		532FE0E3069C64B6236A343C /* WallpaperManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperManager.swift; sourceTree = "<group>"; };
+		5391D519B2B4F2D898BEDB0F /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		594B87C7E7B68A1E23F136C4 /* WallneticWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WallneticWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B106464A071BF6E736C3272 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticWidgetBundle.swift; sourceTree = "<group>"; };
+		5CEBCAF9E5F767C08A15158C /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopWindowController.swift; sourceTree = "<group>"; };
 		60D80208B9C31066D6C112FB /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
+		632C30C0743E0B8691AFD923 /* VideoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPreviewView.swift; sourceTree = "<group>"; };
 		6730B13258B7FB98C75E2BD6 /* WallpaperTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperTimelineProvider.swift; sourceTree = "<group>"; };
+		69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncManager.swift; sourceTree = "<group>"; };
 		69A7F21804AB5D266A239578 /* WallneticWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticWidget.swift; sourceTree = "<group>"; };
 		843AD85E0F38C70B7B33DE40 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8562F59693CF276239AD0905 /* WallpaperCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperCollection.swift; sourceTree = "<group>"; };
@@ -111,10 +121,13 @@
 		C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRenderer.swift; sourceTree = "<group>"; };
 		C46699BC859D4FABE71BB58F /* LargeWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeWidgetView.swift; sourceTree = "<group>"; };
 		D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
+		DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWidgetModels.swift; sourceTree = "<group>"; };
 		DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
 		DFC7F5C372D751F46660FA5C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalVideoRenderer.swift; sourceTree = "<group>"; };
+		FA624026F461BCF47C3E39D5 /* UsageTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageTracker.swift; sourceTree = "<group>"; };
+		FA8E25061D17472552507DF7 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		FE414F5FC0D738D8D7593A2E /* GenerationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationHistory.swift; sourceTree = "<group>"; };
 		FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -166,14 +179,18 @@
 			isa = PBXGroup;
 			children = (
 				B6272C35871A69060C41EFEC /* AIService.swift */,
+				5391D519B2B4F2D898BEDB0F /* AuthManager.swift */,
+				69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */,
 				1849D0D4B8C207540818A7E8 /* CollectionManager.swift */,
 				B3E0F02714B57C6B710BFA04 /* FavoriteStylesManager.swift */,
 				51A337D506233D372B7187D6 /* KeychainManager.swift */,
 				140AE9B28FFA1BF12B3651C5 /* NotificationManager.swift */,
 				2A3CC73608BAFA155E615F1B /* SchedulerService.swift */,
 				52CE6EB39E15687BF3655B8C /* SharedDataManager.swift */,
+				5CEBCAF9E5F767C08A15158C /* SupabaseClient.swift */,
 				60D80208B9C31066D6C112FB /* ThemeManager.swift */,
 				11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */,
+				FA624026F461BCF47C3E39D5 /* UsageTracker.swift */,
 				532FE0E3069C64B6236A343C /* WallpaperManager.swift */,
 			);
 			path = Services;
@@ -206,14 +223,6 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		4A27E090A6013F9E969DF2D9 /* Intents */ = {
-			isa = PBXGroup;
-			children = (
-				4F1E0F391FB635598A7C2969 /* WidgetIntents.swift */,
-			);
-			path = Intents;
-			sourceTree = "<group>";
-		};
 		535A9501C7CEE862EAB25CF6 /* Main */ = {
 			isa = PBXGroup;
 			children = (
@@ -221,7 +230,9 @@
 				EA19F4DBD0636536454696F3 /* ContentView.swift */,
 				A32AE3710192737ABA41FDA0 /* HistoryView.swift */,
 				5B106464A071BF6E736C3272 /* MenuBarView.swift */,
+				FA8E25061D17472552507DF7 /* OnboardingView.swift */,
 				250C1B481393050C099266A2 /* SettingsView.swift */,
+				632C30C0743E0B8691AFD923 /* VideoPreviewView.swift */,
 				0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */,
 			);
 			path = Main;
@@ -291,6 +302,7 @@
 				BD8907F7DF05CB6D5F152AD4 /* App */,
 				1BE37129FFCF799850FBB994 /* Engine */,
 				6BE87A6F82CB3CA3F7C62588 /* Models */,
+				FE863A105B48E8483FA4105E /* Models */,
 				BBDA8D67F414F740791849C4 /* Resources */,
 				2A35F6E908D5FD9D6914BBC7 /* Services */,
 				0E5C0332A18B5850B0997A7A /* Utils */,
@@ -306,13 +318,21 @@
 			children = (
 				69A7F21804AB5D266A239578 /* WallneticWidget.swift */,
 				5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */,
-				4A27E090A6013F9E969DF2D9 /* Intents */,
 				245B5B74A9E9F71A64F7454D /* Provider */,
 				4295B025FC1E253129AEE445 /* Resources */,
 				359372CAF80A53CFB75544F5 /* Views */,
 			);
 			name = WallneticWidget;
 			path = ../WallneticWidget;
+			sourceTree = "<group>";
+		};
+		FE863A105B48E8483FA4105E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */,
+			);
+			name = Models;
+			path = ../WallneticWidget/Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -365,11 +385,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					619B21F5247512020263D942 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					9D9A6596302C548CCE03E80C = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -412,11 +430,11 @@
 			files = (
 				D536FC913069CBC74CD142D2 /* LargeWidgetView.swift in Sources */,
 				7CD2350BE3D4A9216B849C69 /* MediumWidgetView.swift in Sources */,
+				93BC58F85DF7EBC9B6D3970F /* SharedWidgetModels.swift in Sources */,
 				2509E976AE0675786B3C248A /* SmallWidgetView.swift in Sources */,
 				2D30EDC8BD2E940365F05AB0 /* WallneticWidget.swift in Sources */,
 				DCAD65468ADF42075E87EF0B /* WallneticWidgetBundle.swift in Sources */,
 				C45BE528ECCD2D35E95ED1C4 /* WallpaperTimelineProvider.swift in Sources */,
-				6D3AD0723F48F5FF139FF134 /* WidgetIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -429,6 +447,8 @@
 				FF16323D780FDC2A4404D5BA /* AIService.swift in Sources */,
 				C703D713F68746183202C7DE /* AIStyle.swift in Sources */,
 				53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */,
+				B34E2B3843447164873423D8 /* AuthManager.swift in Sources */,
+				B4147A0425D06A4CAD8EDE77 /* CloudSyncManager.swift in Sources */,
 				559304CF4E8C6C1F05A97B59 /* CollectionDetailView.swift in Sources */,
 				73849203691B6B9B27EF0384 /* CollectionManager.swift in Sources */,
 				2C5619331688457B6A844B93 /* CollectionsView.swift in Sources */,
@@ -441,13 +461,18 @@
 				61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */,
 				71B0E8B741F75A6147C62611 /* MetalVideoRenderer.swift in Sources */,
 				A0A7D57E670326EECB26D581 /* NotificationManager.swift in Sources */,
+				BED9A1AD659C124D26D37355 /* OnboardingView.swift in Sources */,
 				B528C1F69B3CD9B3914A58A6 /* PowerManager.swift in Sources */,
 				B42A0A282FC2AA2D1C21B83F /* SchedulerService.swift in Sources */,
 				71CE2A10CE71B016228E091D /* SchedulerSettingsView.swift in Sources */,
 				A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */,
 				AE9FCE08CE4EDEECE7A843BD /* SharedDataManager.swift in Sources */,
+				6A650CD75C4B32AB9889A6A7 /* SharedWidgetModels.swift in Sources */,
+				84ACCBC72C120B8B6E00A64F /* SupabaseClient.swift in Sources */,
 				3ACABD266118F70AA54B934B /* ThemeManager.swift in Sources */,
 				F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */,
+				A2F0F37DC65A20D1B7086146 /* UsageTracker.swift in Sources */,
+				E5D27A6DCFBE34596D43A293 /* VideoPreviewView.swift in Sources */,
 				EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */,
 				4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */,
 				40D40FD944D13CCAF633E4A9 /* Wallpaper.swift in Sources */,
@@ -474,6 +499,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -559,6 +585,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -576,6 +603,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ../WallneticWidget/Resources/WallneticWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = ../WallneticWidget/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -595,6 +623,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ../WallneticWidget/Resources/WallneticWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = ../WallneticWidget/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

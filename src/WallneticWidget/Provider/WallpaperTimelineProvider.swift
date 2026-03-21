@@ -9,95 +9,91 @@ struct WallpaperEntry: TimelineEntry {
     let favorites: [WidgetWallpaperInfo]
 }
 
-/// Lightweight wallpaper info for widget display
-struct WidgetWallpaperInfo: Identifiable, Codable {
+/// Widget wallpaper info with pre-loaded image
+struct WidgetWallpaperInfo: Identifiable {
     let id: UUID
     let name: String
-    let thumbnailPath: String?
-
-    var thumbnailURL: URL? {
-        guard let path = thumbnailPath,
-              let containerURL = FileManager.default.containerURL(
-                  forSecurityApplicationGroupIdentifier: "group.com.wallnetic.shared"
-              ) else {
-            return nil
-        }
-        return containerURL.appendingPathComponent("Thumbnails").appendingPathComponent(path)
-    }
+    let image: NSImage?
 }
 
 /// Provides timeline entries for the widget
 struct WallpaperTimelineProvider: TimelineProvider {
     typealias Entry = WallpaperEntry
 
-    /// App Group identifier
-    private let appGroupID = "group.com.wallnetic.shared"
+    private var sharedContainerURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SharedConstants.appGroupIdentifier)
+    }
 
-    /// Shared UserDefaults
-    private var sharedDefaults: UserDefaults? {
-        UserDefaults(suiteName: appGroupID)
+    private var sharedDataFileURL: URL? {
+        sharedContainerURL?.appendingPathComponent(SharedConstants.sharedDataFilename)
+    }
+
+    private var thumbnailsDirectory: URL? {
+        sharedContainerURL?.appendingPathComponent("Thumbnails", isDirectory: true)
     }
 
     // MARK: - TimelineProvider
 
     func placeholder(in context: Context) -> WallpaperEntry {
-        WallpaperEntry(
-            date: .now,
-            currentWallpaper: nil,
-            isPlaying: false,
-            favorites: []
-        )
+        WallpaperEntry(date: .now, currentWallpaper: nil, isPlaying: false, favorites: [])
     }
 
     func getSnapshot(in context: Context, completion: @escaping (WallpaperEntry) -> Void) {
-        let entry = createEntry()
-        completion(entry)
+        completion(createEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WallpaperEntry>) -> Void) {
         let entry = createEntry()
-
-        // Refresh every 15 minutes or when data changes
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: .now) ?? .now
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-
-        completion(timeline)
+        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
     }
 
     // MARK: - Data Loading
 
     private func createEntry() -> WallpaperEntry {
-        let currentWallpaper = loadCurrentWallpaper()
-        let isPlaying = sharedDefaults?.bool(forKey: "isPlaying") ?? false
-        let favorites = loadFavorites()
+        let sharedData = loadSharedData()
+
+        // Load current wallpaper with pre-loaded image
+        var currentWallpaper: WidgetWallpaperInfo? = nil
+        if let idString = sharedData.currentWallpaperID,
+           let id = UUID(uuidString: idString) {
+            let name = sharedData.currentWallpaperName ?? "Unknown"
+            let image = loadThumbnailImage(sharedData.currentThumbnailPath)
+            currentWallpaper = WidgetWallpaperInfo(id: id, name: name, image: image)
+        }
+
+        // Load favorites with pre-loaded images
+        let favorites = sharedData.favorites.prefix(SharedConstants.maxFavorites).map { fav in
+            WidgetWallpaperInfo(
+                id: fav.id,
+                name: fav.name,
+                image: loadThumbnailImage(fav.thumbnailPath)
+            )
+        }
 
         return WallpaperEntry(
             date: .now,
             currentWallpaper: currentWallpaper,
-            isPlaying: isPlaying,
-            favorites: favorites
+            isPlaying: sharedData.isPlaying,
+            favorites: Array(favorites)
         )
     }
 
-    private func loadCurrentWallpaper() -> WidgetWallpaperInfo? {
-        guard let idString = sharedDefaults?.string(forKey: "currentWallpaperID"),
-              let id = UUID(uuidString: idString) else {
-            return nil
+    private func loadSharedData() -> SharedWidgetData {
+        guard let fileURL = sharedDataFileURL,
+              FileManager.default.fileExists(atPath: fileURL.path),
+              let data = try? Data(contentsOf: fileURL),
+              let sharedData = try? JSONDecoder().decode(SharedWidgetData.self, from: data) else {
+            return SharedWidgetData()
         }
-
-        let name = sharedDefaults?.string(forKey: "currentWallpaperName") ?? "Unknown"
-
-        // Try to get thumbnail path
-        let thumbnailPath = "\(id.uuidString).jpg"
-
-        return WidgetWallpaperInfo(id: id, name: name, thumbnailPath: thumbnailPath)
+        return sharedData
     }
 
-    private func loadFavorites() -> [WidgetWallpaperInfo] {
-        guard let data = sharedDefaults?.data(forKey: "favoriteWallpapers"),
-              let favorites = try? JSONDecoder().decode([WidgetWallpaperInfo].self, from: data) else {
-            return []
-        }
-        return Array(favorites.prefix(8)) // Max 8 for large widget
+    /// Pre-loads a thumbnail image from the shared container
+    private func loadThumbnailImage(_ path: String?) -> NSImage? {
+        guard let path = path, let dir = thumbnailsDirectory else { return nil }
+        let fileURL = dir.appendingPathComponent(path)
+        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+        return NSImage(data: data)
     }
 }
