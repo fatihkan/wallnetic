@@ -1,163 +1,163 @@
 import SwiftUI
 import WidgetKit
 
-/// Large widget: wallpaper background + clock + date + controls + favorites grid
+/// Large widget: wallpaper bg + clock + date + glass controls + favorites grid
 struct LargeWidgetView: View {
     let entry: WallpaperEntry
 
     private let columns = [
-        GridItem(.flexible(), spacing: 6),
-        GridItem(.flexible(), spacing: 6),
-        GridItem(.flexible(), spacing: 6)
+        GridItem(.flexible(), spacing: 5),
+        GridItem(.flexible(), spacing: 5),
+        GridItem(.flexible(), spacing: 5)
     ]
 
     var body: some View {
         ZStack {
-            // Wallpaper background
             wallpaperBackground
 
-            VStack(spacing: 8) {
-                // Top section: Clock + Date
-                VStack(spacing: 2) {
-                    // Date row
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(dayNumber)
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(.pink)
+            VStack(spacing: 6) {
+                // Date row
+                HStack(alignment: .center) {
+                    Text(dayNumber)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(colors: [.pink, .pink.opacity(0.7)],
+                                           startPoint: .top, endPoint: .bottom)
+                        )
 
-                        Text(monthYear)
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.7))
+                    Text(monthYear)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.55))
 
-                        Spacer()
-                    }
-
-                    // Clock + day
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(timeString)
-                            .font(.system(size: 56, weight: .ultraLight, design: .rounded))
-                            .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.5), radius: 6, y: 3)
-
-                        Text(dayName)
-                            .font(.system(size: 24, weight: .light, design: .rounded))
-                            .foregroundColor(.white.opacity(0.75))
-
-                        Spacer()
-                    }
+                    Spacer()
                 }
 
-                // Status bar
-                HStack(spacing: 12) {
-                    // Playback status
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(entry.isPlaying ? Color.green : Color.orange)
-                            .frame(width: 6, height: 6)
-                        Text(entry.isPlaying ? "Playing" : "Paused")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
+                // Clock + day
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(timeString)
+                        .font(.system(size: 58, weight: .ultraLight, design: .rounded))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.5), radius: 10, y: 3)
+                        .tracking(1)
+
+                    Text(dayName)
+                        .font(.system(size: 22, weight: .light, design: .rounded))
+                        .foregroundColor(.white.opacity(0.55))
+
+                    Spacer()
+                }
+                .padding(.top, -6)
+
+                // Status + controls glass bar
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(entry.isPlaying ? Color.green : Color.orange)
+                        .frame(width: 5, height: 5)
 
                     Text(entry.currentWallpaper?.name ?? "No Wallpaper")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)
 
                     Spacer()
 
-                    // Controls
-                    HStack(spacing: 10) {
+                    HStack(spacing: 14) {
                         Link(destination: URL(string: "wallnetic://playPause")!) {
                             Image(systemName: entry.isPlaying ? "pause.fill" : "play.fill")
-                                .font(.system(size: 13))
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(.white.opacity(0.9))
                         }
-
                         Link(destination: URL(string: "wallnetic://nextWallpaper")!) {
                             Image(systemName: "forward.fill")
-                                .font(.system(size: 13))
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(.white.opacity(0.9))
                         }
                     }
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 5)
-                    .background(.ultraThinMaterial.opacity(0.5))
-                    .clipShape(Capsule())
+                    .background(
+                        Capsule()
+                            .fill(.ultraThinMaterial.opacity(0.6))
+                            .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 0.5))
+                    )
                 }
 
-                Divider()
-                    .background(Color.white.opacity(0.2))
+                // Divider
+                Rectangle()
+                    .fill(.white.opacity(0.08))
+                    .frame(height: 0.5)
+                    .padding(.vertical, 2)
 
-                // Favorites section
-                HStack {
+                // Favorites header
+                HStack(spacing: 4) {
                     Image(systemName: "heart.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.pink)
-                    Text("Favorites")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(.system(size: 9))
+                        .foregroundColor(.pink.opacity(0.8))
+                    Text("FAVORITES")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.4))
+                        .tracking(1.5)
                     Spacer()
                 }
 
+                // Favorites grid or empty
                 if entry.favorites.isEmpty {
-                    VStack(spacing: 4) {
+                    Spacer()
+                    VStack(spacing: 6) {
                         Image(systemName: "heart.slash")
-                            .font(.title3)
-                            .foregroundColor(.white.opacity(0.3))
+                            .font(.system(size: 20))
+                            .foregroundColor(.white.opacity(0.2))
                         Text("No favorites yet")
-                            .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.4))
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.3))
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Spacer()
                 } else {
-                    LazyVGrid(columns: columns, spacing: 6) {
+                    LazyVGrid(columns: columns, spacing: 5) {
                         ForEach(entry.favorites.prefix(SharedConstants.maxFavorites)) { wallpaper in
                             Link(destination: URL(string: "wallnetic://setWallpaper?id=\(wallpaper.id.uuidString)")!) {
-                                favoriteThumbnail(wallpaper)
+                                favoriteTile(wallpaper)
                             }
                         }
                     }
+                    Spacer(minLength: 0)
                 }
-
-                Spacer(minLength: 0)
             }
             .padding(14)
         }
     }
 
-    private func favoriteThumbnail(_ wallpaper: WidgetWallpaperInfo) -> some View {
+    private func favoriteTile(_ wallpaper: WidgetWallpaperInfo) -> some View {
         ZStack {
             if let image = wallpaper.image {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                Color.white.opacity(0.1)
+                Color.white.opacity(0.08)
             }
 
-            // Active indicator
             if wallpaper.id == entry.currentWallpaper?.id {
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.accentColor, lineWidth: 2)
+                    .stroke(Color.pink.opacity(0.7), lineWidth: 1.5)
                 VStack {
                     Spacer()
                     HStack {
                         Spacer()
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 10))
-                            .foregroundColor(.accentColor)
-                            .shadow(radius: 2)
+                            .foregroundColor(.pink)
+                            .shadow(color: .black.opacity(0.5), radius: 2)
                             .padding(3)
                     }
                 }
             }
         }
-        .frame(height: 50)
+        .frame(height: 48)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                .stroke(.white.opacity(0.1), lineWidth: 0.5)
         )
     }
 
@@ -167,50 +167,41 @@ struct LargeWidgetView: View {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
+                    .blur(radius: 2)
                     .overlay(
                         LinearGradient(
-                            colors: [.black.opacity(0.4), .black.opacity(0.1), .black.opacity(0.5)],
+                            stops: [
+                                .init(color: .black.opacity(0.45), location: 0),
+                                .init(color: .black.opacity(0.1), location: 0.35),
+                                .init(color: .black.opacity(0.5), location: 1)
+                            ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
-                    .blur(radius: 1)
             } else {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.1, green: 0.05, blue: 0.2),
-                        Color(red: 0.05, green: 0.15, blue: 0.25)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                ZStack {
+                    Color(red: 0.06, green: 0.06, blue: 0.12)
+                    LinearGradient(
+                        colors: [.purple.opacity(0.25), .blue.opacity(0.15)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
             }
         }
     }
 
     private var timeString: String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: entry.date)
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: entry.date)
     }
-
     private var dayNumber: String {
-        let f = DateFormatter()
-        f.dateFormat = "d"
-        return f.string(from: entry.date)
+        let f = DateFormatter(); f.dateFormat = "d"; return f.string(from: entry.date)
     }
-
     private var monthYear: String {
-        let f = DateFormatter()
-        f.dateFormat = "MMMM yyyy"
-        f.locale = Locale(identifier: "tr_TR")
-        return f.string(from: entry.date)
+        let f = DateFormatter(); f.dateFormat = "MMMM yyyy"; f.locale = Locale(identifier: "tr_TR"); return f.string(from: entry.date)
     }
-
     private var dayName: String {
-        let f = DateFormatter()
-        f.dateFormat = "EEEE"
-        f.locale = Locale(identifier: "tr_TR")
-        return f.string(from: entry.date).lowercased()
+        let f = DateFormatter(); f.dateFormat = "EEEE"; f.locale = Locale(identifier: "tr_TR"); return f.string(from: entry.date).lowercased()
     }
 }

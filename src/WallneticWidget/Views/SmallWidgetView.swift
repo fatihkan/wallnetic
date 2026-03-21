@@ -1,54 +1,67 @@
 import SwiftUI
 import WidgetKit
 
-/// Small widget: wallpaper background + clock + play/pause
+/// Small widget: wallpaper bg + frosted glass clock + controls
 struct SmallWidgetView: View {
     let entry: WallpaperEntry
 
     var body: some View {
         ZStack {
-            // Wallpaper thumbnail as background
             wallpaperBackground
 
-            // Glass overlay with clock
-            VStack(spacing: 4) {
+            // Frosted glass panel
+            VStack(spacing: 6) {
                 Spacer()
 
                 // Clock
                 Text(timeString)
-                    .font(.system(size: 36, weight: .thin, design: .rounded))
+                    .font(.system(size: 38, weight: .light, design: .rounded))
                     .foregroundColor(.white)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                    .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
+                    .tracking(2)
 
                 // Date
-                Text(dateString)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.85))
-                    .shadow(color: .black.opacity(0.4), radius: 2)
+                Text(shortDateString)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.75))
+                    .tracking(1)
 
                 Spacer()
 
-                // Controls bar
-                HStack {
-                    // Wallpaper name
+                // Bottom glass bar
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(entry.isPlaying ? Color.green : Color.orange)
+                        .frame(width: 5, height: 5)
+
                     Text(entry.currentWallpaper?.name ?? "Wallnetic")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.65))
                         .lineLimit(1)
 
                     Spacer()
 
-                    // Play/Pause
                     Link(destination: URL(string: "wallnetic://playPause")!) {
                         Image(systemName: entry.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.85))
+                            .frame(width: 22, height: 22)
+                            .background(.white.opacity(0.15))
+                            .clipShape(Circle())
                     }
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.ultraThinMaterial.opacity(0.6))
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.ultraThinMaterial.opacity(0.7))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(.white.opacity(0.12), lineWidth: 0.5)
+                        )
+                )
             }
+            .padding(8)
         }
     }
 
@@ -58,30 +71,30 @@ struct SmallWidgetView: View {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .overlay(Color.black.opacity(0.2))
+                    .overlay(Color.black.opacity(0.25))
             } else {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.1, green: 0.05, blue: 0.2),
-                        Color(red: 0.05, green: 0.1, blue: 0.25)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                ZStack {
+                    Color(red: 0.06, green: 0.06, blue: 0.12)
+                    LinearGradient(
+                        colors: [.purple.opacity(0.3), .blue.opacity(0.2)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
             }
         }
     }
 
     private var timeString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: entry.date)
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: entry.date)
     }
 
-    private var dateString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMMM, EEEE"
-        formatter.locale = Locale(identifier: "tr_TR")
-        return formatter.string(from: entry.date)
+    private var shortDateString: String {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM, EEE"
+        f.locale = Locale(identifier: "tr_TR")
+        return f.string(from: entry.date).uppercased()
     }
 }
