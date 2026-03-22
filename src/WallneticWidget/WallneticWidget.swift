@@ -8,11 +8,10 @@ struct WallneticWidget: Widget {
         StaticConfiguration(kind: kind, provider: WallpaperTimelineProvider()) { entry in
             if #available(macOS 14.0, *) {
                 WallneticWidgetEntryView(entry: entry)
-                    .containerBackground(.fill.tertiary, for: .widget)
+                    .containerBackground(.clear, for: .widget)
             } else {
                 WallneticWidgetEntryView(entry: entry)
-                    .padding()
-                    .background(Color(NSColor.windowBackgroundColor))
+                    .clipShape(ContainerRelativeShape())
             }
         }
         .configurationDisplayName("Wallnetic")

@@ -125,6 +125,7 @@ struct LargeWidgetView: View {
             }
             .padding(14)
         }
+        .clipShape(ContainerRelativeShape())
     }
 
     private func favoriteTile(_ wallpaper: WidgetWallpaperInfo) -> some View {
