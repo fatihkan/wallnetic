@@ -116,16 +116,19 @@ struct MediumWidgetView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(
-                    RoundedRectangle(cornerRadius: 10)
+                    ContainerRelativeShape()
+                        .inset(by: -1)
                         .fill(.ultraThinMaterial.opacity(0.6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(.white.opacity(0.1), lineWidth: 0.5)
-                        )
+                )
+                .overlay(
+                    ContainerRelativeShape()
+                        .inset(by: -1)
+                        .stroke(.white.opacity(0.1), lineWidth: 0.5)
                 )
             }
             .padding(12)
         }
+        .clipShape(ContainerRelativeShape())
     }
 
     private var wallpaperBackground: some View {

@@ -9,7 +9,6 @@ struct SmallWidgetView: View {
         ZStack {
             wallpaperBackground
 
-            // Frosted glass panel
             VStack(spacing: 6) {
                 Spacer()
 
@@ -28,7 +27,7 @@ struct SmallWidgetView: View {
 
                 Spacer()
 
-                // Bottom glass bar
+                // Bottom glass bar - uses ContainerRelativeShape inset for matching corners
                 HStack(spacing: 6) {
                     Circle()
                         .fill(entry.isPlaying ? Color.green : Color.orange)
@@ -53,16 +52,19 @@ struct SmallWidgetView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(
-                    RoundedRectangle(cornerRadius: 10)
+                    ContainerRelativeShape()
+                        .inset(by: -1)
                         .fill(.ultraThinMaterial.opacity(0.7))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(.white.opacity(0.12), lineWidth: 0.5)
-                        )
+                )
+                .overlay(
+                    ContainerRelativeShape()
+                        .inset(by: -1)
+                        .stroke(.white.opacity(0.12), lineWidth: 0.5)
                 )
             }
-            .padding(8)
+            .padding(10)
         }
+        .clipShape(ContainerRelativeShape())
     }
 
     private var wallpaperBackground: some View {
@@ -86,15 +88,11 @@ struct SmallWidgetView: View {
     }
 
     private var timeString: String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: entry.date)
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: entry.date)
     }
 
     private var shortDateString: String {
-        let f = DateFormatter()
-        f.dateFormat = "d MMM, EEE"
-        f.locale = Locale(identifier: "tr_TR")
+        let f = DateFormatter(); f.dateFormat = "d MMM, EEE"; f.locale = Locale(identifier: "tr_TR")
         return f.string(from: entry.date).uppercased()
     }
 }
