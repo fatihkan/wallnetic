@@ -749,27 +749,6 @@ struct AboutSettingsView: View {
 
             Spacer()
 
-            // Buy Me a Coffee
-            Link(destination: URL(string: "https://buymeacoffee.com/fatihkan")!) {
-                HStack(spacing: 8) {
-                    Image(systemName: "cup.and.saucer.fill")
-                        .foregroundColor(.orange)
-                    Text("Buy me a coffee")
-                        .fontWeight(.medium)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.orange.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-
             Text("© 2026 Wallnetic. All rights reserved.")
                 .font(.caption2)
                 .foregroundColor(.secondary)
