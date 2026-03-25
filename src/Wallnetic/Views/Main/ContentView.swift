@@ -186,51 +186,8 @@ struct SidebarView: View {
             .listStyle(.sidebar)
             .animation(.easeInOut(duration: 0.2), value: selection)
 
-            Divider()
-
-            // Buy Me a Coffee
-            BuyMeCoffeeButton()
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
         }
         .frame(minWidth: 180)
-    }
-}
-
-// MARK: - Buy Me a Coffee Button
-
-struct BuyMeCoffeeButton: View {
-    @State private var isHovering = false
-
-    var body: some View {
-        Link(destination: URL(string: "https://buymeacoffee.com/fatihkan")!) {
-            HStack(spacing: 8) {
-                Image(systemName: "cup.and.saucer.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.orange)
-
-                Text("Buy me a coffee")
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovering ? Color.orange.opacity(0.15) : Color.secondary.opacity(0.1))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.orange.opacity(isHovering ? 0.5 : 0.2), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovering = hovering
-            }
-        }
     }
 }
 
