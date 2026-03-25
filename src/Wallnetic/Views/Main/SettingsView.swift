@@ -24,10 +24,13 @@ struct SettingsView: View {
                     Label("Display", systemImage: "display")
                 }
 
+            // Phase 2: AI features (hidden for App Store v1.0)
+            /*
             AISettingsView()
                 .tabItem {
                     Label("AI", systemImage: "wand.and.stars")
                 }
+            */
 
             NotificationSettingsView()
                 .tabItem {

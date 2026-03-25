@@ -5,8 +5,9 @@ enum SidebarSelection: Hashable {
     case all
     case favorites
     case recent
-    case aiGenerate
-    case aiHistory
+    // Phase 2: AI features (hidden for App Store v1.0)
+    // case aiGenerate
+    // case aiHistory
     case collections
     case collection(UUID)
 }
@@ -27,10 +28,11 @@ struct ContentView: View {
         } detail: {
             // Main content based on sidebar selection
             switch sidebarSelection {
-            case .aiGenerate:
-                AIGenerateView()
-            case .aiHistory:
-                HistoryView()
+            // Phase 2: AI features (hidden for App Store v1.0)
+            // case .aiGenerate:
+            //     AIGenerateView()
+            // case .aiHistory:
+            //     HistoryView()
             case .collections:
                 CollectionsView()
             case .collection(let collectionId):
@@ -54,14 +56,6 @@ struct ContentView: View {
                 TextField("Search", text: $searchText)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 200)
-
-                // AI Generate shortcut
-                Button {
-                    withAnimation { sidebarSelection = .aiGenerate }
-                } label: {
-                    Label("Generate", systemImage: "wand.and.stars")
-                }
-                .keyboardShortcut("g", modifiers: .command)
 
                 // Import button
                 Button {
@@ -166,6 +160,8 @@ struct SidebarView: View {
                     }
                 }
 
+                // Phase 2: AI features (hidden for App Store v1.0)
+                /*
                 Section("AI") {
                     Label("Generate", systemImage: "wand.and.stars")
                         .tag(SidebarSelection.aiGenerate)
@@ -173,6 +169,7 @@ struct SidebarView: View {
                     Label("History", systemImage: "clock.arrow.circlepath")
                         .tag(SidebarSelection.aiHistory)
                 }
+                */
 
                 Section("Info") {
                     HStack {

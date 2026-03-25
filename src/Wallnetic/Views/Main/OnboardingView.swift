@@ -11,9 +11,9 @@ struct OnboardingView: View {
         ("plus.circle.fill", "Import Your Videos",
          "Drag and drop video files or use the import button to add wallpapers to your library.",
          [.blue, .cyan]),
-        ("wand.and.stars", "AI Video Generation",
-         "Create unique wallpapers with AI. Choose from 7 models and 18 artistic styles.",
-         [.pink, .purple]),
+        ("heart.circle.fill", "Collections & Favorites",
+         "Organize wallpapers into collections and mark your favorites for quick access.",
+         [.pink, .red]),
         ("display.2", "Multi-Monitor Support",
          "Set different wallpapers for each display. Wallnetic automatically detects all connected monitors.",
          [.green, .teal])
