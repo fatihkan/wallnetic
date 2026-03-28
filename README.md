@@ -18,7 +18,7 @@
 
 Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your workspace with dynamic, animated backgrounds that run efficiently in the background.
 
-**Wallpaper Engine** has 40M+ users on Windows - now Mac users finally have a native alternative!
+**Wallpaper Engine** has 40M+ users on Windows &mdash; now Mac users finally have a native alternative built with SwiftUI and Metal.
 
 ---
 
@@ -26,37 +26,39 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 
 ### Live Video Wallpapers
 - Play any video file (MP4, MOV, M4V) as your desktop background
-- Smooth looping with no stuttering
-- Drag & drop video import
-
-### Library Management
-- Organize wallpapers in custom collections
-- Mark favorites for quick access
-- Search and filter your library
-- Recently added section
+- Seamless looping with zero stuttering
+- Drag & drop or file picker import
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
 - Same wallpaper across all monitors option
-- Automatic screen detection
-- Per-display control
+- Automatic display detection and hot-plug support
+
+### Notification Center Widget
+- Glassmorphism clock widget with wallpaper background
+- Real-time clock and date display (updates every minute)
+- Play/pause and next wallpaper controls
+- Favorites quick-switch thumbnails
+- Available in Small, Medium, and Large sizes
 
 ### Smart Power Management
-- Auto-pause when on battery power
+- Auto-pause on battery power
 - Pause when fullscreen apps are active
-- Resume automatically when conditions change
+- Automatic resume when conditions change
+- Configurable per preference
 
 ### Optimized Performance
 - **Metal GPU acceleration** for smooth playback
 - Minimal CPU usage (~2-5%)
-- Memory-efficient design
+- Memory-efficient thumbnail caching
 - Runs silently in the background
 
 ### Native macOS Experience
-- Built with SwiftUI
+- Built entirely with SwiftUI
 - Dark, Light, and System theme support
-- Menu bar app for quick access
-- Launch at login option
+- Menu bar controls with favorites quick-switch
+- Launch at login
+- Keyboard shortcuts throughout
 
 ---
 
@@ -80,60 +82,39 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 |-----------|-------------|
 | macOS | 13.0 (Ventura) or later |
 | Processor | Apple Silicon (M1/M2/M3/M4) or Intel |
-| RAM | 4GB minimum |
-| Storage | 50MB + your video files |
+| RAM | 4 GB minimum |
+| Storage | 50 MB + your video files |
 
-### Download
+### Mac App Store
 
-| Platform | Architecture | Download |
-|----------|--------------|----------|
-| macOS | Apple Silicon (M1/M2/M3/M4) | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS | Intel | [Download DMG](https://github.com/fatihkan/wallnetic/releases/latest) |
-| App Store | Universal | Coming Soon |
+Coming soon.
 
-> **Latest Version:** Check [Releases](https://github.com/fatihkan/wallnetic/releases) for the latest version
+### Download from Releases
 
-### macOS Installation
-
-1. **Download** the DMG file for your Mac (Apple Silicon or Intel)
-
-2. **Open** the DMG and drag Wallnetic to Applications folder
-
-3. **First Launch** - Since the app is not signed with an Apple Developer certificate, you'll need to bypass Gatekeeper:
-
-   **Option A: Right-click method**
-   ```
-   Right-click on Wallnetic.app → Click "Open" → Click "Open" again in the dialog
-   ```
-
-   **Option B: Terminal method**
-   ```bash
-   xattr -cr /Applications/Wallnetic.app
-   ```
-
-   **Option C: System Settings**
-   ```
-   System Settings → Privacy & Security → Scroll down → Click "Open Anyway"
-   ```
-
-4. **Grant Permissions** - When prompted, allow:
-   - Screen Recording (required for desktop wallpaper)
-   - Accessibility (optional, for keyboard shortcuts)
+| Platform | Download |
+|----------|----------|
+| macOS (Universal) | [Latest Release](https://github.com/fatihkan/wallnetic/releases/latest) |
 
 ### Build from Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/fatihkan/wallnetic.git
-cd wallnetic
+cd wallnetic/src/Wallnetic
+
+# Install XcodeGen (if not installed)
+brew install xcodegen
+
+# Generate Xcode project
+xcodegen generate
 
 # Open in Xcode
-open src/Wallnetic/Wallnetic.xcodeproj
+open Wallnetic.xcodeproj
 
-# Build and run (⌘ + R)
+# Build and run (Cmd + R)
 ```
 
-> **Note:** Building from source requires Xcode 15.0+ and macOS 13.0+
+> Requires Xcode 15.0+ and macOS 13.0+
 
 ---
 
@@ -141,37 +122,13 @@ open src/Wallnetic/Wallnetic.xcodeproj
 
 | Component | Technology |
 |-----------|------------|
-| Language | Swift 5.9+ |
-| UI Framework | SwiftUI |
-| Video Engine | AVFoundation |
+| Language | Swift 5.9 |
+| UI | SwiftUI |
+| Video Engine | AVFoundation + AVPlayerLooper |
 | GPU Rendering | Metal |
-| Architecture | MVVM |
-
----
-
-## Roadmap
-
-### Phase 1: MVP - Live Wallpapers ✅
-- [x] Video playback engine
-- [x] Multi-monitor support
-- [x] Library with collections & favorites
-- [x] Power management
-- [x] Metal rendering
-- [x] Theme support (Dark/Light/System)
-- [x] App Store submission
-
-### Phase 2: AI Integration (Coming Soon)
-- [ ] AI video generation from text prompts
-- [ ] Image-to-video animation
-- [ ] Multiple AI models (Kling, Minimax, Luma, etc.)
-- [ ] Scheduled daily generation
-
-### Phase 3: Effects & More
-- [ ] Particle effects
-- [ ] Audio-reactive animations
-- [ ] Wallpaper marketplace
-
-See [ROADMAP.md](docs/ROADMAP.md) for the full development plan.
+| Architecture | MVVM + Services |
+| Widget | WidgetKit |
+| Project Gen | XcodeGen |
 
 ---
 
@@ -179,20 +136,60 @@ See [ROADMAP.md](docs/ROADMAP.md) for the full development plan.
 
 ```
 wallnetic/
-├── src/Wallnetic/           # Xcode project
-│   ├── App/                 # App entry & delegate
-│   ├── Engine/              # Video rendering engine
-│   │   ├── VideoRenderer.swift
-│   │   ├── MetalVideoRenderer.swift
-│   │   ├── DesktopWindowController.swift
-│   │   └── PowerManager.swift
-│   ├── Views/               # SwiftUI views
-│   ├── Services/            # Business logic
-│   └── Models/              # Data models
-├── docs/                    # Documentation
-├── PRIVACY.md               # Privacy Policy
+├── src/
+│   ├── Wallnetic/              # Main app target
+│   │   ├── App/                # Entry point, AppDelegate
+│   │   ├── Engine/             # Video rendering, desktop windows, power mgmt
+│   │   ├── Models/             # Wallpaper, Collection, AI models
+│   │   ├── Views/              # SwiftUI views
+│   │   ├── Services/           # WallpaperManager, Collections, Thumbnails
+│   │   ├── Resources/          # Info.plist, Entitlements, Assets
+│   │   └── project.yml         # XcodeGen config
+│   └── WallneticWidget/        # Widget extension
+│       ├── Views/              # Small, Medium, Large widget views
+│       ├── Provider/           # Timeline provider
+│       └── Models/             # Shared data models
+├── docs/                       # Documentation, privacy policy
 └── README.md
 ```
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd + I` | Import videos |
+| `Cmd + P` | Toggle play/pause |
+| `Cmd + O` | Open main window |
+| `Cmd + ,` | Settings |
+| `Cmd + Q` | Quit |
+
+---
+
+## Roadmap
+
+### v1.0 &mdash; Live Wallpapers
+- [x] Video playback engine with seamless looping
+- [x] Multi-monitor support with per-display assignment
+- [x] Library management with collections and favorites
+- [x] Smart power management (battery, fullscreen detection)
+- [x] Metal GPU rendering
+- [x] Notification Center widget with glassmorphism clock
+- [x] Menu bar controls
+- [x] Dark/Light/System themes
+
+### v1.1 &mdash; Planned
+- [ ] Wallpaper effects (blur, brightness, tint)
+- [ ] Time-of-day auto wallpaper switch
+- [ ] Apple Shortcuts integration
+- [ ] Video trimming
+
+### v2.0 &mdash; AI Integration
+- [ ] AI video generation from text prompts
+- [ ] Image-to-video animation
+- [ ] Multiple AI models
+- [ ] Generation history
 
 ---
 
@@ -208,38 +205,26 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## Support
-
-If you find this project useful, consider supporting its development:
-
-<a href="https://buymeacoffee.com/fatihkan" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
-</a>
-
----
-
 ## Author
 
 **Fatih Kan**
 
-- Twitter: [@KanFatih](https://twitter.com/KanFatih)
+- Website: [wallnetic.app](https://wallnetic.app)
 - GitHub: [@fatihkan](https://github.com/fatihkan)
-- LinkedIn: [Fatih Kan](https://www.linkedin.com/in/fatihkan)
+- Twitter: [@KanFatih](https://twitter.com/KanFatih)
 
 ---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
+This project is licensed under the MIT License &mdash; see the [LICENSE](LICENSE) file for details.
 
 ## Privacy
 
-Wallnetic does not collect any user data. See [PRIVACY.md](PRIVACY.md) for details.
+Wallnetic does not collect any personal data. All wallpapers are stored locally on your Mac. See [PRIVACY.md](PRIVACY.md) for details.
 
 ---
 
 <p align="center">
-  Made with ❤️ for Mac users who deserve better wallpapers
+  Made with care for Mac users who deserve better wallpapers.
 </p>
