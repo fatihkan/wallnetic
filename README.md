@@ -205,6 +205,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
+## Support the Project
+
+If you find Wallnetic useful, consider supporting its development:
+
+<a href="https://buymeacoffee.com/fatihkan" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+</a>
+
+---
+
 ## Author
 
 **Fatih Kan**
