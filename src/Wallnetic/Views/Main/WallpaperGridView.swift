@@ -238,16 +238,13 @@ struct WallpaperContextMenu: View {
             Label("Set as Lock Screen", systemImage: "lock.rectangle")
         }
 
-        // Space assignment submenu
+        // Space assignment - auto-detect current space
         if SpaceWallpaperManager.shared.isEnabled {
-            Menu {
-                ForEach(0..<6, id: \.self) { i in
-                    Button("Space \(i + 1)") {
-                        SpaceWallpaperManager.shared.setWallpaper(wallpaper, forSpace: i)
-                    }
-                }
+            Button {
+                let currentSpace = SpaceWallpaperManager.shared.currentSpaceIndex
+                SpaceWallpaperManager.shared.setWallpaper(wallpaper, forSpace: currentSpace)
             } label: {
-                Label("Set for Space", systemImage: "square.stack.3d.up")
+                Label("Set for This Space", systemImage: "square.stack.3d.up")
             }
         }
 
