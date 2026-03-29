@@ -66,7 +66,7 @@ struct HomeView: View {
                     .animation(.easeInOut(duration: 0.8), value: heroIndex)
             }
 
-            // Bottom gradient fade to black
+            // Bottom gradient fade to black - not interactive
             VStack(spacing: 0) {
                 Spacer()
                 LinearGradient(
@@ -80,6 +80,7 @@ struct HomeView: View {
                 )
                 .frame(height: 200)
             }
+            .allowsHitTesting(false)
 
             // Content overlay - bottom left
             if heroIndex < wallpapers.count {
