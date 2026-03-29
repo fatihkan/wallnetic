@@ -137,7 +137,7 @@ struct DesktopOverlayView: View {
 
     private var dateString: String {
         let f = DateFormatter(); f.dateFormat = "d MMMM EEEE"
-        f.locale = Locale(identifier: "tr_TR")
+        f.locale = Locale.current
         return f.string(from: Date())
     }
 }

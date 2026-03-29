@@ -3,8 +3,13 @@ import AVFoundation
 import SwiftUI
 
 /// Reacts to system audio with visual effects on wallpaper
+/// NOTE: Currently uses demo mode (simulated audio). Real audio capture
+/// requires ScreenCaptureKit or AVAudioEngine with microphone permission.
 class MusicReactiveManager: ObservableObject {
     static let shared = MusicReactiveManager()
+
+    /// True when using simulated audio instead of real capture
+    let isDemoMode = true
 
     enum ReactiveEffect: String, CaseIterable, Identifiable {
         case pulse = "Pulse"
@@ -58,7 +63,8 @@ class MusicReactiveManager: ObservableObject {
             self?.updateAudioLevel()
         }
 
-        NSLog("[MusicReactive] Started with effect: %@", selectedEffect.rawValue)
+        NSLog("[MusicReactive] Started with effect: %@ (demo mode: %@)",
+              selectedEffect.rawValue, isDemoMode ? "yes" : "no")
     }
 
     func stop() {

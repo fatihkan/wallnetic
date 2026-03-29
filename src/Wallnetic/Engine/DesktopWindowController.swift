@@ -232,23 +232,26 @@ class DesktopWindowController {
                 let effects = WallpaperEffectsManager.shared
                 let layer = renderer.rendererView.layer
 
-                // Brightness + Contrast + Saturation via CALayer filters
-                if let filter = CIFilter(name: "CIColorControls") {
-                    filter.setValue(effects.brightness, forKey: kCIInputBrightnessKey)
-                    filter.setValue(effects.contrast, forKey: kCIInputContrastKey)
-                    filter.setValue(effects.saturation, forKey: kCIInputSaturationKey)
-                    layer?.filters = effects.hasActiveEffects ? [filter] : []
+                // Build combined filter array for the video layer
+                var filters: [CIFilter] = []
+
+                // Brightness + Contrast + Saturation
+                if let colorFilter = CIFilter(name: "CIColorControls") {
+                    colorFilter.setValue(effects.brightness, forKey: kCIInputBrightnessKey)
+                    colorFilter.setValue(effects.contrast, forKey: kCIInputContrastKey)
+                    colorFilter.setValue(effects.saturation, forKey: kCIInputSaturationKey)
+                    filters.append(colorFilter)
                 }
 
-                // Blur via Gaussian filter on layer
+                // Blur applied to the video content itself (not backgroundFilters)
                 if effects.blur > 0 {
                     if let blurFilter = CIFilter(name: "CIGaussianBlur") {
                         blurFilter.setValue(effects.blur, forKey: kCIInputRadiusKey)
-                        layer?.backgroundFilters = [blurFilter]
+                        filters.append(blurFilter)
                     }
-                } else {
-                    layer?.backgroundFilters = []
                 }
+
+                layer?.filters = effects.hasActiveEffects ? filters : []
             }
         }
     }
