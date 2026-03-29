@@ -165,6 +165,7 @@ struct SourceCard: View {
 struct InAppBrowserView: View {
     let source: WallpaperSource
     @Environment(\.dismiss) var dismiss
+    @ObservedObject var downloadManager = DownloadManager.shared
     @State private var currentURL: String
     @State private var isLoading = true
 
@@ -200,6 +201,22 @@ struct InAppBrowserView: View {
                         .scaleEffect(0.6)
                 }
 
+                // Download indicator
+                if downloadManager.activeCount > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.green)
+                        Text("\(downloadManager.activeCount)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.green)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.15))
+                    .cornerRadius(6)
+                }
+
                 // Close
                 Button {
                     dismiss()
@@ -218,6 +235,35 @@ struct InAppBrowserView: View {
             .padding(.vertical, 10)
             .background(Color(white: 0.1))
 
+            // Active downloads bar
+            if !downloadManager.downloads.filter({ $0.status == .downloading }).isEmpty {
+                VStack(spacing: 4) {
+                    ForEach(downloadManager.downloads.filter({ $0.status == .downloading })) { dl in
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 9))
+                                .foregroundColor(.green)
+
+                            Text(dl.name)
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.7))
+                                .lineLimit(1)
+
+                            ProgressView(value: dl.progress)
+                                .frame(width: 100)
+
+                            Text("\(Int(dl.progress * 100))%")
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                                .frame(width: 30)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(Color(white: 0.08))
+            }
+
             // WebView
             WebViewWrapper(
                 urlString: source.url,
@@ -235,6 +281,8 @@ struct WebViewWrapper: NSViewRepresentable {
     let urlString: String
     @Binding var currentURL: String
     @Binding var isLoading: Bool
+
+    private static let videoExtensions = ["mp4", "mov", "m4v", "webm", "mkv"]
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -265,6 +313,50 @@ struct WebViewWrapper: NSViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             parent.isLoading = false
             parent.currentURL = webView.url?.absoluteString ?? ""
+        }
+
+        /// Intercept navigation - catch video file downloads
+        func webView(_ webView: WKWebView,
+                     decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+
+            let ext = url.pathExtension.lowercased()
+
+            // If user clicked a video file link, intercept and download
+            if WebViewWrapper.videoExtensions.contains(ext) {
+                decisionHandler(.cancel)
+
+                let name = url.deletingPathExtension().lastPathComponent
+                NSLog("[Browser] Intercepted video: %@", url.absoluteString)
+
+                DownloadManager.shared.downloadAndImport(name: name, from: url)
+                return
+            }
+
+            decisionHandler(.allow)
+        }
+
+        /// Intercept response - catch video content-type downloads
+        func webView(_ webView: WKWebView,
+                     decidePolicyFor navigationResponse: WKNavigationResponse,
+                     decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+            if let mimeType = navigationResponse.response.mimeType,
+               mimeType.starts(with: "video/") {
+                // This is a video response - download it
+                if let url = navigationResponse.response.url {
+                    let name = url.deletingPathExtension().lastPathComponent
+                    NSLog("[Browser] Intercepted video response: %@", url.absoluteString)
+                    decisionHandler(.cancel)
+                    DownloadManager.shared.downloadAndImport(name: name, from: url)
+                    return
+                }
+            }
+
+            decisionHandler(.allow)
         }
     }
 }
