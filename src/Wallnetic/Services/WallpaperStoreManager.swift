@@ -74,7 +74,7 @@ class WallpaperStoreManager: ObservableObject {
 
     func downloadWallpaper(_ wallpaper: StoreWallpaper) async throws {
         guard let url = URL(string: wallpaper.downloadURL) else {
-            throw StoreError.invalidURL
+            throw WallpaperStoreError.invalidURL
         }
 
         let downloadedURL = try await URLImporter.shared.downloadAndImport(from: url.absoluteString)
@@ -89,7 +89,7 @@ class WallpaperStoreManager: ObservableObject {
 
 // MARK: - Errors
 
-enum StoreError: LocalizedError {
+enum WallpaperStoreError: LocalizedError {
     case invalidURL
     case downloadFailed
     case notAvailable
