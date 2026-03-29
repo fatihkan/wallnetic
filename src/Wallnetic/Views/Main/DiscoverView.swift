@@ -147,6 +147,7 @@ struct SourceCard: View {
                 .foregroundColor(.white.opacity(0.3))
         }
         .padding(16)
+        .frame(height: 90)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.white.opacity(isHovering ? 0.08 : 0.04))
