@@ -17,59 +17,29 @@ enum NavigationTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// Netflix-style transparent floating header that overlays content
+/// Netflix-style centered navigation bar with app icon
 struct TopNavigationBar: View {
     @Binding var selectedTab: NavigationTab
     @Binding var searchText: String
     @Binding var isImporting: Bool
     @State private var isSearching = false
-
-    /// When true, header has solid background (for scrolled state)
     var isScrolled: Bool = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Logo
-            Text("W")
-                .font(.system(size: 28, weight: .black, design: .rounded))
-                .foregroundStyle(
-                    LinearGradient(colors: [.red, .red.opacity(0.8)],
-                                   startPoint: .top, endPoint: .bottom)
-                )
-                .padding(.trailing, 28)
-
-            // Navigation tabs - Netflix style inline text
-            HStack(spacing: 20) {
-                ForEach(NavigationTab.allCases) { tab in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedTab = tab
-                        }
-                    } label: {
-                        Text(tab.rawValue)
-                            .font(.system(size: 13, weight: selectedTab == tab ? .bold : .regular))
-                            .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.7))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            Spacer()
-
-            // Right actions
-            HStack(spacing: 16) {
-                // Search
+        ZStack {
+            // Left side - search
+            HStack {
                 if isSearching {
                     HStack(spacing: 6) {
                         Image(systemName: "magnifyingglass")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.5))
 
                         TextField("Search...", text: $searchText)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 13))
+                            .font(.system(size: 12))
                             .foregroundColor(.white)
-                            .frame(width: 160)
+                            .frame(width: 140)
 
                         Button {
                             withAnimation(.easeOut(duration: 0.15)) {
@@ -77,54 +47,89 @@ struct TopNavigationBar: View {
                             }
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white.opacity(0.6))
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.white.opacity(0.5))
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
                     .background(
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.black.opacity(0.6))
+                            .fill(Color.white.opacity(0.1))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
                             )
                     )
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .move(edge: .trailing)),
-                        removal: .opacity
-                    ))
+                    .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .leading)))
                 } else {
                     Button {
                         withAnimation(.easeOut(duration: 0.2)) { isSearching = true }
                     } label: {
                         Image(systemName: "magnifyingglass")
-                            .font(.system(size: 15))
-                            .foregroundColor(.white.opacity(0.85))
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.7))
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut("f", modifiers: .command)
                 }
 
-                // Import
+                Spacer()
+            }
+
+            // Center - logo + tabs
+            HStack(spacing: 20) {
+                // App icon from assets
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 28, height: 28)
+                    .cornerRadius(6)
+
+                // Navigation tabs
+                HStack(spacing: 4) {
+                    ForEach(NavigationTab.allCases) { tab in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedTab = tab
+                            }
+                        } label: {
+                            Text(tab.rawValue)
+                                .font(.system(size: 13, weight: selectedTab == tab ? .bold : .regular))
+                                .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.6))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    selectedTab == tab
+                                    ? Capsule().fill(Color.white.opacity(0.12))
+                                    : nil
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            // Right side - import + settings
+            HStack(spacing: 14) {
+                Spacer()
+
                 Button {
                     isImporting = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut("i", modifiers: .command)
 
-                // Settings
                 if #available(macOS 14.0, *) {
                     SettingsLink {
                         Image(systemName: "gearshape")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.6))
                     }
                     .buttonStyle(.plain)
                 }
@@ -133,14 +138,8 @@ struct TopNavigationBar: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 10)
         .background(
-            LinearGradient(
-                stops: [
-                    .init(color: .black.opacity(isScrolled ? 0.95 : 0.7), location: 0),
-                    .init(color: .black.opacity(isScrolled ? 0.9 : 0), location: 1)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            Color.black.opacity(isScrolled ? 0.92 : 0.5)
+                .animation(.easeInOut(duration: 0.3), value: isScrolled)
         )
     }
 }

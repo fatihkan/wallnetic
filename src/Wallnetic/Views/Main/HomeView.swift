@@ -277,38 +277,48 @@ struct CarouselCard: View {
                         .overlay { ProgressView().scaleEffect(0.6) }
                 }
             }
-            .frame(width: isHovering ? 260 : 200, height: isHovering ? 146 : 113)
+            .frame(width: 200, height: 113)
             .clipped()
 
-            // Hover info
+            // Hover info overlay
             if isHovering {
+                // Dark gradient from bottom
                 VStack {
                     Spacer()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(wallpaper.name)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
+                    LinearGradient(colors: [.clear, .black.opacity(0.85)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(height: 50)
+                }
 
-                        HStack(spacing: 8) {
+                // Info at bottom
+                VStack {
+                    Spacer()
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(wallpaper.name)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+
                             Text(wallpaper.formattedDuration)
-                                .font(.system(size: 9))
+                                .font(.system(size: 8))
                                 .foregroundColor(.white.opacity(0.6))
-
-                            if wallpaper.isFavorite {
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundColor(.pink)
-                            }
+                        }
+                        Spacer()
+                        if wallpaper.isFavorite {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 8))
+                                .foregroundColor(.pink)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(
-                        LinearGradient(colors: [.clear, .black.opacity(0.85)],
-                                       startPoint: .top, endPoint: .bottom)
-                    )
+                    .padding(8)
                 }
+
+                // Play icon center
+                Image(systemName: "play.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white.opacity(0.9))
+                    .shadow(color: .black.opacity(0.5), radius: 4)
             }
 
             // Active border
