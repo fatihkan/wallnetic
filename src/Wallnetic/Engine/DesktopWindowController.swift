@@ -128,16 +128,43 @@ class DesktopWindowController {
 
     // MARK: - Playback Control
 
-    /// Sets the wallpaper video for a specific screen
+    /// Sets the wallpaper video with smooth crossfade transition
     func setWallpaper(url: URL, for screen: NSScreen? = nil) {
+        guard url != currentWallpaperURL else { return }
         currentWallpaperURL = url
 
-        if let screen = screen {
-            renderers[screen]?.loadVideo(url: url)
-        } else {
-            // Set for all screens
-            for renderer in renderers.values {
-                renderer.loadVideo(url: url)
+        let screens = screen.map { [$0] } ?? Array(desktopWindows.keys)
+
+        for s in screens {
+            guard let window = desktopWindows[s],
+                  let renderer = renderers[s] else { continue }
+
+            // Create a snapshot of current frame as transition layer
+            let snapshotLayer = CALayer()
+            snapshotLayer.frame = renderer.rendererView.bounds
+            snapshotLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+            snapshotLayer.zPosition = 50
+            snapshotLayer.backgroundColor = NSColor.black.cgColor
+
+            // Capture current frame if possible
+            if let layer = renderer.rendererView.layer {
+                snapshotLayer.contents = layer.contents
+            }
+
+            renderer.rendererView.layer?.addSublayer(snapshotLayer)
+
+            // Load new video underneath
+            renderer.loadVideo(url: url)
+
+            // Fade out snapshot after short delay (let new video buffer)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                CATransaction.begin()
+                CATransaction.setAnimationDuration(0.5)
+                snapshotLayer.opacity = 0
+                CATransaction.setCompletionBlock {
+                    snapshotLayer.removeFromSuperlayer()
+                }
+                CATransaction.commit()
             }
         }
     }
