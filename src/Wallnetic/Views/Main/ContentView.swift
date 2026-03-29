@@ -11,34 +11,31 @@ struct ContentView: View {
     @State private var showingOnboarding = false
 
     var body: some View {
-        ZStack(alignment: .top) {
-            // Main content
-            if wallpaperManager.wallpapers.isEmpty {
-                // Dark background for empty state
-                Color.black.ignoresSafeArea()
-                EmptyLibraryView(isImporting: $isImporting)
-            } else {
-                // Tab content
-                Group {
-                    switch selectedTab {
-                    case .home:
-                        HomeView()
-                    case .explore:
-                        ExploreView(searchText: searchText)
-                    case .popular:
-                        PopularView()
-                    }
-                }
-            }
-
-            // Floating Netflix-style header on top
+        VStack(spacing: 0) {
+            // Fixed header at top
             TopNavigationBar(
                 selectedTab: $selectedTab,
                 searchText: $searchText,
                 isImporting: $isImporting,
                 isScrolled: scrollOffset > 50
             )
+
+            // Main content below header
+            if wallpaperManager.wallpapers.isEmpty {
+                Color.black
+                    .overlay { EmptyLibraryView(isImporting: $isImporting) }
+            } else {
+                switch selectedTab {
+                case .home:
+                    HomeView()
+                case .explore:
+                    ExploreView(searchText: searchText)
+                case .popular:
+                    PopularView()
+                }
+            }
         }
+        .background(Color.black)
         .preferredColorScheme(.dark)
         .fileImporter(
             isPresented: $isImporting,

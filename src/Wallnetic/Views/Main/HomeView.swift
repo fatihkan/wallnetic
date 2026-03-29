@@ -9,8 +9,9 @@ struct HomeView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
-                // Full-width hero - Netflix style
+                // Full-width hero - extends behind the top bar
                 heroBanner
+                    .padding(.top, -46) // Overlap into top bar area
 
                 // Carousels below hero
                 VStack(spacing: 28) {
