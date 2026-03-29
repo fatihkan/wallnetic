@@ -118,7 +118,7 @@ struct HomeView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "play.fill")
-                                Text("Kullan")
+                                Text("Use")
                                     .fontWeight(.bold)
                             }
                             .font(.system(size: 14))
