@@ -1,10 +1,15 @@
 import SwiftUI
 
+/// Grid filter mode
+enum GridFilter: String {
+    case all, favorites, recent
+}
+
 struct WallpaperGridView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Binding var selectedWallpaper: Wallpaper?
     let searchText: String
-    let filter: SidebarSelection
+    var filter: GridFilter = .all
     @State private var previewWallpaper: Wallpaper?
 
     private let columns = [
@@ -14,7 +19,6 @@ struct WallpaperGridView: View {
     var filteredWallpapers: [Wallpaper] {
         var wallpapers = wallpaperManager.wallpapers
 
-        // Apply sidebar filter
         switch filter {
         case .all:
             break
@@ -25,11 +29,8 @@ struct WallpaperGridView: View {
             wallpapers = wallpapers
                 .filter { $0.dateAdded > oneWeekAgo }
                 .sorted { $0.dateAdded > $1.dateAdded }
-        case .collections, .collection:
-            break
         }
 
-        // Apply search filter
         if !searchText.isEmpty {
             wallpapers = wallpapers.filter {
                 $0.name.localizedCaseInsensitiveContains(searchText)

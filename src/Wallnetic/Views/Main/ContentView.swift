@@ -1,69 +1,37 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum SidebarSelection: Hashable {
-    case all
-    case favorites
-    case recent
-    // Phase 2: AI features (hidden for App Store v1.0)
-    // case aiGenerate
-    // case aiHistory
-    case collections
-    case collection(UUID)
-}
-
 struct ContentView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
-    @State private var selectedWallpaper: Wallpaper?
+    @State private var selectedTab: NavigationTab = .home
     @State private var isImporting = false
     @State private var searchText = ""
-    @State private var sidebarSelection: SidebarSelection? = .all
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showingOnboarding = false
 
     var body: some View {
-        NavigationSplitView {
-            // Sidebar
-            SidebarView(selection: $sidebarSelection)
-        } detail: {
-            // Main content based on sidebar selection
-            switch sidebarSelection {
-            // Phase 2: AI features (hidden for App Store v1.0)
-            // case .aiGenerate:
-            //     AIGenerateView()
-            // case .aiHistory:
-            //     HistoryView()
-            case .collections:
-                CollectionsView()
-            case .collection(let collectionId):
-                CollectionDetailView(collectionId: collectionId)
-            case .all, .favorites, .recent, .none:
-                if wallpaperManager.wallpapers.isEmpty {
-                    EmptyLibraryView(isImporting: $isImporting)
-                } else {
-                    WallpaperGridView(
-                        selectedWallpaper: $selectedWallpaper,
-                        searchText: searchText,
-                        filter: sidebarSelection ?? .all
-                    )
-                }
-            }
-        }
-        .navigationTitle("Wallnetic")
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                // Search
-                TextField("Search", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 200)
+        VStack(spacing: 0) {
+            // Top navigation bar
+            TopNavigationBar(
+                selectedTab: $selectedTab,
+                searchText: $searchText,
+                isImporting: $isImporting
+            )
 
-                // Import button
-                Button {
-                    isImporting = true
-                } label: {
-                    Label("Import", systemImage: "plus")
+            Divider()
+
+            // Main content based on selected tab
+            if wallpaperManager.wallpapers.isEmpty {
+                EmptyLibraryView(isImporting: $isImporting)
+            } else {
+                switch selectedTab {
+                case .home:
+                    HomeView()
+                case .explore:
+                    ExploreView(searchText: searchText)
+                case .popular:
+                    PopularView()
                 }
-                .keyboardShortcut("i", modifiers: .command)
             }
         }
         .fileImporter(
@@ -77,7 +45,7 @@ struct ContentView: View {
             handleDrop(providers)
             return true
         }
-        .frame(minWidth: 800, minHeight: 500)
+        .frame(minWidth: 900, minHeight: 600)
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(isPresented: $showingOnboarding)
         }
@@ -129,65 +97,6 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Sidebar View
-
-struct SidebarView: View {
-    @EnvironmentObject var wallpaperManager: WallpaperManager
-    @ObservedObject var collectionManager = CollectionManager.shared
-    @Binding var selection: SidebarSelection?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            List(selection: $selection) {
-                Section("Library") {
-                    Label("All", systemImage: "photo.on.rectangle")
-                        .tag(SidebarSelection.all)
-
-                    Label("Favorites", systemImage: "heart")
-                        .tag(SidebarSelection.favorites)
-
-                    Label("Recent", systemImage: "clock")
-                        .tag(SidebarSelection.recent)
-                }
-
-                Section("Collections") {
-                    Label("All Collections", systemImage: "folder")
-                        .tag(SidebarSelection.collections)
-
-                    ForEach(collectionManager.collections) { collection in
-                        Label(collection.name, systemImage: collection.icon)
-                            .tag(SidebarSelection.collection(collection.id))
-                    }
-                }
-
-                // Phase 2: AI features (hidden for App Store v1.0)
-                /*
-                Section("AI") {
-                    Label("Generate", systemImage: "wand.and.stars")
-                        .tag(SidebarSelection.aiGenerate)
-
-                    Label("History", systemImage: "clock.arrow.circlepath")
-                        .tag(SidebarSelection.aiHistory)
-                }
-                */
-
-                Section("Info") {
-                    HStack {
-                        Text("Wallpapers")
-                        Spacer()
-                        Text("\(wallpaperManager.wallpapers.count)")
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .listStyle(.sidebar)
-            .animation(.easeInOut(duration: 0.2), value: selection)
-
-        }
-        .frame(minWidth: 180)
-    }
-}
-
 // MARK: - Empty Library View
 
 struct EmptyLibraryView: View {
@@ -224,15 +133,13 @@ struct EmptyLibraryView: View {
                     .lineSpacing(4)
             }
 
-            HStack(spacing: 16) {
-                Button {
-                    isImporting = true
-                } label: {
-                    Label("Import Videos", systemImage: "plus.circle.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+            Button {
+                isImporting = true
+            } label: {
+                Label("Import Videos", systemImage: "plus.circle.fill")
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
 
             HStack(spacing: 4) {
                 Image(systemName: "arrow.down.doc")
@@ -242,7 +149,6 @@ struct EmptyLibraryView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            .padding(.top, 4)
 
             Spacer()
         }
