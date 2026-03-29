@@ -209,7 +209,7 @@ If you find Wallnetic useful, consider supporting its development:
 
 **Fatih Kan**
 
-- Website: [wallnetic.app](https://wallnetic.app)
+- Website: [github.com/fatihkan/wallnetic](https://github.com/fatihkan/wallnetic)
 - GitHub: [@fatihkan](https://github.com/fatihkan)
 - Twitter: [@KanFatih](https://twitter.com/KanFatih)
 
