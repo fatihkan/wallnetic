@@ -25,14 +25,25 @@ extension MetalVideoRenderer: WallpaperRenderer {
 class DesktopWindowController {
     private var desktopWindows: [NSScreen: NSWindow] = [:]
     private var renderers: [NSScreen: WallpaperRenderer] = [:]
+    private var effectOverlays: [NSScreen: NSView] = [:]
     private var isPlaying = false
     private var currentWallpaperURL: URL?
     private var useMetalRenderer: Bool
 
     init() {
-        // Check if Metal renderer should be used
         self.useMetalRenderer = WallpaperManager.shared.useMetalRenderer
         setupDesktopWindows()
+        setupEffectsObserver()
+    }
+
+    private func setupEffectsObserver() {
+        NotificationCenter.default.addObserver(
+            forName: .wallpaperEffectsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyEffects()
+        }
     }
 
     // MARK: - Window Setup
@@ -92,9 +103,20 @@ class DesktopWindowController {
         renderer.rendererView.autoresizingMask = [.width, .height]
         window.contentView = renderer.rendererView
 
+        // Create effect overlay view
+        let effectOverlay = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
+        effectOverlay.autoresizingMask = [.width, .height]
+        effectOverlay.wantsLayer = true
+        effectOverlay.layer?.zPosition = 100
+        renderer.rendererView.addSubview(effectOverlay)
+        effectOverlays[screen] = effectOverlay
+
         // Store references
         desktopWindows[screen] = window
         renderers[screen] = renderer
+
+        // Apply current effects
+        applyEffectsToOverlay(effectOverlay)
 
         // Show window
         window.orderFront(nil)
@@ -196,6 +218,73 @@ class DesktopWindowController {
             if let window = desktopWindows[screen] {
                 window.setFrame(screen.frame, display: false)
             }
+        }
+    }
+
+    // MARK: - Effects
+
+    /// Applies current effects to all screen overlays
+    func applyEffects() {
+        for (screen, overlay) in effectOverlays {
+            applyEffectsToOverlay(overlay)
+            // Apply blur to the renderer view's layer
+            if let renderer = renderers[screen] {
+                let effects = WallpaperEffectsManager.shared
+                let layer = renderer.rendererView.layer
+
+                // Brightness + Contrast + Saturation via CALayer filters
+                if let filter = CIFilter(name: "CIColorControls") {
+                    filter.setValue(effects.brightness, forKey: kCIInputBrightnessKey)
+                    filter.setValue(effects.contrast, forKey: kCIInputContrastKey)
+                    filter.setValue(effects.saturation, forKey: kCIInputSaturationKey)
+                    layer?.filters = effects.hasActiveEffects ? [filter] : []
+                }
+
+                // Blur via Gaussian filter on layer
+                if effects.blur > 0 {
+                    if let blurFilter = CIFilter(name: "CIGaussianBlur") {
+                        blurFilter.setValue(effects.blur, forKey: kCIInputRadiusKey)
+                        layer?.backgroundFilters = [blurFilter]
+                    }
+                } else {
+                    layer?.backgroundFilters = []
+                }
+            }
+        }
+    }
+
+    /// Applies tint and vignette overlay effects
+    private func applyEffectsToOverlay(_ overlay: NSView) {
+        let effects = WallpaperEffectsManager.shared
+        guard let layer = overlay.layer else { return }
+
+        // Clear sublayers
+        layer.sublayers?.removeAll()
+
+        // Tint overlay
+        if effects.tintEnabled {
+            let tintLayer = CALayer()
+            tintLayer.frame = overlay.bounds
+            tintLayer.backgroundColor = effects.tintColor.withAlphaComponent(effects.tintOpacity).cgColor
+            tintLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+            layer.addSublayer(tintLayer)
+        }
+
+        // Vignette overlay
+        if effects.vignetteEnabled {
+            let vignetteLayer = CAGradientLayer()
+            vignetteLayer.frame = overlay.bounds
+            vignetteLayer.type = .radial
+            vignetteLayer.colors = [
+                NSColor.clear.cgColor,
+                NSColor.black.withAlphaComponent(0.3 * effects.vignetteIntensity).cgColor,
+                NSColor.black.withAlphaComponent(0.7 * effects.vignetteIntensity).cgColor
+            ]
+            vignetteLayer.locations = [0.3, 0.7, 1.0]
+            vignetteLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+            vignetteLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
+            vignetteLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+            layer.addSublayer(vignetteLayer)
         }
     }
 
