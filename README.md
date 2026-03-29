@@ -6,8 +6,9 @@
 [![Swift](https://img.shields.io/badge/Swift-5.9+-F05138.svg?style=flat&logo=swift&logoColor=white)](https://swift.org/)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-blue.svg?style=flat&logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![Metal](https://img.shields.io/badge/Metal-GPU-8E8E93.svg?style=flat&logo=apple)](https://developer.apple.com/metal/)
+[![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/tag/v1.0.0)
+[![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/tag/v1.1.0)
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/fdb62e04-455d-43e5-8b8f-6dbee796dc90" width="800" autoplay loop muted playsinline>
@@ -24,53 +25,69 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 
 ## Features
 
+### Netflix-Style Interface
+- Home, Explore, Popular, and Discover tabs
+- Full-screen hero banner with auto-rotating showcase
+- Horizontal carousel sections with hover previews
+- Dark theme optimized for media browsing
+
+### Discover Wallpaper Sources
+- Browse 6 wallpaper sources: Pixabay, Pexels, MyLiveWallpapers, DesktopHut, MoeWalls, MotionBGs
+- In-app browser with automatic video download detection
+- Scan any page to find and download all videos
+- Progress tracking with auto-import to library
+
 ### Live Video Wallpapers
-- Play any video file (MP4, MOV, M4V) as your desktop background
+- Play any video file (MP4, MOV, M4V, GIF, WebM) as your desktop background
 - Seamless looping with zero stuttering
 - Drag & drop or file picker import
+- Crossfade transitions between wallpaper changes
+
+### Per-Space Wallpapers
+- Set different wallpapers for each macOS Space (virtual desktop)
+- Auto-switches when changing Spaces via Mission Control
+- Right-click any wallpaper > "Set for This Space"
+
+### Lock Screen Video
+- Video wallpaper on lock screen with clock overlay
+- Uses current wallpaper or a specific selection
+- Auto-detects screen lock/unlock
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
 - Same wallpaper across all monitors option
 - Automatic display detection and hot-plug support
 
+### Wallpaper Effects
+- Brightness, contrast, saturation, blur, tint, and vignette
+- 8 presets: None, Dim, Vivid, Moody, Film, B&W, Dreamy, Focus
+- Real-time CIFilter effects on video layer
+
+### Time-of-Day Auto Switch
+- 4 time slots: Morning, Afternoon, Evening, Night
+- Assign wallpapers per slot with configurable hours
+
 ### Notification Center Widget
 - Glassmorphism clock widget with wallpaper background
-- Real-time clock and date display (updates every minute)
 - Play/pause and next wallpaper controls
 - Favorites quick-switch thumbnails
-- Available in Small, Medium, and Large sizes
+- Small, Medium, and Large sizes
 
 ### Smart Power Management
 - Auto-pause on battery power
 - Pause when fullscreen apps are active
 - Automatic resume when conditions change
-- Configurable per preference
 
-### Optimized Performance
+### Apple Shortcuts & Siri
+- Set Wallpaper, Next Wallpaper, Toggle Playback, Random Wallpaper
+- Siri: "Change wallpaper in Wallnetic"
+- macOS 14+ required
+
+### Performance
 - **Metal GPU acceleration** for smooth playback
+- 3 performance modes: Quality, Balanced, Battery Saver
 - Minimal CPU usage (~2-5%)
-- Memory-efficient thumbnail caching
-- Runs silently in the background
-
-### Native macOS Experience
-- Built entirely with SwiftUI
-- Dark, Light, and System theme support
-- Menu bar controls with favorites quick-switch
-- Launch at login
-- Keyboard shortcuts throughout
-
----
-
-## Screenshots
-
-<p align="center">
-  <img src="docs/assets/screenshot-main.png" alt="Main Window" width="600"/>
-</p>
-
-<p align="center">
-  <img src="docs/assets/screenshot-settings.png" alt="Settings" width="500"/>
-</p>
+- Async image caching
 
 ---
 
@@ -85,32 +102,21 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 | RAM | 4 GB minimum |
 | Storage | 50 MB + your video files |
 
-### Mac App Store
-
-Coming soon.
-
-### Download from Releases
+### Download
 
 | Platform | Download |
 |----------|----------|
-| macOS (Universal) | [Latest Release](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Apple Silicon) | [Wallnetic_1.1.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Intel) | [Wallnetic_1.1.0_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
 
 ### Build from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/fatihkan/wallnetic.git
 cd wallnetic/src/Wallnetic
-
-# Install XcodeGen (if not installed)
 brew install xcodegen
-
-# Generate Xcode project
 xcodegen generate
-
-# Open in Xcode
 open Wallnetic.xcodeproj
-
 # Build and run (Cmd + R)
 ```
 
@@ -128,30 +134,8 @@ open Wallnetic.xcodeproj
 | GPU Rendering | Metal |
 | Architecture | MVVM + Services |
 | Widget | WidgetKit |
+| In-App Purchase | StoreKit 2 |
 | Project Gen | XcodeGen |
-
----
-
-## Project Structure
-
-```
-wallnetic/
-├── src/
-│   ├── Wallnetic/              # Main app target
-│   │   ├── App/                # Entry point, AppDelegate
-│   │   ├── Engine/             # Video rendering, desktop windows, power mgmt
-│   │   ├── Models/             # Wallpaper, Collection, AI models
-│   │   ├── Views/              # SwiftUI views
-│   │   ├── Services/           # WallpaperManager, Collections, Thumbnails
-│   │   ├── Resources/          # Info.plist, Entitlements, Assets
-│   │   └── project.yml         # XcodeGen config
-│   └── WallneticWidget/        # Widget extension
-│       ├── Views/              # Small, Medium, Large widget views
-│       ├── Provider/           # Timeline provider
-│       └── Models/             # Shared data models
-├── docs/                       # Documentation, privacy policy
-└── README.md
-```
 
 ---
 
@@ -161,35 +145,41 @@ wallnetic/
 |----------|--------|
 | `Cmd + I` | Import videos |
 | `Cmd + P` | Toggle play/pause |
+| `Cmd + N` | Next wallpaper |
+| `Cmd + F` | Search |
 | `Cmd + O` | Open main window |
 | `Cmd + ,` | Settings |
-| `Cmd + Q` | Quit |
 
 ---
 
 ## Roadmap
 
-### v1.0 &mdash; Live Wallpapers
+### v1.0 &mdash; Core
 - [x] Video playback engine with seamless looping
-- [x] Multi-monitor support with per-display assignment
+- [x] Multi-monitor support
 - [x] Library management with collections and favorites
-- [x] Smart power management (battery, fullscreen detection)
+- [x] Smart power management
 - [x] Metal GPU rendering
-- [x] Notification Center widget with glassmorphism clock
+- [x] Notification Center widget
 - [x] Menu bar controls
-- [x] Dark/Light/System themes
 
-### v1.1 &mdash; Planned
-- [ ] Wallpaper effects (blur, brightness, tint)
-- [ ] Time-of-day auto wallpaper switch
-- [ ] Apple Shortcuts integration
-- [ ] Video trimming
+### v1.1 &mdash; Current
+- [x] Netflix-style UI redesign
+- [x] Discover wallpaper sources (Pixabay, Pexels, web browser)
+- [x] Per-Space wallpapers
+- [x] Lock screen video
+- [x] Wallpaper effects (blur, brightness, tint, vignette)
+- [x] Time-of-day auto switch
+- [x] Apple Shortcuts & Siri integration
+- [x] GIF/WebM/WebP format support
+- [x] Crossfade transitions
+- [x] Performance modes
 
-### v2.0 &mdash; AI Integration
+### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
-- [ ] Image-to-video animation
-- [ ] Multiple AI models
-- [ ] Generation history
+- [ ] Wallpaper marketplace
+- [ ] Music reactive mode
+- [ ] iCloud library sync
 
 ---
 
