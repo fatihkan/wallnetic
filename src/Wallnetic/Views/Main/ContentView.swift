@@ -6,34 +6,40 @@ struct ContentView: View {
     @State private var selectedTab: NavigationTab = .home
     @State private var isImporting = false
     @State private var searchText = ""
+    @State private var scrollOffset: CGFloat = 0
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showingOnboarding = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Top navigation bar
+        ZStack(alignment: .top) {
+            // Main content
+            if wallpaperManager.wallpapers.isEmpty {
+                // Dark background for empty state
+                Color.black.ignoresSafeArea()
+                EmptyLibraryView(isImporting: $isImporting)
+            } else {
+                // Tab content
+                Group {
+                    switch selectedTab {
+                    case .home:
+                        HomeView()
+                    case .explore:
+                        ExploreView(searchText: searchText)
+                    case .popular:
+                        PopularView()
+                    }
+                }
+            }
+
+            // Floating Netflix-style header on top
             TopNavigationBar(
                 selectedTab: $selectedTab,
                 searchText: $searchText,
-                isImporting: $isImporting
+                isImporting: $isImporting,
+                isScrolled: scrollOffset > 50
             )
-
-            Divider()
-
-            // Main content based on selected tab
-            if wallpaperManager.wallpapers.isEmpty {
-                EmptyLibraryView(isImporting: $isImporting)
-            } else {
-                switch selectedTab {
-                case .home:
-                    HomeView()
-                case .explore:
-                    ExploreView(searchText: searchText)
-                case .popular:
-                    PopularView()
-                }
-            }
         }
+        .preferredColorScheme(.dark)
         .fileImporter(
             isPresented: $isImporting,
             allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
@@ -57,7 +63,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Import Handling
+    // MARK: - Import
 
     private func handleImport(_ result: Result<[URL], Error>) {
         switch result {
@@ -84,13 +90,9 @@ struct ContentView: View {
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
                 guard let data = item as? Data,
                       let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-
                 Task {
-                    do {
-                        _ = try await wallpaperManager.importVideo(from: url)
-                    } catch {
-                        print("Drop import error: \(error)")
-                    }
+                    do { _ = try await wallpaperManager.importVideo(from: url) }
+                    catch { print("Drop error: \(error)") }
                 }
             }
         }
@@ -103,60 +105,61 @@ struct EmptyLibraryView: View {
     @Binding var isImporting: Bool
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 28) {
             Spacer()
 
             ZStack {
                 Circle()
                     .fill(
-                        LinearGradient(colors: [.purple.opacity(0.1), .blue.opacity(0.1)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                        RadialGradient(colors: [.red.opacity(0.15), .clear],
+                                       center: .center, startRadius: 20, endRadius: 80)
                     )
-                    .frame(width: 120, height: 120)
+                    .frame(width: 160, height: 160)
 
-                Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: 52))
+                Image(systemName: "play.rectangle.fill")
+                    .font(.system(size: 56))
                     .foregroundStyle(
-                        LinearGradient(colors: [.purple, .blue],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                        LinearGradient(colors: [.red, .red.opacity(0.7)],
+                                       startPoint: .top, endPoint: .bottom)
                     )
             }
 
             VStack(spacing: 8) {
-                Text("No Wallpapers Yet")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                Text("Welcome to Wallnetic")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
 
-                Text("Import video files to transform your desktop\nwith stunning live wallpapers")
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
+                Text("Import video files to set as your live desktop wallpaper")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.5))
             }
 
             Button {
                 isImporting = true
             } label: {
-                Label("Import Videos", systemImage: "plus.circle.fill")
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                    Text("Import Videos")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .padding(.horizontal, 28)
+                .padding(.vertical, 12)
+                .background(Color.red)
+                .foregroundColor(.white)
+                .cornerRadius(4)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(.plain)
 
-            HStack(spacing: 4) {
-                Image(systemName: "arrow.down.doc")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-                Text("Or drag and drop video files here")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            Text("Drag and drop MP4, MOV, or M4V files")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.35))
 
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
-// MARK: - Preview
 
 #Preview {
     ContentView()

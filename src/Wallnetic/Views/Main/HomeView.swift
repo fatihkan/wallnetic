@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Netflix/Disney+ style home view with hero banner and carousels
+/// Netflix-style home with full-screen hero and horizontal carousels
 struct HomeView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var heroIndex = 0
@@ -8,140 +8,178 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 28) {
-                // Hero Banner
-                if !wallpaperManager.wallpapers.isEmpty {
-                    heroBanner
-                        .padding(.horizontal, 20)
+            VStack(spacing: 0) {
+                // Full-width hero - Netflix style
+                heroBanner
+
+                // Carousels below hero
+                VStack(spacing: 28) {
+                    if !favoritesWallpapers.isEmpty {
+                        CarouselSection(
+                            title: "My List",
+                            icon: "heart.fill",
+                            iconColor: .pink,
+                            wallpapers: favoritesWallpapers
+                        )
+                    }
+
+                    if !recentWallpapers.isEmpty {
+                        CarouselSection(
+                            title: "Recently Added",
+                            icon: "sparkles",
+                            iconColor: .yellow,
+                            wallpapers: recentWallpapers
+                        )
+                    }
+
+                    if wallpaperManager.wallpapers.count > 3 {
+                        CarouselSection(
+                            title: "All Wallpapers",
+                            icon: "square.grid.2x2.fill",
+                            iconColor: .blue,
+                            wallpapers: wallpaperManager.wallpapers
+                        )
+                    }
+
+                    Spacer(minLength: 60)
                 }
-
-                // Carousel sections
-                if !favoritesWallpapers.isEmpty {
-                    CarouselSection(
-                        title: "My Favorites",
-                        icon: "heart.fill",
-                        iconColor: .pink,
-                        wallpapers: favoritesWallpapers
-                    )
-                }
-
-                if !recentWallpapers.isEmpty {
-                    CarouselSection(
-                        title: "Recently Added",
-                        icon: "clock.fill",
-                        iconColor: .blue,
-                        wallpapers: recentWallpapers
-                    )
-                }
-
-                CarouselSection(
-                    title: "All Wallpapers",
-                    icon: "photo.stack.fill",
-                    iconColor: .purple,
-                    wallpapers: wallpaperManager.wallpapers
-                )
-
-                Spacer(minLength: 40)
+                .padding(.top, 20)
             }
-            .padding(.top, 8)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Color.black)
         .onAppear { startHeroTimer() }
         .onDisappear { heroTimer?.invalidate() }
     }
 
-    // MARK: - Hero Banner
+    // MARK: - Netflix Hero Banner
 
     private var heroBanner: some View {
         let wallpapers = Array(wallpaperManager.wallpapers.prefix(5))
 
-        return ZStack(alignment: .bottomLeading) {
-            // Background image
+        return ZStack(alignment: .bottom) {
+            // Full background image
             if heroIndex < wallpapers.count {
                 HeroBannerCard(wallpaper: wallpapers[heroIndex])
                     .id(heroIndex)
                     .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.8), value: heroIndex)
             }
 
-            // Gradient overlay
-            LinearGradient(
-                stops: [
-                    .init(color: .clear, location: 0.2),
-                    .init(color: Color(nsColor: .windowBackgroundColor).opacity(0.7), location: 0.7),
-                    .init(color: Color(nsColor: .windowBackgroundColor), location: 1.0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            // Bottom gradient fade to black
+            VStack(spacing: 0) {
+                Spacer()
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black.opacity(0.6), location: 0.5),
+                        .init(color: .black, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 200)
+            }
 
-            // Info overlay
+            // Content overlay - bottom left
             if heroIndex < wallpapers.count {
                 let wallpaper = wallpapers[heroIndex]
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Spacer()
+
+                    // Title
                     Text(wallpaper.name)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
                         .lineLimit(1)
 
-                    HStack(spacing: 16) {
-                        Label(wallpaper.formattedResolution, systemImage: "aspectratio")
-                        Label(wallpaper.formattedDuration, systemImage: "clock")
-                        Label(wallpaper.formattedFileSize, systemImage: "doc")
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                    // Metadata
+                    HStack(spacing: 14) {
+                        Text(wallpaper.formattedResolution)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.green)
 
-                    HStack(spacing: 12) {
+                        Text(wallpaper.formattedDuration)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+
+                        Text(wallpaper.formattedFileSize)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+
+                        if wallpaper.id == wallpaperManager.currentWallpaper?.id {
+                            HStack(spacing: 4) {
+                                Circle().fill(.green).frame(width: 6, height: 6)
+                                Text("Active")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.green)
+                            }
+                        }
+                    }
+
+                    // Action buttons - Netflix style
+                    HStack(spacing: 10) {
+                        // Play / Set Wallpaper - white button
                         Button {
                             wallpaperManager.setWallpaper(wallpaper)
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "play.fill")
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 14))
                                 Text("Set Wallpaper")
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(.system(size: 14, weight: .semibold))
                             }
+                            .foregroundColor(.black)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(Color.accentColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
+                            .background(Color.white)
+                            .cornerRadius(4)
                         }
                         .buttonStyle(.plain)
 
+                        // My List / Favorite - dark button
                         Button {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
                                 wallpaperManager.toggleFavorite(wallpaper)
                             }
                         } label: {
-                            Image(systemName: wallpaper.isFavorite ? "heart.fill" : "heart")
-                                .font(.system(size: 16))
-                                .foregroundColor(wallpaper.isFavorite ? .pink : .secondary)
-                                .frame(width: 36, height: 36)
-                                .background(Circle().fill(Color.secondary.opacity(0.15)))
+                            HStack(spacing: 6) {
+                                Image(systemName: wallpaper.isFavorite ? "checkmark" : "plus")
+                                    .font(.system(size: 14))
+                                Text("My List")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.white.opacity(0.2))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                            )
+                            .cornerRadius(4)
                         }
                         .buttonStyle(.plain)
                     }
-                }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 28)
-            }
 
-            // Page indicators
-            HStack(spacing: 6) {
-                Spacer()
-                ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
-                    Capsule()
-                        .fill(i == heroIndex ? Color.accentColor : Color.secondary.opacity(0.3))
-                        .frame(width: i == heroIndex ? 20 : 6, height: 6)
-                        .animation(.easeInOut(duration: 0.2), value: heroIndex)
+                    // Page dots
+                    HStack(spacing: 4) {
+                        ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 1)
+                                .fill(i == heroIndex ? Color.white : Color.white.opacity(0.3))
+                                .frame(width: i == heroIndex ? 16 : 12, height: 2.5)
+                                .animation(.easeInOut(duration: 0.3), value: heroIndex)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
+                .padding(.horizontal, 48)
+                .padding(.bottom, 40)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.trailing, 28)
-            .padding(.bottom, 24)
         }
-        .frame(height: 340)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .frame(height: 480)
+        .clipped()
     }
 
     // MARK: - Data
@@ -158,12 +196,10 @@ struct HomeView: View {
     }
 
     private func startHeroTimer() {
-        heroTimer = Timer.scheduledTimer(withTimeInterval: 6, repeats: true) { _ in
+        heroTimer = Timer.scheduledTimer(withTimeInterval: 7, repeats: true) { _ in
             let count = min(wallpaperManager.wallpapers.count, 5)
             guard count > 1 else { return }
-            withAnimation(.easeInOut(duration: 0.6)) {
-                heroIndex = (heroIndex + 1) % count
-            }
+            withAnimation { heroIndex = (heroIndex + 1) % count }
         }
     }
 }
@@ -181,16 +217,11 @@ struct HeroBannerCard: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                Rectangle()
-                    .fill(
-                        LinearGradient(colors: [.purple.opacity(0.2), .blue.opacity(0.15)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .overlay { ProgressView() }
+                Color.black
             }
         }
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 900, height: 500))
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
         }
     }
 }
@@ -203,40 +234,22 @@ struct CarouselSection: View {
     let iconColor: Color
     let wallpapers: [Wallpaper]
 
-    @EnvironmentObject var wallpaperManager: WallpaperManager
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(iconColor)
-
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-
-                Capsule()
-                    .fill(Color.secondary.opacity(0.15))
-                    .frame(width: 28, height: 18)
-                    .overlay(
-                        Text("\(wallpapers.count)")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.secondary)
-                    )
-
-                Spacer()
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 48)
 
-            // Horizontal scroll
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 14) {
+                LazyHStack(spacing: 8) {
                     ForEach(wallpapers) { wallpaper in
                         CarouselCard(wallpaper: wallpaper)
                     }
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 48)
             }
         }
     }
@@ -251,89 +264,76 @@ struct CarouselCard: View {
     @State private var isHovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ZStack(alignment: .bottomTrailing) {
-                // Thumbnail
-                Group {
-                    if let thumbnail = thumbnail {
-                        Image(nsImage: thumbnail)
-                            .resizable()
-                            .aspectRatio(16/9, contentMode: .fill)
-                    } else {
-                        Rectangle()
-                            .fill(Color.secondary.opacity(0.1))
-                            .aspectRatio(16/9, contentMode: .fit)
-                            .overlay { ProgressView().scaleEffect(0.7) }
-                    }
-                }
-                .frame(width: 230, height: 130)
-                .clipped()
-
-                // Duration
-                Text(wallpaper.formattedDuration)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color.black.opacity(0.65))
-                    .cornerRadius(4)
-                    .padding(8)
-
-                // Hover overlay
-                if isHovering {
-                    Color.black.opacity(0.35)
-
-                    VStack(spacing: 6) {
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 38))
-                            .foregroundColor(.white.opacity(0.9))
-
-                        Text("Double-click to apply")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
-
-                // Active border
-                if wallpaper.id == wallpaperManager.currentWallpaper?.id {
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.accentColor, lineWidth: 2.5)
+        ZStack {
+            // Thumbnail
+            Group {
+                if let thumbnail = thumbnail {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.05))
+                        .overlay { ProgressView().scaleEffect(0.6) }
                 }
             }
-            .cornerRadius(10)
-            .scaleEffect(isHovering ? 1.03 : 1.0)
-            .shadow(color: .black.opacity(isHovering ? 0.25 : 0.05), radius: isHovering ? 12 : 4, y: isHovering ? 6 : 2)
-            .animation(.easeOut(duration: 0.2), value: isHovering)
+            .frame(width: isHovering ? 260 : 200, height: isHovering ? 146 : 113)
+            .clipped()
 
-            // Info
-            HStack {
-                Text(wallpaper.name)
-                    .font(.system(size: 12, weight: .medium))
-                    .lineLimit(1)
+            // Hover info
+            if isHovering {
+                VStack {
+                    Spacer()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(wallpaper.name)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
 
-                Spacer()
+                        HStack(spacing: 8) {
+                            Text(wallpaper.formattedDuration)
+                                .font(.system(size: 9))
+                                .foregroundColor(.white.opacity(0.6))
 
-                if wallpaper.isFavorite {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 9))
-                        .foregroundColor(.pink)
+                            if wallpaper.isFavorite {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.pink)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(
+                        LinearGradient(colors: [.clear, .black.opacity(0.85)],
+                                       startPoint: .top, endPoint: .bottom)
+                    )
                 }
             }
-            .frame(width: 230)
+
+            // Active border
+            if wallpaper.id == wallpaperManager.currentWallpaper?.id {
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.white, lineWidth: 2)
+            }
         }
+        .cornerRadius(4)
+        .shadow(color: .black.opacity(isHovering ? 0.6 : 0), radius: 16, y: 8)
+        .animation(.easeOut(duration: 0.25), value: isHovering)
+        .zIndex(isHovering ? 10 : 0)
         .onHover { h in isHovering = h }
         .onTapGesture(count: 2) {
             wallpaperManager.setWallpaper(wallpaper)
         }
         .contextMenu {
             Button { wallpaperManager.setWallpaper(wallpaper) } label: {
-                Label("Set as Wallpaper", systemImage: "photo.on.rectangle")
+                Label("Set as Wallpaper", systemImage: "play.fill")
             }
             Button {
                 withAnimation { wallpaperManager.toggleFavorite(wallpaper) }
             } label: {
-                Label(wallpaper.isFavorite ? "Remove Favorite" : "Add Favorite",
-                      systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
+                Label(wallpaper.isFavorite ? "Remove from My List" : "Add to My List",
+                      systemImage: wallpaper.isFavorite ? "checkmark" : "plus")
             }
             Divider()
             Button(role: .destructive) { wallpaperManager.removeWallpaper(wallpaper) } label: {
@@ -341,7 +341,7 @@ struct CarouselCard: View {
             }
         }
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 460, height: 260))
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 520, height: 292))
         }
     }
 }
