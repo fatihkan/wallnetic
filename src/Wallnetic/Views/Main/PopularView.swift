@@ -131,7 +131,8 @@ struct PopularCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(wallpaper.name)
                         .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
+                        .lineLimit(3)
+                        .truncationMode(.tail)
 
                     Text("\(wallpaper.formattedResolution) \u{2022} \(wallpaper.formattedDuration)")
                         .font(.system(size: 10))

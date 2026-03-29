@@ -92,7 +92,8 @@ struct HomeView: View {
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
-                        .lineLimit(1)
+                        .lineLimit(3)
+                        .truncationMode(.tail)
 
                     // Metadata
                     HStack(spacing: 14) {
@@ -120,18 +121,18 @@ struct HomeView: View {
 
                     // Action buttons - Netflix style
                     HStack(spacing: 10) {
-                        // Play / Set Wallpaper - white button
+                        // Kullan - primary white button
                         Button {
                             wallpaperManager.setWallpaper(wallpaper)
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "play.fill")
                                     .font(.system(size: 14))
-                                Text("Set Wallpaper")
-                                    .font(.system(size: 14, weight: .semibold))
+                                Text("Kullan")
+                                    .font(.system(size: 14, weight: .bold))
                             }
                             .foregroundColor(.black)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 24)
                             .padding(.vertical, 10)
                             .background(Color.white)
                             .cornerRadius(4)
@@ -299,7 +300,8 @@ struct CarouselCard: View {
                             Text(wallpaper.name)
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(.white)
-                                .lineLimit(1)
+                                .lineLimit(3)
+                                .truncationMode(.tail)
 
                             Text(wallpaper.formattedDuration)
                                 .font(.system(size: 8))

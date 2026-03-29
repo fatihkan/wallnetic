@@ -167,7 +167,8 @@ struct ExploreCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(wallpaper.name)
                     .font(.system(size: 12, weight: .medium))
-                    .lineLimit(1)
+                    .lineLimit(3)
+                    .truncationMode(.tail)
 
                 Text("\(wallpaper.formattedResolution) \u{2022} \(wallpaper.formattedFileSize)")
                     .font(.system(size: 10))
