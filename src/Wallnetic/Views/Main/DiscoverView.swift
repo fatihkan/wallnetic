@@ -86,12 +86,13 @@ struct DiscoverView: View {
             }
         }
         .background(Color.black)
-        .sheet(isPresented: $showingBrowser) {
-            if let source = selectedSource {
-                InAppBrowserView(source: source)
-                    .frame(width: 1000, height: 700)
+        .overlay {
+            if showingBrowser, let source = selectedSource {
+                InAppBrowserView(source: source, isPresented: $showingBrowser)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: showingBrowser)
     }
 }
 
@@ -164,7 +165,7 @@ struct SourceCard: View {
 
 struct InAppBrowserView: View {
     let source: WallpaperSource
-    @Environment(\.dismiss) var dismiss
+    @Binding var isPresented: Bool
     @ObservedObject var downloadManager = DownloadManager.shared
     @State private var currentURL: String
     @State private var isLoading = true
@@ -172,8 +173,9 @@ struct InAppBrowserView: View {
     @State private var showingVideos = false
     @State private var webView: WKWebView?
 
-    init(source: WallpaperSource) {
+    init(source: WallpaperSource, isPresented: Binding<Bool>) {
         self.source = source
+        self._isPresented = isPresented
         self._currentURL = State(initialValue: source.url)
     }
 
@@ -240,7 +242,7 @@ struct InAppBrowserView: View {
 
                 // Close
                 Button {
-                    dismiss()
+                    isPresented = false
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
@@ -254,7 +256,7 @@ struct InAppBrowserView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color(white: 0.1))
+            .background(Color(white: 0.12))
 
             // Active downloads bar
             if !downloadManager.downloads.filter({ $0.status == .downloading }).isEmpty {
