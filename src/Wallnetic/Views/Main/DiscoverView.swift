@@ -89,7 +89,7 @@ struct DiscoverView: View {
         .sheet(isPresented: $showingBrowser) {
             if let source = selectedSource {
                 InAppBrowserView(source: source)
-                    .frame(minWidth: 900, minHeight: 600)
+                    .frame(width: 1000, height: 700)
             }
         }
     }
