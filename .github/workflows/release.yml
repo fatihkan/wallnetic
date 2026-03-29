@@ -60,6 +60,13 @@ jobs:
           APP_PATH="build/Build/Products/Release/${{ env.APP_NAME }}.app"
           DMG_NAME="${{ env.APP_NAME }}_${{ steps.version.outputs.VERSION }}_${{ matrix.arch }}.dmg"
 
+          # Remove quarantine and extended attributes to prevent
+          # "app is damaged" error on user machines
+          xattr -cr "$APP_PATH"
+
+          # Ad-hoc sign the app so macOS doesn't flag it as damaged
+          codesign --force --deep --sign - "$APP_PATH"
+
           # Create temporary directory for DMG contents
           mkdir -p dmg_contents
           cp -R "$APP_PATH" dmg_contents/
