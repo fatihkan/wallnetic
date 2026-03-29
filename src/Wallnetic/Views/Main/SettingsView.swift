@@ -24,6 +24,11 @@ struct SettingsView: View {
                     Label("Effects", systemImage: "wand.and.stars")
                 }
 
+            TimeOfDaySettingsView()
+                .tabItem {
+                    Label("Schedule", systemImage: "clock.arrow.2.circlepath")
+                }
+
             DisplaySettingsView()
                 .tabItem {
                     Label("Display", systemImage: "display")
