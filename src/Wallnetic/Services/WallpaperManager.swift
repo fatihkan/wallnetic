@@ -173,7 +173,7 @@ class WallpaperManager: ObservableObject {
         return wallpapers.first { $0.fileSize == sourceSize && $0.name == sourceName }
     }
 
-    /// Imports a video file into the library
+    /// Imports a video file into the library (supports GIF, WebM, WebP with auto-conversion)
     func importVideo(from sourceURL: URL) async throws -> Wallpaper {
         print("[WallpaperManager] Importing video from: \(sourceURL.path)")
 
@@ -183,7 +183,15 @@ class WallpaperManager: ObservableObject {
             throw WallpaperImportError.duplicate(existing.name)
         }
 
-        let fileName = sourceURL.lastPathComponent
+        // Convert non-native formats (GIF, WebM, WebP) to MP4
+        var importURL = sourceURL
+        if VideoFormatConverter.shared.needsConversion(sourceURL) {
+            NSLog("[WallpaperManager] Converting %@ to MP4...", sourceURL.pathExtension)
+            importURL = try await VideoFormatConverter.shared.convertToMP4(source: sourceURL)
+        }
+
+        let originalName = sourceURL.deletingPathExtension().lastPathComponent
+        let fileName = originalName + ".mp4"
         let destURL = libraryURL.appendingPathComponent(fileName)
 
         // Check if file already exists
@@ -356,6 +364,9 @@ class WallpaperManager: ObservableObject {
         let videoExtensions = ["mp4", "mov", "m4v", "hevc"]
         return videoExtensions.contains(url.pathExtension.lowercased())
     }
+
+    /// All formats supported for import (including those that need conversion)
+    static let supportedImportExtensions = VideoFormatConverter.allSupportedFormats
 
     // MARK: - Widget Integration
 

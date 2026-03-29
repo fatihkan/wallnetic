@@ -200,9 +200,9 @@ struct LargeWidgetView: View {
         let f = DateFormatter(); f.dateFormat = "d"; return f.string(from: entry.date)
     }
     private var monthYear: String {
-        let f = DateFormatter(); f.dateFormat = "MMMM yyyy"; f.locale = Locale(identifier: "tr_TR"); return f.string(from: entry.date)
+        let f = DateFormatter(); f.dateFormat = "MMMM yyyy"; f.locale = Locale.current; return f.string(from: entry.date)
     }
     private var dayName: String {
-        let f = DateFormatter(); f.dateFormat = "EEEE"; f.locale = Locale(identifier: "tr_TR"); return f.string(from: entry.date).lowercased()
+        let f = DateFormatter(); f.dateFormat = "EEEE"; f.locale = Locale.current; return f.string(from: entry.date).lowercased()
     }
 }

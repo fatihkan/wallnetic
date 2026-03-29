@@ -19,6 +19,16 @@ struct SettingsView: View {
                     Label("Playback", systemImage: "play.circle")
                 }
 
+            EffectsSettingsView()
+                .tabItem {
+                    Label("Effects", systemImage: "wand.and.stars")
+                }
+
+            TimeOfDaySettingsView()
+                .tabItem {
+                    Label("Schedule", systemImage: "clock.arrow.2.circlepath")
+                }
+
             DisplaySettingsView()
                 .tabItem {
                     Label("Display", systemImage: "display")
