@@ -56,82 +56,72 @@ struct HomeView: View {
 
     private var heroBanner: some View {
         let wallpapers = Array(wallpaperManager.wallpapers.prefix(5))
+        let currentWallpaper = heroIndex < wallpapers.count ? wallpapers[heroIndex] : nil
 
-        return ZStack(alignment: .bottom) {
-            // Full background image
-            if heroIndex < wallpapers.count {
-                HeroBannerCard(wallpaper: wallpapers[heroIndex])
-                    .id(heroIndex)
-                    .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.8), value: heroIndex)
-            }
+        return VStack(spacing: 0) {
+            // Image area
+            ZStack {
+                // Background image
+                if let wp = currentWallpaper {
+                    HeroBannerCard(wallpaper: wp)
+                        .id(heroIndex)
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.8), value: heroIndex)
+                }
 
-            // Bottom gradient fade to black - not interactive
-            VStack(spacing: 0) {
-                Spacer()
+                // Gradient
                 LinearGradient(
                     stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .black.opacity(0.6), location: 0.5),
+                        .init(color: .clear, location: 0.3),
                         .init(color: .black, location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 200)
+                .allowsHitTesting(false)
             }
-            .allowsHitTesting(false)
+            .frame(height: 380)
+            .clipped()
 
-            // Content overlay - bottom left
-            if heroIndex < wallpapers.count {
-                let wallpaper = wallpapers[heroIndex]
-                VStack(alignment: .leading, spacing: 14) {
-                    Spacer()
-
+            // Info + Buttons area (below image, on black bg, always visible)
+            if let wp = currentWallpaper {
+                VStack(alignment: .leading, spacing: 12) {
                     // Title
-                    Text(wallpaper.name)
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                    Text(wp.name)
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
-                        .lineLimit(3)
+                        .lineLimit(2)
                         .truncationMode(.tail)
 
                     // Metadata
-                    HStack(spacing: 14) {
-                        Text(wallpaper.formattedResolution)
-                            .font(.system(size: 12, weight: .semibold))
+                    HStack(spacing: 12) {
+                        Text(wp.formattedResolution)
                             .foregroundColor(.green)
+                        Text(wp.formattedDuration)
+                            .foregroundColor(.white.opacity(0.6))
+                        Text(wp.formattedFileSize)
+                            .foregroundColor(.white.opacity(0.6))
 
-                        Text(wallpaper.formattedDuration)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-
-                        Text(wallpaper.formattedFileSize)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-
-                        if wallpaper.id == wallpaperManager.currentWallpaper?.id {
+                        if wp.id == wallpaperManager.currentWallpaper?.id {
                             HStack(spacing: 4) {
                                 Circle().fill(.green).frame(width: 6, height: 6)
-                                Text("Active")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.green)
+                                Text("Active").foregroundColor(.green)
                             }
                         }
                     }
+                    .font(.system(size: 12, weight: .medium))
 
-                    // Action buttons - Netflix style
+                    // Buttons
                     HStack(spacing: 10) {
-                        // Kullan - primary white button
                         Button {
-                            wallpaperManager.setWallpaper(wallpaper)
+                            wallpaperManager.setWallpaper(wp)
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "play.fill")
-                                    .font(.system(size: 14))
                                 Text("Kullan")
-                                    .font(.system(size: 14, weight: .bold))
+                                    .fontWeight(.bold)
                             }
+                            .font(.system(size: 14))
                             .foregroundColor(.black)
                             .padding(.horizontal, 24)
                             .padding(.vertical, 10)
@@ -140,18 +130,17 @@ struct HomeView: View {
                         }
                         .buttonStyle(.plain)
 
-                        // My List / Favorite - dark button
                         Button {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                                wallpaperManager.toggleFavorite(wallpaper)
+                                wallpaperManager.toggleFavorite(wp)
                             }
                         } label: {
                             HStack(spacing: 6) {
-                                Image(systemName: wallpaper.isFavorite ? "checkmark" : "plus")
-                                    .font(.system(size: 14))
+                                Image(systemName: wp.isFavorite ? "checkmark" : "plus")
                                 Text("My List")
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .fontWeight(.semibold)
                             }
+                            .font(.system(size: 14))
                             .foregroundColor(.white)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
@@ -163,26 +152,25 @@ struct HomeView: View {
                             .cornerRadius(4)
                         }
                         .buttonStyle(.plain)
-                    }
 
-                    // Page dots
-                    HStack(spacing: 4) {
-                        ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
-                            RoundedRectangle(cornerRadius: 1)
-                                .fill(i == heroIndex ? Color.white : Color.white.opacity(0.3))
-                                .frame(width: i == heroIndex ? 16 : 12, height: 2.5)
-                                .animation(.easeInOut(duration: 0.3), value: heroIndex)
+                        Spacer()
+
+                        // Page indicators
+                        HStack(spacing: 4) {
+                            ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(i == heroIndex ? Color.white : Color.white.opacity(0.3))
+                                    .frame(width: i == heroIndex ? 18 : 12, height: 3)
+                                    .animation(.easeInOut(duration: 0.3), value: heroIndex)
+                            }
                         }
                     }
-                    .padding(.top, 4)
                 }
                 .padding(.horizontal, 48)
-                .padding(.bottom, 40)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, -40) // Overlap slightly into image area
+                .padding(.bottom, 16)
             }
         }
-        .frame(height: 480)
-        .clipped()
     }
 
     // MARK: - Data
