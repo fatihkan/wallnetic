@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 
 /// Downloads videos from URLs for import
+@MainActor
 class URLImporter: ObservableObject {
     static let shared = URLImporter()
 
@@ -27,58 +28,42 @@ class URLImporter: ObservableObject {
             throw URLImportError.invalidURL
         }
 
-        await MainActor.run {
-            isDownloading = true
-            progress = 0
-            statusMessage = "Connecting..."
-            error = nil
-        }
+        isDownloading = true
+        progress = 0
+        statusMessage = "Connecting..."
+        error = nil
 
-        // Create download request
+        // Use URLSession.shared.download for simpler concurrency
         var request = URLRequest(url: url)
         request.timeoutInterval = 120
 
-        let delegate = DownloadProgressDelegate { [weak self] prog in
-            Task { @MainActor in
-                self?.progress = prog
-                self?.statusMessage = "Downloading... \(Int(prog * 100))%"
-            }
-        }
+        do {
+            let (tempURL, response) = try await URLSession.shared.download(for: request)
 
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-        let downloadTask = session.downloadTask(with: request)
-        self.downloadTask = downloadTask
-
-        return try await withCheckedThrowingContinuation { continuation in
-            delegate.completion = { result in
-                Task { @MainActor [weak self] in
-                    self?.isDownloading = false
-
-                    switch result {
-                    case .success(let tempURL):
-                        // Move to a stable temp location with proper extension
-                        let ext = url.pathExtension.isEmpty ? "mp4" : url.pathExtension
-                        let stableURL = FileManager.default.temporaryDirectory
-                            .appendingPathComponent(UUID().uuidString)
-                            .appendingPathExtension(ext)
-
-                        do {
-                            try FileManager.default.moveItem(at: tempURL, to: stableURL)
-                            self?.statusMessage = "Download complete"
-                            continuation.resume(returning: stableURL)
-                        } catch {
-                            self?.error = error.localizedDescription
-                            continuation.resume(throwing: error)
-                        }
-
-                    case .failure(let error):
-                        self?.error = error.localizedDescription
-                        continuation.resume(throwing: error)
-                    }
-                }
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                isDownloading = false
+                throw URLImportError.downloadFailed
             }
 
-            downloadTask.resume()
+            // Move to stable location
+            let ext = url.pathExtension.isEmpty ? "mp4" : url.pathExtension
+            let stableURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension(ext)
+
+            try FileManager.default.moveItem(at: tempURL, to: stableURL)
+
+            isDownloading = false
+            statusMessage = "Download complete"
+            progress = 1.0
+            return stableURL
+
+        } catch {
+            isDownloading = false
+            self.error = error.localizedDescription
+            statusMessage = "Failed"
+            throw error
         }
     }
 
@@ -87,36 +72,6 @@ class URLImporter: ObservableObject {
         downloadTask = nil
         isDownloading = false
         statusMessage = "Cancelled"
-    }
-}
-
-// MARK: - Download Delegate
-
-private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate {
-    let onProgress: (Double) -> Void
-    var completion: ((Result<URL, Error>) -> Void)?
-
-    init(onProgress: @escaping (Double) -> Void) {
-        self.onProgress = onProgress
-    }
-
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
-                    didFinishDownloadingTo location: URL) {
-        completion?(.success(location))
-    }
-
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
-                    didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
-                    totalBytesExpectedToWrite: Int64) {
-        if totalBytesExpectedToWrite > 0 {
-            onProgress(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
-        }
-    }
-
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if let error = error {
-            completion?(.failure(error))
-        }
     }
 }
 
