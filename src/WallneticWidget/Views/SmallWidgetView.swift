@@ -92,7 +92,7 @@ struct SmallWidgetView: View {
     }
 
     private var shortDateString: String {
-        let f = DateFormatter(); f.dateFormat = "d MMM, EEE"; f.locale = Locale(identifier: "tr_TR")
+        let f = DateFormatter(); f.dateFormat = "d MMM, EEE"; f.locale = Locale.current
         return f.string(from: entry.date).uppercased()
     }
 }

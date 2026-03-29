@@ -89,7 +89,9 @@ class VideoFormatConverter {
         writer.startSession(atSourceTime: .zero)
 
         // Process frames
+        let ciContext = CIContext()  // Reuse single CIContext (expensive to create)
         var frameTime = CMTime.zero
+        let maxWaitAttempts = 500  // 5 seconds max wait per frame
 
         for i in 0..<frameCount {
             guard let cgImage = CGImageSourceCreateImageAtIndex(imageSource, i, nil) else { continue }
@@ -98,8 +100,16 @@ class VideoFormatConverter {
             let frameDuration = gifFrameDuration(at: i, source: imageSource)
             let duration = CMTime(seconds: frameDuration, preferredTimescale: 600)
 
-            // Wait for input ready
+            // Wait for input ready with timeout
+            var waitCount = 0
             while !input.isReadyForMoreMediaData {
+                waitCount += 1
+                if waitCount > maxWaitAttempts {
+                    throw ConversionError.writeFailed("Writer input timed out at frame \(i)")
+                }
+                if writer.status == .failed {
+                    throw ConversionError.writeFailed(writer.error?.localizedDescription ?? "Writer failed")
+                }
                 try await Task.sleep(nanoseconds: 10_000_000) // 10ms
             }
 
@@ -109,9 +119,8 @@ class VideoFormatConverter {
                 CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
 
                 if let buffer = pixelBuffer {
-                    let context = CIContext()
                     let ciImage = CIImage(cgImage: cgImage)
-                    context.render(ciImage, to: buffer)
+                    ciContext.render(ciImage, to: buffer)
                     adaptor.append(buffer, withPresentationTime: frameTime)
                 }
             }
