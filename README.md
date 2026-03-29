@@ -6,6 +6,7 @@
 [![Swift](https://img.shields.io/badge/Swift-5.9+-F05138.svg?style=flat&logo=swift&logoColor=white)](https://swift.org/)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-blue.svg?style=flat&logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![Metal](https://img.shields.io/badge/Metal-GPU-8E8E93.svg?style=flat&logo=apple)](https://developer.apple.com/metal/)
+[![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12)
 [![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/tag/v1.1.0)
@@ -102,7 +103,13 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 | RAM | 4 GB minimum |
 | Storage | 50 MB + your video files |
 
-### Download
+### Mac App Store
+
+<a href="https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12">
+  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-mac-app-store.svg" alt="Download on the Mac App Store" height="50">
+</a>
+
+### Direct Download
 
 | Platform | Download |
 |----------|----------|
