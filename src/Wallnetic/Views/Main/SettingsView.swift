@@ -19,6 +19,11 @@ struct SettingsView: View {
                     Label("Playback", systemImage: "play.circle")
                 }
 
+            EffectsSettingsView()
+                .tabItem {
+                    Label("Effects", systemImage: "wand.and.stars")
+                }
+
             DisplaySettingsView()
                 .tabItem {
                     Label("Display", systemImage: "display")

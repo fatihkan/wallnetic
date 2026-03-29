@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */; };
+		1B480E4A92B2E3538B724AE4 /* WallpaperEffectsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B86B489A26E64EF63ED72A8 /* WallpaperEffectsManager.swift */; };
 		1CA1504E421EAE5C547DF122 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51A337D506233D372B7187D6 /* KeychainManager.swift */; };
 		2124DE0A8E8717475F30D34C /* WallpaperGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */; };
 		2509E976AE0675786B3C248A /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134AA54986991D7480CC4CD8 /* SmallWidgetView.swift */; };
@@ -35,6 +36,7 @@
 		9D898F865EED9BB751EBF7EF /* AIGenerateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B502C8C68ABF2CD503030E /* AIGenerateView.swift */; };
 		A0A7D57E670326EECB26D581 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140AE9B28FFA1BF12B3651C5 /* NotificationManager.swift */; };
 		A2F0F37DC65A20D1B7086146 /* UsageTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA624026F461BCF47C3E39D5 /* UsageTracker.swift */; };
+		A2FD8BF6EF09FC0B086E2261 /* EffectsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2392B868E0D5B6994FF657 /* EffectsSettingsView.swift */; };
 		A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250C1B481393050C099266A2 /* SettingsView.swift */; };
 		AE9FCE08CE4EDEECE7A843BD /* SharedDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CE6EB39E15687BF3655B8C /* SharedDataManager.swift */; };
 		B34E2B3843447164873423D8 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5391D519B2B4F2D898BEDB0F /* AuthManager.swift */; };
@@ -81,6 +83,7 @@
 
 /* Begin PBXFileReference section */
 		08B2A227CEA1CA39347CC37A /* WallneticWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WallneticWidget.entitlements; sourceTree = "<group>"; };
+		0B86B489A26E64EF63ED72A8 /* WallpaperEffectsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperEffectsManager.swift; sourceTree = "<group>"; };
 		0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperGridView.swift; sourceTree = "<group>"; };
 		0DF980A4142FBBE468FBBD05 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
 		11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
@@ -117,6 +120,7 @@
 		B3E0F02714B57C6B710BFA04 /* FavoriteStylesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStylesManager.swift; sourceTree = "<group>"; };
 		B6272C35871A69060C41EFEC /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		B7021318E82664A8754F5FF1 /* AIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProvider.swift; sourceTree = "<group>"; };
+		BA2392B868E0D5B6994FF657 /* EffectsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsSettingsView.swift; sourceTree = "<group>"; };
 		BF36E216B5F900C62E824B59 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRenderer.swift; sourceTree = "<group>"; };
 		C46699BC859D4FABE71BB58F /* LargeWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeWidgetView.swift; sourceTree = "<group>"; };
@@ -191,6 +195,7 @@
 				60D80208B9C31066D6C112FB /* ThemeManager.swift */,
 				11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */,
 				FA624026F461BCF47C3E39D5 /* UsageTracker.swift */,
+				0B86B489A26E64EF63ED72A8 /* WallpaperEffectsManager.swift */,
 				532FE0E3069C64B6236A343C /* WallpaperManager.swift */,
 			);
 			path = Services;
@@ -199,6 +204,7 @@
 		3445FCF26F52DF704BF31F4A /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				BA2392B868E0D5B6994FF657 /* EffectsSettingsView.swift */,
 				0DF980A4142FBBE468FBBD05 /* SchedulerSettingsView.swift */,
 			);
 			path = Settings;
@@ -457,6 +463,7 @@
 				2C5619331688457B6A844B93 /* CollectionsView.swift in Sources */,
 				D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */,
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
+				A2FD8BF6EF09FC0B086E2261 /* EffectsSettingsView.swift in Sources */,
 				CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */,
 				E670DC0DFE3A0970082E73EF /* GenerationHistory.swift in Sources */,
 				8BED6ED6D599D3F3C32821D5 /* HistoryView.swift in Sources */,
@@ -480,6 +487,7 @@
 				4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */,
 				40D40FD944D13CCAF633E4A9 /* Wallpaper.swift in Sources */,
 				51355B920BE931D2A9A3BE58 /* WallpaperCollection.swift in Sources */,
+				1B480E4A92B2E3538B724AE4 /* WallpaperEffectsManager.swift in Sources */,
 				2124DE0A8E8717475F30D34C /* WallpaperGridView.swift in Sources */,
 				7B8DE2A0443E6DC55D750FCB /* WallpaperManager.swift in Sources */,
 			);
