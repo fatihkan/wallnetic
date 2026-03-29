@@ -265,75 +265,83 @@ struct CarouselCard: View {
     @State private var thumbnail: NSImage?
     @State private var isHovering = false
 
+    private let cardWidth: CGFloat = 240
+    private let cardHeight: CGFloat = 135
+
     var body: some View {
-        ZStack {
-            // Thumbnail
-            Group {
-                if let thumbnail = thumbnail {
-                    Image(nsImage: thumbnail)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.05))
-                        .overlay { ProgressView().scaleEffect(0.6) }
+        VStack(alignment: .leading, spacing: 6) {
+            // Thumbnail with hover overlay
+            ZStack(alignment: .bottom) {
+                // Image
+                Group {
+                    if let thumbnail = thumbnail {
+                        Image(nsImage: thumbnail)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.05))
+                            .overlay { ProgressView().scaleEffect(0.6) }
+                    }
                 }
-            }
-            .frame(width: 200, height: 113)
-            .clipped()
+                .frame(width: cardWidth, height: cardHeight)
+                .clipped()
 
-            // Hover info overlay
-            if isHovering {
-                // Dark gradient from bottom
-                VStack {
-                    Spacer()
-                    LinearGradient(colors: [.clear, .black.opacity(0.85)],
-                                   startPoint: .top, endPoint: .bottom)
-                        .frame(height: 50)
-                }
+                // Hover overlay
+                if isHovering {
+                    // Full dark overlay
+                    Color.black.opacity(0.4)
 
-                // Info at bottom
-                VStack {
-                    Spacer()
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(wallpaper.name)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
-                                .lineLimit(3)
-                                .truncationMode(.tail)
+                    // Play icon center
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.white.opacity(0.9))
+                        .shadow(color: .black.opacity(0.5), radius: 4)
 
+                    // Bottom gradient + info
+                    VStack {
+                        Spacer()
+                        LinearGradient(colors: [.clear, .black.opacity(0.9)],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: 55)
+                    }
+
+                    // Duration badge top-right
+                    VStack {
+                        HStack {
+                            Spacer()
                             Text(wallpaper.formattedDuration)
-                                .font(.system(size: 8))
-                                .foregroundColor(.white.opacity(0.6))
+                                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(3)
+                                .padding(6)
                         }
                         Spacer()
-                        if wallpaper.isFavorite {
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 8))
-                                .foregroundColor(.pink)
-                        }
                     }
-                    .padding(8)
                 }
 
-                // Play icon center
-                Image(systemName: "play.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.white.opacity(0.9))
-                    .shadow(color: .black.opacity(0.5), radius: 4)
+                // Active indicator
+                if wallpaper.id == wallpaperManager.currentWallpaper?.id {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.white, lineWidth: 2)
+                }
             }
+            .frame(width: cardWidth, height: cardHeight)
+            .cornerRadius(6)
+            .shadow(color: .black.opacity(isHovering ? 0.5 : 0), radius: 12, y: 6)
 
-            // Active border
-            if wallpaper.id == wallpaperManager.currentWallpaper?.id {
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(Color.white, lineWidth: 2)
-            }
+            // Name below card - always visible, max 3 lines
+            Text(wallpaper.name)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.8))
+                .lineLimit(3)
+                .truncationMode(.tail)
+                .frame(width: cardWidth, alignment: .leading)
         }
-        .cornerRadius(4)
-        .shadow(color: .black.opacity(isHovering ? 0.6 : 0), radius: 16, y: 8)
-        .animation(.easeOut(duration: 0.25), value: isHovering)
-        .zIndex(isHovering ? 10 : 0)
+        .animation(.easeOut(duration: 0.2), value: isHovering)
         .onHover { h in isHovering = h }
         .onTapGesture(count: 2) {
             wallpaperManager.setWallpaper(wallpaper)
@@ -354,7 +362,7 @@ struct CarouselCard: View {
             }
         }
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 520, height: 292))
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))
         }
     }
 }
