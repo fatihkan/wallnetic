@@ -1,0 +1,270 @@
+import SwiftUI
+import WebKit
+
+// MARK: - Source Model
+
+struct WallpaperSource: Identifiable {
+    let id: String
+    let name: String
+    let description: String
+    let icon: String
+    let color: Color
+    let url: String
+    let type: SourceType
+    let estimatedCount: String
+
+    enum SourceType {
+        case api      // Pixabay, Pexels
+        case browser  // MyLiveWallpapers, DesktopHut, etc.
+    }
+
+    static let allSources: [WallpaperSource] = [
+        WallpaperSource(id: "pixabay", name: "Pixabay", description: "Free stock videos and animations",
+                        icon: "photo.artframe", color: .green, url: "https://pixabay.com/videos/",
+                        type: .api, estimatedCount: "6,000+"),
+        WallpaperSource(id: "pexels", name: "Pexels", description: "Free HD & 4K stock videos",
+                        icon: "play.rectangle.fill", color: .teal, url: "https://www.pexels.com/videos/",
+                        type: .api, estimatedCount: "52,000+"),
+        WallpaperSource(id: "mylivewallpapers", name: "MyLiveWallpapers", description: "Curated live wallpaper collection",
+                        icon: "sparkles.rectangle.stack", color: .purple, url: "https://mylivewallpapers.com",
+                        type: .browser, estimatedCount: "5,000+"),
+        WallpaperSource(id: "desktophut", name: "DesktopHut", description: "4K anime, nature, space wallpapers",
+                        icon: "desktopcomputer", color: .blue, url: "https://www.desktophut.com",
+                        type: .browser, estimatedCount: "3,000+"),
+        WallpaperSource(id: "moewalls", name: "MoeWalls", description: "Anime and general live wallpapers",
+                        icon: "sparkles.tv", color: .pink, url: "https://moewalls.com",
+                        type: .browser, estimatedCount: "4,000+"),
+        WallpaperSource(id: "motionbgs", name: "MotionBGs", description: "4K animated backgrounds",
+                        icon: "film.stack", color: .orange, url: "https://motionbgs.com",
+                        type: .browser, estimatedCount: "8,790+"),
+    ]
+}
+
+// MARK: - Discover View
+
+struct DiscoverView: View {
+    @State private var selectedSource: WallpaperSource?
+    @State private var showingBrowser = false
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 280, maximum: 400), spacing: 16)
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: "globe")
+                    .font(.system(size: 16))
+                    .foregroundColor(.blue)
+                Text("Discover Wallpapers")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Text("\(WallpaperSource.allSources.count) sources")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+
+            // Source grid
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(WallpaperSource.allSources) { source in
+                        SourceCard(source: source)
+                            .onTapGesture {
+                                selectedSource = source
+                                showingBrowser = true
+                            }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+        .background(Color.black)
+        .sheet(isPresented: $showingBrowser) {
+            if let source = selectedSource {
+                InAppBrowserView(source: source)
+                    .frame(minWidth: 900, minHeight: 600)
+            }
+        }
+    }
+}
+
+// MARK: - Source Card
+
+struct SourceCard: View {
+    let source: WallpaperSource
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icon
+            Image(systemName: source.icon)
+                .font(.system(size: 24))
+                .foregroundColor(source.color)
+                .frame(width: 50, height: 50)
+                .background(source.color.opacity(0.15))
+                .cornerRadius(12)
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(source.name)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+
+                    if source.type == .api {
+                        Text("API")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.green.opacity(0.2))
+                            .cornerRadius(3)
+                    }
+                }
+
+                Text(source.description)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.5))
+                    .lineLimit(2)
+
+                Text("\(source.estimatedCount) wallpapers")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(source.color.opacity(0.8))
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.3))
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(isHovering ? 0.08 : 0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(isHovering ? 0.15 : 0.06), lineWidth: 1)
+                )
+        )
+        .scaleEffect(isHovering ? 1.01 : 1.0)
+        .animation(.easeOut(duration: 0.15), value: isHovering)
+        .onHover { h in isHovering = h }
+    }
+}
+
+// MARK: - In-App Browser
+
+struct InAppBrowserView: View {
+    let source: WallpaperSource
+    @Environment(\.dismiss) var dismiss
+    @State private var currentURL: String
+    @State private var isLoading = true
+
+    init(source: WallpaperSource) {
+        self.source = source
+        self._currentURL = State(initialValue: source.url)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Browser toolbar
+            HStack(spacing: 12) {
+                // Source info
+                Image(systemName: source.icon)
+                    .foregroundColor(source.color)
+                Text(source.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+
+                // URL bar
+                Text(currentURL)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.4))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.06))
+                    .cornerRadius(6)
+
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                }
+
+                // Close
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 28, height: 28)
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.escape)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(white: 0.1))
+
+            // WebView
+            WebViewWrapper(
+                urlString: source.url,
+                currentURL: $currentURL,
+                isLoading: $isLoading
+            )
+        }
+        .background(Color.black)
+    }
+}
+
+// MARK: - WebView Wrapper
+
+struct WebViewWrapper: NSViewRepresentable {
+    let urlString: String
+    @Binding var currentURL: String
+    @Binding var isLoading: Bool
+
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsAirPlayForMediaPlayback = false
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.navigationDelegate = context.coordinator
+
+        if let url = URL(string: urlString) {
+            webView.load(URLRequest(url: url))
+        }
+        return webView
+    }
+
+    func updateNSView(_ nsView: WKWebView, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    class Coordinator: NSObject, WKNavigationDelegate {
+        let parent: WebViewWrapper
+
+        init(_ parent: WebViewWrapper) { self.parent = parent }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            parent.isLoading = true
+            parent.currentURL = webView.url?.absoluteString ?? ""
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.isLoading = false
+            parent.currentURL = webView.url?.absoluteString ?? ""
+        }
+    }
+}

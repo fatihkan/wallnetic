@@ -130,11 +130,15 @@ enum VideoModel: String, CaseIterable, Codable {
 enum APIProvider: String, CaseIterable {
     case falai = "fal.ai"
     case supabase = "supabase"
+    case pixabay = "pixabay"
+    case pexels = "pexels"
 
     var displayName: String {
         switch self {
         case .falai: return "fal.ai"
         case .supabase: return "Supabase"
+        case .pixabay: return "Pixabay"
+        case .pexels: return "Pexels"
         }
     }
 
@@ -142,6 +146,8 @@ enum APIProvider: String, CaseIterable {
         switch self {
         case .falai: return "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         case .supabase: return "session-token"
+        case .pixabay: return "xxxxxxx-xxxxxxxxxxxxxxx"
+        case .pexels: return "xxxxxxxxxxxxxxxxxxxxxxx"
         }
     }
 
@@ -149,6 +155,8 @@ enum APIProvider: String, CaseIterable {
         switch self {
         case .falai: return URL(string: "https://fal.ai/dashboard/keys")!
         case .supabase: return URL(string: "https://supabase.com")!
+        case .pixabay: return URL(string: "https://pixabay.com/api/docs/")!
+        case .pexels: return URL(string: "https://www.pexels.com/api/")!
         }
     }
 }

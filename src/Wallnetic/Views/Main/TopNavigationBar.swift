@@ -5,6 +5,7 @@ enum NavigationTab: String, CaseIterable, Identifiable {
     case home = "Home"
     case explore = "Explore"
     case popular = "Popular"
+    case discover = "Discover"
 
     var id: String { rawValue }
 
@@ -13,6 +14,7 @@ enum NavigationTab: String, CaseIterable, Identifiable {
         case .home: return "house.fill"
         case .explore: return "safari.fill"
         case .popular: return "flame.fill"
+        case .discover: return "globe"
         }
     }
 }

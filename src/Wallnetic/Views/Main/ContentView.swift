@@ -21,17 +21,24 @@ struct ContentView: View {
             )
 
             // Main content below header
-            if wallpaperManager.wallpapers.isEmpty {
-                Color.black
-                    .overlay { EmptyLibraryView(isImporting: $isImporting) }
-            } else {
-                switch selectedTab {
-                case .home:
-                    HomeView()
-                case .explore:
-                    ExploreView(searchText: searchText)
-                case .popular:
-                    PopularView()
+            switch selectedTab {
+            case .discover:
+                DiscoverView()
+            default:
+                if wallpaperManager.wallpapers.isEmpty && selectedTab != .discover {
+                    Color.black
+                        .overlay { EmptyLibraryView(isImporting: $isImporting) }
+                } else {
+                    switch selectedTab {
+                    case .home:
+                        HomeView()
+                    case .explore:
+                        ExploreView(searchText: searchText)
+                    case .popular:
+                        PopularView()
+                    default:
+                        HomeView()
+                    }
                 }
             }
         }
