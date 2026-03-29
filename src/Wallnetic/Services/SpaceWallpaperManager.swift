@@ -2,6 +2,13 @@ import Foundation
 import SwiftUI
 import Cocoa
 
+// Private macOS API to get current Space ID
+@_silgen_name("CGSMainConnectionID")
+private func CGSMainConnectionID() -> Int32
+
+@_silgen_name("CGSGetActiveSpace")
+private func CGSGetActiveSpace(_ connection: Int32) -> Int
+
 /// Manages different wallpapers per macOS Space (virtual desktop)
 class SpaceWallpaperManager: ObservableObject {
     static let shared = SpaceWallpaperManager()
@@ -10,12 +17,15 @@ class SpaceWallpaperManager: ObservableObject {
     @AppStorage("spaces.assignmentsJSON") private var assignmentsJSON: String = "{}"
 
     @Published var currentSpaceIndex: Int = 0
+    @Published var currentSpaceID: Int = 0
     @Published var spaceAssignments: [Int: String] = [:] // spaceIndex -> wallpaper URL path
+    @Published var knownSpaceIDs: [Int] = [] // ordered list of discovered space IDs
 
     private var spaceObserver: Any?
 
     private init() {
         loadAssignments()
+        detectCurrentSpace()
         if isEnabled { start() }
     }
 
@@ -82,28 +92,25 @@ class SpaceWallpaperManager: ObservableObject {
     }
 
     private func detectCurrentSpace() {
-        // Use CGWindowListCopyWindowInfo to detect current space
-        // Each space has a unique ID, we map to a simple index
-        guard let windowInfoList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else {
-            return
+        let conn = CGSMainConnectionID()
+        let spaceID = CGSGetActiveSpace(conn)
+
+        guard spaceID > 0 else { return }
+
+        currentSpaceID = spaceID
+
+        // Track discovered spaces in order
+        if !knownSpaceIDs.contains(spaceID) {
+            knownSpaceIDs.append(spaceID)
+            NSLog("[Spaces] Discovered new space ID: %d (index: %d)", spaceID, knownSpaceIDs.count - 1)
         }
 
-        // Find the desktop window to determine current space
-        for info in windowInfoList {
-            if let ownerName = info[kCGWindowOwnerName as String] as? String,
-               ownerName == "Dock",
-               let layer = info[kCGWindowLayer as String] as? Int,
-               layer == 0 {
-                // Desktop process found - use window ID as space identifier
-                if let windowID = info[kCGWindowNumber as String] as? Int {
-                    let spaceHash = windowID % 20 // Simple mapping
-                    if spaceHash != currentSpaceIndex {
-                        currentSpaceIndex = spaceHash
-                    }
-                }
-                break
-            }
+        // Map space ID to sequential index (0, 1, 2, ...)
+        if let index = knownSpaceIDs.firstIndex(of: spaceID) {
+            currentSpaceIndex = index
         }
+
+        NSLog("[Spaces] Current space: ID=%d index=%d", spaceID, currentSpaceIndex)
     }
 
     // MARK: - Persistence
