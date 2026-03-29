@@ -29,6 +29,11 @@ struct SettingsView: View {
                     Label("Schedule", systemImage: "clock.arrow.2.circlepath")
                 }
 
+            SpaceSettingsView()
+                .tabItem {
+                    Label("Spaces", systemImage: "square.stack.3d.up")
+                }
+
             DisplaySettingsView()
                 .tabItem {
                     Label("Display", systemImage: "display")

@@ -231,6 +231,28 @@ struct WallpaperContextMenu: View {
 
         Divider()
 
+        // Lock screen option
+        Button {
+            LockScreenManager.shared.setLockScreenWallpaper(wallpaper)
+        } label: {
+            Label("Set as Lock Screen", systemImage: "lock.rectangle")
+        }
+
+        // Space assignment submenu
+        if SpaceWallpaperManager.shared.isEnabled {
+            Menu {
+                ForEach(0..<6, id: \.self) { i in
+                    Button("Space \(i + 1)") {
+                        SpaceWallpaperManager.shared.setWallpaper(wallpaper, forSpace: i)
+                    }
+                }
+            } label: {
+                Label("Set for Space", systemImage: "square.stack.3d.up")
+            }
+        }
+
+        Divider()
+
         Button {
             NSWorkspace.shared.activateFileViewerSelecting([wallpaper.url])
         } label: {
