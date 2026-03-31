@@ -2,13 +2,6 @@ import Foundation
 import SwiftUI
 import Cocoa
 
-// Private macOS API to get current Space ID
-@_silgen_name("CGSMainConnectionID")
-private func CGSMainConnectionID() -> Int32
-
-@_silgen_name("CGSGetActiveSpace")
-private func CGSGetActiveSpace(_ connection: Int32) -> Int
-
 /// Manages different wallpapers per macOS Space (virtual desktop)
 class SpaceWallpaperManager: ObservableObject {
     static let shared = SpaceWallpaperManager()
@@ -92,25 +85,35 @@ class SpaceWallpaperManager: ObservableObject {
     }
 
     private func detectCurrentSpace() {
-        let conn = CGSMainConnectionID()
-        let spaceID = CGSGetActiveSpace(conn)
-
-        guard spaceID > 0 else { return }
-
-        currentSpaceID = spaceID
-
-        // Track discovered spaces in order
-        if !knownSpaceIDs.contains(spaceID) {
-            knownSpaceIDs.append(spaceID)
-            NSLog("[Spaces] Discovered new space ID: %d (index: %d)", spaceID, knownSpaceIDs.count - 1)
+        // Use window list to detect space changes (App Store safe)
+        guard let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else {
+            return
         }
 
-        // Map space ID to sequential index (0, 1, 2, ...)
-        if let index = knownSpaceIDs.firstIndex(of: spaceID) {
-            currentSpaceIndex = index
+        // Count visible Dock windows as a proxy for space identification
+        var spaceSignature = 0
+        for info in windowList {
+            if let owner = info[kCGWindowOwnerName as String] as? String,
+               owner == "Dock" || owner == "Finder",
+               let wid = info[kCGWindowNumber as String] as? Int {
+                spaceSignature = spaceSignature &+ wid
+            }
         }
 
-        NSLog("[Spaces] Current space: ID=%d index=%d", spaceID, currentSpaceIndex)
+        guard spaceSignature != 0 else { return }
+
+        currentSpaceID = spaceSignature
+
+        if !knownSpaceIDs.contains(spaceSignature) {
+            knownSpaceIDs.append(spaceSignature)
+        }
+
+        if let index = knownSpaceIDs.firstIndex(of: spaceSignature) {
+            if index != currentSpaceIndex {
+                currentSpaceIndex = index
+                NSLog("[Spaces] Space changed to index %d", index)
+            }
+        }
     }
 
     // MARK: - Persistence
