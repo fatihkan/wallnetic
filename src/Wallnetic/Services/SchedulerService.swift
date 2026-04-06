@@ -342,7 +342,7 @@ class SchedulerService: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd MMM HH:mm"
         formatter.timeZone = turkeyTimeZone
-        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.locale = Locale.current
 
         return formatter.string(from: next)
     }
