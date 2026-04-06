@@ -17,6 +17,7 @@ class LockScreenManager: ObservableObject {
     private var lockObserver: Any?
     private var unlockObserver: Any?
     private var lockScreenWindow: NSWindow?
+    private var lockScreenRenderer: VideoRenderer?
 
     private init() {
         setupObservers()
@@ -92,8 +93,9 @@ class LockScreenManager: ObservableObject {
         window.hasShadow = false
         window.ignoresMouseEvents = false
 
-        // Create video renderer
+        // Create video renderer (must retain — ARC releases it otherwise, stopping playback)
         let renderer = VideoRenderer()
+        lockScreenRenderer = renderer
         renderer.rendererView.frame = NSRect(origin: .zero, size: screen.frame.size)
         renderer.rendererView.autoresizingMask = [.width, .height]
 
@@ -119,6 +121,8 @@ class LockScreenManager: ObservableObject {
     }
 
     private func hideLockScreenWallpaper() {
+        lockScreenRenderer?.stop()
+        lockScreenRenderer = nil
         lockScreenWindow?.close()
         lockScreenWindow = nil
     }
