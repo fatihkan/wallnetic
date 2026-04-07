@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Netflix-style home with full-screen hero and horizontal carousels
+/// Striking home with cinematic hero and glass carousel cards
 struct HomeView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var heroIndex = 0
@@ -9,11 +9,9 @@ struct HomeView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
-                // Full-width hero - extends behind the top bar
                 heroBanner
-                    .padding(.top, -46) // Overlap into top bar area
+                    .padding(.top, -46)
 
-                // Carousels below hero
                 VStack(spacing: 28) {
                     if !favoritesWallpapers.isEmpty {
                         CarouselSection(
@@ -47,130 +45,165 @@ struct HomeView: View {
                 .padding(.top, 20)
             }
         }
-        .background(Color.black)
+        .background(Color.clear)
         .onAppear { startHeroTimer() }
         .onDisappear { heroTimer?.invalidate() }
     }
 
-    // MARK: - Netflix Hero Banner
+    // MARK: - Cinematic Hero Banner
 
     private var heroBanner: some View {
         let wallpapers = Array(wallpaperManager.wallpapers.prefix(5))
         let currentWallpaper = heroIndex < wallpapers.count ? wallpapers[heroIndex] : nil
 
         return VStack(spacing: 0) {
-            // Image area
             ZStack {
-                // Background image
                 if let wp = currentWallpaper {
                     HeroBannerCard(wallpaper: wp)
                         .id(heroIndex)
                         .transition(.opacity)
-                        .animation(.easeInOut(duration: 0.8), value: heroIndex)
+                        .animation(.easeInOut(duration: Anim.hero), value: heroIndex)
                 }
 
-                // Gradient
+                // Cinematic gradient overlay
                 LinearGradient(
                     stops: [
-                        .init(color: .clear, location: 0.3),
-                        .init(color: .black, location: 1)
+                        .init(color: .clear, location: 0.2),
+                        .init(color: Color(red: 0.02, green: 0.02, blue: 0.06).opacity(0.5), location: 0.5),
+                        .init(color: Color(red: 0.02, green: 0.02, blue: 0.06), location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .allowsHitTesting(false)
-            }
-            .frame(height: 380)
-            .clipped()
 
-            // Info + Buttons area (below image, on black bg, always visible)
-            if let wp = currentWallpaper {
-                VStack(alignment: .leading, spacing: 12) {
-                    // Title
-                    Text(wp.name)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-
-                    // Metadata
-                    HStack(spacing: 12) {
-                        Text(wp.formattedResolution)
-                            .foregroundColor(.green)
-                        Text(wp.formattedDuration)
-                            .foregroundColor(.white.opacity(0.6))
-                        Text(wp.formattedFileSize)
-                            .foregroundColor(.white.opacity(0.6))
-
-                        if wp.id == wallpaperManager.currentWallpaper?.id {
-                            HStack(spacing: 4) {
-                                Circle().fill(.green).frame(width: 6, height: 6)
-                                Text("Active").foregroundColor(.green)
-                            }
-                        }
-                    }
-                    .font(.system(size: 12, weight: .medium))
-
-                    // Buttons
-                    HStack(spacing: 10) {
-                        Button {
-                            wallpaperManager.setWallpaper(wp)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "play.fill")
-                                Text("Use")
-                                    .fontWeight(.bold)
-                            }
-                            .font(.system(size: 14))
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 10)
-                            .background(Color.white)
-                            .cornerRadius(4)
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                                wallpaperManager.toggleFavorite(wp)
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: wp.isFavorite ? "checkmark" : "plus")
-                                Text("My List")
-                                    .fontWeight(.semibold)
-                            }
-                            .font(.system(size: 14))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Color.white.opacity(0.2))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
-                            )
-                            .cornerRadius(4)
-                        }
-                        .buttonStyle(.plain)
-
-                        Spacer()
-
-                        // Page indicators
-                        HStack(spacing: 4) {
-                            ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
-                                RoundedRectangle(cornerRadius: 1)
-                                    .fill(i == heroIndex ? Color.white : Color.white.opacity(0.3))
-                                    .frame(width: i == heroIndex ? 18 : 12, height: 3)
-                                    .animation(.easeInOut(duration: 0.3), value: heroIndex)
-                            }
-                        }
-                    }
+                // Side vignette
+                HStack {
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.4), .clear],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: 120)
+                    Spacer()
+                    LinearGradient(
+                        colors: [.clear, Color.black.opacity(0.4)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: 120)
                 }
-                .padding(.horizontal, 48)
-                .padding(.top, -40) // Overlap slightly into image area
-                .padding(.bottom, 16)
+                .allowsHitTesting(false)
+            }
+            .frame(height: 400)
+            .clipped()
+            .shimmer()
+
+            // Info section
+            if let wp = currentWallpaper {
+                heroInfo(wp, wallpapers: wallpapers)
             }
         }
+    }
+
+    @ViewBuilder
+    private func heroInfo(_ wp: Wallpaper, wallpapers: [Wallpaper]) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(wp.name)
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(2)
+                .truncationMode(.tail)
+                .shadow(color: .black.opacity(0.5), radius: 8)
+
+            // Metadata pills
+            HStack(spacing: 8) {
+                metadataPill(wp.formattedResolution, color: .green)
+                metadataPill(wp.formattedDuration, color: .white.opacity(0.6))
+                metadataPill(wp.formattedFileSize, color: .white.opacity(0.6))
+
+                if wp.id == wallpaperManager.currentWallpaper?.id {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 6, height: 6)
+                            .neonGlow(.green, isActive: true, radius: 4)
+                        Text("Active")
+                            .foregroundColor(.green)
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.green.opacity(0.12)))
+                }
+            }
+
+            // Action buttons
+            HStack(spacing: 10) {
+                // Play button with glow
+                Button {
+                    wallpaperManager.setWallpaper(wp)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.fill")
+                        Text("Use")
+                            .fontWeight(.bold)
+                    }
+                    .font(.system(size: 14))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule().fill(Color.white)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // My List button
+                Button {
+                    withAnimation(.spring(response: Anim.medium, dampingFraction: 0.5)) {
+                        wallpaperManager.toggleFavorite(wp)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: wp.isFavorite ? "checkmark" : "plus")
+                        Text("My List")
+                            .fontWeight(.semibold)
+                    }
+                    .font(.system(size: 14))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.1))
+                            .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.5))
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Page indicators with glow
+                HStack(spacing: 5) {
+                    ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
+                        Capsule()
+                            .fill(i == heroIndex ? Color.accentColor : Color.white.opacity(0.2))
+                            .frame(width: i == heroIndex ? 22 : 10, height: 3)
+                            .neonGlow(.accentColor, isActive: i == heroIndex, radius: 4)
+                            .animation(.spring(response: Anim.medium, dampingFraction: 0.7), value: heroIndex)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 48)
+        .padding(.top, -40)
+        .padding(.bottom, 16)
+    }
+
+    @ViewBuilder
+    private func metadataPill(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .foregroundColor(color)
     }
 
     // MARK: - Data
@@ -227,26 +260,37 @@ struct CarouselSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundColor(iconColor)
+                    .neonGlow(iconColor, isActive: true, radius: 4)
+
                 Text(title)
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.white)
+
+                Text("\(wallpapers.count)")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
             }
             .padding(.horizontal, 48)
 
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 8) {
-                    ForEach(wallpapers) { wallpaper in
+                LazyHStack(spacing: 10) {
+                    ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
                         CarouselCard(wallpaper: wallpaper)
+                            .staggered(index: index)
                     }
                 }
                 .padding(.horizontal, 48)
+                .padding(.vertical, 8)
             }
         }
     }
 }
 
-// MARK: - Carousel Card
+// MARK: - Carousel Card with Glow
 
 struct CarouselCard: View {
     let wallpaper: Wallpaper
@@ -259,9 +303,8 @@ struct CarouselCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Thumbnail with hover overlay
             ZStack(alignment: .bottom) {
-                // Image
+                // Thumbnail
                 Group {
                     if let thumbnail = thumbnail {
                         Image(nsImage: thumbnail)
@@ -269,7 +312,7 @@ struct CarouselCard: View {
                             .aspectRatio(contentMode: .fill)
                     } else {
                         Rectangle()
-                            .fill(Color.white.opacity(0.05))
+                            .fill(Color.white.opacity(0.03))
                             .overlay { ProgressView().scaleEffect(0.6) }
                     }
                 }
@@ -278,59 +321,57 @@ struct CarouselCard: View {
 
                 // Hover overlay
                 if isHovering {
-                    // Full dark overlay
-                    Color.black.opacity(0.4)
+                    Color.black.opacity(0.35)
 
-                    // Play icon center
                     Image(systemName: "play.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.white.opacity(0.9))
-                        .shadow(color: .black.opacity(0.5), radius: 4)
+                        .font(.system(size: 28))
+                        .foregroundColor(.white.opacity(0.95))
+                        .neonGlow(.white, isActive: true, radius: 8)
 
-                    // Bottom gradient + info
                     VStack {
                         Spacer()
-                        LinearGradient(colors: [.clear, .black.opacity(0.9)],
+                        LinearGradient(colors: [.clear, .black.opacity(0.8)],
                                        startPoint: .top, endPoint: .bottom)
-                            .frame(height: 55)
+                            .frame(height: 50)
                     }
+                }
 
-                    // Duration badge top-right
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Text(wallpaper.formattedDuration)
-                                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.7))
-                                .cornerRadius(3)
-                                .padding(6)
-                        }
+                // Duration badge
+                VStack {
+                    HStack {
                         Spacer()
+                        Text(wallpaper.formattedDuration)
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule().fill(Color.black.opacity(0.6))
+                            )
+                            .padding(6)
                     }
+                    Spacer()
                 }
 
                 // Active indicator
                 if wallpaper.id == wallpaperManager.currentWallpaper?.id {
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.white, lineWidth: 2)
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.accentColor, lineWidth: 2)
+                        .neonGlow(.accentColor, isActive: true, radius: 6)
                 }
             }
             .frame(width: cardWidth, height: cardHeight)
-            .cornerRadius(6)
-            .shadow(color: .black.opacity(isHovering ? 0.5 : 0), radius: 12, y: 6)
+            .glowCard(isHovering: isHovering, cornerRadius: 8)
+            .scaleEffect(isHovering ? 1.03 : 1.0)
 
-            // Name below card - always visible, max 3 lines
             Text(wallpaper.name)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.8))
-                .lineLimit(3)
+                .foregroundColor(.white.opacity(isHovering ? 0.95 : 0.7))
+                .lineLimit(2)
                 .truncationMode(.tail)
                 .frame(width: cardWidth, alignment: .leading)
         }
-        .animation(.easeOut(duration: 0.2), value: isHovering)
+        .animation(.spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
         .onHover { h in isHovering = h }
         .onTapGesture(count: 2) {
             wallpaperManager.setWallpaper(wallpaper)

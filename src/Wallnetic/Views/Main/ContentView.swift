@@ -11,38 +11,41 @@ struct ContentView: View {
     @State private var showingOnboarding = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Fixed header at top
-            TopNavigationBar(
-                selectedTab: $selectedTab,
-                searchText: $searchText,
-                isImporting: $isImporting,
-                isScrolled: scrollOffset > 50
-            )
+        ZStack {
+            // Animated gradient background
+            AnimatedGradientBackground()
 
-            // Main content below header
-            switch selectedTab {
-            case .discover:
-                DiscoverView()
-            default:
-                if wallpaperManager.wallpapers.isEmpty && selectedTab != .discover {
-                    Color.black
-                        .overlay { EmptyLibraryView(isImporting: $isImporting) }
-                } else {
-                    switch selectedTab {
-                    case .home:
-                        HomeView()
-                    case .explore:
-                        ExploreView(searchText: searchText)
-                    case .popular:
-                        PopularView()
-                    default:
-                        HomeView()
+            VStack(spacing: 0) {
+                TopNavigationBar(
+                    selectedTab: $selectedTab,
+                    searchText: $searchText,
+                    isImporting: $isImporting,
+                    isScrolled: scrollOffset > 50
+                )
+                .zIndex(10)
+
+                switch selectedTab {
+                case .discover:
+                    DiscoverView()
+                default:
+                    if wallpaperManager.wallpapers.isEmpty && selectedTab != .discover {
+                        Color.clear
+                            .overlay { EmptyLibraryView(isImporting: $isImporting) }
+                    } else {
+                        switch selectedTab {
+                        case .home:
+                            HomeView()
+                        case .explore:
+                            ExploreView(searchText: searchText)
+                        case .popular:
+                            PopularView()
+                        default:
+                            HomeView()
+                        }
                     }
                 }
             }
         }
-        .background(Color.black)
         .preferredColorScheme(.dark)
         .fileImporter(
             isPresented: $isImporting,
@@ -107,25 +110,46 @@ struct ContentView: View {
 
 struct EmptyLibraryView: View {
     @Binding var isImporting: Bool
+    @State private var pulseScale: CGFloat = 1.0
+    @State private var isHovering = false
 
     var body: some View {
         VStack(spacing: 28) {
             Spacer()
 
             ZStack {
+                // Outer glow rings
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .stroke(Color.accentColor.opacity(0.08 - Double(i) * 0.02), lineWidth: 1)
+                        .frame(width: 160 + CGFloat(i) * 40, height: 160 + CGFloat(i) * 40)
+                        .scaleEffect(pulseScale + CGFloat(i) * 0.02)
+                }
+
                 Circle()
                     .fill(
-                        RadialGradient(colors: [.red.opacity(0.15), .clear],
-                                       center: .center, startRadius: 20, endRadius: 80)
+                        RadialGradient(
+                            colors: [.accentColor.opacity(0.15), .clear],
+                            center: .center, startRadius: 20, endRadius: 80
+                        )
                     )
                     .frame(width: 160, height: 160)
+                    .scaleEffect(pulseScale)
 
                 Image(systemName: "play.rectangle.fill")
                     .font(.system(size: 56))
                     .foregroundStyle(
-                        LinearGradient(colors: [.red, .red.opacity(0.7)],
-                                       startPoint: .top, endPoint: .bottom)
+                        LinearGradient(
+                            colors: [.accentColor, .accentColor.opacity(0.6)],
+                            startPoint: .top, endPoint: .bottom
+                        )
                     )
+                    .neonGlow(.accentColor, isActive: true, radius: 12)
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+                    pulseScale = 1.05
+                }
             }
 
             VStack(spacing: 8) {
@@ -149,15 +173,23 @@ struct EmptyLibraryView: View {
                 }
                 .padding(.horizontal, 28)
                 .padding(.vertical, 12)
-                .background(Color.red)
+                .background(
+                    ZStack {
+                        Capsule().fill(Color.accentColor)
+                        Capsule().fill(Color.white.opacity(isHovering ? 0.15 : 0))
+                    }
+                )
                 .foregroundColor(.white)
-                .cornerRadius(4)
             }
             .buttonStyle(.plain)
+            .scaleEffect(isHovering ? 1.05 : 1.0)
+            .neonGlow(.accentColor, isActive: isHovering, radius: 16)
+            .animation(.spring(response: Anim.enter, dampingFraction: 0.7), value: isHovering)
+            .onHover { h in isHovering = h }
 
             Text("Drag and drop MP4, MOV, or M4V files")
                 .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.35))
+                .foregroundColor(.white.opacity(0.3))
 
             Spacer()
         }
