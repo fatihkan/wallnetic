@@ -12,7 +12,7 @@
 [![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
-  <video src="VIDEO_URL_PLACEHOLDER" width="800" autoplay loop muted playsinline>
+  <video src="https://github.com/user-attachments/assets/33a5664a-fc62-400f-9780-006884ff19df" width="800" autoplay loop muted playsinline>
   </video>
 </p>
 
