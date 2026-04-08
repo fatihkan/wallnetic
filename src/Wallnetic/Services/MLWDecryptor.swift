@@ -238,7 +238,8 @@ private extension Data {
     }
 
     func uint64BE(at i: Int) -> UInt64 {
-        UInt64(self[i]) << 56 | UInt64(self[i+1]) << 48 | UInt64(self[i+2]) << 40 | UInt64(self[i+3]) << 32
-        | UInt64(self[i+4]) << 24 | UInt64(self[i+5]) << 16 | UInt64(self[i+6]) << 8 | UInt64(self[i+7])
+        let hi: UInt64 = UInt64(self[i]) << 56 | UInt64(self[i+1]) << 48 | UInt64(self[i+2]) << 40 | UInt64(self[i+3]) << 32
+        let lo: UInt64 = UInt64(self[i+4]) << 24 | UInt64(self[i+5]) << 16 | UInt64(self[i+6]) << 8 | UInt64(self[i+7])
+        return hi | lo
     }
 }
