@@ -2,15 +2,11 @@ import Cocoa
 import SwiftUI
 import Combine
 
-/// Dynamic Island — floating pill UI stuck to the very top edge of the screen
+/// Dynamic Island — wraps around the notch on MacBooks, or floats at top-center on other Macs
 class DynamicIslandController: ObservableObject {
     static let shared = DynamicIslandController()
 
-    // MARK: - Settings
-
     @AppStorage("island.enabled") var isEnabled: Bool = false
-
-    // MARK: - State
 
     enum IslandState: Equatable {
         case compact
@@ -19,6 +15,8 @@ class DynamicIslandController: ObservableObject {
 
     @Published var state: IslandState = .compact
     @Published var isVisible = false
+    @Published var isRenameActive = false
+    @Published var hasNotch = false
 
     private var islandWindow: NSPanel?
     private var cancellables = Set<AnyCancellable>()
@@ -26,8 +24,10 @@ class DynamicIslandController: ObservableObject {
 
     // MARK: - Dimensions
 
-    private let compactWidth: CGFloat = 260
+    // Compact — same width for both notch and non-notch
     private let compactHeight: CGFloat = 32
+
+    // Expanded (both)
     private let expandedWidth: CGFloat = 340
     private let expandedHeight: CGFloat = 130
 
@@ -35,10 +35,33 @@ class DynamicIslandController: ObservableObject {
         if isEnabled { show() }
     }
 
+    // MARK: - Notch Detection
+
+    private func detectNotch(for screen: NSScreen) -> CGFloat {
+        if #available(macOS 12.0, *) {
+            return screen.safeAreaInsets.top
+        }
+        return 0
+    }
+
+    /// Approximate notch width based on known MacBook models (~200pt)
+    private func notchWidth(for screen: NSScreen) -> CGFloat {
+        let notchH = detectNotch(for: screen)
+        guard notchH > 0 else { return 0 }
+        // MacBook Pro notch is roughly 200pt wide
+        return 200
+    }
+
+    /// Compact width: notch space (200pt) + tight side padding
+    private let compactWidth: CGFloat = 290 // 45 + 200 + 45
+
     // MARK: - Show/Hide
 
     func show() {
         guard islandWindow == nil else { return }
+
+        let screen = NSScreen.main ?? NSScreen.screens.first!
+        hasNotch = detectNotch(for: screen) > 0
 
         let content = DynamicIslandView()
             .environmentObject(WallpaperManager.shared)
@@ -46,20 +69,17 @@ class DynamicIslandController: ObservableObject {
 
         let hostingView = NSHostingView(rootView: content)
 
-        let screen = NSScreen.main ?? NSScreen.screens.first!
-        let screenFrame = screen.frame
-        // Stick to the absolute top of the screen, centered
-        let x = screenFrame.midX - compactWidth / 2
-        let y = screenFrame.maxY - compactHeight
+        let w = compactWidth
+        let h = compactHeight
+        let frame = islandFrame(for: screen, width: w, height: h)
 
         let window = NSPanel(
-            contentRect: NSRect(x: x, y: y, width: compactWidth, height: compactHeight),
+            contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: true
         )
 
-        // Above everything — even the menu bar
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 2)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
         window.isOpaque = false
@@ -93,8 +113,6 @@ class DynamicIslandController: ObservableObject {
 
     // MARK: - State Transitions
 
-    @Published var isRenameActive = false
-
     func expand() {
         guard state != .expanded else { return }
         state = .expanded
@@ -113,7 +131,6 @@ class DynamicIslandController: ObservableObject {
         if state == .compact { expand() } else { collapse() }
     }
 
-    /// Called after rename closes to resume auto-collapse
     func scheduleCollapse() {
         scheduleAutoCollapse()
     }
@@ -121,25 +138,27 @@ class DynamicIslandController: ObservableObject {
     private func scheduleAutoCollapse() {
         autoCollapseTimer?.invalidate()
         autoCollapseTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.collapse()
-            }
+            DispatchQueue.main.async { self?.collapse() }
         }
     }
 
     // MARK: - Window Frame
 
+    private func islandFrame(for screen: NSScreen, width: CGFloat, height: CGFloat) -> NSRect {
+        let screenFrame = screen.frame
+        let x = screenFrame.midX - width / 2
+        // Always at absolute top — on notch Macs the notch blends into the black background
+        let y = screenFrame.maxY - height
+        return NSRect(x: x, y: y, width: width, height: height)
+    }
+
     private func updateWindowFrame(animated: Bool) {
         guard let window = islandWindow, let screen = NSScreen.main else { return }
 
-        let screenFrame = screen.frame
         let targetWidth = state == .expanded ? expandedWidth : compactWidth
         let targetHeight = state == .expanded ? expandedHeight : compactHeight
-        // Always centered, always touching the top edge
-        let x = screenFrame.midX - targetWidth / 2
-        let y = screenFrame.maxY - targetHeight
 
-        let newFrame = NSRect(x: x, y: y, width: targetWidth, height: targetHeight)
+        let newFrame = islandFrame(for: screen, width: targetWidth, height: targetHeight)
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
@@ -152,7 +171,7 @@ class DynamicIslandController: ObservableObject {
         }
     }
 
-    // MARK: - Wallpaper Change Observer
+    // MARK: - Observers
 
     private func observeWallpaperChanges() {
         NotificationCenter.default.publisher(for: .wallpaperDidChange)
@@ -177,15 +196,11 @@ struct IslandShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        // Top-left corner — flat (no radius)
         path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        // Top-right corner — flat
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        // Bottom-right corner — rounded
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottomRadius))
         path.addArc(center: CGPoint(x: rect.maxX - bottomRadius, y: rect.maxY - bottomRadius),
                      radius: bottomRadius, startAngle: .zero, endAngle: .degrees(90), clockwise: false)
-        // Bottom-left corner — rounded
         path.addLine(to: CGPoint(x: rect.minX + bottomRadius, y: rect.maxY))
         path.addArc(center: CGPoint(x: rect.minX + bottomRadius, y: rect.maxY - bottomRadius),
                      radius: bottomRadius, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
@@ -231,74 +246,39 @@ struct DynamicIslandView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: island.state)
     }
 
-    // MARK: - Compact View
+    // MARK: - Compact View — thumbnail | space | play button
 
     private var compactView: some View {
-        HStack(spacing: 8) {
-            // Thumbnail
-            if let thumb = thumbnail {
-                Image(nsImage: thumb)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 22, height: 22)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-            } else {
-                Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.5))
-                    .frame(width: 22, height: 22)
+        HStack(spacing: 0) {
+            // LEFT: thumbnail
+            thumbnailView(size: 22, radius: 5)
+                .padding(.leading, 10)
+
+            // CENTER: notch space
+            Spacer()
+
+            // RIGHT: play/pause
+            Button {
+                wallpaperManager.togglePlayback()
+            } label: {
+                Image(systemName: wallpaperManager.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.8))
             }
-
-            Text(wallpaperManager.currentWallpaper?.displayName ?? "No Wallpaper")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundColor(.white.opacity(0.9))
-                .lineLimit(1)
-
-            Spacer(minLength: 2)
-
-            // Playback indicator
-            Image(systemName: wallpaperManager.isPlaying ? "play.fill" : "pause.fill")
-                .font(.system(size: 8))
-                .foregroundColor(.white.opacity(0.4))
+            .buttonStyle(.plain)
+            .padding(.trailing, 10)
         }
-        .padding(.horizontal, 14)
-        .frame(width: 260, height: 32)
-        .onChange(of: wallpaperManager.currentWallpaper?.id) { _ in
-            thumbnail = nil
-            Task {
-                thumbnail = await wallpaperManager.currentWallpaper?.generateThumbnail(
-                    size: CGSize(width: 44, height: 44)
-                )
-            }
-        }
-        .task {
-            thumbnail = await wallpaperManager.currentWallpaper?.generateThumbnail(
-                size: CGSize(width: 44, height: 44)
-            )
-        }
+        .frame(height: 32)
+        .onChange(of: wallpaperManager.currentWallpaper?.id) { _ in loadThumbnail(size: 44) }
+        .task { loadThumbnail(size: 44) }
     }
 
     // MARK: - Expanded View
 
     private var expandedView: some View {
         VStack(spacing: 0) {
-            // Top section: thumbnail + info
             HStack(spacing: 12) {
-                if let thumb = thumbnail {
-                    Image(nsImage: thumb)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                } else {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(.white.opacity(0.08))
-                        .frame(width: 56, height: 56)
-                        .overlay {
-                            Image(systemName: "photo")
-                                .foregroundColor(.white.opacity(0.2))
-                        }
-                }
+                thumbnailView(size: 56, radius: 10)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(wallpaperManager.currentWallpaper?.displayName ?? "No Wallpaper")
@@ -315,7 +295,6 @@ struct DynamicIslandView: View {
 
                 Spacer()
 
-                // Rename button
                 controlButton(icon: "pencil", size: 12) {
                     if let wp = wallpaperManager.currentWallpaper {
                         renameText = wp.displayName
@@ -323,21 +302,10 @@ struct DynamicIslandView: View {
                         island.isRenameActive = true
                     }
                 }
-
-                // Waveform-style indicator
-                HStack(spacing: 2) {
-                    ForEach(0..<4, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(.white.opacity(wallpaperManager.isPlaying ? 0.5 : 0.15))
-                            .frame(width: 2.5, height: barHeight(for: i))
-                    }
-                }
-                .frame(width: 16, height: 18)
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
 
-            // Playback controls — tight below info
             HStack(spacing: 24) {
                 controlButton(icon: "shuffle", size: 13) {
                     setRandomWallpaper()
@@ -347,7 +315,6 @@ struct DynamicIslandView: View {
                     cycleToPreviousWallpaper()
                 }
 
-                // Play/Pause — larger
                 Button {
                     wallpaperManager.togglePlayback()
                 } label: {
@@ -375,19 +342,8 @@ struct DynamicIslandView: View {
             .padding(.bottom, 14)
         }
         .frame(width: 340, height: 130)
-        .onChange(of: wallpaperManager.currentWallpaper?.id) { _ in
-            thumbnail = nil
-            Task {
-                thumbnail = await wallpaperManager.currentWallpaper?.generateThumbnail(
-                    size: CGSize(width: 112, height: 112)
-                )
-            }
-        }
-        .task {
-            thumbnail = await wallpaperManager.currentWallpaper?.generateThumbnail(
-                size: CGSize(width: 112, height: 112)
-            )
-        }
+        .onChange(of: wallpaperManager.currentWallpaper?.id) { _ in loadThumbnail(size: 112) }
+        .task { loadThumbnail(size: 112) }
         .sheet(isPresented: $isRenaming) {
             if let wp = wallpaperManager.currentWallpaper {
                 RenameWallpaperSheet(
@@ -409,7 +365,27 @@ struct DynamicIslandView: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Shared Components
+
+    @ViewBuilder
+    private func thumbnailView(size: CGFloat, radius: CGFloat) -> some View {
+        if let thumb = thumbnail {
+            Image(nsImage: thumb)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: radius))
+        } else {
+            RoundedRectangle(cornerRadius: radius)
+                .fill(.white.opacity(0.08))
+                .frame(width: size, height: size)
+                .overlay {
+                    Image(systemName: "photo")
+                        .font(.system(size: size * 0.4))
+                        .foregroundColor(.white.opacity(0.2))
+                }
+        }
+    }
 
     private func controlButton(icon: String, size: CGFloat, color: Color = .white.opacity(0.5), action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -420,10 +396,18 @@ struct DynamicIslandView: View {
         .buttonStyle(.plain)
     }
 
-    private func barHeight(for index: Int) -> CGFloat {
-        let heights: [CGFloat] = [8, 14, 10, 16]
-        return wallpaperManager.isPlaying ? heights[index] : 4
+    // MARK: - Thumbnail Loading
+
+    private func loadThumbnail(size: CGFloat) {
+        thumbnail = nil
+        Task {
+            thumbnail = await wallpaperManager.currentWallpaper?.generateThumbnail(
+                size: CGSize(width: size, height: size)
+            )
+        }
     }
+
+    // MARK: - Actions
 
     private func cycleToPreviousWallpaper() {
         let wallpapers = wallpaperManager.wallpapers
@@ -447,3 +431,4 @@ struct DynamicIslandView: View {
         wallpaperManager.setWallpaper(random)
     }
 }
+
