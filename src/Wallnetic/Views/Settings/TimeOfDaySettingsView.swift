@@ -86,7 +86,7 @@ struct TimeOfDaySettingsView: View {
                     AsyncThumbnailView(wallpaper: wallpaper, size: CGSize(width: 40, height: 24))
                         .cornerRadius(4)
 
-                    Text(wallpaper.name)
+                    Text(wallpaper.displayName)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -97,7 +97,7 @@ struct TimeOfDaySettingsView: View {
             // Choose button
             Menu {
                 ForEach(wallpaperManager.wallpapers) { wallpaper in
-                    Button(wallpaper.name) {
+                    Button(wallpaper.displayName) {
                         todManager.setWallpaperPath(wallpaper.url.path, for: slot)
                     }
                 }

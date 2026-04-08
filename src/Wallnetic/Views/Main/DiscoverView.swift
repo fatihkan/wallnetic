@@ -52,29 +52,37 @@ struct DiscoverView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header with glow
             HStack {
-                Image(systemName: "globe")
-                    .font(.system(size: 16))
-                    .foregroundColor(.blue)
-                Text("Discover Wallpapers")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                HStack(spacing: 8) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 16))
+                        .foregroundColor(.blue)
+                        .neonGlow(.blue, isActive: true, radius: 6)
+                    Text("Discover Wallpapers")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
 
                 Spacer()
 
-                Text("\(WallpaperSource.allSources.count) sources")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.5))
+                Text("\(WallpaperSource.allSources.count)")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(.accentColor)
+                +
+                Text(" sources")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.4))
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
 
-            // Source grid
+            // Source grid with staggered entrance
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(WallpaperSource.allSources) { source in
+                    ForEach(Array(WallpaperSource.allSources.enumerated()), id: \.element.id) { index, source in
                         SourceCard(source: source)
+                            .staggered(index: index)
                             .onTapGesture {
                                 selectedSource = source
                                 showingBrowser = true
@@ -82,17 +90,18 @@ struct DiscoverView: View {
                     }
                 }
                 .padding(.horizontal, 24)
+                .padding(.top, 4)
                 .padding(.bottom, 40)
             }
         }
-        .background(Color.black)
+        .background(Color.clear)
         .overlay {
             if showingBrowser, let source = selectedSource {
                 InAppBrowserView(source: source, isPresented: $showingBrowser)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: showingBrowser)
+        .animation(.spring(response: Anim.medium, dampingFraction: 0.85), value: showingBrowser)
     }
 }
 
@@ -104,17 +113,20 @@ struct SourceCard: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            // Icon
+            // Icon with glow
             Image(systemName: source.icon)
                 .font(.system(size: 24))
                 .foregroundColor(source.color)
+                .neonGlow(source.color, isActive: isHovering, radius: 8)
                 .frame(width: 50, height: 50)
-                .background(source.color.opacity(0.15))
-                .cornerRadius(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(source.color.opacity(isHovering ? 0.15 : 0.08))
+                )
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                HStack(spacing: 6) {
                     Text(source.name)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.white)
@@ -123,41 +135,39 @@ struct SourceCard: View {
                         Text("API")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.green)
-                            .padding(.horizontal, 5)
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.green.opacity(0.2))
-                            .cornerRadius(3)
+                            .background(Capsule().fill(Color.green.opacity(0.15)))
+                            .neonGlow(.green, isActive: isHovering, radius: 3)
                     }
                 }
 
                 Text(source.description)
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.45))
                     .lineLimit(2)
 
                 Text("\(source.estimatedCount) wallpapers")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(source.color.opacity(0.8))
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(source.color.opacity(0.7))
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.3))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(isHovering ? source.color.opacity(0.6) : .white.opacity(0.2))
+                .offset(x: isHovering ? 3 : 0)
         }
         .padding(16)
         .frame(height: 90)
+        .glowCard(isHovering: isHovering, cornerRadius: 12, glowColor: source.color)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(isHovering ? 0.08 : 0.04))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(isHovering ? 0.15 : 0.06), lineWidth: 1)
-                )
+                .fill(Color.white.opacity(isHovering ? 0.06 : 0.03))
         )
-        .scaleEffect(isHovering ? 1.01 : 1.0)
-        .animation(.easeOut(duration: 0.15), value: isHovering)
+        .scaleEffect(isHovering ? 1.02 : 1.0)
+        .animation(.spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
         .onHover { h in isHovering = h }
     }
 }

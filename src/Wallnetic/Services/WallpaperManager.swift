@@ -56,6 +56,7 @@ class WallpaperManager: ObservableObject {
     @AppStorage("useMetalRenderer") var useMetalRenderer: Bool = false
     @AppStorage("lastWallpaperURL") private var lastWallpaperURL: String = ""
     @AppStorage("favoriteWallpaperPaths") private var favoriteWallpaperPaths: String = ""
+    @AppStorage("customWallpaperTitles") private var customWallpaperTitlesData: String = ""
 
     // MARK: - Properties
 
@@ -163,6 +164,9 @@ class WallpaperManager: ObservableObject {
             }
         }
 
+        // Apply saved custom titles
+        applyCustomTitles()
+
         print("Loaded \(wallpapers.count) wallpapers from library (\(savedFavorites.count) favorites)")
     }
 
@@ -200,7 +204,7 @@ class WallpaperManager: ObservableObject {
             let uniqueName = UUID().uuidString + "_" + fileName
             let uniqueURL = libraryURL.appendingPathComponent(uniqueName)
             print("[WallpaperManager] File exists, using unique name: \(uniqueName)")
-            try fileManager.copyItem(at: sourceURL, to: uniqueURL)
+            try fileManager.copyItem(at: importURL, to: uniqueURL)
             print("[WallpaperManager] File copied successfully to: \(uniqueURL.path)")
 
             let wallpaper = Wallpaper(url: uniqueURL)
@@ -210,7 +214,7 @@ class WallpaperManager: ObservableObject {
             }
             return wallpaper
         } else {
-            try fileManager.copyItem(at: sourceURL, to: destURL)
+            try fileManager.copyItem(at: importURL, to: destURL)
             print("[WallpaperManager] File copied successfully to: \(destURL.path)")
 
             let wallpaper = Wallpaper(url: destURL)
@@ -241,10 +245,30 @@ class WallpaperManager: ObservableObject {
         }
     }
 
+    /// Renames a wallpaper (sets custom display title)
+    func renameWallpaper(_ wallpaper: Wallpaper, to newTitle: String) {
+        if let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) {
+            let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            wallpapers[index].customTitle = trimmed.isEmpty ? nil : trimmed
+            saveCustomTitles()
+
+            // Update widget if this is the current wallpaper
+            if currentWallpaper?.id == wallpaper.id {
+                currentWallpaper = wallpapers[index]
+                Task { await syncCurrentWallpaperToWidget() }
+            }
+        }
+    }
+
     /// Toggles favorite status for a wallpaper
     func toggleFavorite(_ wallpaper: Wallpaper) {
         if let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) {
             wallpapers[index].isFavorite.toggle()
+
+            // Keep currentWallpaper in sync
+            if currentWallpaper?.id == wallpaper.id {
+                currentWallpaper = wallpapers[index]
+            }
 
             // Save favorite paths to persist across launches
             saveFavoritePaths()
@@ -262,6 +286,45 @@ class WallpaperManager: ObservableObject {
         let paths = wallpapers.filter { $0.isFavorite }.map { $0.url.path }
         favoritePaths = Set(paths)
         NSLog("[WallpaperManager] Saved %d favorite paths", paths.count)
+    }
+
+    // MARK: - Custom Titles Persistence
+
+    /// Path → custom title mapping
+    private var customTitles: [String: String] {
+        get {
+            guard !customWallpaperTitlesData.isEmpty,
+                  let data = customWallpaperTitlesData.data(using: .utf8),
+                  let dict = try? JSONDecoder().decode([String: String].self, from: data)
+            else { return [:] }
+            return dict
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue),
+               let str = String(data: data, encoding: .utf8) {
+                customWallpaperTitlesData = str
+            }
+        }
+    }
+
+    /// Saves custom titles to UserDefaults
+    private func saveCustomTitles() {
+        var titles: [String: String] = [:]
+        for wp in wallpapers where wp.customTitle != nil {
+            titles[wp.url.path] = wp.customTitle
+        }
+        customTitles = titles
+    }
+
+    /// Applies saved custom titles after loading wallpapers
+    private func applyCustomTitles() {
+        let titles = customTitles
+        guard !titles.isEmpty else { return }
+        for i in wallpapers.indices {
+            if let title = titles[wallpapers[i].url.path] {
+                wallpapers[i].customTitle = title
+            }
+        }
     }
 
     // MARK: - Playback
@@ -490,6 +553,7 @@ extension Notification.Name {
     static let playbackStateDidChange = Notification.Name("playbackStateDidChange")
     static let screenWallpaperDidChange = Notification.Name("screenWallpaperDidChange")
     static let applyScreenWallpapers = Notification.Name("applyScreenWallpapers")
+    static let openMainWindow = Notification.Name("openMainWindow")
 }
 
 // MARK: - Screen Wallpaper Info

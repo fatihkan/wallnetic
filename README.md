@@ -9,10 +9,10 @@
 [![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12)
 [![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/tag/v1.1.0)
+[![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/fdb62e04-455d-43e5-8b8f-6dbee796dc90" width="800" autoplay loop muted playsinline>
+  <video src="https://github.com/user-attachments/assets/33a5664a-fc62-400f-9780-006884ff19df" width="800" autoplay loop muted playsinline>
   </video>
 </p>
 
@@ -21,6 +21,10 @@
 Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your workspace with dynamic, animated backgrounds that run efficiently in the background.
 
 **Wallpaper Engine** has 40M+ users on Windows &mdash; now Mac users finally have a native alternative built with SwiftUI and Metal.
+
+<a href="https://buymeacoffee.com/fatihkan" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+</a>
 
 ---
 
@@ -73,6 +77,31 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 - Play/pause and next wallpaper controls
 - Favorites quick-switch thumbnails
 - Small, Medium, and Large sizes
+
+### Dynamic Island
+- Floating control pill at the top of your screen
+- Compact mode: wallpaper thumbnail + play/pause
+- Expanded mode: full controls, rename, shuffle, favorite
+- Notch-aware layout &mdash; wraps around MacBook Pro notch
+- Auto-collapse after 5 seconds
+
+### Wallpaper Rename
+- Right-click any wallpaper > Rename
+- Custom display titles without changing file names
+- Available on all screens: Home, Explore, Popular, Library
+- Reset to original name anytime
+
+### Dock Icon Hiding
+- Settings > General > "Hide Dock icon"
+- Run as menu bar-only app
+- Access via menu bar icon or Dynamic Island
+
+### Striking UI Effects
+- Glow cards with hover effects
+- Neon navigation tabs
+- Glass morphism backgrounds
+- Staggered entrance animations
+- Animated gradient backgrounds
 
 ### Smart Power Management
 - Auto-pause on battery power
@@ -188,11 +217,40 @@ open Wallnetic.xcodeproj
 - [x] Crossfade transitions
 - [x] Performance modes
 
+### v1.2 &mdash; Current
+- [x] Dynamic Island &mdash; floating control pill at screen top (notch-aware)
+- [x] Wallpaper rename &mdash; custom display titles via right-click > Rename
+- [x] Dock icon hiding &mdash; run as menu bar-only app
+- [x] Striking UI effects &mdash; glow cards, neon navigation, glass morphism, staggered animations
+- [x] Code review bug fixes &mdash; Equatable/Hashable contract, import file copy, force-unwrap safety
+
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
+- [ ] Audio visualizer overlay on desktop
+- [ ] 3D perspective wallpaper carousel
+- [ ] Global hotkeys for wallpaper control
+- [ ] Now Playing overlay on desktop
 - [ ] Wallpaper marketplace
 - [ ] Music reactive mode
 - [ ] iCloud library sync
+
+---
+
+## Changelog
+
+### v1.2.0
+- **Dynamic Island**: Floating pill UI at screen top with compact/expanded modes, playback controls, rename, and auto-collapse. Notch-aware layout for MacBook Pro.
+- **Wallpaper Rename**: Custom display titles via `customTitle` field. Right-click > Rename on all screens (Home, Explore, Popular, Library).
+- **Dock Icon Hiding**: Settings > General > "Hide Dock icon" to run as menu bar-only app.
+- **Striking UI Effects**: Glow cards, neon navigation tabs, glass morphism, shimmer, staggered entrance animations, animated gradient background.
+- **Bug Fixes**: Equatable/Hashable contract violation, importVideo copying wrong file after format conversion, force-unwrap safety on NSScreen and array access, infinite loop prevention in random wallpaper.
+
+### v1.1.0
+- Netflix-style UI redesign with Home, Explore, Popular, Discover tabs
+- Discover wallpaper sources (Pixabay, Pexels, MyLiveWallpapers, DesktopHut, MoeWalls, MotionBGs)
+- Per-Space wallpapers, Lock screen video, Wallpaper effects
+- Time-of-day auto switch, Apple Shortcuts & Siri integration
+- GIF/WebM/WebP format support, Crossfade transitions, Performance modes
 
 ---
 
@@ -205,16 +263,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
----
-
-## Support the Project
-
-If you find Wallnetic useful, consider supporting its development:
-
-<a href="https://buymeacoffee.com/fatihkan" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
-</a>
 
 ---
 

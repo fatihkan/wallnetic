@@ -248,7 +248,7 @@ private struct PickerCard: View {
                     .stroke(isHovering ? Color.accentColor : Color.clear, lineWidth: 2)
             )
 
-            Text(wallpaper.name)
+            Text(wallpaper.displayName)
                 .font(.caption)
                 .lineLimit(2)
                 .truncationMode(.tail)

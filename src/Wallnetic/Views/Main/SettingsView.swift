@@ -182,6 +182,8 @@ struct AppearanceSettingsView: View {
 struct GeneralSettingsView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var launchAtLoginEnabled = false
+    @AppStorage("hideDockIcon") private var hideDockIcon = false
+    @AppStorage("island.enabled") private var islandEnabled = false
 
     var body: some View {
         Form {
@@ -194,6 +196,22 @@ struct GeneralSettingsView: View {
                 Toggle("Show in menu bar", isOn: .constant(true))
                     .disabled(true)
                     .help("Menu bar icon is always shown")
+
+                Toggle("Hide Dock icon", isOn: $hideDockIcon)
+                    .onChange(of: hideDockIcon) { newValue in
+                        NSApp.setActivationPolicy(newValue ? .accessory : .regular)
+                    }
+                    .help("Run only in menu bar without showing in the Dock")
+
+                Toggle("Dynamic Island", isOn: $islandEnabled)
+                    .onChange(of: islandEnabled) { newValue in
+                        if newValue {
+                            DynamicIslandController.shared.show()
+                        } else {
+                            DynamicIslandController.shared.hide()
+                        }
+                    }
+                    .help("Show wallpaper controls in a floating pill at the top of the screen")
             }
 
             Section("Library") {
@@ -366,7 +384,7 @@ struct ScreenRow: View {
                         )
                         .cornerRadius(4)
 
-                        Text(wallpaper.name)
+                        Text(wallpaper.displayName)
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -491,7 +509,7 @@ struct WallpaperPickerCard: View {
                     .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
             )
 
-            Text(wallpaper.name)
+            Text(wallpaper.displayName)
                 .font(.caption)
                 .lineLimit(1)
         }

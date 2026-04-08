@@ -87,6 +87,7 @@ jobs:
         with:
           name: ${{ env.APP_NAME }}_${{ matrix.arch }}
           path: "*.dmg"
+          retention-days: 1
 
   release:
     name: Create Release

@@ -58,6 +58,7 @@
 		A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250C1B481393050C099266A2 /* SettingsView.swift */; };
 		A6DFAAAEC7432468109C0615 /* AsyncImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F92E0D8DD2E96E0575808A6 /* AsyncImageCache.swift */; };
 		AE9FCE08CE4EDEECE7A843BD /* SharedDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CE6EB39E15687BF3655B8C /* SharedDataManager.swift */; };
+		B0E9EFEE56304B99C2D7A14D /* StrikingEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD8494A42E5AA356A35BA25 /* StrikingEffects.swift */; };
 		B34E2B3843447164873423D8 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5391D519B2B4F2D898BEDB0F /* AuthManager.swift */; };
 		B4147A0425D06A4CAD8EDE77 /* CloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */; };
 		B42A0A282FC2AA2D1C21B83F /* SchedulerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A3CC73608BAFA155E615F1B /* SchedulerService.swift */; };
@@ -70,6 +71,7 @@
 		CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0F02714B57C6B710BFA04 /* FavoriteStylesManager.swift */; };
 		D293210E205F384708F9B581 /* URLImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A160A29BBDB078330BD0CA4 /* URLImporter.swift */; };
 		D536FC913069CBC74CD142D2 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C46699BC859D4FABE71BB58F /* LargeWidgetView.swift */; };
+		D57F15D4DC64658E22A29341 /* DynamicIslandController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */; };
 		D729B636A0E78713E53C77FD /* PerformanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CFBA173095D37D5702C5C18 /* PerformanceManager.swift */; };
 		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
 		DCAD65468ADF42075E87EF0B /* WallneticWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */; };
@@ -145,6 +147,7 @@
 		5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticWidgetBundle.swift; sourceTree = "<group>"; };
 		5CEBCAF9E5F767C08A15158C /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopWindowController.swift; sourceTree = "<group>"; };
+		5FD8494A42E5AA356A35BA25 /* StrikingEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrikingEffects.swift; sourceTree = "<group>"; };
 		60D80208B9C31066D6C112FB /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		632C30C0743E0B8691AFD923 /* VideoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPreviewView.swift; sourceTree = "<group>"; };
 		65B960F4D2BFD36368F336A4 /* PexelsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PexelsService.swift; sourceTree = "<group>"; };
@@ -161,6 +164,7 @@
 		8562F59693CF276239AD0905 /* WallpaperCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperCollection.swift; sourceTree = "<group>"; };
 		85B6064EF5DE550677698666 /* Wallnetic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Wallnetic.entitlements; sourceTree = "<group>"; };
 		8B98ABE56A3B186B1C7AFA43 /* AIStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStyle.swift; sourceTree = "<group>"; };
+		8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandController.swift; sourceTree = "<group>"; };
 		9065D39D45D04ED947D1507D /* Wallnetic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wallnetic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		91B502C8C68ABF2CD503030E /* AIGenerateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerateView.swift; sourceTree = "<group>"; };
 		9A160A29BBDB078330BD0CA4 /* URLImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLImporter.swift; sourceTree = "<group>"; };
@@ -218,6 +222,7 @@
 			children = (
 				D726427A9199C4D93B9E93F2 /* DesktopOverlayController.swift */,
 				5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */,
+				8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */,
 				ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */,
 				9E4C04ED28406292407FFBD0 /* PowerManager.swift */,
 				C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */,
@@ -360,6 +365,7 @@
 		6D154AD72514800F57D7A3AE /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				5FD8494A42E5AA356A35BA25 /* StrikingEffects.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -414,7 +420,6 @@
 			children = (
 				69A7F21804AB5D266A239578 /* WallneticWidget.swift */,
 				5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */,
-				FE863A105B48E8483FA4105E /* Models */,
 				245B5B74A9E9F71A64F7454D /* Provider */,
 				4295B025FC1E253129AEE445 /* Resources */,
 				359372CAF80A53CFB75544F5 /* Views */,
@@ -482,11 +487,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					619B21F5247512020263D942 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					9D9A6596302C548CCE03E80C = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -560,6 +563,7 @@
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
 				8EFAE3E67407537EC1B9A705 /* DiscoverView.swift in Sources */,
 				2082CED0A15F59CAEEDB57F8 /* DownloadManager.swift in Sources */,
+				D57F15D4DC64658E22A29341 /* DynamicIslandController.swift in Sources */,
 				A2FD8BF6EF09FC0B086E2261 /* EffectsSettingsView.swift in Sources */,
 				5C0AAD3B25B3DCB797AF2959 /* ExploreView.swift in Sources */,
 				CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */,
@@ -588,6 +592,7 @@
 				0D0FFA07C32604C5448D9BD6 /* SpaceSettingsView.swift in Sources */,
 				B61FA302398523F6F9AFE321 /* SpaceWallpaperManager.swift in Sources */,
 				04BCEB8AB6239A8DB7D5C257 /* StoreKitManager.swift in Sources */,
+				B0E9EFEE56304B99C2D7A14D /* StrikingEffects.swift in Sources */,
 				84ACCBC72C120B8B6E00A64F /* SupabaseClient.swift in Sources */,
 				3ACABD266118F70AA54B934B /* ThemeManager.swift in Sources */,
 				F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */,
@@ -630,6 +635,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -715,6 +721,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -732,6 +739,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ../WallneticWidget/Resources/WallneticWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = ../WallneticWidget/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -751,6 +759,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ../WallneticWidget/Resources/WallneticWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = ../WallneticWidget/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
