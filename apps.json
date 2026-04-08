@@ -19,7 +19,7 @@
         "objectFit": "cover",
         "borderRadius": "22%"
       },
-      "category": ["macos", "graphics-design", "utilities"],
+      "category": ["macos", "graphics-design", "utilities", "photo-video", "entertainment"],
       "platform": "macOS",
       "price": "Free",
       "github": "https://github.com/fatihkan/wallnetic",
