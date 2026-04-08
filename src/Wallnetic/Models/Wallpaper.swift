@@ -7,16 +7,23 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     let id: UUID
     let url: URL
     let name: String
+    var customTitle: String?
     let fileSize: Int64
     let duration: Double?
     let resolution: CGSize?
     let dateAdded: Date
     var isFavorite: Bool
 
+    /// Display name: customTitle if set, otherwise filename
+    var displayName: String {
+        customTitle ?? name
+    }
+
     init(url: URL, isFavorite: Bool = false) {
         self.id = UUID()
         self.url = url
         self.name = url.deletingPathExtension().lastPathComponent
+        self.customTitle = nil
         self.dateAdded = Date()
         self.isFavorite = isFavorite
 
@@ -65,7 +72,7 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     // MARK: - Equatable & Hashable
 
     static func == (lhs: Wallpaper, rhs: Wallpaper) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.customTitle == rhs.customTitle && lhs.isFavorite == rhs.isFavorite
     }
 
     func hash(into hasher: inout Hasher) {

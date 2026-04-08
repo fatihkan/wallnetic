@@ -11,6 +11,8 @@ struct WallpaperGridView: View {
     let searchText: String
     var filter: GridFilter = .all
     @State private var previewWallpaper: Wallpaper?
+    @State private var renamingWallpaper: Wallpaper?
+    @State private var renameText: String = ""
 
     private let columns = [
         GridItem(.adaptive(minimum: 200, maximum: 300), spacing: 16)
@@ -33,7 +35,7 @@ struct WallpaperGridView: View {
 
         if !searchText.isEmpty {
             wallpapers = wallpapers.filter {
-                $0.name.localizedCaseInsensitiveContains(searchText)
+                $0.displayName.localizedCaseInsensitiveContains(searchText)
             }
         }
 
@@ -58,9 +60,16 @@ struct WallpaperGridView: View {
                             wallpaperManager.setWallpaper(wallpaper)
                         }
                         .contextMenu {
-                            WallpaperContextMenu(wallpaper: wallpaper) {
-                                withAnimation { previewWallpaper = wallpaper }
-                            }
+                            WallpaperContextMenu(
+                                wallpaper: wallpaper,
+                                onPreview: {
+                                    withAnimation { previewWallpaper = wallpaper }
+                                },
+                                onRename: {
+                                    renameText = wallpaper.displayName
+                                    renamingWallpaper = wallpaper
+                                }
+                            )
                         }
                         .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
@@ -92,6 +101,17 @@ struct WallpaperGridView: View {
                 )
                 .transition(.opacity)
             }
+        }
+        .sheet(item: $renamingWallpaper) { wallpaper in
+            RenameWallpaperSheet(
+                wallpaper: wallpaper,
+                title: $renameText,
+                onSave: { newTitle in
+                    wallpaperManager.renameWallpaper(wallpaper, to: newTitle)
+                    renamingWallpaper = nil
+                },
+                onCancel: { renamingWallpaper = nil }
+            )
         }
         .modifier(KeyPressModifier(
             onSpace: {
@@ -173,7 +193,7 @@ struct WallpaperCard: View {
 
             // Info
             VStack(alignment: .leading, spacing: 2) {
-                Text(wallpaper.name)
+                Text(wallpaper.displayName)
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .lineLimit(1)
@@ -202,6 +222,7 @@ struct WallpaperContextMenu: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     let wallpaper: Wallpaper
     var onPreview: (() -> Void)? = nil
+    var onRename: (() -> Void)? = nil
 
     var body: some View {
         Button {
@@ -227,6 +248,14 @@ struct WallpaperContextMenu: View {
                 wallpaper.isFavorite ? "Remove from Favorites" : "Add to Favorites",
                 systemImage: wallpaper.isFavorite ? "heart.fill" : "heart"
             )
+        }
+
+        if let onRename = onRename {
+            Button {
+                onRename()
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
         }
 
         Divider()
@@ -279,7 +308,7 @@ struct SelectedWallpaperBar: View {
                 .cornerRadius(4)
 
             VStack(alignment: .leading) {
-                Text(wallpaper.name)
+                Text(wallpaper.displayName)
                     .fontWeight(.medium)
                 Text("\(wallpaper.formattedResolution) • \(wallpaper.formattedDuration)")
                     .font(.caption)
@@ -346,5 +375,57 @@ struct KeyPressModifier: ViewModifier {
             content
                 .onExitCommand { onEscape() }
         }
+    }
+}
+
+// MARK: - Rename Wallpaper Sheet
+
+struct RenameWallpaperSheet: View {
+    let wallpaper: Wallpaper
+    @Binding var title: String
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("Rename Wallpaper")
+                    .font(.headline)
+                Spacer()
+            }
+
+            TextField("Wallpaper name", text: $title)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit {
+                    if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        onSave(title)
+                    }
+                }
+
+            HStack {
+                if wallpaper.customTitle != nil {
+                    Button("Reset to Original") {
+                        onSave("")
+                    }
+                    .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.escape)
+
+                Button("Save") {
+                    onSave(title)
+                }
+                .keyboardShortcut(.return)
+                .buttonStyle(.borderedProminent)
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 360)
     }
 }

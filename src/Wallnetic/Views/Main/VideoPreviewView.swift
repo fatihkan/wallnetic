@@ -62,7 +62,7 @@ struct VideoPreviewView: View {
                     // Bottom bar with glass effect
                     HStack(spacing: 16) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(wallpaper.name)
+                            Text(wallpaper.displayName)
                                 .font(.title3)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)

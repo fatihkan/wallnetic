@@ -166,7 +166,7 @@ struct CollectionWallpaperCard: View {
 
             // Info
             VStack(spacing: 2) {
-                Text(wallpaper.name)
+                Text(wallpaper.displayName)
                     .font(.caption)
                     .fontWeight(.medium)
                     .lineLimit(1)

@@ -10,6 +10,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var powerManager: PowerManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Apply dock icon preference
+        if UserDefaults.standard.bool(forKey: "hideDockIcon") {
+            NSApp.setActivationPolicy(.accessory)
+        }
+
         // Initialize desktop window controller
         desktopWindowController = DesktopWindowController()
 

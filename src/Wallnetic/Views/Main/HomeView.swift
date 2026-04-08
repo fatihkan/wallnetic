@@ -297,6 +297,8 @@ struct CarouselCard: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var thumbnail: NSImage?
     @State private var isHovering = false
+    @State private var renamingWallpaper: Wallpaper?
+    @State private var renameText = ""
 
     private let cardWidth: CGFloat = 240
     private let cardHeight: CGFloat = 135
@@ -364,7 +366,7 @@ struct CarouselCard: View {
             .glowCard(isHovering: isHovering, cornerRadius: 8)
             .scaleEffect(isHovering ? 1.03 : 1.0)
 
-            Text(wallpaper.name)
+            Text(wallpaper.displayName)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.white.opacity(isHovering ? 0.95 : 0.7))
                 .lineLimit(2)
@@ -386,10 +388,22 @@ struct CarouselCard: View {
                 Label(wallpaper.isFavorite ? "Remove from My List" : "Add to My List",
                       systemImage: wallpaper.isFavorite ? "checkmark" : "plus")
             }
+            Button {
+                renameText = wallpaper.displayName
+                renamingWallpaper = wallpaper
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
             Divider()
             Button(role: .destructive) { wallpaperManager.removeWallpaper(wallpaper) } label: {
                 Label("Delete", systemImage: "trash")
             }
+        }
+        .sheet(item: $renamingWallpaper) { wp in
+            RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
+                wallpaperManager.renameWallpaper(wp, to: newTitle)
+                renamingWallpaper = nil
+            }, onCancel: { renamingWallpaper = nil })
         }
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))

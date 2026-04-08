@@ -113,7 +113,7 @@ struct DesktopOverlayView: View {
                     .buttonStyle(.plain)
 
                     // Wallpaper name
-                    Text(wallpaperManager.currentWallpaper?.name ?? "")
+                    Text(wallpaperManager.currentWallpaper?.displayName ?? "")
                         .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)

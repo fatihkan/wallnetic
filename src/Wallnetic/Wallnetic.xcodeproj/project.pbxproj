@@ -71,6 +71,7 @@
 		CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0F02714B57C6B710BFA04 /* FavoriteStylesManager.swift */; };
 		D293210E205F384708F9B581 /* URLImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A160A29BBDB078330BD0CA4 /* URLImporter.swift */; };
 		D536FC913069CBC74CD142D2 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C46699BC859D4FABE71BB58F /* LargeWidgetView.swift */; };
+		D57F15D4DC64658E22A29341 /* DynamicIslandController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */; };
 		D729B636A0E78713E53C77FD /* PerformanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CFBA173095D37D5702C5C18 /* PerformanceManager.swift */; };
 		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
 		DCAD65468ADF42075E87EF0B /* WallneticWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */; };
@@ -163,6 +164,7 @@
 		8562F59693CF276239AD0905 /* WallpaperCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperCollection.swift; sourceTree = "<group>"; };
 		85B6064EF5DE550677698666 /* Wallnetic.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Wallnetic.entitlements; sourceTree = "<group>"; };
 		8B98ABE56A3B186B1C7AFA43 /* AIStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIStyle.swift; sourceTree = "<group>"; };
+		8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandController.swift; sourceTree = "<group>"; };
 		9065D39D45D04ED947D1507D /* Wallnetic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wallnetic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		91B502C8C68ABF2CD503030E /* AIGenerateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerateView.swift; sourceTree = "<group>"; };
 		9A160A29BBDB078330BD0CA4 /* URLImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLImporter.swift; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 			children = (
 				D726427A9199C4D93B9E93F2 /* DesktopOverlayController.swift */,
 				5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */,
+				8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */,
 				ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */,
 				9E4C04ED28406292407FFBD0 /* PowerManager.swift */,
 				C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */,
@@ -560,6 +563,7 @@
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
 				8EFAE3E67407537EC1B9A705 /* DiscoverView.swift in Sources */,
 				2082CED0A15F59CAEEDB57F8 /* DownloadManager.swift in Sources */,
+				D57F15D4DC64658E22A29341 /* DynamicIslandController.swift in Sources */,
 				A2FD8BF6EF09FC0B086E2261 /* EffectsSettingsView.swift in Sources */,
 				5C0AAD3B25B3DCB797AF2959 /* ExploreView.swift in Sources */,
 				CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */,

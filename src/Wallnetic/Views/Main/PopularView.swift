@@ -102,6 +102,8 @@ struct PopularCard: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var thumbnail: NSImage?
     @State private var isHovering = false
+    @State private var renamingWallpaper: Wallpaper?
+    @State private var renameText = ""
 
     private var rankColor: Color {
         switch rank {
@@ -164,7 +166,7 @@ struct PopularCard: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(wallpaper.name)
+                    Text(wallpaper.displayName)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.white.opacity(isHovering ? 0.95 : 0.75))
                         .lineLimit(2)
@@ -195,6 +197,18 @@ struct PopularCard: View {
                 Label(wallpaper.isFavorite ? "Remove Favorite" : "Add Favorite",
                       systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
             }
+            Button {
+                renameText = wallpaper.displayName
+                renamingWallpaper = wallpaper
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+        }
+        .sheet(item: $renamingWallpaper) { wp in
+            RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
+                wallpaperManager.renameWallpaper(wp, to: newTitle)
+                renamingWallpaper = nil
+            }, onCancel: { renamingWallpaper = nil })
         }
         .task { thumbnail = await wallpaper.generateThumbnail() }
     }

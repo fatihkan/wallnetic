@@ -36,7 +36,7 @@ struct MenuBarView: View {
                 HStack {
                     Image(systemName: "photo.fill")
                         .foregroundColor(.secondary)
-                    Text(current.name)
+                    Text(current.displayName)
                         .lineLimit(1)
                 }
                 .padding(.horizontal, 12)
@@ -74,7 +74,7 @@ struct MenuBarView: View {
                             wallpaperManager.setWallpaper(wallpaper)
                         } label: {
                             HStack {
-                                Text(wallpaper.name)
+                                Text(wallpaper.displayName)
                                 if wallpaper.id == wallpaperManager.currentWallpaper?.id {
                                     Image(systemName: "checkmark")
                                 }
@@ -115,7 +115,7 @@ struct MenuBarView: View {
             // Recent wallpapers submenu
             Menu {
                 ForEach(wallpaperManager.wallpapers.prefix(5)) { wallpaper in
-                    Button(wallpaper.name) {
+                    Button(wallpaper.displayName) {
                         wallpaperManager.setWallpaper(wallpaper)
                     }
                 }
@@ -127,6 +127,16 @@ struct MenuBarView: View {
                 }
             } label: {
                 Label("Recent", systemImage: "clock")
+            }
+
+            // Dynamic Island toggle
+            Button {
+                DynamicIslandController.shared.toggle()
+            } label: {
+                Label(
+                    DynamicIslandController.shared.isVisible ? "Hide Dynamic Island" : "Show Dynamic Island",
+                    systemImage: "capsule"
+                )
             }
 
             Divider()
