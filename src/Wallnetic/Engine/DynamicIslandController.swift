@@ -60,7 +60,7 @@ class DynamicIslandController: ObservableObject {
     func show() {
         guard islandWindow == nil else { return }
 
-        let screen = NSScreen.main ?? NSScreen.screens.first!
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         hasNotch = detectNotch(for: screen) > 0
 
         let content = DynamicIslandView()
@@ -215,6 +215,7 @@ struct DynamicIslandView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @EnvironmentObject var island: DynamicIslandController
 
+    @Environment(\.openWindow) private var openWindow
     @State private var isHovering = false
     @State private var thumbnail: NSImage?
     @State private var isRenaming = false
@@ -279,6 +280,7 @@ struct DynamicIslandView: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 thumbnailView(size: 56, radius: 10)
+                    .onTapGesture { openMainWindow() }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(wallpaperManager.currentWallpaper?.displayName ?? "No Wallpaper")
@@ -396,6 +398,15 @@ struct DynamicIslandView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Open Main Window
+
+    private func openMainWindow() {
+        openWindow(id: "main")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
     // MARK: - Thumbnail Loading
 
     private func loadThumbnail(size: CGFloat) {
@@ -416,18 +427,14 @@ struct DynamicIslandView: View {
            let idx = wallpapers.firstIndex(where: { $0.id == current.id }) {
             let prevIdx = (idx - 1 + wallpapers.count) % wallpapers.count
             wallpaperManager.setWallpaper(wallpapers[prevIdx])
-        } else {
-            wallpaperManager.setWallpaper(wallpapers.last!)
+        } else if let last = wallpapers.last {
+            wallpaperManager.setWallpaper(last)
         }
     }
 
     private func setRandomWallpaper() {
-        let wallpapers = wallpaperManager.wallpapers
-        guard wallpapers.count > 1 else { return }
-        var random = wallpapers.randomElement()!
-        while random.id == wallpaperManager.currentWallpaper?.id {
-            random = wallpapers.randomElement()!
-        }
+        let candidates = wallpaperManager.wallpapers.filter { $0.id != wallpaperManager.currentWallpaper?.id }
+        guard let random = candidates.randomElement() else { return }
         wallpaperManager.setWallpaper(random)
     }
 }

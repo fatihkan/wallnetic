@@ -86,8 +86,8 @@ class VideoRenderer: NSObject {
         // Create player item with performance settings
         let playerItem = AVPlayerItem(asset: asset)
 
-        // Let the system buffer as much as needed for seamless looping
-        playerItem.preferredForwardBufferDuration = 0  // No limit — system decides
+        // Optimize buffering - only buffer what we need
+        playerItem.preferredForwardBufferDuration = preferredBufferDuration
 
         // Prefer hardware decoding
         if useHardwareDecoding {
@@ -99,19 +99,10 @@ class VideoRenderer: NSObject {
 
         // Use AVQueuePlayer with AVPlayerLooper for seamless looping
         queuePlayer = AVQueuePlayer()
-        queuePlayer?.automaticallyWaitsToMinimizeStalling = true  // Wait for buffer to avoid black frames
+        queuePlayer?.automaticallyWaitsToMinimizeStalling = false  // Start immediately
         queuePlayer?.preventsDisplaySleepDuringVideoPlayback = false  // Allow display sleep
 
-        // Trim 0.05s from end to avoid black frame at loop boundary
-        let duration = playerItem.asset.duration
-        let trimEnd = CMTimeMakeWithSeconds(0.05, preferredTimescale: duration.timescale)
-        let loopRange = CMTimeRange(start: .zero, duration: CMTimeSubtract(duration, trimEnd))
-
-        if duration.seconds > 0.1 && loopRange.duration.seconds > 0.1 {
-            playerLooper = AVPlayerLooper(player: queuePlayer!, templateItem: playerItem, timeRange: loopRange)
-        } else {
-            playerLooper = AVPlayerLooper(player: queuePlayer!, templateItem: playerItem)
-        }
+        playerLooper = AVPlayerLooper(player: queuePlayer!, templateItem: playerItem)
         player = queuePlayer
 
         // Configure player for optimal performance

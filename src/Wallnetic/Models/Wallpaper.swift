@@ -77,5 +77,7 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(customTitle)
+        hasher.combine(isFavorite)
     }
 }

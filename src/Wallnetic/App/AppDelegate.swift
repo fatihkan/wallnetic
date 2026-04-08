@@ -27,6 +27,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup display change observer
         setupDisplayObserver()
 
+        // Listen for open main window requests
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOpenMainWindow),
+            name: .openMainWindow,
+            object: nil
+        )
+
         logger.info("Wallnetic started successfully")
     }
 
@@ -151,18 +159,58 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    // MARK: - Open Main Window
+
+    @objc private func handleOpenMainWindow() {
+        showMainWindow()
+    }
+
+    private func showMainWindow() {
+        // Temporarily make app regular so windows can appear
+        if NSApp.activationPolicy() == .accessory {
+            NSApp.setActivationPolicy(.regular)
+        }
+
+        // Try existing window first
+        let existingWindow = NSApp.windows.first { window in
+            guard window.level == .normal,
+                  !window.title.isEmpty || window.contentView != nil else {
+                return false
+            }
+            return !window.styleMask.contains(.borderless) || window.frame.width >= 800
+        }
+
+        if let window = existingWindow {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            // No window — use WindowManager to create one via SwiftUI openWindow
+            WindowManager.shared.openMainWindow?()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+
+        // Re-hide dock after window appears
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if UserDefaults.standard.bool(forKey: "hideDockIcon") {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
     // MARK: - URL Handling
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             guard url.scheme == "wallnetic" else { continue }
 
-            // Handle widget actions without opening main window
             let host = url.host ?? ""
             NSLog("[AppDelegate] Handling URL: %@ (host: %@)", url.absoluteString, host)
 
-            // Don't open main window for widget actions
-            if host == "playPause" || host == "nextWallpaper" || host == "setWallpaper" {
+            if host == "open" {
+                showMainWindow()
+            } else if host == "playPause" || host == "nextWallpaper" || host == "setWallpaper" {
                 WallpaperManager.shared.handleWidgetURL(url)
             }
         }

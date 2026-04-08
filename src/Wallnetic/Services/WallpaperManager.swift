@@ -204,7 +204,7 @@ class WallpaperManager: ObservableObject {
             let uniqueName = UUID().uuidString + "_" + fileName
             let uniqueURL = libraryURL.appendingPathComponent(uniqueName)
             print("[WallpaperManager] File exists, using unique name: \(uniqueName)")
-            try fileManager.copyItem(at: sourceURL, to: uniqueURL)
+            try fileManager.copyItem(at: importURL, to: uniqueURL)
             print("[WallpaperManager] File copied successfully to: \(uniqueURL.path)")
 
             let wallpaper = Wallpaper(url: uniqueURL)
@@ -214,7 +214,7 @@ class WallpaperManager: ObservableObject {
             }
             return wallpaper
         } else {
-            try fileManager.copyItem(at: sourceURL, to: destURL)
+            try fileManager.copyItem(at: importURL, to: destURL)
             print("[WallpaperManager] File copied successfully to: \(destURL.path)")
 
             let wallpaper = Wallpaper(url: destURL)
@@ -264,6 +264,11 @@ class WallpaperManager: ObservableObject {
     func toggleFavorite(_ wallpaper: Wallpaper) {
         if let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) {
             wallpapers[index].isFavorite.toggle()
+
+            // Keep currentWallpaper in sync
+            if currentWallpaper?.id == wallpaper.id {
+                currentWallpaper = wallpapers[index]
+            }
 
             // Save favorite paths to persist across launches
             saveFavoritePaths()
@@ -548,6 +553,7 @@ extension Notification.Name {
     static let playbackStateDidChange = Notification.Name("playbackStateDidChange")
     static let screenWallpaperDidChange = Notification.Name("screenWallpaperDidChange")
     static let applyScreenWallpapers = Notification.Name("applyScreenWallpapers")
+    static let openMainWindow = Notification.Name("openMainWindow")
 }
 
 // MARK: - Screen Wallpaper Info
