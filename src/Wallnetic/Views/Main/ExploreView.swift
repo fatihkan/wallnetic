@@ -327,23 +327,10 @@ struct ExploreCard: View {
         .onHover { h in isHovering = h }
         .staggered(index: index)
         .contextMenu {
-            Button { wallpaperManager.setWallpaper(wallpaper) } label: {
-                Label("Set as Wallpaper", systemImage: "photo.on.rectangle")
-            }
-            Button { wallpaperManager.toggleFavorite(wallpaper) } label: {
-                Label(wallpaper.isFavorite ? "Remove Favorite" : "Add Favorite",
-                      systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
-            }
-            Button {
+            WallpaperContextMenu(wallpaper: wallpaper, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Divider()
-            Button(role: .destructive) { wallpaperManager.removeWallpaper(wallpaper) } label: {
-                Label("Delete", systemImage: "trash")
-            }
+            })
         }
         .sheet(item: $renamingWallpaper) { wp in
             RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
@@ -427,13 +414,7 @@ struct ExploreListRow: View {
         .onHover { h in withAnimation(Anim.hover) { isHovering = h } }
         .onTapGesture(count: 2) { wallpaperManager.setWallpaper(wallpaper) }
         .contextMenu {
-            Button { wallpaperManager.setWallpaper(wallpaper) } label: {
-                Label("Set as Wallpaper", systemImage: "photo.on.rectangle")
-            }
-            Button { wallpaperManager.toggleFavorite(wallpaper) } label: {
-                Label(wallpaper.isFavorite ? "Remove Favorite" : "Add Favorite",
-                      systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
-            }
+            WallpaperContextMenu(wallpaper: wallpaper)
         }
         .task { thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90)) }
     }

@@ -194,19 +194,10 @@ struct PopularCard: View {
         .animation(.spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
         .onHover { h in isHovering = h }
         .contextMenu {
-            Button { wallpaperManager.setWallpaper(wallpaper) } label: {
-                Label("Set as Wallpaper", systemImage: "photo.on.rectangle")
-            }
-            Button { wallpaperManager.toggleFavorite(wallpaper) } label: {
-                Label(wallpaper.isFavorite ? "Remove Favorite" : "Add Favorite",
-                      systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
-            }
-            Button {
+            WallpaperContextMenu(wallpaper: wallpaper, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
+            })
         }
         .sheet(item: $renamingWallpaper) { wp in
             RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in

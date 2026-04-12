@@ -457,25 +457,10 @@ struct CarouselCard: View {
             wallpaperManager.setWallpaper(wallpaper)
         }
         .contextMenu {
-            Button { wallpaperManager.setWallpaper(wallpaper) } label: {
-                Label("Set as Wallpaper", systemImage: "play.fill")
-            }
-            Button {
-                withAnimation { wallpaperManager.toggleFavorite(wallpaper) }
-            } label: {
-                Label(wallpaper.isFavorite ? "Remove from My List" : "Add to My List",
-                      systemImage: wallpaper.isFavorite ? "checkmark" : "plus")
-            }
-            Button {
+            WallpaperContextMenu(wallpaper: wallpaper, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Divider()
-            Button(role: .destructive) { wallpaperManager.removeWallpaper(wallpaper) } label: {
-                Label("Delete", systemImage: "trash")
-            }
+            })
         }
         .sheet(item: $renamingWallpaper) { wp in
             RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
