@@ -40,7 +40,7 @@ class SchedulerService: ObservableObject {
     // MARK: - Private Properties
 
     private var timer: Timer?
-    private let turkeyTimeZone = TimeZone(identifier: "Europe/Istanbul")!
+    private var userTimeZone: TimeZone { .current }
 
     private let defaults = UserDefaults.standard
     private let enabledKey = "scheduler.isEnabled"
@@ -142,18 +142,18 @@ class SchedulerService: ObservableObject {
         let calendar = Calendar.current
 
         // Get current time in Turkey timezone
-        var turkeyCalendar = calendar
-        turkeyCalendar.timeZone = turkeyTimeZone
+        var localCalendar = calendar
+        localCalendar.timeZone = userTimeZone
 
-        let currentHour = turkeyCalendar.component(.hour, from: now)
-        let currentMinute = turkeyCalendar.component(.minute, from: now)
+        let currentHour = localCalendar.component(.hour, from: now)
+        let currentMinute = localCalendar.component(.minute, from: now)
 
         // Check if it's the scheduled time (within 1 minute window)
         if currentHour == scheduleHour && currentMinute == scheduleMinute {
             // Check if we already generated today
             if let lastGen = lastGenerationDate {
-                let lastGenDay = turkeyCalendar.startOfDay(for: lastGen)
-                let today = turkeyCalendar.startOfDay(for: now)
+                let lastGenDay = localCalendar.startOfDay(for: lastGen)
+                let today = localCalendar.startOfDay(for: now)
 
                 if lastGenDay >= today {
                     // Already generated today
@@ -178,23 +178,23 @@ class SchedulerService: ObservableObject {
         }
 
         let now = Date()
-        var turkeyCalendar = Calendar.current
-        turkeyCalendar.timeZone = turkeyTimeZone
+        var localCalendar = Calendar.current
+        localCalendar.timeZone = userTimeZone
 
         // Create date components for scheduled time
-        var components = turkeyCalendar.dateComponents([.year, .month, .day], from: now)
+        var components = localCalendar.dateComponents([.year, .month, .day], from: now)
         components.hour = scheduleHour
         components.minute = scheduleMinute
         components.second = 0
 
-        guard var scheduledDate = turkeyCalendar.date(from: components) else {
+        guard var scheduledDate = localCalendar.date(from: components) else {
             nextScheduledTime = nil
             return
         }
 
         // If scheduled time has passed today, move to tomorrow
         if scheduledDate <= now {
-            scheduledDate = turkeyCalendar.date(byAdding: .day, value: 1, to: scheduledDate) ?? scheduledDate
+            scheduledDate = localCalendar.date(byAdding: .day, value: 1, to: scheduledDate) ?? scheduledDate
         }
 
         nextScheduledTime = scheduledDate
@@ -323,7 +323,7 @@ class SchedulerService: ObservableObject {
     var formattedScheduleTime: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        formatter.timeZone = turkeyTimeZone
+        formatter.timeZone = userTimeZone
 
         var components = DateComponents()
         components.hour = scheduleHour
@@ -341,7 +341,7 @@ class SchedulerService: ObservableObject {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "dd MMM HH:mm"
-        formatter.timeZone = turkeyTimeZone
+        formatter.timeZone = userTimeZone
         formatter.locale = Locale.current
 
         return formatter.string(from: next)

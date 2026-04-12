@@ -14,16 +14,19 @@ final class ThumbnailCache {
         cache.totalCostLimit = 80 * 1024 * 1024  // ~80MB max
 
         // Clear cache on memory pressure
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleMemoryWarning),
-            name: NSApplication.didReceiveMemoryWarningNotification,
-            object: nil
-        )
+        setupMemoryPressureMonitor()
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
+    private var memoryPressureSource: DispatchSourceMemoryPressure?
+
+    private func setupMemoryPressureMonitor() {
+        let source = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
+        source.setEventHandler { [weak self] in
+            self?.clearCache()
+            print("[ThumbnailCache] Cleared cache due to memory pressure")
+        }
+        source.resume()
+        memoryPressureSource = source
     }
 
     // MARK: - Public API
@@ -93,15 +96,4 @@ final class ThumbnailCache {
         }
     }
 
-    @objc private func handleMemoryWarning() {
-        // Clear cache on memory pressure
-        clearCache()
-        print("[ThumbnailCache] Cleared cache due to memory pressure")
-    }
-}
-
-// MARK: - NSApplication Memory Warning Extension
-
-extension NSApplication {
-    static let didReceiveMemoryWarningNotification = Notification.Name("NSApplicationDidReceiveMemoryWarningNotification")
 }

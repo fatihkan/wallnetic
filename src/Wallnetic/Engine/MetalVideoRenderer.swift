@@ -46,10 +46,14 @@ final class MetalVideoRenderer: NSObject {
 
     // MARK: - Initialization
 
+    static var isSupported: Bool {
+        MTLCreateSystemDefaultDevice() != nil
+    }
+
     override init() {
         // Create Metal device
         guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Metal is not supported on this device")
+            fatalError("Metal is not supported — check MetalVideoRenderer.isSupported before init")
         }
         self.device = device
 

@@ -32,7 +32,9 @@ class DownloadManager: NSObject, ObservableObject {
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.default
         config.httpMaximumConnectionsPerHost = maxConcurrent
-        return URLSession(configuration: config, delegate: self, delegateQueue: .main)
+        let delegateQueue = OperationQueue()
+        delegateQueue.maxConcurrentOperationCount = 1
+        return URLSession(configuration: config, delegate: self, delegateQueue: delegateQueue)
     }()
 
     private override init() { super.init() }
@@ -201,12 +203,14 @@ extension DownloadManager: URLSessionDownloadDelegate {
 
         do {
             try FileManager.default.moveItem(at: location, to: dest)
-            if let idx = downloads.firstIndex(where: { $0.id == id }) {
-                downloads[idx].status = .completed
-                downloads[idx].localURL = dest
-                downloads[idx].progress = 1.0
+            DispatchQueue.main.async { [self] in
+                if let idx = downloads.firstIndex(where: { $0.id == id }) {
+                    downloads[idx].status = .completed
+                    downloads[idx].localURL = dest
+                    downloads[idx].progress = 1.0
+                }
+                activeCount = max(0, activeCount - 1)
             }
-            activeCount = max(0, activeCount - 1)
             completionHandlers[id]?(.success(dest))
         } catch {
             completionHandlers[id]?(.failure(error))
@@ -225,8 +229,10 @@ extension DownloadManager: URLSessionDownloadDelegate {
             ? Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
             : 0
 
-        if let idx = downloads.firstIndex(where: { $0.id == id }) {
-            downloads[idx].progress = progress
+        DispatchQueue.main.async { [self] in
+            if let idx = downloads.firstIndex(where: { $0.id == id }) {
+                downloads[idx].progress = progress
+            }
         }
     }
 
@@ -234,10 +240,12 @@ extension DownloadManager: URLSessionDownloadDelegate {
         guard let error = error,
               let id = tasks.first(where: { $0.value === task })?.key else { return }
 
-        if let idx = downloads.firstIndex(where: { $0.id == id }) {
-            downloads[idx].status = .failed
+        DispatchQueue.main.async { [self] in
+            if let idx = downloads.firstIndex(where: { $0.id == id }) {
+                downloads[idx].status = .failed
+            }
+            activeCount = max(0, activeCount - 1)
         }
-        activeCount = max(0, activeCount - 1)
         completionHandlers[id]?(.failure(error))
         tasks.removeValue(forKey: id)
         completionHandlers.removeValue(forKey: id)

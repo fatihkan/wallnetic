@@ -139,7 +139,7 @@ struct SchedulerSettingsView: View {
 
                 Spacer()
 
-                Text("Europe/Istanbul")
+                Text(TimeZone.current.identifier)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
@@ -320,8 +320,8 @@ struct SchedulerSettingsView: View {
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd MMM yyyy HH:mm"
-        formatter.timeZone = TimeZone(identifier: "Europe/Istanbul")
-        formatter.locale = Locale(identifier: "tr_TR")
+        formatter.timeZone = .current
+        formatter.locale = .current
         return formatter.string(from: date)
     }
 }

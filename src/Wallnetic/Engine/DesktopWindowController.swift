@@ -93,7 +93,7 @@ class DesktopWindowController {
 
         // Create and attach video renderer (Metal or AVFoundation based)
         let renderer: WallpaperRenderer
-        if useMetalRenderer {
+        if useMetalRenderer && MetalVideoRenderer.isSupported {
             renderer = MetalVideoRenderer()
         } else {
             renderer = VideoRenderer()

@@ -705,6 +705,25 @@ class WallpaperManager: ObservableObject {
         NSLog("[WallpaperManager] Synced %d favorites to widget", widgetWallpapers.count)
     }
 
+    /// Cycles to the previous wallpaper in the library
+    func cycleToPreviousWallpaper() {
+        guard !wallpapers.isEmpty else { return }
+        if let current = currentWallpaper,
+           let idx = wallpapers.firstIndex(where: { $0.id == current.id }) {
+            let prevIdx = (idx - 1 + wallpapers.count) % wallpapers.count
+            setWallpaper(wallpapers[prevIdx])
+        } else if let last = wallpapers.last {
+            setWallpaper(last)
+        }
+    }
+
+    /// Sets a random wallpaper (different from current)
+    func setRandomWallpaper() {
+        let candidates = wallpapers.filter { $0.id != currentWallpaper?.id }
+        guard let random = candidates.randomElement() else { return }
+        setWallpaper(random)
+    }
+
     /// Cycles to the next wallpaper in the library
     func cycleToNextWallpaper() {
         guard !wallpapers.isEmpty else { return }

@@ -775,7 +775,7 @@ struct AboutSettingsView: View {
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text("Version 1.0.0 (Build 1)")
+            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") (Build \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"))")
                 .foregroundColor(.secondary)
 
             Text("Live Video Wallpapers for macOS")

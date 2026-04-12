@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var scrollOffset: CGFloat = 0
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showingOnboarding = false
+    @State private var importError: String?
 
     var body: some View {
         ZStack {
@@ -66,6 +67,14 @@ struct ContentView: View {
             return true
         }
         .frame(minWidth: 900, minHeight: 600)
+        .alert("Import Error", isPresented: Binding(
+            get: { importError != nil },
+            set: { if !$0 { importError = nil } }
+        )) {
+            Button("OK") { importError = nil }
+        } message: {
+            Text(importError ?? "")
+        }
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(isPresented: $showingOnboarding)
         }
@@ -89,7 +98,7 @@ struct ContentView: View {
                         do {
                             _ = try await wallpaperManager.importVideo(from: url)
                         } catch {
-                            print("Import error: \(error)")
+                            await MainActor.run { importError = error.localizedDescription }
                         }
                     }
                 }
@@ -108,7 +117,7 @@ struct ContentView: View {
                       let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
                 Task {
                     do { _ = try await wallpaperManager.importVideo(from: url) }
-                    catch { print("Drop error: \(error)") }
+                    catch { await MainActor.run { importError = error.localizedDescription } }
                 }
             }
         }

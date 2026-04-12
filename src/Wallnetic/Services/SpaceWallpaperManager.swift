@@ -28,6 +28,11 @@ class SpaceWallpaperManager: ObservableObject {
         isEnabled = true
         detectCurrentSpace()
 
+        // Remove existing observer if any (prevent double registration)
+        if let existing = spaceObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(existing)
+        }
+
         // Observe space changes
         spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
