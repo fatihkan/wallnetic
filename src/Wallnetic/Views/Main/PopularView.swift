@@ -91,6 +91,10 @@ struct PopularView: View {
             }
         }
         .background(Color.clear)
+        .modifier(KeyPressModifier(
+            onLeft: { wallpaperManager.cycleToNextWallpaper() },
+            onRight: { wallpaperManager.cycleToNextWallpaper() }
+        ))
     }
 }
 

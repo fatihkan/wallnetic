@@ -37,6 +37,12 @@ struct WallpaperSource: Identifiable {
         WallpaperSource(id: "motionbgs", name: "MotionBGs", description: "4K animated backgrounds",
                         icon: "film.stack", color: .orange, url: "https://motionbgs.com",
                         type: .browser, estimatedCount: "8,790+"),
+        WallpaperSource(id: "wallhaven", name: "Wallhaven", description: "Community-curated wallpapers, 4K+",
+                        icon: "globe.americas.fill", color: .cyan, url: "https://wallhaven.cc/search?categories=010&purity=100&sorting=toplist&order=desc&topRange=1M",
+                        type: .browser, estimatedCount: "1M+"),
+        WallpaperSource(id: "steamworkshop", name: "Steam Workshop", description: "Wallpaper Engine community content",
+                        icon: "gamecontroller.fill", color: .indigo, url: "https://steamcommunity.com/workshop/browse/?appid=431960&browsesort=trend&section=readytouseitems",
+                        type: .browser, estimatedCount: "2M+"),
     ]
 }
 

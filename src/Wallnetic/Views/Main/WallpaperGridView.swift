@@ -143,48 +143,22 @@ struct WallpaperCard: View {
     let isSelected: Bool
     @State private var thumbnail: NSImage?
     @State private var isHovering = false
+    @State private var isFlipped = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Thumbnail
+            // Thumbnail with flip
             ZStack {
-                if let thumbnail = thumbnail {
-                    Image(nsImage: thumbnail)
-                        .resizable()
-                        .aspectRatio(16/9, contentMode: .fill)
-                        .clipped()
+                if !isFlipped {
+                    // Front: thumbnail
+                    frontView
                 } else {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .aspectRatio(16/9, contentMode: .fit)
-                        .overlay {
-                            ProgressView()
-                        }
-                }
-
-                // Duration badge
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text(wallpaper.formattedDuration)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(4)
-                            .padding(8)
-                    }
-                }
-
-                // Hover play icon
-                if isHovering {
-                    Color.black.opacity(0.3)
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 44))
-                        .foregroundColor(.white)
+                    // Back: metadata
+                    backView
                 }
             }
+            .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+            .animation(Anim.gentle, value: isFlipped)
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
@@ -209,9 +183,115 @@ struct WallpaperCard: View {
             withAnimation(.easeOut(duration: 0.2)) {
                 isHovering = hovering
             }
+            // Auto-unflip when mouse leaves
+            if !hovering && isFlipped {
+                withAnimation(Anim.gentle) { isFlipped = false }
+            }
         }
         .task {
             thumbnail = await wallpaper.generateThumbnail()
+        }
+    }
+
+    // MARK: - Front View
+
+    private var frontView: some View {
+        ZStack {
+            if let thumbnail = thumbnail {
+                Image(nsImage: thumbnail)
+                    .resizable()
+                    .aspectRatio(16/9, contentMode: .fill)
+                    .clipped()
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .aspectRatio(16/9, contentMode: .fit)
+                    .overlay { ProgressView() }
+            }
+
+            // Duration badge
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Text(wallpaper.formattedDuration)
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(4)
+                        .padding(8)
+                }
+            }
+
+            // Hover overlay
+            if isHovering {
+                Color.black.opacity(0.3)
+
+                HStack(spacing: 16) {
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundColor(.white)
+
+                    // Flip button
+                    Button {
+                        withAnimation(Anim.gentle) { isFlipped = true }
+                    } label: {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    // MARK: - Back View (metadata)
+
+    private var backView: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color(white: 0.12))
+                .aspectRatio(16/9, contentMode: .fit)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(wallpaper.displayName)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+
+                Divider().background(.white.opacity(0.1))
+
+                metadataRow("Resolution", value: wallpaper.formattedResolution)
+                metadataRow("Duration", value: wallpaper.formattedDuration)
+                metadataRow("File Size", value: wallpaper.formattedFileSize)
+                metadataRow("Added", value: wallpaper.dateAdded.formatted(.dateTime.month().day().year()))
+
+                if wallpaper.isFavorite {
+                    HStack(spacing: 4) {
+                        Image(systemName: "heart.fill")
+                            .foregroundColor(.pink)
+                        Text("Favorite")
+                            .foregroundColor(.pink)
+                    }
+                    .font(.system(size: 10))
+                }
+            }
+            .padding(12)
+            .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+        }
+    }
+
+    private func metadataRow(_ label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(.white.opacity(0.4))
+            Spacer()
+            Text(value)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundColor(.white.opacity(0.8))
         }
     }
 }
@@ -361,19 +441,29 @@ struct AsyncThumbnailView: View {
 // MARK: - Key Press Modifier (macOS 13+ compatible)
 
 struct KeyPressModifier: ViewModifier {
-    let onSpace: () -> Void
-    let onEscape: () -> Void
-    let onReturn: () -> Void
+    var onSpace: (() -> Void)? = nil
+    var onEscape: (() -> Void)? = nil
+    var onReturn: (() -> Void)? = nil
+    var onLeft: (() -> Void)? = nil
+    var onRight: (() -> Void)? = nil
+    var onUp: (() -> Void)? = nil
+    var onDown: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     func body(content: Content) -> some View {
         if #available(macOS 14.0, *) {
             content
-                .onKeyPress(.space) { onSpace(); return .handled }
-                .onKeyPress(.escape) { onEscape(); return .handled }
-                .onKeyPress(.return) { onReturn(); return .handled }
+                .onKeyPress(.space) { onSpace?(); return onSpace != nil ? .handled : .ignored }
+                .onKeyPress(.escape) { onEscape?(); return onEscape != nil ? .handled : .ignored }
+                .onKeyPress(.return) { onReturn?(); return onReturn != nil ? .handled : .ignored }
+                .onKeyPress(.leftArrow) { onLeft?(); return onLeft != nil ? .handled : .ignored }
+                .onKeyPress(.rightArrow) { onRight?(); return onRight != nil ? .handled : .ignored }
+                .onKeyPress(.upArrow) { onUp?(); return onUp != nil ? .handled : .ignored }
+                .onKeyPress(.downArrow) { onDown?(); return onDown != nil ? .handled : .ignored }
+                .onKeyPress(.delete) { onDelete?(); return onDelete != nil ? .handled : .ignored }
         } else {
             content
-                .onExitCommand { onEscape() }
+                .onExitCommand { onEscape?() }
         }
     }
 }

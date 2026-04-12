@@ -135,6 +135,9 @@ struct AppearanceSettingsView: View {
     var body: some View {
         Form {
             Section("Theme") {
+                Toggle("Dynamic accent color from wallpaper", isOn: $themeManager.dynamicThemeEnabled)
+                    .help("UI accent color adapts to the current wallpaper's dominant color")
+
                 ForEach(AppearanceMode.allCases, id: \.self) { mode in
                     HStack {
                         Image(systemName: mode.icon)
@@ -184,6 +187,7 @@ struct GeneralSettingsView: View {
     @State private var launchAtLoginEnabled = false
     @AppStorage("hideDockIcon") private var hideDockIcon = false
     @AppStorage("island.enabled") private var islandEnabled = false
+    @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = false
 
     var body: some View {
         Form {
@@ -212,6 +216,9 @@ struct GeneralSettingsView: View {
                         }
                     }
                     .help("Show wallpaper controls in a floating pill at the top of the screen")
+
+                Toggle("Global Hotkeys", isOn: $globalHotkeysEnabled)
+                    .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
             }
 
             Section("Library") {

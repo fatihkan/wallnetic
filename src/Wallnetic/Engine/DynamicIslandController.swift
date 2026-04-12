@@ -1,6 +1,7 @@
 import Cocoa
 import SwiftUI
 import Combine
+import UniformTypeIdentifiers
 
 /// Dynamic Island — wraps around the notch on MacBooks, or floats at top-center on other Macs
 class DynamicIslandController: ObservableObject {
@@ -17,6 +18,8 @@ class DynamicIslandController: ObservableObject {
     @Published var isVisible = false
     @Published var isRenameActive = false
     @Published var hasNotch = false
+    @Published var isDragOver = false
+    @Published var isImporting = false
 
     private var islandWindow: NSPanel?
     private var cancellables = Set<AnyCancellable>()
@@ -221,6 +224,8 @@ struct DynamicIslandView: View {
     @State private var isRenaming = false
     @State private var renameText = ""
 
+    private let supportedTypes: [UTType] = [.movie, .video, .mpeg4Movie, .quickTimeMovie, .gif]
+
     private var bottomRadius: CGFloat {
         island.state == .compact ? 16 : 20
     }
@@ -239,6 +244,43 @@ struct DynamicIslandView: View {
                 .shadow(color: .black.opacity(0.6), radius: 8, y: 4)
         )
         .clipShape(IslandShape(bottomRadius: bottomRadius))
+        .overlay {
+            // Drop zone indicator
+            if island.isDragOver {
+                IslandShape(bottomRadius: bottomRadius)
+                    .stroke(.white.opacity(0.6), lineWidth: 2)
+                    .overlay {
+                        VStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white.opacity(0.9))
+                            if island.state == .expanded {
+                                Text("Drop to import")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                        }
+                    }
+            }
+            // Importing indicator
+            if island.isImporting {
+                IslandShape(bottomRadius: bottomRadius)
+                    .fill(.black.opacity(0.5))
+                    .overlay {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(0.8)
+                            .tint(.white)
+                    }
+            }
+        }
+        .onDrop(of: supportedTypes, isTargeted: $island.isDragOver) { providers in
+            handleDrop(providers: providers)
+            return true
+        }
+        .onChange(of: island.isDragOver) { dragging in
+            if dragging { island.expand() }
+        }
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.15)) { isHovering = hovering }
             if hovering { island.expand() }
@@ -436,6 +478,66 @@ struct DynamicIslandView: View {
         let candidates = wallpaperManager.wallpapers.filter { $0.id != wallpaperManager.currentWallpaper?.id }
         guard let random = candidates.randomElement() else { return }
         wallpaperManager.setWallpaper(random)
+    }
+
+    // MARK: - Drag & Drop Import
+
+    private func handleDrop(providers: [NSItemProvider]) {
+        island.isImporting = true
+
+        for provider in providers {
+            // Try to load as file URL first
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                _ = provider.loadObject(ofClass: URL.self) { url, error in
+                    guard let url = url else {
+                        DispatchQueue.main.async { island.isImporting = false }
+                        return
+                    }
+                    self.importDroppedFile(url: url)
+                }
+            } else {
+                // Fallback: load as file representation
+                for type in supportedTypes {
+                    if provider.hasItemConformingToTypeIdentifier(type.identifier) {
+                        provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { tempURL, error in
+                            guard let tempURL = tempURL else {
+                                DispatchQueue.main.async { island.isImporting = false }
+                                return
+                            }
+                            // Copy to temp location (file will be deleted after this block)
+                            let copyURL = FileManager.default.temporaryDirectory.appendingPathComponent(tempURL.lastPathComponent)
+                            try? FileManager.default.removeItem(at: copyURL)
+                            try? FileManager.default.copyItem(at: tempURL, to: copyURL)
+                            self.importDroppedFile(url: copyURL)
+                        }
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    private func importDroppedFile(url: URL) {
+        let ext = url.pathExtension.lowercased()
+        let supported = WallpaperManager.supportedImportExtensions
+        guard supported.contains(ext) else {
+            DispatchQueue.main.async { island.isImporting = false }
+            return
+        }
+
+        Task {
+            do {
+                let wallpaper = try await wallpaperManager.importVideo(from: url)
+                await MainActor.run {
+                    wallpaperManager.setWallpaper(wallpaper)
+                    island.isImporting = false
+                    island.expand()
+                }
+            } catch {
+                await MainActor.run { island.isImporting = false }
+                print("[DynamicIsland] Drop import failed: \(error)")
+            }
+        }
     }
 }
 

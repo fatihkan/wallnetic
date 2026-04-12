@@ -128,44 +128,43 @@ class DesktopWindowController {
 
     // MARK: - Playback Control
 
-    /// Sets the wallpaper video with smooth crossfade transition
+    /// Sets the wallpaper video with animated transition
     func setWallpaper(url: URL, for screen: NSScreen? = nil) {
         guard url != currentWallpaperURL else { return }
         currentWallpaperURL = url
 
+        let style = WallpaperManager.shared.transitionStyle
+        let duration = WallpaperManager.shared.transitionDuration
         let screens = screen.map { [$0] } ?? Array(desktopWindows.keys)
 
         for s in screens {
             guard let window = desktopWindows[s],
                   let renderer = renderers[s] else { continue }
 
-            // Create a snapshot of current frame as transition layer
-            let snapshotLayer = CALayer()
-            snapshotLayer.frame = renderer.rendererView.bounds
-            snapshotLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-            snapshotLayer.zPosition = 50
-            snapshotLayer.backgroundColor = NSColor.black.cgColor
-
-            // Capture current frame if possible
-            if let layer = renderer.rendererView.layer {
-                snapshotLayer.contents = layer.contents
+            // No transition — instant switch
+            if style == "none" {
+                renderer.loadVideo(url: url)
+                continue
             }
 
-            renderer.rendererView.layer?.addSublayer(snapshotLayer)
+            // Use CATransition on the renderer layer for reliable animation
+            let transition = CATransition()
+            transition.duration = duration
+            transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 
-            // Load new video underneath
+            switch style {
+            case "zoom":
+                transition.type = .reveal
+                transition.subtype = .fromBottom
+            case "slide":
+                transition.type = .push
+                transition.subtype = .fromRight
+            default:
+                transition.type = .fade
+            }
+
+            renderer.rendererView.layer?.add(transition, forKey: "wallpaperTransition")
             renderer.loadVideo(url: url)
-
-            // Fade out snapshot after short delay (let new video buffer)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                CATransaction.begin()
-                CATransaction.setAnimationDuration(0.5)
-                snapshotLayer.opacity = 0
-                CATransaction.setCompletionBlock {
-                    snapshotLayer.removeFromSuperlayer()
-                }
-                CATransaction.commit()
-            }
         }
     }
 
