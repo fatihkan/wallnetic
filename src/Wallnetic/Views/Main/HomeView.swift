@@ -32,9 +32,9 @@ struct HomeView: View {
                     }
 
                     if wallpaperManager.wallpapers.count > 3 {
-                        Carousel3DSection(
+                        CarouselSection(
                             title: "All Wallpapers",
-                            icon: "cube.fill",
+                            icon: "square.grid.2x2.fill",
                             iconColor: .blue,
                             wallpapers: wallpaperManager.wallpapers
                         )

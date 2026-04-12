@@ -147,49 +147,24 @@ class DesktopWindowController {
                 continue
             }
 
-            // Create snapshot of current frame
-            let snapshotLayer = CALayer()
-            snapshotLayer.frame = renderer.rendererView.bounds
-            snapshotLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-            snapshotLayer.zPosition = 50
-            snapshotLayer.backgroundColor = NSColor.black.cgColor
+            // Use CATransition on the renderer layer for reliable animation
+            let transition = CATransition()
+            transition.duration = duration
+            transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 
-            if let layer = renderer.rendererView.layer {
-                snapshotLayer.contents = layer.contents
+            switch style {
+            case "zoom":
+                transition.type = .reveal
+                transition.subtype = .fromBottom
+            case "slide":
+                transition.type = .push
+                transition.subtype = .fromRight
+            default:
+                transition.type = .fade
             }
 
-            renderer.rendererView.layer?.addSublayer(snapshotLayer)
-
-            // Load new video underneath
+            renderer.rendererView.layer?.add(transition, forKey: "wallpaperTransition")
             renderer.loadVideo(url: url)
-
-            // Apply transition after short buffer delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                CATransaction.begin()
-                CATransaction.setAnimationDuration(duration)
-                CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
-
-                switch style {
-                case "zoom":
-                    // Genie/zoom — snapshot scales down to center and fades
-                    snapshotLayer.opacity = 0
-                    snapshotLayer.transform = CATransform3DMakeScale(0.3, 0.3, 1.0)
-
-                case "slide":
-                    // Slide left — snapshot slides out to the left
-                    snapshotLayer.opacity = 0
-                    snapshotLayer.transform = CATransform3DMakeTranslation(-snapshotLayer.bounds.width, 0, 0)
-
-                default:
-                    // Crossfade (default)
-                    snapshotLayer.opacity = 0
-                }
-
-                CATransaction.setCompletionBlock {
-                    snapshotLayer.removeFromSuperlayer()
-                }
-                CATransaction.commit()
-            }
         }
     }
 

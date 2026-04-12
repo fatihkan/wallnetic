@@ -486,35 +486,56 @@ struct DynamicIslandView: View {
         island.isImporting = true
 
         for provider in providers {
-            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
-                guard let data = item as? Data,
-                      let url = URL(dataRepresentation: data, relativeTo: nil) else {
-                    DispatchQueue.main.async { island.isImporting = false }
-                    return
+            // Try to load as file URL first
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                _ = provider.loadObject(ofClass: URL.self) { url, error in
+                    guard let url = url else {
+                        DispatchQueue.main.async { island.isImporting = false }
+                        return
+                    }
+                    self.importDroppedFile(url: url)
                 }
-
-                let ext = url.pathExtension.lowercased()
-                let supported = WallpaperManager.supportedImportExtensions
-                guard supported.contains(ext) else {
-                    DispatchQueue.main.async { island.isImporting = false }
-                    return
-                }
-
-                Task {
-                    do {
-                        let wallpaper = try await wallpaperManager.importVideo(from: url)
-                        await MainActor.run {
-                            wallpaperManager.setWallpaper(wallpaper)
-                            island.isImporting = false
-                            island.expand()
+            } else {
+                // Fallback: load as file representation
+                for type in supportedTypes {
+                    if provider.hasItemConformingToTypeIdentifier(type.identifier) {
+                        provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { tempURL, error in
+                            guard let tempURL = tempURL else {
+                                DispatchQueue.main.async { island.isImporting = false }
+                                return
+                            }
+                            // Copy to temp location (file will be deleted after this block)
+                            let copyURL = FileManager.default.temporaryDirectory.appendingPathComponent(tempURL.lastPathComponent)
+                            try? FileManager.default.removeItem(at: copyURL)
+                            try? FileManager.default.copyItem(at: tempURL, to: copyURL)
+                            self.importDroppedFile(url: copyURL)
                         }
-                    } catch {
-                        await MainActor.run {
-                            island.isImporting = false
-                        }
-                        print("[DynamicIsland] Drop import failed: \(error)")
+                        break
                     }
                 }
+            }
+        }
+    }
+
+    private func importDroppedFile(url: URL) {
+        let ext = url.pathExtension.lowercased()
+        let supported = WallpaperManager.supportedImportExtensions
+        guard supported.contains(ext) else {
+            DispatchQueue.main.async { island.isImporting = false }
+            return
+        }
+
+        Task {
+            do {
+                let wallpaper = try await wallpaperManager.importVideo(from: url)
+                await MainActor.run {
+                    wallpaperManager.setWallpaper(wallpaper)
+                    island.isImporting = false
+                    island.expand()
+                }
+            } catch {
+                await MainActor.run { island.isImporting = false }
+                print("[DynamicIsland] Drop import failed: \(error)")
             }
         }
     }
