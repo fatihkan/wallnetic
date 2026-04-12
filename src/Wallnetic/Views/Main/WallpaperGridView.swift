@@ -416,6 +416,9 @@ struct SelectedWallpaperBar: View {
 struct AsyncThumbnailView: View {
     let wallpaper: Wallpaper
     let size: CGSize
+    var cornerRadius: CGFloat = 0
+    var contentMode: ContentMode = .fill
+    var showProgress: Bool = false
     @State private var thumbnail: NSImage?
 
     var body: some View {
@@ -423,15 +426,19 @@ struct AsyncThumbnailView: View {
             if let thumbnail = thumbnail {
                 Image(nsImage: thumbnail)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: contentMode)
                     .frame(width: size.width, height: size.height)
                     .clipped()
             } else {
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: size.width, height: size.height)
+                    .overlay {
+                        if showProgress { ProgressView().scaleEffect(0.5) }
+                    }
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: size)
         }

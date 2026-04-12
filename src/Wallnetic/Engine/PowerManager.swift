@@ -18,7 +18,7 @@ class PowerManager {
     private(set) var isScreenSaverActive = false
 
     private var fullscreenCheckTimer: Timer?
-    private var powerSource: Unmanaged<CFRunLoopSource>?
+    private var powerSourceRef: CFRunLoopSource?
 
     private init() {
         setupObservers()
@@ -146,15 +146,15 @@ class PowerManager {
             manager.checkBatteryState()
         }, context)?.takeRetainedValue() {
             CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
-            powerSource = Unmanaged.passRetained(source)
+            powerSourceRef = source
         }
     }
 
     private func removePowerSourceObserver() {
-        if let source = powerSource?.takeUnretainedValue() {
+        if let source = powerSourceRef {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
         }
-        powerSource = nil
+        powerSourceRef = nil
     }
 
     private func checkBatteryState() {

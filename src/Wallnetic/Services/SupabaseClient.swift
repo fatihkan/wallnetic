@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Lightweight Supabase REST client (no external dependencies)
 class SupabaseClient {
@@ -158,5 +159,3 @@ enum SupabaseError: LocalizedError {
         }
     }
 }
-
-import SwiftUI
