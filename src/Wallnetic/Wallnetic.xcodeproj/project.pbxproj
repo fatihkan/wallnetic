@@ -82,6 +82,7 @@
 		E670DC0DFE3A0970082E73EF /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE414F5FC0D738D8D7593A2E /* GenerationHistory.swift */; };
 		EA0AA7318BCBE3C944FF48ED /* MLWDecryptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D290998483830980DF7E2CD5 /* MLWDecryptor.swift */; };
 		EAAE966CCF3909FB2678C87D /* VideoTrimmer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5CEC2B4480AEC32A84E65E8 /* VideoTrimmer.swift */; };
+		EAB040DBE1DBA4A2060A349D /* DynamicIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB1C25115998357CDFF95EB /* DynamicIslandView.swift */; };
 		EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */; };
 		F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */; };
 		F6107012989E9FC5810F350E /* WeatherWallpaperManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739D8C6AD1566F8C21F48DFD /* WeatherWallpaperManager.swift */; };
@@ -184,6 +185,7 @@
 		D67C4A956B32F37A83450264 /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
 		D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
 		D726427A9199C4D93B9E93F2 /* DesktopOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopOverlayController.swift; sourceTree = "<group>"; };
+		DDB1C25115998357CDFF95EB /* DynamicIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandView.swift; sourceTree = "<group>"; };
 		DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWidgetModels.swift; sourceTree = "<group>"; };
 		DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
 		DFC7F5C372D751F46660FA5C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -322,6 +324,7 @@
 				91B502C8C68ABF2CD503030E /* AIGenerateView.swift */,
 				EA19F4DBD0636536454696F3 /* ContentView.swift */,
 				BB036BA69CC6D00731C1D273 /* DiscoverView.swift */,
+				DDB1C25115998357CDFF95EB /* DynamicIslandView.swift */,
 				D67C4A956B32F37A83450264 /* ExploreView.swift */,
 				A32AE3710192737ABA41FDA0 /* HistoryView.swift */,
 				43A9F2E051E3DDAA18ACAC9D /* HomeView.swift */,
@@ -563,6 +566,7 @@
 				8EFAE3E67407537EC1B9A705 /* DiscoverView.swift in Sources */,
 				2082CED0A15F59CAEEDB57F8 /* DownloadManager.swift in Sources */,
 				D57F15D4DC64658E22A29341 /* DynamicIslandController.swift in Sources */,
+				EAB040DBE1DBA4A2060A349D /* DynamicIslandView.swift in Sources */,
 				A2FD8BF6EF09FC0B086E2261 /* EffectsSettingsView.swift in Sources */,
 				5C0AAD3B25B3DCB797AF2959 /* ExploreView.swift in Sources */,
 				CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */,
