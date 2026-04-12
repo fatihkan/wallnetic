@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @ObservedObject private var downloadManager = DownloadManager.shared
     @State private var selectedTab: NavigationTab = .home
     @State private var isImporting = false
     @State private var searchText = ""
@@ -23,6 +24,12 @@ struct ContentView: View {
                     isScrolled: scrollOffset > 50
                 )
                 .zIndex(10)
+
+                // Download progress bar
+                if !downloadManager.downloads.isEmpty {
+                    DownloadProgressBar(downloads: downloadManager.downloads)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
 
                 switch selectedTab {
                 case .discover:
@@ -91,6 +98,8 @@ struct ContentView: View {
             print("File picker error: \(error)")
         }
     }
+
+    // MARK: - Drop
 
     private func handleDrop(_ providers: [NSItemProvider]) {
         for provider in providers {
@@ -194,6 +203,65 @@ struct EmptyLibraryView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Download Progress Bar
+
+struct DownloadProgressBar: View {
+    let downloads: [DownloadManager.Download]
+
+    private var activeDownloads: [DownloadManager.Download] {
+        downloads.filter { $0.status == .downloading || $0.status == .waiting }
+    }
+
+    private var totalProgress: Double {
+        let active = activeDownloads
+        guard !active.isEmpty else { return 1.0 }
+        return active.reduce(0) { $0 + $1.progress } / Double(active.count)
+    }
+
+    var body: some View {
+        if !activeDownloads.isEmpty {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .scaleEffect(0.6)
+                    .frame(width: 16, height: 16)
+
+                if let current = activeDownloads.first {
+                    Text(current.name)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                // Progress percentage
+                Text("\(Int(totalProgress * 100))%")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundColor(.accentColor)
+
+                if activeDownloads.count > 1 {
+                    Text("\(activeDownloads.count) files")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Rectangle().fill(Color.white.opacity(0.03))
+                        Rectangle()
+                            .fill(Color.accentColor.opacity(0.15))
+                            .frame(width: geo.size.width * totalProgress)
+                            .animation(.easeInOut(duration: 0.3), value: totalProgress)
+                    }
+                }
+            )
+        }
     }
 }
 

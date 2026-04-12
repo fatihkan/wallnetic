@@ -48,6 +48,15 @@ struct HomeView: View {
         .background(Color.clear)
         .onAppear { startHeroTimer() }
         .onDisappear { heroTimer?.invalidate() }
+        .modifier(KeyPressModifier(
+            onSpace: {
+                if let wp = wallpaperManager.wallpapers[safe: heroIndex] {
+                    wallpaperManager.setWallpaper(wp)
+                }
+            },
+            onLeft: { heroPrev() },
+            onRight: { heroNext() }
+        ))
     }
 
     // MARK: - Cinematic Hero Banner
@@ -225,6 +234,18 @@ struct HomeView: View {
             guard count > 1 else { return }
             withAnimation { heroIndex = (heroIndex + 1) % count }
         }
+    }
+
+    private func heroNext() {
+        let count = min(wallpaperManager.wallpapers.count, 5)
+        guard count > 1 else { return }
+        withAnimation { heroIndex = (heroIndex + 1) % count }
+    }
+
+    private func heroPrev() {
+        let count = min(wallpaperManager.wallpapers.count, 5)
+        guard count > 1 else { return }
+        withAnimation { heroIndex = (heroIndex - 1 + count) % count }
     }
 }
 

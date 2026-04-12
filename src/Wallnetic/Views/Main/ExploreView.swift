@@ -7,6 +7,11 @@ struct ExploreView: View {
 
     @State private var selectedCategory: String = "All"
     @State private var hoveredCategory: String?
+    @State private var viewMode: ViewMode = .grid
+
+    enum ViewMode: String {
+        case grid, list
+    }
 
     private let categories = ["All", "Favorites", "Recent", "Long", "Short", "HD", "4K"]
 
@@ -65,7 +70,7 @@ struct ExploreView: View {
                 )
                 .frame(height: 0.5)
 
-            // Results count
+            // Results count + view mode toggle
             HStack {
                 Text("\(filteredWallpapers.count)")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
@@ -74,24 +79,71 @@ struct ExploreView: View {
                 Text(" wallpapers")
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.4))
+
                 Spacer()
+
+                // View mode toggle
+                HStack(spacing: 4) {
+                    viewModeButton(icon: "square.grid.2x2", mode: .grid)
+                    viewModeButton(icon: "list.bullet", mode: .list)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 8)
 
-            // Grid with staggered entrance
+            // Content — grid or list
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 14) {
-                    ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                        ExploreCard(wallpaper: wallpaper, index: index)
+                if viewMode == .grid {
+                    LazyVGrid(columns: columns, spacing: 14) {
+                        ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
+                            ExploreCard(wallpaper: wallpaper, index: index)
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    .padding(.bottom, 20)
+                } else {
+                    LazyVStack(spacing: 8) {
+                        ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
+                            ExploreListRow(wallpaper: wallpaper)
+                                .staggered(index: index)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    .padding(.bottom, 20)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
-                .padding(.bottom, 20)
             }
         }
         .background(Color.clear)
+        .modifier(KeyPressModifier(
+            onLeft: {
+                let wallpapers = filteredWallpapers
+                guard !wallpapers.isEmpty else { return }
+                wallpaperManager.cycleToNextWallpaper()
+            },
+            onRight: {
+                wallpaperManager.cycleToNextWallpaper()
+            }
+        ))
+    }
+
+    // MARK: - View Mode Button
+
+    private func viewModeButton(icon: String, mode: ViewMode) -> some View {
+        Button {
+            withAnimation(Anim.snappy) { viewMode = mode }
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(viewMode == mode ? .white : .white.opacity(0.3))
+                .frame(width: 24, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(viewMode == mode ? Color.white.opacity(0.1) : .clear)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Filter Chip
@@ -253,5 +305,89 @@ struct ExploreCard: View {
             }, onCancel: { renamingWallpaper = nil })
         }
         .task { thumbnail = await wallpaper.generateThumbnail() }
+    }
+}
+
+// MARK: - Explore List Row
+
+struct ExploreListRow: View {
+    let wallpaper: Wallpaper
+    @EnvironmentObject var wallpaperManager: WallpaperManager
+    @State private var thumbnail: NSImage?
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Thumbnail
+            if let thumb = thumbnail {
+                Image(nsImage: thumb)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 80, height: 45)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.white.opacity(0.05))
+                    .frame(width: 80, height: 45)
+                    .overlay { ProgressView().scaleEffect(0.5) }
+            }
+
+            // Info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(wallpaper.displayName)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                    .lineLimit(1)
+
+                HStack(spacing: 8) {
+                    Text(wallpaper.formattedResolution)
+                    Text(wallpaper.formattedDuration)
+                    Text(wallpaper.formattedFileSize)
+                }
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.white.opacity(0.4))
+            }
+
+            Spacer()
+
+            // Favorite
+            if wallpaper.isFavorite {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(.pink)
+            }
+
+            // Apply button on hover
+            if isHovering {
+                Button {
+                    wallpaperManager.setWallpaper(wallpaper)
+                } label: {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.8))
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(.white.opacity(0.1)))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isHovering ? Color.white.opacity(0.04) : .clear)
+        )
+        .onHover { h in withAnimation(Anim.hover) { isHovering = h } }
+        .onTapGesture(count: 2) { wallpaperManager.setWallpaper(wallpaper) }
+        .contextMenu {
+            Button { wallpaperManager.setWallpaper(wallpaper) } label: {
+                Label("Set as Wallpaper", systemImage: "photo.on.rectangle")
+            }
+            Button { wallpaperManager.toggleFavorite(wallpaper) } label: {
+                Label(wallpaper.isFavorite ? "Remove Favorite" : "Add Favorite",
+                      systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
+            }
+        }
+        .task { thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90)) }
     }
 }
