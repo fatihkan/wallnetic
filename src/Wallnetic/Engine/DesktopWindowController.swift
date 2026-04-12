@@ -128,25 +128,32 @@ class DesktopWindowController {
 
     // MARK: - Playback Control
 
-    /// Sets the wallpaper video with smooth crossfade transition
+    /// Sets the wallpaper video with animated transition
     func setWallpaper(url: URL, for screen: NSScreen? = nil) {
         guard url != currentWallpaperURL else { return }
         currentWallpaperURL = url
 
+        let style = WallpaperManager.shared.transitionStyle
+        let duration = WallpaperManager.shared.transitionDuration
         let screens = screen.map { [$0] } ?? Array(desktopWindows.keys)
 
         for s in screens {
             guard let window = desktopWindows[s],
                   let renderer = renderers[s] else { continue }
 
-            // Create a snapshot of current frame as transition layer
+            // No transition — instant switch
+            if style == "none" {
+                renderer.loadVideo(url: url)
+                continue
+            }
+
+            // Create snapshot of current frame
             let snapshotLayer = CALayer()
             snapshotLayer.frame = renderer.rendererView.bounds
             snapshotLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
             snapshotLayer.zPosition = 50
             snapshotLayer.backgroundColor = NSColor.black.cgColor
 
-            // Capture current frame if possible
             if let layer = renderer.rendererView.layer {
                 snapshotLayer.contents = layer.contents
             }
@@ -156,11 +163,28 @@ class DesktopWindowController {
             // Load new video underneath
             renderer.loadVideo(url: url)
 
-            // Fade out snapshot after short delay (let new video buffer)
+            // Apply transition after short buffer delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 CATransaction.begin()
-                CATransaction.setAnimationDuration(0.5)
-                snapshotLayer.opacity = 0
+                CATransaction.setAnimationDuration(duration)
+                CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+
+                switch style {
+                case "zoom":
+                    // Genie/zoom — snapshot scales down to center and fades
+                    snapshotLayer.opacity = 0
+                    snapshotLayer.transform = CATransform3DMakeScale(0.3, 0.3, 1.0)
+
+                case "slide":
+                    // Slide left — snapshot slides out to the left
+                    snapshotLayer.opacity = 0
+                    snapshotLayer.transform = CATransform3DMakeTranslation(-snapshotLayer.bounds.width, 0, 0)
+
+                default:
+                    // Crossfade (default)
+                    snapshotLayer.opacity = 0
+                }
+
                 CATransaction.setCompletionBlock {
                     snapshotLayer.removeFromSuperlayer()
                 }

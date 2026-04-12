@@ -3,6 +3,8 @@ import SwiftUI
 /// Settings view for wallpaper visual effects
 struct EffectsSettingsView: View {
     @ObservedObject private var effects = WallpaperEffectsManager.shared
+    @AppStorage("transitionStyle") private var transitionStyle = "crossfade"
+    @AppStorage("transitionDuration") private var transitionDuration = 0.5
 
     var body: some View {
         Form {
@@ -52,6 +54,26 @@ struct EffectsSettingsView: View {
                 if effects.vignetteEnabled {
                     sliderRow("Intensity", icon: "circle.dashed", value: $effects.vignetteIntensity,
                               range: 0...2.0, defaultValue: 0.5)
+                }
+            }
+
+            // Transition
+            Section("Transition") {
+                Picker("Style", selection: $transitionStyle) {
+                    Text("None").tag("none")
+                    Text("Crossfade").tag("crossfade")
+                    Text("Zoom").tag("zoom")
+                    Text("Slide").tag("slide")
+                }
+
+                if transitionStyle != "none" {
+                    HStack {
+                        Text("Duration")
+                        Slider(value: $transitionDuration, in: 0.2...1.5, step: 0.1)
+                        Text("\(transitionDuration, specifier: "%.1f")s")
+                            .foregroundColor(.secondary)
+                            .frame(width: 30)
+                    }
                 }
             }
 
