@@ -8,6 +8,7 @@ struct ExploreView: View {
     @State private var selectedCategory: String = "All"
     @State private var hoveredCategory: String?
     @State private var viewMode: ViewMode = .grid
+    @State private var selectedColor: ColorCategory?
 
     enum ViewMode: String {
         case grid, list
@@ -40,8 +41,15 @@ struct ExploreView: View {
             break
         }
 
+        // Color filter
+        if let colorFilter = selectedColor {
+            result = result.filter { $0.colorCategory == colorFilter }
+        }
+
         if !searchText.isEmpty {
-            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            let fuzzyResults = wallpaperManager.searchWallpapers(query: searchText)
+            let fuzzyIDs = Set(fuzzyResults.map { $0.id })
+            result = result.filter { fuzzyIDs.contains($0.id) }
         }
 
         return result
@@ -58,6 +66,45 @@ struct ExploreView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
+            }
+
+            // Color swatches
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    // Clear filter
+                    Button {
+                        withAnimation(Anim.snappy) { selectedColor = nil }
+                    } label: {
+                        Text("All")
+                            .font(.system(size: 10, weight: selectedColor == nil ? .bold : .medium))
+                            .foregroundColor(selectedColor == nil ? .white : .white.opacity(0.5))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(
+                                Capsule().fill(selectedColor == nil ? Color.white.opacity(0.12) : Color.white.opacity(0.04))
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(ColorCategory.allCases) { cat in
+                        Button {
+                            withAnimation(Anim.snappy) {
+                                selectedColor = selectedColor == cat ? nil : cat
+                            }
+                        } label: {
+                            Circle()
+                                .fill(cat.color)
+                                .frame(width: 18, height: 18)
+                                .overlay(
+                                    Circle().stroke(.white.opacity(selectedColor == cat ? 0.8 : 0.15), lineWidth: selectedColor == cat ? 2 : 0.5)
+                                )
+                                .scaleEffect(selectedColor == cat ? 1.2 : 1.0)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
             }
 
             // Subtle divider with glow

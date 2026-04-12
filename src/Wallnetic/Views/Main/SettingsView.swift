@@ -135,6 +135,9 @@ struct AppearanceSettingsView: View {
     var body: some View {
         Form {
             Section("Theme") {
+                Toggle("Dynamic accent color from wallpaper", isOn: $themeManager.dynamicThemeEnabled)
+                    .help("UI accent color adapts to the current wallpaper's dominant color")
+
                 ForEach(AppearanceMode.allCases, id: \.self) { mode in
                     HStack {
                         Image(systemName: mode.icon)

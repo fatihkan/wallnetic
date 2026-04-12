@@ -59,6 +59,8 @@ class WallpaperManager: ObservableObject {
     @AppStorage("lastWallpaperURL") private var lastWallpaperURL: String = ""
     @AppStorage("favoriteWallpaperPaths") private var favoriteWallpaperPaths: String = ""
     @AppStorage("customWallpaperTitles") private var customWallpaperTitlesData: String = ""
+    @AppStorage("wallpaperColors") private var wallpaperColorsData: String = ""
+    @AppStorage("wallpaperTags") private var wallpaperTagsData: String = ""
 
     // MARK: - Properties
 
@@ -166,10 +168,15 @@ class WallpaperManager: ObservableObject {
             }
         }
 
-        // Apply saved custom titles
+        // Apply saved custom titles, colors, and tags
         applyCustomTitles()
+        applySavedColors()
+        applySavedTags()
 
         print("Loaded \(wallpapers.count) wallpapers from library (\(savedFavorites.count) favorites)")
+
+        // Extract colors in background for new wallpapers
+        extractMissingColors()
     }
 
     /// Checks if a file is a duplicate of an existing library item (by file size + name)
@@ -327,6 +334,151 @@ class WallpaperManager: ObservableObject {
                 wallpapers[i].customTitle = title
             }
         }
+    }
+
+    // MARK: - Dominant Color Persistence
+
+    private var savedColors: [String: String] {
+        get {
+            guard !wallpaperColorsData.isEmpty,
+                  let data = wallpaperColorsData.data(using: .utf8),
+                  let dict = try? JSONDecoder().decode([String: String].self, from: data)
+            else { return [:] }
+            return dict
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue),
+               let str = String(data: data, encoding: .utf8) {
+                wallpaperColorsData = str
+            }
+        }
+    }
+
+    private func applySavedColors() {
+        let colors = savedColors
+        guard !colors.isEmpty else { return }
+        for i in wallpapers.indices {
+            if let hex = colors[wallpapers[i].url.path] {
+                wallpapers[i].dominantColorHex = hex
+            }
+        }
+    }
+
+    /// Extract colors for wallpapers that don't have one yet
+    func extractMissingColors() {
+        Task {
+            var updatedColors = savedColors
+            for i in wallpapers.indices where wallpapers[i].dominantColorHex == nil {
+                if let hex = await wallpapers[i].extractDominantColor() {
+                    await MainActor.run {
+                        wallpapers[i].dominantColorHex = hex
+                    }
+                    updatedColors[wallpapers[i].url.path] = hex
+                }
+            }
+            await MainActor.run {
+                savedColors = updatedColors
+            }
+        }
+    }
+
+    // MARK: - Tags
+
+    private var savedTags: [String: [String]] {
+        get {
+            guard !wallpaperTagsData.isEmpty,
+                  let data = wallpaperTagsData.data(using: .utf8),
+                  let dict = try? JSONDecoder().decode([String: [String]].self, from: data)
+            else { return [:] }
+            return dict
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue),
+               let str = String(data: data, encoding: .utf8) {
+                wallpaperTagsData = str
+            }
+        }
+    }
+
+    private func applySavedTags() {
+        let tags = savedTags
+        guard !tags.isEmpty else { return }
+        for i in wallpapers.indices {
+            if let t = tags[wallpapers[i].url.path] {
+                wallpapers[i].tags = t
+            }
+        }
+    }
+
+    /// Add a tag to a wallpaper
+    func addTag(_ tag: String, to wallpaper: Wallpaper) {
+        guard let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) else { return }
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty, !wallpapers[index].tags.contains(trimmed) else { return }
+        wallpapers[index].tags.append(trimmed)
+        var all = savedTags
+        all[wallpapers[index].url.path] = wallpapers[index].tags
+        savedTags = all
+    }
+
+    /// Remove a tag from a wallpaper
+    func removeTag(_ tag: String, from wallpaper: Wallpaper) {
+        guard let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) else { return }
+        wallpapers[index].tags.removeAll { $0 == tag }
+        var all = savedTags
+        all[wallpapers[index].url.path] = wallpapers[index].tags
+        savedTags = all
+    }
+
+    /// All unique tags across library
+    var allTags: [String] {
+        Array(Set(wallpapers.flatMap { $0.tags })).sorted()
+    }
+
+    // MARK: - Fuzzy Search
+
+    /// Search wallpapers by name, tags, and fuzzy matching
+    func searchWallpapers(query: String) -> [Wallpaper] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return wallpapers }
+
+        return wallpapers
+            .map { wp -> (Wallpaper, Int) in
+                var score = 0
+                let name = wp.displayName.lowercased()
+
+                // Exact match
+                if name == q { score += 100 }
+                // Contains
+                else if name.contains(q) { score += 70 }
+                // Tag match
+                if wp.tags.contains(q) { score += 80 }
+                if wp.tags.contains(where: { $0.contains(q) }) { score += 50 }
+                // Fuzzy: characters appear in order
+                if score == 0 { score = fuzzyScore(query: q, in: name) }
+
+                return (wp, score)
+            }
+            .filter { $0.1 > 0 }
+            .sorted { $0.1 > $1.1 }
+            .map { $0.0 }
+    }
+
+    private func fuzzyScore(query: String, in text: String) -> Int {
+        var qi = query.startIndex
+        var ti = text.startIndex
+        var matched = 0
+
+        while qi < query.endIndex && ti < text.endIndex {
+            if query[qi] == text[ti] {
+                matched += 1
+                qi = query.index(after: qi)
+            }
+            ti = text.index(after: ti)
+        }
+
+        // All chars matched in order → score based on match ratio
+        return qi == query.endIndex ? max(10, matched * 30 / query.count) : 0
     }
 
     // MARK: - Playback
