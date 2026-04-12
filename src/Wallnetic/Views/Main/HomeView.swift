@@ -32,9 +32,9 @@ struct HomeView: View {
                     }
 
                     if wallpaperManager.wallpapers.count > 3 {
-                        CarouselSection(
+                        Carousel3DSection(
                             title: "All Wallpapers",
-                            icon: "square.grid.2x2.fill",
+                            icon: "cube.fill",
                             iconColor: .blue,
                             wallpapers: wallpaperManager.wallpapers
                         )
@@ -306,6 +306,63 @@ struct CarouselSection: View {
                 }
                 .padding(.horizontal, 48)
                 .padding(.vertical, 8)
+            }
+        }
+    }
+}
+
+// MARK: - 3D Perspective Carousel
+
+struct Carousel3DSection: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
+    let wallpapers: [Wallpaper]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundColor(iconColor)
+                    .neonGlow(iconColor, isActive: true, radius: 4)
+
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+
+                Text("\(wallpapers.count)")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.3))
+            }
+            .padding(.horizontal, 48)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 0) {
+                    ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
+                        GeometryReader { geo in
+                            let midX = geo.frame(in: .global).midX
+                            let screenMidX = NSScreen.main?.frame.midX ?? 600
+                            let distance = (midX - screenMidX) / 300
+                            let angle = Double(distance) * 25
+                            let scale = max(0.75, 1.0 - abs(distance) * 0.15)
+                            let opacity = max(0.5, 1.0 - abs(distance) * 0.3)
+
+                            CarouselCard(wallpaper: wallpaper)
+                                .scaleEffect(scale)
+                                .rotation3DEffect(
+                                    .degrees(-angle),
+                                    axis: (x: 0, y: 1, z: 0),
+                                    perspective: 0.5
+                                )
+                                .opacity(opacity)
+                                .animation(.easeOut(duration: 0.15), value: angle)
+                        }
+                        .frame(width: 260, height: 185)
+                    }
+                }
+                .padding(.horizontal, 48)
+                .padding(.vertical, 12)
             }
         }
     }
