@@ -80,10 +80,13 @@ class WallpaperManager: ObservableObject {
 
     // MARK: - Initialization
 
+    private var fileWatcher: DispatchSourceFileSystemObject?
+
     private init() {
         loadWallpapers()
         loadSettings()
         syncToWidget()
+        startFileWatching()
     }
 
     /// Load persisted settings
@@ -221,6 +224,7 @@ class WallpaperManager: ObservableObject {
                 wallpapers.append(wallpaper)
                 print("[WallpaperManager] Wallpaper added to library. Total count: \(wallpapers.count)")
             }
+            postImportProcess(wallpaper)
             return wallpaper
         } else {
             try fileManager.copyItem(at: importURL, to: destURL)
@@ -231,7 +235,29 @@ class WallpaperManager: ObservableObject {
                 wallpapers.append(wallpaper)
                 print("[WallpaperManager] Wallpaper added to library. Total count: \(wallpapers.count)")
             }
+            postImportProcess(wallpaper)
             return wallpaper
+        }
+    }
+
+    /// Pre-generate thumbnails and extract color after import
+    private func postImportProcess(_ wallpaper: Wallpaper) {
+        Task {
+            // Pre-generate both common thumbnail sizes
+            _ = await wallpaper.generateThumbnail(size: CGSize(width: 320, height: 180))
+            _ = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90))
+
+            // Extract dominant color
+            if let hex = await wallpaper.extractDominantColor() {
+                await MainActor.run {
+                    if let idx = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) {
+                        wallpapers[idx].dominantColorHex = hex
+                        var colors = savedColors
+                        colors[wallpaper.url.path] = hex
+                        savedColors = colors
+                    }
+                }
+            }
         }
     }
 
@@ -479,6 +505,31 @@ class WallpaperManager: ObservableObject {
 
         // All chars matched in order → score based on match ratio
         return qi == query.endIndex ? max(10, matched * 30 / query.count) : 0
+    }
+
+    // MARK: - File Watching
+
+    private func startFileWatching() {
+        let fd = open(libraryURL.path, O_EVTONLY)
+        guard fd >= 0 else { return }
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .rename, .delete],
+            queue: .main
+        )
+
+        source.setEventHandler { [weak self] in
+            NSLog("[WallpaperManager] Library folder changed — reloading")
+            self?.loadWallpapers()
+        }
+
+        source.setCancelHandler {
+            close(fd)
+        }
+
+        source.resume()
+        fileWatcher = source
     }
 
     // MARK: - Playback

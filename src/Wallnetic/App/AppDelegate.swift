@@ -35,6 +35,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Setup global hotkeys
+        setupGlobalHotkeys()
+
         logger.info("Wallnetic started successfully")
     }
 
@@ -141,7 +144,82 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Global Hotkeys
+
+    private var globalMonitor: Any?
+    private var localMonitor: Any?
+
+    private func setupGlobalHotkeys() {
+        guard UserDefaults.standard.bool(forKey: "globalHotkeysEnabled") else { return }
+
+        // Global monitor (when app is not focused)
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleHotkey(event)
+        }
+
+        // Local monitor (when app is focused)
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if self?.handleHotkey(event) == true { return nil }
+            return event
+        }
+    }
+
+    @discardableResult
+    private func handleHotkey(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        // ⌘⇧→ Next wallpaper
+        if flags == [.command, .shift] && event.keyCode == 124 {
+            WallpaperManager.shared.cycleToNextWallpaper()
+            return true
+        }
+
+        // ⌘⇧← Previous wallpaper
+        if flags == [.command, .shift] && event.keyCode == 123 {
+            cycleToPreviousWallpaper()
+            return true
+        }
+
+        // ⌘⇧P Toggle play/pause
+        if flags == [.command, .shift] && event.charactersIgnoringModifiers == "p" {
+            WallpaperManager.shared.togglePlayback()
+            return true
+        }
+
+        // ⌘⇧R Random wallpaper
+        if flags == [.command, .shift] && event.charactersIgnoringModifiers == "r" {
+            setRandomWallpaper()
+            return true
+        }
+
+        return false
+    }
+
+    private func cycleToPreviousWallpaper() {
+        let wallpapers = WallpaperManager.shared.wallpapers
+        guard !wallpapers.isEmpty else { return }
+        if let current = WallpaperManager.shared.currentWallpaper,
+           let idx = wallpapers.firstIndex(where: { $0.id == current.id }) {
+            let prevIdx = (idx - 1 + wallpapers.count) % wallpapers.count
+            WallpaperManager.shared.setWallpaper(wallpapers[prevIdx])
+        } else if let last = wallpapers.last {
+            WallpaperManager.shared.setWallpaper(last)
+        }
+    }
+
+    private func setRandomWallpaper() {
+        let candidates = WallpaperManager.shared.wallpapers.filter {
+            $0.id != WallpaperManager.shared.currentWallpaper?.id
+        }
+        guard let random = candidates.randomElement() else { return }
+        WallpaperManager.shared.setWallpaper(random)
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
+        // Remove hotkey monitors
+        if let m = globalMonitor { NSEvent.removeMonitor(m) }
+        if let m = localMonitor { NSEvent.removeMonitor(m) }
+
         // Remove all notification observers
         NotificationCenter.default.removeObserver(self)
 
