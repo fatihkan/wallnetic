@@ -80,14 +80,33 @@ targets:
           - "@executable_path/../Frameworks"
           - "@executable_path/../../../../Frameworks"
 
+  WallneticTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.tests
+        PRODUCT_NAME: WallneticTests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Wallnetic.app/Contents/MacOS/Wallnetic
+        BUNDLE_LOADER: $(TEST_HOST)
+    dependencies:
+      - target: Wallnetic
+
 schemes:
   Wallnetic:
     build:
       targets:
         Wallnetic: all
         WallneticWidget: all
+        WallneticTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - WallneticTests
     profile:
       config: Release
     analyze:
