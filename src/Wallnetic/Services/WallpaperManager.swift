@@ -178,7 +178,8 @@ class WallpaperManager: ObservableObject {
 
         print("Loaded \(wallpapers.count) wallpapers from library (\(savedFavorites.count) favorites)")
 
-        // Extract colors in background for new wallpapers
+        // Load metadata and extract colors in background
+        loadMetadataInBackground()
         extractMissingColors()
     }
 
@@ -505,6 +506,25 @@ class WallpaperManager: ObservableObject {
 
         // All chars matched in order → score based on match ratio
         return qi == query.endIndex ? max(10, matched * 30 / query.count) : 0
+    }
+
+    // MARK: - Async Metadata Loading
+
+    private func loadMetadataInBackground() {
+        Task {
+            for i in wallpapers.indices {
+                var wp = wallpapers[i]
+                if wp.duration == nil {
+                    await wp.loadMetadata()
+                    await MainActor.run {
+                        if i < wallpapers.count && wallpapers[i].id == wp.id {
+                            wallpapers[i].duration = wp.duration
+                            wallpapers[i].resolution = wp.resolution
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - File Watching

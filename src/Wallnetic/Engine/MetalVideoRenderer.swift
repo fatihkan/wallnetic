@@ -199,12 +199,7 @@ final class MetalVideoRenderer: NSObject {
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.preferredForwardBufferDuration = 2.0
 
-        // Disable audio tracks
-        for track in playerItem.asset.tracks(withMediaType: .audio) {
-            if let assetTrack = playerItem.tracks.first(where: { $0.assetTrack?.trackID == track.trackID }) {
-                assetTrack.isEnabled = false
-            }
-        }
+        // Audio disabled via player.isMuted + volume=0
 
         // Setup video output for Metal texture generation
         let outputSettings: [String: Any] = [

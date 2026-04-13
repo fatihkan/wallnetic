@@ -94,8 +94,7 @@ class VideoRenderer: NSObject {
             playerItem.preferredPeakBitRate = 0  // No limit, let hardware handle it
         }
 
-        // Disable audio tracks to save CPU (wallpapers don't need audio)
-        disableAudioTracks(for: playerItem)
+        // Audio disabled via player.isMuted + volume=0 below
 
         // Use AVQueuePlayer with AVPlayerLooper for seamless looping
         queuePlayer = AVQueuePlayer()
@@ -127,18 +126,7 @@ class VideoRenderer: NSObject {
         }
     }
 
-    /// Disables all audio tracks to reduce CPU usage
-    private func disableAudioTracks(for playerItem: AVPlayerItem) {
-        let audioTracks = playerItem.asset.tracks(withMediaType: .audio)
-        for track in audioTracks {
-            // Find the asset track in the player item
-            if let assetTrack = playerItem.tracks.first(where: {
-                $0.assetTrack?.trackID == track.trackID
-            }) {
-                assetTrack.isEnabled = false
-            }
-        }
-    }
+    // Audio disabled via player.isMuted + volume=0 (no deprecated tracks API needed)
 
     #if DEBUG
     private func setupObservers(for playerItem: AVPlayerItem) {

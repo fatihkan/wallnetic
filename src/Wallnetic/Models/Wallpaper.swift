@@ -11,8 +11,8 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     let name: String
     var customTitle: String?
     let fileSize: Int64
-    let duration: Double?
-    let resolution: CGSize?
+    var duration: Double?
+    var resolution: CGSize?
     let dateAdded: Date
     var isFavorite: Bool
     var dominantColorHex: String?
@@ -23,6 +23,7 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
         customTitle ?? name
     }
 
+    /// Lightweight init — no I/O, no AVFoundation. Safe to call on main thread.
     init(url: URL, isFavorite: Bool = false) {
         self.id = UUID()
         self.url = url
@@ -32,20 +33,31 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
         self.dateAdded = Date()
         self.isFavorite = isFavorite
 
-        // Get file size
+        // Only file size — cheap FileManager call
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         self.fileSize = (attributes?[.size] as? Int64) ?? 0
 
-        // Get video metadata
-        let asset = AVAsset(url: url)
-        self.duration = asset.duration.seconds.isNaN ? nil : asset.duration.seconds
+        // Metadata loaded async via loadMetadata()
+        self.duration = nil
+        self.resolution = nil
+    }
 
-        // Get resolution from first video track
-        if let track = asset.tracks(withMediaType: .video).first {
-            let size = track.naturalSize.applying(track.preferredTransform)
-            self.resolution = CGSize(width: abs(size.width), height: abs(size.height))
-        } else {
-            self.resolution = nil
+    /// Async metadata loading — call after init, off main thread
+    mutating func loadMetadata() async {
+        let asset = AVURLAsset(url: url)
+        do {
+            let duration = try await asset.load(.duration)
+            self.duration = duration.seconds.isNaN ? nil : duration.seconds
+
+            let tracks = try await asset.loadTracks(withMediaType: .video)
+            if let track = tracks.first {
+                let naturalSize = try await track.load(.naturalSize)
+                let transform = try await track.load(.preferredTransform)
+                let size = naturalSize.applying(transform)
+                self.resolution = CGSize(width: abs(size.width), height: abs(size.height))
+            }
+        } catch {
+            // Metadata unavailable — keep nil defaults
         }
     }
 

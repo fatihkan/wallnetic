@@ -76,23 +76,18 @@ final class ThumbnailCache {
     // MARK: - Private
 
     private func generateThumbnail(url: URL, size: CGSize) async -> NSImage? {
-        return await withCheckedContinuation { continuation in
-            queue.async {
-                let asset = AVURLAsset(url: url)
-                let imageGenerator = AVAssetImageGenerator(asset: asset)
-                imageGenerator.appliesPreferredTrackTransform = true
-                imageGenerator.maximumSize = size
-                imageGenerator.requestedTimeToleranceBefore = .zero
-                imageGenerator.requestedTimeToleranceAfter = CMTime(seconds: 1, preferredTimescale: 600)
+        let asset = AVURLAsset(url: url)
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        imageGenerator.appliesPreferredTrackTransform = true
+        imageGenerator.maximumSize = size
+        imageGenerator.requestedTimeToleranceBefore = .zero
+        imageGenerator.requestedTimeToleranceAfter = CMTime(seconds: 1, preferredTimescale: 600)
 
-                do {
-                    let cgImage = try imageGenerator.copyCGImage(at: .zero, actualTime: nil)
-                    let thumbnail = NSImage(cgImage: cgImage, size: size)
-                    continuation.resume(returning: thumbnail)
-                } catch {
-                    continuation.resume(returning: nil)
-                }
-            }
+        do {
+            let (cgImage, _) = try await imageGenerator.image(at: .zero)
+            return NSImage(cgImage: cgImage, size: size)
+        } catch {
+            return nil
         }
     }
 
