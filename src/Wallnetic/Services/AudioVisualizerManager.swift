@@ -10,7 +10,7 @@ import SwiftUI
 final class AudioVisualizerManager: NSObject, ObservableObject {
     static let shared = AudioVisualizerManager()
 
-    static let bandCount: Int = 24
+    static let bandCount: Int = 32
 
     enum Source: String, CaseIterable, Identifiable {
         case system, microphone
@@ -28,6 +28,8 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
     @AppStorage("audioVisualizer.source") private var sourceRaw: String = Source.system.rawValue
 
     @Published var bands: [Float] = Array(repeating: 0, count: bandCount)
+    @Published var peaks: [Float] = Array(repeating: 0, count: bandCount)
+    @Published var loudness: Float = 0
     @Published var isRunning: Bool = false
     @Published var permissionDenied: Bool = false
     @Published var lastError: String?
@@ -49,6 +51,7 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
     private var fftSetup: vDSP_DFT_Setup?
     private var window: [Float] = []
     private var decayBands: [Float] = Array(repeating: 0, count: bandCount)
+    private var peakHold: [Float] = Array(repeating: 0, count: bandCount)
     private var sampleAccumulator: [Float] = []
 
     // MARK: - Mic capture
@@ -99,7 +102,10 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
         stopSystemCapture()
         DispatchQueue.main.async {
             self.bands = Array(repeating: 0, count: Self.bandCount)
+            self.peaks = Array(repeating: 0, count: Self.bandCount)
             self.decayBands = Array(repeating: 0, count: Self.bandCount)
+            self.peakHold = Array(repeating: 0, count: Self.bandCount)
+            self.loudness = 0
             self.isRunning = false
         }
     }
@@ -316,15 +322,26 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
         let newBands = computeBands(from: magnitudes)
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            var total: Float = 0
             for i in 0..<Self.bandCount {
                 let target = newBands[i]
+                // Bar body — fast attack, smooth decay.
                 if target > self.decayBands[i] {
-                    self.decayBands[i] = target
+                    self.decayBands[i] = self.decayBands[i] + (target - self.decayBands[i]) * 0.55
                 } else {
-                    self.decayBands[i] = max(0, self.decayBands[i] * 0.82)
+                    self.decayBands[i] = max(0, self.decayBands[i] * 0.85)
                 }
+                // Peak cap — instant rise, slow linear fall.
+                if self.decayBands[i] > self.peakHold[i] {
+                    self.peakHold[i] = self.decayBands[i]
+                } else {
+                    self.peakHold[i] = max(0, self.peakHold[i] - 0.009)
+                }
+                total += self.decayBands[i]
             }
             self.bands = self.decayBands
+            self.peaks = self.peakHold
+            self.loudness = min(1, total / Float(Self.bandCount) * 1.4)
         }
     }
 
