@@ -19,19 +19,12 @@ final class NowPlayingOverlayController: ObservableObject {
         if isEnabled {
             DispatchQueue.main.async { [weak self] in self?.show() }
         }
-
-        NowPlayingManager.shared.$hasTrack
-            .removeDuplicates()
-            .sink { [weak self] hasTrack in
-                self?.updateVisibility(hasTrack: hasTrack)
-            }
-            .store(in: &cancellables)
     }
 
     func show() {
         isEnabled = true
         NowPlayingManager.shared.start()
-        updateVisibility(hasTrack: NowPlayingManager.shared.hasTrack)
+        openWindow()
     }
 
     func hide() {
@@ -41,15 +34,6 @@ final class NowPlayingOverlayController: ObservableObject {
     }
 
     func toggle() { isEnabled ? hide() : show() }
-
-    private func updateVisibility(hasTrack: Bool) {
-        guard isEnabled else { return }
-        if hasTrack {
-            openWindow()
-        } else {
-            closeWindow()
-        }
-    }
 
     private func openWindow() {
         guard window == nil else { return }

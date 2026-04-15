@@ -8,40 +8,56 @@ struct NowPlayingOverlayView: View {
         HStack(spacing: 12) {
             artworkView
                 .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(manager.title.isEmpty ? "—" : manager.title)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(titleText)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text(manager.artist)
+                Text(subtitleText)
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(.white.opacity(0.65))
                     .lineLimit(1)
 
                 progressBar
                     .padding(.top, 4)
             }
 
-            if hovering {
-                controls.transition(.opacity)
-            }
+            Spacer(minLength: 4)
+
+            controls
+                .opacity(manager.hasTrack ? (hovering ? 1 : 0.6) : 0.3)
+                .animation(.easeInOut(duration: 0.15), value: hovering)
+                .animation(.easeInOut(duration: 0.15), value: manager.hasTrack)
         }
-        .padding(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(width: 340, height: 92)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(.white.opacity(0.12), lineWidth: 0.5)
                 )
         )
         .onHover { hovering = $0 }
-        .animation(.easeInOut(duration: 0.15), value: hovering)
+    }
+
+    // MARK: - Pieces
+
+    private var titleText: String {
+        manager.hasTrack ? manager.title : "Nothing playing"
+    }
+
+    private var subtitleText: String {
+        if manager.hasTrack {
+            return manager.artist.isEmpty ? manager.album : manager.artist
+        }
+        return "Waiting for a track…"
     }
 
     @ViewBuilder
@@ -49,8 +65,12 @@ struct NowPlayingOverlayView: View {
         if let art = manager.artwork {
             Image(nsImage: art).resizable().scaledToFill()
         } else {
-            RoundedRectangle(cornerRadius: 8).fill(.white.opacity(0.08))
-                .overlay(Image(systemName: "music.note").foregroundColor(.white.opacity(0.5)))
+            ZStack {
+                RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.08))
+                Image(systemName: "music.note")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundColor(.white.opacity(0.45))
+            }
         }
     }
 
@@ -58,7 +78,7 @@ struct NowPlayingOverlayView: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(.white.opacity(0.15)).frame(height: 3)
-                Capsule().fill(.white.opacity(0.8))
+                Capsule().fill(.white.opacity(0.75))
                     .frame(width: geo.size.width * progressFraction, height: 3)
             }
         }
@@ -66,7 +86,7 @@ struct NowPlayingOverlayView: View {
     }
 
     private var progressFraction: Double {
-        guard manager.duration > 0 else { return 0 }
+        guard manager.hasTrack, manager.duration > 0 else { return 0 }
         return max(0, min(1, manager.elapsed / manager.duration))
     }
 
@@ -85,5 +105,6 @@ struct NowPlayingOverlayView: View {
         }
         .buttonStyle(.plain)
         .foregroundColor(.white)
+        .disabled(!manager.hasTrack)
     }
 }
