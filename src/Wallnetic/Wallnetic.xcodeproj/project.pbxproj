@@ -92,6 +92,7 @@
 		E3721D2B68E6322EA1D6E408 /* AnalyticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C296AD08F207FEC3AF4CDCB9 /* AnalyticsManager.swift */; };
 		E5D27A6DCFBE34596D43A293 /* VideoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 632C30C0743E0B8691AFD923 /* VideoPreviewView.swift */; };
 		E670DC0DFE3A0970082E73EF /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE414F5FC0D738D8D7593A2E /* GenerationHistory.swift */; };
+		E8B9B335A9706D2398DC72A2 /* ExceptionCatcher.m in Sources */ = {isa = PBXBuildFile; fileRef = AA91ACE8CEF6E8C6CC8A68B8 /* ExceptionCatcher.m */; };
 		EA0AA7318BCBE3C944FF48ED /* MLWDecryptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D290998483830980DF7E2CD5 /* MLWDecryptor.swift */; };
 		EAAE966CCF3909FB2678C87D /* VideoTrimmer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5CEC2B4480AEC32A84E65E8 /* VideoTrimmer.swift */; };
 		EAB040DBE1DBA4A2060A349D /* DynamicIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB1C25115998357CDFF95EB /* DynamicIslandView.swift */; };
@@ -160,6 +161,7 @@
 		43A9F2E051E3DDAA18ACAC9D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		4662279ADB65DBA3957578B7 /* VideoFormatConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFormatConverter.swift; sourceTree = "<group>"; };
 		48513382BB8B61A6DD8431DC /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		4C70B541C6297E485FF1E0AF /* ExceptionCatcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExceptionCatcher.h; sourceTree = "<group>"; };
 		4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticApp.swift; sourceTree = "<group>"; };
 		51A337D506233D372B7187D6 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		52CE6EB39E15687BF3655B8C /* SharedDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedDataManager.swift; sourceTree = "<group>"; };
@@ -167,6 +169,7 @@
 		5391D519B2B4F2D898BEDB0F /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		543E1B92A4536DE1415BD91E /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 		56F59C3C7AB56348DA1D9D45 /* ColorCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorCategoryTests.swift; sourceTree = "<group>"; };
+		585BFEEC0C8B2AF4168BD91A /* Wallnetic-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Wallnetic-Bridging-Header.h"; sourceTree = "<group>"; };
 		594B87C7E7B68A1E23F136C4 /* WallneticWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WallneticWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B106464A071BF6E736C3272 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticWidgetBundle.swift; sourceTree = "<group>"; };
@@ -200,6 +203,7 @@
 		9E4377C1CA7A41D21A10FC40 /* LockScreenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenManager.swift; sourceTree = "<group>"; };
 		9E4C04ED28406292407FFBD0 /* PowerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerManager.swift; sourceTree = "<group>"; };
 		A32AE3710192737ABA41FDA0 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		AA91ACE8CEF6E8C6CC8A68B8 /* ExceptionCatcher.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ExceptionCatcher.m; sourceTree = "<group>"; };
 		B28D90947064A40462D0CC1C /* PopularView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopularView.swift; sourceTree = "<group>"; };
 		B3E0F02714B57C6B710BFA04 /* FavoriteStylesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStylesManager.swift; sourceTree = "<group>"; };
 		B5CEC2B4480AEC32A84E65E8 /* VideoTrimmer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTrimmer.swift; sourceTree = "<group>"; };
@@ -246,6 +250,9 @@
 		0E5C0332A18B5850B0997A7A /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				4C70B541C6297E485FF1E0AF /* ExceptionCatcher.h */,
+				AA91ACE8CEF6E8C6CC8A68B8 /* ExceptionCatcher.m */,
+				585BFEEC0C8B2AF4168BD91A /* Wallnetic-Bridging-Header.h */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -659,6 +666,7 @@
 				D57F15D4DC64658E22A29341 /* DynamicIslandController.swift in Sources */,
 				EAB040DBE1DBA4A2060A349D /* DynamicIslandView.swift in Sources */,
 				A2FD8BF6EF09FC0B086E2261 /* EffectsSettingsView.swift in Sources */,
+				E8B9B335A9706D2398DC72A2 /* ExceptionCatcher.m in Sources */,
 				5C0AAD3B25B3DCB797AF2959 /* ExploreView.swift in Sources */,
 				CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */,
 				E670DC0DFE3A0970082E73EF /* GenerationHistory.swift in Sources */,
@@ -747,6 +755,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app;
 				PRODUCT_NAME = Wallnetic;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "Utils/Wallnetic-Bridging-Header.h";
 			};
 			name = Debug;
 		};
@@ -832,6 +841,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app;
 				PRODUCT_NAME = Wallnetic;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "Utils/Wallnetic-Bridging-Header.h";
 			};
 			name = Release;
 		};

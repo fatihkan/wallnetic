@@ -78,12 +78,35 @@ final class AudioVisualizerManager: ObservableObject {
 
     private func beginCapture() {
         let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: AVAudioFrameCount(fftSize), format: format) { [weak self] buffer, _ in
-            self?.process(buffer: buffer)
+        let format = input.inputFormat(forBus: 0)
+
+        // Input node can hand back a zero-sample-rate format when no hardware
+        // input is available (virtual machines, headless logins, permission
+        // not yet effective). installTap throws an NSException in that case,
+        // which is unrecoverable from Swift — bail out cleanly instead.
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            NSLog("[AudioVisualizer] invalid input format (sampleRate=%f, channels=%u) — disabling",
+                  format.sampleRate, format.channelCount)
+            isRunning = false
+            isEnabled = false
+            permissionDenied = true
+            return
         }
 
+        input.removeTap(onBus: 0)
+        let tapException = WNCatchException { [weak self] in
+            input.installTap(onBus: 0, bufferSize: AVAudioFrameCount(self?.fftSize ?? 1024), format: format) { [weak self] buffer, _ in
+                self?.process(buffer: buffer)
+            }
+        }
+        if let ex = tapException {
+            NSLog("[AudioVisualizer] installTap raised %@: %@", ex.name.rawValue, ex.reason ?? "")
+            isRunning = false
+            isEnabled = false
+            return
+        }
+
+        engine.prepare()
         do {
             isEnabled = true
             try engine.start()
@@ -91,6 +114,7 @@ final class AudioVisualizerManager: ObservableObject {
             permissionDenied = false
         } catch {
             NSLog("[AudioVisualizer] engine start failed: %@", error.localizedDescription)
+            input.removeTap(onBus: 0)
             isRunning = false
         }
     }

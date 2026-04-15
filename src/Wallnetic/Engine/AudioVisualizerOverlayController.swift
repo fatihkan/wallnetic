@@ -22,6 +22,17 @@ final class AudioVisualizerOverlayController: ObservableObject {
         isEnabled = true
         AudioVisualizerManager.shared.start()
 
+        // If the manager couldn't start (no input device, tap threw, permission
+        // denied) disable the overlay so we don't auto-launch into the same
+        // crash on the next run.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else { return }
+            if !AudioVisualizerManager.shared.isRunning {
+                self.hide()
+                return
+            }
+        }
+
         let screen = NSScreen.main ?? NSScreen.screens.first
         let screenFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let size = NSSize(width: 420, height: 120)

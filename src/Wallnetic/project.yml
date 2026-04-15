@@ -38,6 +38,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_OBJC_BRIDGING_HEADER: Utils/Wallnetic-Bridging-Header.h
     info:
       path: Resources/Info.plist
       properties:
