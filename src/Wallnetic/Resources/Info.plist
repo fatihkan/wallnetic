@@ -41,6 +41,8 @@
 	<false/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Wallnetic uses microphone audio to drive the on-desktop audio visualizer.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

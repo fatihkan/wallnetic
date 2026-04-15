@@ -139,6 +139,26 @@ struct MenuBarView: View {
                 )
             }
 
+            // Now Playing overlay toggle
+            Button {
+                NowPlayingOverlayController.shared.toggle()
+            } label: {
+                Label(
+                    NowPlayingOverlayController.shared.isEnabled ? "Hide Now Playing" : "Show Now Playing",
+                    systemImage: "music.note"
+                )
+            }
+
+            // Audio Visualizer toggle
+            Button {
+                AudioVisualizerOverlayController.shared.toggle()
+            } label: {
+                Label(
+                    AudioVisualizerOverlayController.shared.isVisible ? "Hide Audio Visualizer" : "Show Audio Visualizer",
+                    systemImage: "waveform"
+                )
+            }
+
             Divider()
 
             // About & Quit

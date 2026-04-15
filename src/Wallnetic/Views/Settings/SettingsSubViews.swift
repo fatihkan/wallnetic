@@ -113,6 +113,8 @@ struct GeneralSettingsView: View {
     @AppStorage("hideDockIcon") private var hideDockIcon = false
     @AppStorage("island.enabled") private var islandEnabled = false
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = false
+    @AppStorage("nowPlayingOverlay.enabled") private var nowPlayingEnabled = false
+    @AppStorage("audioVisualizer.overlayEnabled") private var audioVisualizerEnabled = false
 
     var body: some View {
         Form {
@@ -137,6 +139,20 @@ struct GeneralSettingsView: View {
                     .help("Show wallpaper controls in a floating pill at the top of the screen")
                 Toggle("Global Hotkeys", isOn: $globalHotkeysEnabled)
                     .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
+            }
+            Section("Desktop Overlays") {
+                Toggle("Now Playing overlay", isOn: $nowPlayingEnabled)
+                    .onChange(of: nowPlayingEnabled) { newValue in
+                        if newValue { NowPlayingOverlayController.shared.show() }
+                        else { NowPlayingOverlayController.shared.hide() }
+                    }
+                    .help("Shows the currently playing track on your desktop")
+                Toggle("Audio visualizer", isOn: $audioVisualizerEnabled)
+                    .onChange(of: audioVisualizerEnabled) { newValue in
+                        if newValue { AudioVisualizerOverlayController.shared.show() }
+                        else { AudioVisualizerOverlayController.shared.hide() }
+                    }
+                    .help("Microphone-driven frequency bars in the corner of the desktop")
             }
             Section("Library") {
                 LabeledContent("Location") {

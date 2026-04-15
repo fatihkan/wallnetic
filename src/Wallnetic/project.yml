@@ -53,6 +53,7 @@ targets:
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.utilities
+        NSMicrophoneUsageDescription: "Wallnetic uses microphone audio to drive the on-desktop audio visualizer."
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: com.wallnetic.app

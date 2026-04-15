@@ -38,6 +38,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup global hotkeys
         setupGlobalHotkeys()
 
+        // Initialize desktop overlays (they self-restore from AppStorage)
+        _ = NowPlayingOverlayController.shared
+        _ = AudioVisualizerOverlayController.shared
+
         logger.info("Wallnetic started successfully")
     }
 
