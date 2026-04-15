@@ -55,6 +55,7 @@ targets:
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.utilities
         NSMicrophoneUsageDescription: "Wallnetic uses microphone audio to drive the on-desktop audio visualizer."
+        NSScreenCaptureUsageDescription: "Wallnetic captures system audio (via ScreenCaptureKit) to drive the on-desktop audio visualizer. No screen imagery is recorded."
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: com.wallnetic.app

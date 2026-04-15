@@ -152,7 +152,10 @@ struct GeneralSettingsView: View {
                         if newValue { AudioVisualizerOverlayController.shared.show() }
                         else { AudioVisualizerOverlayController.shared.hide() }
                     }
-                    .help("Microphone-driven frequency bars in the corner of the desktop")
+                    .help("Frequency bars driven by system audio or the microphone")
+                if audioVisualizerEnabled {
+                    AudioVisualizerSourcePicker()
+                }
             }
             Section("Library") {
                 LabeledContent("Location") {
@@ -180,6 +183,35 @@ struct GeneralSettingsView: View {
             else { try SMAppService.mainApp.unregister() }
         } catch {
             print("Failed to set launch at login: \(error)")
+        }
+    }
+}
+
+private struct AudioVisualizerSourcePicker: View {
+    @ObservedObject private var manager = AudioVisualizerManager.shared
+    @State private var source: AudioVisualizerManager.Source = .system
+
+    var body: some View {
+        Picker("Audio source", selection: $source) {
+            ForEach(AudioVisualizerManager.Source.allCases) { s in
+                Text(s.label).tag(s)
+            }
+        }
+        .pickerStyle(.segmented)
+        .onAppear { source = manager.source }
+        .onChange(of: source) { newValue in manager.source = newValue }
+
+        if let error = manager.lastError {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundColor(.orange)
+        } else if manager.permissionDenied {
+            Label(
+                "Permission denied. Enable Screen Recording (for system audio) or Microphone access in System Settings.",
+                systemImage: "lock.fill"
+            )
+            .font(.caption)
+            .foregroundColor(.secondary)
         }
     }
 }
