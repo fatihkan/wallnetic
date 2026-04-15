@@ -194,6 +194,10 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
 
                 let stream = SCStream(filter: filter, configuration: config, delegate: self)
                 try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: self.scQueue)
+                // SCStream always produces video frames even when we only want
+                // audio — register a no-op screen output so the system doesn't
+                // log a -12737 "stream output NOT found" error for every frame.
+                try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: self.scQueue)
                 try await stream.startCapture()
 
                 await MainActor.run {
@@ -337,9 +341,15 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
 
 extension AudioVisualizerManager: SCStreamOutput, SCStreamDelegate {
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        guard type == .audio else { return }
-        guard let mono = samples(from: sampleBuffer) else { return }
-        feed(samples: mono)
+        switch type {
+        case .audio:
+            guard let mono = samples(from: sampleBuffer) else { return }
+            feed(samples: mono)
+        default:
+            // Screen frames: we only registered to silence the system's
+            // "stream output not found" log, so just drop them.
+            break
+        }
     }
 
     func stream(_ stream: SCStream, didStopWithError error: Error) {

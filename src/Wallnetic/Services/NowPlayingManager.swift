@@ -23,6 +23,8 @@ final class NowPlayingManager: ObservableObject {
 
     private var timer: Timer?
     private var bundle: CFBundle?
+    private var consecutiveEmptyPolls: Int = 0
+    private let emptyPollBackoffThreshold: Int = 5
 
     private typealias GetNowPlayingInfo = @convention(c) (DispatchQueue, @escaping ([String: Any]) -> Void) -> Void
     private typealias GetNowPlayingIsPlaying = @convention(c) (DispatchQueue, @escaping (Bool) -> Void) -> Void
@@ -59,8 +61,14 @@ final class NowPlayingManager: ObservableObject {
     func start() {
         guard timer == nil else { return }
         isEnabled = true
+        consecutiveEmptyPolls = 0
         poll()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        scheduleTimer(interval: 1.0)
+    }
+
+    private func scheduleTimer(interval: TimeInterval) {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.poll()
         }
     }
@@ -83,6 +91,22 @@ final class NowPlayingManager: ObservableObject {
     }
 
     private func apply(info: [String: Any]) {
+        // If the sandbox is blocking MediaRemote (typical on App-Store-style
+        // builds), this dict is empty on every poll. After a handful of empty
+        // polls, back off so we stop log-spamming audioanalyticsd.
+        if info.isEmpty {
+            consecutiveEmptyPolls += 1
+            if consecutiveEmptyPolls == emptyPollBackoffThreshold,
+               let t = timer, t.timeInterval < 30 {
+                scheduleTimer(interval: 60)
+            }
+        } else {
+            consecutiveEmptyPolls = 0
+            if let t = timer, t.timeInterval > 2 {
+                scheduleTimer(interval: 1.0)
+            }
+        }
+
         let newTitle = info["kMRMediaRemoteNowPlayingInfoTitle"] as? String ?? ""
         let newArtist = info["kMRMediaRemoteNowPlayingInfoArtist"] as? String ?? ""
         let newAlbum = info["kMRMediaRemoteNowPlayingInfoAlbum"] as? String ?? ""
