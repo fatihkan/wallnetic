@@ -229,15 +229,19 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
 
     /// Extract a mono Float sample array from an SCStream audio CMSampleBuffer.
     /// ScreenCaptureKit hands us non-interleaved Float32 audio — two buffers
-    /// (L/R) when channelCount=2 — so we average the channels down to mono.
+    /// (L/R) when channelCount=2 — so we allocate room for both channels and
+    /// average them down to mono.
     private func samples(from sampleBuffer: CMSampleBuffer) -> [Float]? {
+        let maxBuffers = 2
+        let bufferListPtr = AudioBufferList.allocate(maximumBuffers: maxBuffers)
+        defer { free(bufferListPtr.unsafeMutablePointer) }
+
         var blockBuffer: CMBlockBuffer?
-        var audioBufferList = AudioBufferList()
         let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
             sampleBuffer,
             bufferListSizeNeededOut: nil,
-            bufferListOut: &audioBufferList,
-            bufferListSize: MemoryLayout<AudioBufferList>.size,
+            bufferListOut: bufferListPtr.unsafeMutablePointer,
+            bufferListSize: AudioBufferList.sizeInBytes(maximumBuffers: maxBuffers),
             blockBufferAllocator: nil,
             blockBufferMemoryAllocator: nil,
             flags: 0,
@@ -245,17 +249,24 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
         )
         guard status == noErr else { return nil }
 
-        let abl = UnsafeMutableAudioBufferListPointer(&audioBufferList)
-        guard let firstPtr = abl.first?.mData else { return nil }
-        let frameCount = Int(abl[0].mDataByteSize) / MemoryLayout<Float>.size
+        guard let firstData = bufferListPtr[0].mData else { return nil }
+        let frameCount = Int(bufferListPtr[0].mDataByteSize) / MemoryLayout<Float>.size
         guard frameCount > 0 else { return nil }
 
-        let left = firstPtr.assumingMemoryBound(to: Float.self)
-        if abl.count >= 2, let rightPtr = abl[1].mData {
-            let right = rightPtr.assumingMemoryBound(to: Float.self)
+        let left = firstData.assumingMemoryBound(to: Float.self)
+        if bufferListPtr.count >= 2, let rightData = bufferListPtr[1].mData {
+            let right = rightData.assumingMemoryBound(to: Float.self)
             var mono = [Float](repeating: 0, count: frameCount)
             for i in 0..<frameCount {
                 mono[i] = (left[i] + right[i]) * 0.5
+            }
+            return mono
+        } else if bufferListPtr[0].mNumberChannels == 2 {
+            // Interleaved stereo in a single buffer.
+            let pairCount = frameCount / 2
+            var mono = [Float](repeating: 0, count: pairCount)
+            for i in 0..<pairCount {
+                mono[i] = (left[i * 2] + left[i * 2 + 1]) * 0.5
             }
             return mono
         } else {
@@ -343,7 +354,10 @@ extension AudioVisualizerManager: SCStreamOutput, SCStreamDelegate {
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         switch type {
         case .audio:
-            guard let mono = samples(from: sampleBuffer) else { return }
+            guard let mono = samples(from: sampleBuffer) else {
+                NSLog("[AudioVisualizer] failed to extract samples from audio buffer")
+                return
+            }
             feed(samples: mono)
         default:
             // Screen frames: we only registered to silence the system's
