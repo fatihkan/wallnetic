@@ -18,26 +18,24 @@ struct AudioVisualizerOverlayView: View {
 
         let accent = theme.accentColor
         let loud = CGFloat(manager.loudness)
-        let centerX = size.width / 2
+        let centerY = size.height / 2
 
-        drawBackground(context: context, size: size, centerX: centerX, accent: accent, loudness: loud)
+        drawBackground(context: context, size: size, centerY: centerY, accent: accent, loudness: loud)
 
-        // Bloom.
         context.drawLayer { layer in
             layer.addFilter(.blur(radius: 10))
             layer.opacity = 0.55
-            drawBurst(context: layer, size: size, centerX: centerX, bands: bands, accent: accent)
+            drawBurst(context: layer, size: size, centerY: centerY, bands: bands, accent: accent)
         }
 
-        // Sharp.
-        drawBurst(context: context, size: size, centerX: centerX, bands: bands, accent: accent)
+        drawBurst(context: context, size: size, centerY: centerY, bands: bands, accent: accent)
 
-        drawCenterLine(context: context, size: size, centerX: centerX, accent: accent, loudness: loud)
+        drawCenterLine(context: context, size: size, centerY: centerY, accent: accent, loudness: loud)
     }
 
     // MARK: - Background
 
-    private func drawBackground(context: GraphicsContext, size: CGSize, centerX: CGFloat, accent: Color, loudness: CGFloat) {
+    private func drawBackground(context: GraphicsContext, size: CGSize, centerY: CGFloat, accent: Color, loudness: CGFloat) {
         let rect = CGRect(origin: .zero, size: size)
         context.fill(Path(roundedRect: rect, cornerRadius: 16), with: .color(.black.opacity(0.5)))
 
@@ -46,48 +44,44 @@ struct AudioVisualizerOverlayView: View {
             layer.opacity = 0.3 + Double(loudness) * 0.45
             layer.fill(
                 Path(ellipseIn: CGRect(
-                    x: centerX - 60,
-                    y: size.height / 2 - 60,
-                    width: 120,
-                    height: 120
+                    x: size.width / 2 - 130,
+                    y: centerY - 40,
+                    width: 260, height: 80
                 )),
                 with: .color(accent.opacity(0.65))
             )
         }
     }
 
-    // MARK: - Horizontal burst (tiles go left + right from center)
+    // MARK: - Bars: 64 columns, tiles burst UP + DOWN from center
 
-    private func drawBurst(context: GraphicsContext, size: CGSize, centerX: CGFloat, bands: [Float], accent: Color) {
-        let verticalInset: CGFloat = 6
+    private func drawBurst(context: GraphicsContext, size: CGSize, centerY: CGFloat, bands: [Float], accent: Color) {
         let horizontalInset: CGFloat = 8
+        let verticalInset: CGFloat = 6
         let bandCount = bands.count
-        let rowSpacing: CGFloat = 0.5
-        let usableHeight = size.height - verticalInset * 2
-        let rowHeight = max(1, (usableHeight - rowSpacing * CGFloat(bandCount - 1)) / CGFloat(bandCount))
+        let barSpacing: CGFloat = 1
+        let usableWidth = size.width - horizontalInset * 2
+        let barWidth = max(1.5, (usableWidth - barSpacing * CGFloat(bandCount - 1)) / CGFloat(bandCount))
 
-        let tileWidth: CGFloat = 2.5
+        let tileHeight: CGFloat = 2
         let tileGap: CGFloat = 1
-        let tilePitch = tileWidth + tileGap
-        let halfWidth = centerX - horizontalInset
-        let maxTiles = max(1, Int(halfWidth / tilePitch))
+        let tilePitch = tileHeight + tileGap
+        let halfHeight = centerY - verticalInset
+        let maxTiles = max(1, Int(halfHeight / tilePitch))
         let centerGap: CGFloat = 1.5
 
-        // Precompute accent RGB once.
         let nsAccent = NSColor(accent).usingColorSpace(.sRGB)
         let acR = Double(nsAccent?.redComponent ?? 0)
         let acG = Double(nsAccent?.greenComponent ?? 0)
         let acB = Double(nsAccent?.blueComponent ?? 0)
 
         for (i, value) in bands.enumerated() {
-            let y = verticalInset + CGFloat(i) * (rowHeight + rowSpacing)
+            let x = horizontalInset + CGFloat(i) * (barWidth + barSpacing)
             let amplitude = max(0.03, CGFloat(value))
             let litTiles = max(1, Int(round(amplitude * CGFloat(maxTiles))))
 
             for tile in 0..<litTiles {
                 let progress = Double(tile) / Double(max(litTiles - 1, 1))
-
-                // Cubic easing — accent longer, white only at tip.
                 let tipMix = progress * progress * progress
                 let alpha = 0.88 - progress * 0.2
 
@@ -98,26 +92,26 @@ struct AudioVisualizerOverlayView: View {
 
                 let offset = centerGap + tilePitch * CGFloat(tile)
 
-                // Right.
-                let rightRect = CGRect(x: centerX + offset, y: y, width: tileWidth, height: rowHeight)
-                context.fill(Path(roundedRect: rightRect, cornerRadius: 0.5), with: .color(tileColor))
+                // Up.
+                let topRect = CGRect(x: x, y: centerY - offset - tileHeight, width: barWidth, height: tileHeight)
+                context.fill(Path(roundedRect: topRect, cornerRadius: 0.5), with: .color(tileColor))
 
-                // Left.
-                let leftRect = CGRect(x: centerX - offset - tileWidth, y: y, width: tileWidth, height: rowHeight)
-                context.fill(Path(roundedRect: leftRect, cornerRadius: 0.5), with: .color(tileColor))
+                // Down.
+                let bottomRect = CGRect(x: x, y: centerY + offset, width: barWidth, height: tileHeight)
+                context.fill(Path(roundedRect: bottomRect, cornerRadius: 0.5), with: .color(tileColor))
             }
         }
     }
 
-    // MARK: - Center line
+    // MARK: - Center line (horizontal)
 
-    private func drawCenterLine(context: GraphicsContext, size: CGSize, centerX: CGFloat, accent: Color, loudness: CGFloat) {
+    private func drawCenterLine(context: GraphicsContext, size: CGSize, centerY: CGFloat, accent: Color, loudness: CGFloat) {
         context.drawLayer { layer in
             layer.addFilter(.blur(radius: 4))
-            let rect = CGRect(x: centerX - 1, y: 4, width: 2, height: size.height - 8)
+            let rect = CGRect(x: 4, y: centerY - 1, width: size.width - 8, height: 2)
             layer.fill(Path(roundedRect: rect, cornerRadius: 1), with: .color(accent.opacity(0.5 + Double(loudness) * 0.35)))
         }
-        let rect = CGRect(x: centerX - 0.5, y: 4, width: 1, height: size.height - 8)
+        let rect = CGRect(x: 4, y: centerY - 0.5, width: size.width - 8, height: 1)
         context.fill(Path(roundedRect: rect, cornerRadius: 0.5), with: .color(.white.opacity(0.8)))
     }
 }
