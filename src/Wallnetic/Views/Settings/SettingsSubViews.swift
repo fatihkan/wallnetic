@@ -141,12 +141,6 @@ struct GeneralSettingsView: View {
                     .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
             }
             Section("Desktop Overlays") {
-                Toggle("Now Playing overlay", isOn: $nowPlayingEnabled)
-                    .onChange(of: nowPlayingEnabled) { newValue in
-                        if newValue { NowPlayingOverlayController.shared.show() }
-                        else { NowPlayingOverlayController.shared.hide() }
-                    }
-                    .help("Shows the currently playing track on your desktop")
                 Toggle("Audio visualizer", isOn: $audioVisualizerEnabled)
                     .onChange(of: audioVisualizerEnabled) { newValue in
                         if newValue { AudioVisualizerOverlayController.shared.show() }
