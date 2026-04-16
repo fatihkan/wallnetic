@@ -24,7 +24,7 @@ final class NowPlayingManager: ObservableObject {
     private var timer: Timer?
     private var bundle: CFBundle?
     private var consecutiveEmptyPolls: Int = 0
-    private let emptyPollBackoffThreshold: Int = 5
+    private let emptyPollBackoffThreshold: Int = 10
 
     private typealias GetNowPlayingInfo = @convention(c) (DispatchQueue, @escaping ([String: Any]) -> Void) -> Void
     private typealias GetNowPlayingIsPlaying = @convention(c) (DispatchQueue, @escaping (Bool) -> Void) -> Void
