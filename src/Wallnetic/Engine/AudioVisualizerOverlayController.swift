@@ -35,7 +35,7 @@ final class AudioVisualizerOverlayController: ObservableObject {
 
         let screen = NSScreen.main ?? NSScreen.screens.first
         let screenFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let size = NSSize(width: 480, height: 200)
+        let size = NSSize(width: 520, height: 180)
         let origin = NSPoint(
             x: screenFrame.maxX - size.width - 32,
             y: screenFrame.minY + 32
