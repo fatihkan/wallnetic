@@ -10,7 +10,7 @@ import SwiftUI
 final class AudioVisualizerManager: NSObject, ObservableObject {
     static let shared = AudioVisualizerManager()
 
-    static let bandCount: Int = 32
+    static let bandCount: Int = 64
 
     enum Source: String, CaseIterable, Identifiable {
         case system, microphone
