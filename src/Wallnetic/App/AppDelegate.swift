@@ -18,8 +18,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize desktop window controller
         desktopWindowController = DesktopWindowController()
 
-        // Setup wallpaper change observer
-        setupWallpaperObserver()
+        // Wire up PlaybackDelegate — direct calls instead of notification relay (#170)
+        WallpaperManager.shared.playbackDelegate = self
 
         // Setup power manager with callbacks
         setupPowerManager()
@@ -42,110 +42,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // NowPlayingOverlayController disabled until proper code signing is set up
         _ = AudioVisualizerOverlayController.shared
 
+        // Battery prompt (#172) — if we launched while on battery, ask the user
+        // whether to keep the live wallpaper running. Delayed so PowerManager
+        // has time to detect the initial power state and settings restore.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            BatteryPromptService.shared.checkOnLaunch()
+        }
+
         logger.info("Wallnetic started successfully")
-    }
-
-    // MARK: - Wallpaper Observer
-
-    private func setupWallpaperObserver() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(wallpaperDidChange),
-            name: .wallpaperDidChange,
-            object: nil
-        )
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(playbackStateDidChange),
-            name: .playbackStateDidChange,
-            object: nil
-        )
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(screenWallpaperDidChange),
-            name: .screenWallpaperDidChange,
-            object: nil
-        )
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(applyScreenWallpapers),
-            name: .applyScreenWallpapers,
-            object: nil
-        )
-    }
-
-    @objc private func wallpaperDidChange(_ notification: Notification) {
-        guard let wallpaper = notification.object as? Wallpaper else {
-            return
-        }
-
-        #if DEBUG
-        print("[AppDelegate] Applying wallpaper: \(wallpaper.name)")
-        #endif
-
-        desktopWindowController?.setWallpaper(url: wallpaper.url)
-
-        // Only play if power conditions allow
-        if !(powerManager?.shouldBePaused ?? false) {
-            desktopWindowController?.play()
-            DispatchQueue.main.async {
-                WallpaperManager.shared.isPlaying = true
-            }
-        }
-    }
-
-    @objc private func playbackStateDidChange(_ notification: Notification) {
-        guard let isPlaying = notification.object as? Bool else { return }
-
-        if isPlaying {
-            // Check power conditions before playing
-            if !(powerManager?.shouldBePaused ?? false) {
-                desktopWindowController?.play()
-            }
-        } else {
-            desktopWindowController?.pause()
-        }
-    }
-
-    @objc private func screenWallpaperDidChange(_ notification: Notification) {
-        guard let info = notification.object as? ScreenWallpaperInfo else { return }
-
-        #if DEBUG
-        print("[AppDelegate] Applying wallpaper '\(info.wallpaper.name)' to screen: \(info.screen.localizedName)")
-        #endif
-
-        desktopWindowController?.setWallpaper(url: info.wallpaper.url, for: info.screen)
-
-        // Only play if power conditions allow
-        if !(powerManager?.shouldBePaused ?? false) {
-            desktopWindowController?.play()
-            DispatchQueue.main.async {
-                WallpaperManager.shared.isPlaying = true
-            }
-        }
-    }
-
-    @objc private func applyScreenWallpapers() {
-        #if DEBUG
-        print("[AppDelegate] Applying per-screen wallpapers")
-        #endif
-
-        for screen in NSScreen.screens {
-            if let wallpaper = WallpaperManager.shared.wallpaper(for: screen) {
-                desktopWindowController?.setWallpaper(url: wallpaper.url, for: screen)
-            }
-        }
-
-        // Only play if power conditions allow
-        if !(powerManager?.shouldBePaused ?? false) {
-            desktopWindowController?.play()
-            DispatchQueue.main.async {
-                WallpaperManager.shared.isPlaying = true
-            }
-        }
     }
 
     // MARK: - Global Hotkeys
@@ -156,12 +60,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupGlobalHotkeys() {
         guard UserDefaults.standard.bool(forKey: "globalHotkeysEnabled") else { return }
 
-        // Global monitor (when app is not focused)
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             self?.handleHotkey(event)
         }
 
-        // Local monitor (when app is focused)
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if self?.handleHotkey(event) == true { return nil }
             return event
@@ -178,9 +80,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         }
 
-        // ⌘⇧← Previous wallpaper
+        // ⌘⇧← Previous wallpaper (#D1: delegate to WallpaperManager directly)
         if flags == [.command, .shift] && event.keyCode == 123 {
-            cycleToPreviousWallpaper()
+            WallpaperManager.shared.cycleToPreviousWallpaper()
             return true
         }
 
@@ -190,54 +92,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         }
 
-        // ⌘⇧R Random wallpaper
+        // ⌘⇧R Random wallpaper (#D1: delegate to WallpaperManager directly)
         if flags == [.command, .shift] && event.charactersIgnoringModifiers == "r" {
-            setRandomWallpaper()
+            WallpaperManager.shared.setRandomWallpaper()
             return true
         }
 
         return false
     }
 
-    private func cycleToPreviousWallpaper() {
-        let wallpapers = WallpaperManager.shared.wallpapers
-        guard !wallpapers.isEmpty else { return }
-        if let current = WallpaperManager.shared.currentWallpaper,
-           let idx = wallpapers.firstIndex(where: { $0.id == current.id }) {
-            let prevIdx = (idx - 1 + wallpapers.count) % wallpapers.count
-            WallpaperManager.shared.setWallpaper(wallpapers[prevIdx])
-        } else if let last = wallpapers.last {
-            WallpaperManager.shared.setWallpaper(last)
-        }
-    }
-
-    private func setRandomWallpaper() {
-        let candidates = WallpaperManager.shared.wallpapers.filter {
-            $0.id != WallpaperManager.shared.currentWallpaper?.id
-        }
-        guard let random = candidates.randomElement() else { return }
-        WallpaperManager.shared.setWallpaper(random)
-    }
-
     func applicationWillTerminate(_ notification: Notification) {
-        // Remove hotkey monitors
         if let m = globalMonitor { NSEvent.removeMonitor(m) }
         if let m = localMonitor { NSEvent.removeMonitor(m) }
 
-        // Remove all notification observers
         NotificationCenter.default.removeObserver(self)
 
-        // Cleanup power manager
         powerManager?.cleanup()
-
-        // Cleanup desktop windows
         desktopWindowController?.cleanup()
 
         logger.info("Wallnetic terminating")
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Keep running in menu bar even if main window is closed
         return false
     }
 
@@ -248,12 +124,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showMainWindow() {
-        // Temporarily make app regular so windows can appear
         if NSApp.activationPolicy() == .accessory {
             NSApp.setActivationPolicy(.regular)
         }
 
-        // Try existing window first
         let existingWindow = NSApp.windows.first { window in
             guard window.level == .normal,
                   !window.title.isEmpty || window.contentView != nil else {
@@ -266,14 +140,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
         } else {
-            // No window — use WindowManager to create one via SwiftUI openWindow
             WindowManager.shared.openMainWindow?()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 NSApp.activate(ignoringOtherApps: true)
             }
         }
 
-        // Re-hide dock after window appears
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             if UserDefaults.standard.bool(forKey: "hideDockIcon") {
                 NSApp.setActivationPolicy(.accessory)
@@ -286,10 +158,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             guard url.scheme == "wallnetic" else { continue }
-
             let host = url.host ?? ""
-            NSLog("[AppDelegate] Handling URL: %@ (host: %@)", url.absoluteString, host)
-
             if host == "open" {
                 showMainWindow()
             } else if host == "playPause" || host == "nextWallpaper" || host == "setWallpaper" {
@@ -334,5 +203,53 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("[AppDelegate] Display configuration changed")
         #endif
         desktopWindowController?.handleDisplayChange()
+    }
+}
+
+// MARK: - PlaybackDelegate (#170)
+
+extension AppDelegate: PlaybackDelegate {
+    func playbackSetWallpaper(url: URL) {
+        #if DEBUG
+        print("[AppDelegate] PlaybackDelegate: setWallpaper \(url.lastPathComponent)")
+        #endif
+        desktopWindowController?.setWallpaper(url: url)
+        if !(powerManager?.shouldBePaused ?? false) {
+            desktopWindowController?.play()
+        }
+    }
+
+    func playbackSetWallpaper(url: URL, for screen: NSScreen) {
+        #if DEBUG
+        print("[AppDelegate] PlaybackDelegate: setWallpaper for \(screen.localizedName)")
+        #endif
+        desktopWindowController?.setWallpaper(url: url, for: screen)
+        if !(powerManager?.shouldBePaused ?? false) {
+            desktopWindowController?.play()
+        }
+    }
+
+    func playbackPlay() {
+        if !(powerManager?.shouldBePaused ?? false) {
+            desktopWindowController?.play()
+        }
+    }
+
+    func playbackPause() {
+        desktopWindowController?.pause()
+    }
+
+    func playbackApplyScreenWallpapers() {
+        #if DEBUG
+        print("[AppDelegate] PlaybackDelegate: applyScreenWallpapers")
+        #endif
+        for screen in NSScreen.screens {
+            if let wallpaper = WallpaperManager.shared.wallpaper(for: screen) {
+                desktopWindowController?.setWallpaper(url: wallpaper.url, for: screen)
+            }
+        }
+        if !(powerManager?.shouldBePaused ?? false) {
+            desktopWindowController?.play()
+        }
     }
 }
