@@ -220,9 +220,10 @@ struct PlaybackSettingsView: View {
         Form {
             Section("Power Management") {
                 Toggle("Pause when on battery power", isOn: $wallpaperManager.pauseOnBattery)
+                    .help("When enabled, Wallnetic asks before pausing (or pauses silently if you opted out of the prompt).")
                 Toggle("Always play on battery (skip prompt)", isOn: $alwaysPlayOnBattery)
                     .disabled(!wallpaperManager.pauseOnBattery)
-                    .help("When enabled, the live wallpaper keeps playing on battery without asking.")
+                    .help("Overrides the pause: the live wallpaper keeps playing on battery without asking.")
                 Toggle("Pause when fullscreen app is active", isOn: $wallpaperManager.pauseOnFullscreen)
                 Toggle("Auto-resume when conditions change", isOn: $wallpaperManager.shouldAutoResume)
                 Button("Reset battery prompt") {

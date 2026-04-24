@@ -6,6 +6,10 @@ private let logger = Logger(subsystem: "com.wallnetic.app", category: "BatteryPr
 /// Presents the battery-mode prompt (#172) and tracks per-session / persistent
 /// overrides so the user can choose to keep the live wallpaper running on
 /// battery power.
+///
+/// All mutating calls must happen on the main thread — NSAlert requires it,
+/// and the `hasAskedThisSession` / `sessionContinueOnBattery` flags are read
+/// from `PowerManager.shouldBePaused` which is driven by main-thread events.
 final class BatteryPromptService {
     static let shared = BatteryPromptService()
 
@@ -67,6 +71,7 @@ final class BatteryPromptService {
     /// Called from AppDelegate on launch. If we're already on battery and the
     /// user hasn't silenced the prompt, show the alert.
     func checkOnLaunch() {
+        dispatchPrecondition(condition: .onQueue(.main))
         guard PowerManager.shared.isOnBattery else { return }
         guard WallpaperManager.shared.pauseOnBattery else { return }
         askIfNeeded(trigger: .launch)
@@ -74,6 +79,7 @@ final class BatteryPromptService {
 
     /// Called by PowerManager when the power source flips from AC to battery.
     func onSwitchedToBattery() {
+        dispatchPrecondition(condition: .onQueue(.main))
         guard WallpaperManager.shared.pauseOnBattery else { return }
         askIfNeeded(trigger: .runtime)
     }
@@ -81,6 +87,7 @@ final class BatteryPromptService {
     // MARK: - Private
 
     private func askIfNeeded(trigger: Trigger) {
+        dispatchPrecondition(condition: .onQueue(.main))
         guard !hasAskedThisSession else { return }
 
         // User flipped the Settings toggle — no prompt, silently continue.
@@ -105,18 +112,20 @@ final class BatteryPromptService {
     }
 
     private func showAlert(trigger: Trigger) {
+        dispatchPrecondition(condition: .onQueue(.main))
+
         let alert = NSAlert()
-        alert.messageText = "Pil modunda çalışıyor"
+        alert.messageText = "Running on battery"
         alert.informativeText = trigger == .launch
-            ? "Wallnetic pil ömrünü korumak için canlı duvar kağıdını duraklattı. Oynatmaya devam etmek ister misiniz?"
-            : "Şarj kablosu çıkarıldı. Pil ömrünü korumak için canlı duvar kağıdı duraklatıldı. Oynatmaya devam etmek ister misiniz?"
+            ? "Wallnetic paused the live wallpaper to save battery. Would you like to keep it playing?"
+            : "Power cable unplugged. Wallnetic paused the live wallpaper to save battery. Would you like to keep it playing?"
         alert.alertStyle = .informational
 
-        alert.addButton(withTitle: "Canlı devam et")
-        alert.addButton(withTitle: "Pil koruyucu (duraklat)")
+        alert.addButton(withTitle: "Keep playing")
+        alert.addButton(withTitle: "Pause (save battery)")
 
         let rememberCheckbox = NSButton(
-            checkboxWithTitle: "Bir daha sorma",
+            checkboxWithTitle: "Don't ask again",
             target: nil,
             action: nil
         )
@@ -143,16 +152,12 @@ final class BatteryPromptService {
     }
 
     private func applyChoice(_ choice: String) {
+        dispatchPrecondition(condition: .onQueue(.main))
         guard choice == "continue" else { return }
         sessionContinueOnBattery = true
 
-        DispatchQueue.main.async {
-            WallpaperManager.shared.isPlaying = true
-            if let delegate = WallpaperManager.shared.playbackDelegate {
-                delegate.playbackPlay()
-            } else {
-                NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
-            }
-        }
+        WallpaperManager.shared.isPlaying = true
+        WallpaperManager.shared.playbackDelegate?.playbackPlay()
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
     }
 }

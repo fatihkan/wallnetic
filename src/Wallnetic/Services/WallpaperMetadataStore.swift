@@ -122,7 +122,10 @@ final class WallpaperMetadataStore {
         guard !string.isEmpty,
               let data = string.data(using: .utf8),
               let decoded = try? JSONDecoder().decode(T.self, from: data)
-        else { return [:] as! T }
+        else {
+            let empty: T = [:]
+            return empty
+        }
         return decoded
     }
 

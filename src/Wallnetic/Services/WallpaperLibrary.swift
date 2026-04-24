@@ -42,10 +42,15 @@ final class WallpaperLibrary {
 
     /// Imports a video file into the library. Returns the new library-local URL.
     func importFile(from sourceURL: URL, existingWallpapers: [Wallpaper]) async throws -> URL {
-        // Duplicate detection
+        // Duplicate detection by exact file path component + byte size. Name
+        // matching uses the on-disk filename (not the display name, which can
+        // be customized by the user) to avoid false positives.
         let sourceSize = (try? fileManager.attributesOfItem(atPath: sourceURL.path))?[.size] as? Int64 ?? 0
-        let sourceName = sourceURL.deletingPathExtension().lastPathComponent
-        if let dup = existingWallpapers.first(where: { $0.fileSize == sourceSize && $0.name == sourceName }) {
+        let sourceFilename = sourceURL.deletingPathExtension().lastPathComponent
+        if let dup = existingWallpapers.first(where: {
+            $0.fileSize == sourceSize
+            && $0.url.deletingPathExtension().lastPathComponent == sourceFilename
+        }) {
             throw WallpaperImportError.duplicate(dup.name)
         }
 

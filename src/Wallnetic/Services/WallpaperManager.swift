@@ -308,19 +308,19 @@ class WallpaperManager: ObservableObject {
     // MARK: - Playback
 
     /// Sets wallpaper for all screens (same mode).
-    /// Uses PlaybackDelegate for direct call (#170), falls back to notification.
+    /// PlaybackDelegate drives the renderer directly (#170); the broadcast
+    /// notification fans out to observers like DynamicIslandController and
+    /// ThemeManager that react to wallpaper changes.
     func setWallpaper(_ wallpaper: Wallpaper) {
         currentWallpaper = wallpaper
         lastWallpaperURL = wallpaper.url.path
         isPlaying = true
 
-        if let delegate = playbackDelegate {
-            delegate.playbackSetWallpaper(url: wallpaper.url)
-            delegate.playbackPlay()
-        } else {
-            NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
-            NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
-        }
+        playbackDelegate?.playbackSetWallpaper(url: wallpaper.url)
+        playbackDelegate?.playbackPlay()
+
+        NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
 
         Task {
             await widgetSync.syncCurrentWallpaper(wallpaper)
@@ -335,16 +335,14 @@ class WallpaperManager: ObservableObject {
         saveScreenWallpapers()
         isPlaying = true
 
-        if let delegate = playbackDelegate {
-            delegate.playbackSetWallpaper(url: wallpaper.url, for: screen)
-            delegate.playbackPlay()
-        } else {
-            NotificationCenter.default.post(
-                name: .screenWallpaperDidChange,
-                object: ScreenWallpaperInfo(wallpaper: wallpaper, screen: screen)
-            )
-            NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
-        }
+        playbackDelegate?.playbackSetWallpaper(url: wallpaper.url, for: screen)
+        playbackDelegate?.playbackPlay()
+
+        NotificationCenter.default.post(
+            name: .screenWallpaperDidChange,
+            object: ScreenWallpaperInfo(wallpaper: wallpaper, screen: screen)
+        )
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
     }
 
     func wallpaper(for screen: NSScreen) -> Wallpaper? {
@@ -359,28 +357,23 @@ class WallpaperManager: ObservableObject {
         wallpaperModeRaw = mode.rawValue
 
         if mode == .same, let wallpaper = currentWallpaper {
-            if let delegate = playbackDelegate {
-                delegate.playbackSetWallpaper(url: wallpaper.url)
-            } else {
-                NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
-            }
+            playbackDelegate?.playbackSetWallpaper(url: wallpaper.url)
+            NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
         } else if mode == .different {
-            if let delegate = playbackDelegate {
-                delegate.playbackApplyScreenWallpapers()
-            } else {
-                NotificationCenter.default.post(name: .applyScreenWallpapers, object: nil)
-            }
+            playbackDelegate?.playbackApplyScreenWallpapers()
+            NotificationCenter.default.post(name: .applyScreenWallpapers, object: nil)
         }
     }
 
     func togglePlayback() {
         isPlaying.toggle()
 
-        if let delegate = playbackDelegate {
-            isPlaying ? delegate.playbackPlay() : delegate.playbackPause()
+        if isPlaying {
+            playbackDelegate?.playbackPlay()
         } else {
-            NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
+            playbackDelegate?.playbackPause()
         }
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
 
         widgetSync.syncPlaybackState(isPlaying: isPlaying)
     }

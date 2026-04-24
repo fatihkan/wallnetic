@@ -22,9 +22,16 @@ class PowerManager {
     private var fullscreenCheckTimer: Timer?
     private var powerSourceRef: CFRunLoopSource?
 
+    /// False until `init` finishes seeding initial state. Used to suppress
+    /// the first-pass BatteryPromptService trigger — launch-time prompting is
+    /// owned by AppDelegate's delayed `checkOnLaunch()` so we don't race the
+    /// wallpaper restore.
+    private var isInitialized = false
+
     private init() {
         setupObservers()
         checkInitialPowerState()
+        isInitialized = true
         startFullscreenMonitoring()
     }
 
@@ -292,7 +299,11 @@ class PowerManager {
             if BatteryPromptService.shared.effectivePauseOnBattery {
                 notifyPauseIfNeeded()
             }
-            BatteryPromptService.shared.onSwitchedToBattery()
+            // Only prompt on genuine runtime transitions — launch-time prompts
+            // are handled by AppDelegate.checkOnLaunch after restore settles.
+            if isInitialized {
+                BatteryPromptService.shared.onSwitchedToBattery()
+            }
         } else {
             print("[PowerManager] Switched to AC power")
             notifyResumeIfNeeded()
