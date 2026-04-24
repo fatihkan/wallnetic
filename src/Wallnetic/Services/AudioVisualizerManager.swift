@@ -54,6 +54,14 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
     private var peakHold: [Float] = Array(repeating: 0, count: bandCount)
     private var sampleAccumulator: [Float] = []
 
+    // Pre-allocated FFT buffers — reused every cycle to avoid ~280 allocs/sec.
+    private var fftWindowed: [Float] = []
+    private var fftImagIn: [Float] = []
+    private var fftRealOut: [Float] = []
+    private var fftImagOut: [Float] = []
+    private var fftMagnitudes: [Float] = []
+    private var bandResult: [Float] = Array(repeating: 0, count: bandCount)
+
     // MARK: - Mic capture
 
     private let engine = AVAudioEngine()
@@ -70,6 +78,13 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
         window = [Float](repeating: 0, count: fftSize)
         vDSP_hann_window(&window, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
         fftSetup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(fftSize), .FORWARD)
+
+        // Pre-allocate FFT buffers once.
+        fftWindowed = [Float](repeating: 0, count: fftSize)
+        fftImagIn = [Float](repeating: 0, count: fftSize)
+        fftRealOut = [Float](repeating: 0, count: fftSize)
+        fftImagOut = [Float](repeating: 0, count: fftSize)
+        fftMagnitudes = [Float](repeating: 0, count: fftSize / 2)
     }
 
     deinit {
@@ -299,32 +314,31 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
     private func runFFT(on input: [Float]) {
         guard let setup = fftSetup else { return }
 
-        var windowed = [Float](repeating: 0, count: fftSize)
-        vDSP_vmul(input, 1, window, 1, &windowed, 1, vDSP_Length(fftSize))
-
-        let imagIn = [Float](repeating: 0, count: fftSize)
-        var realOut = [Float](repeating: 0, count: fftSize)
-        var imagOut = [Float](repeating: 0, count: fftSize)
-        vDSP_DFT_Execute(setup, windowed, imagIn, &realOut, &imagOut)
-
         let bins = fftSize / 2
-        var magnitudes = [Float](repeating: 0, count: bins)
-        realOut.withUnsafeMutableBufferPointer { rp in
-            imagOut.withUnsafeMutableBufferPointer { ip in
+
+        // Reuse pre-allocated buffers — zero allocs on the hot path.
+        vDSP_vmul(input, 1, window, 1, &fftWindowed, 1, vDSP_Length(fftSize))
+
+        // imagIn must be zeroed each cycle (DFT input is real-only).
+        vDSP_vclr(&fftImagIn, 1, vDSP_Length(fftSize))
+        vDSP_DFT_Execute(setup, fftWindowed, fftImagIn, &fftRealOut, &fftImagOut)
+
+        fftRealOut.withUnsafeMutableBufferPointer { rp in
+            fftImagOut.withUnsafeMutableBufferPointer { ip in
                 var split = DSPSplitComplex(realp: rp.baseAddress!, imagp: ip.baseAddress!)
-                vDSP_zvmags(&split, 1, &magnitudes, 1, vDSP_Length(bins))
+                vDSP_zvmags(&split, 1, &fftMagnitudes, 1, vDSP_Length(bins))
             }
         }
 
         var scale: Float = 1.0 / Float(fftSize)
-        vDSP_vsmul(magnitudes, 1, &scale, &magnitudes, 1, vDSP_Length(bins))
+        vDSP_vsmul(fftMagnitudes, 1, &scale, &fftMagnitudes, 1, vDSP_Length(bins))
 
-        let newBands = computeBands(from: magnitudes)
+        computeBands()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             var total: Float = 0
             for i in 0..<Self.bandCount {
-                let target = newBands[i]
+                let target = self.bandResult[i]
                 // Bar body — fast attack, smooth decay.
                 if target > self.decayBands[i] {
                     self.decayBands[i] = self.decayBands[i] + (target - self.decayBands[i]) * 0.55
@@ -345,23 +359,30 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
         }
     }
 
-    private func computeBands(from magnitudes: [Float]) -> [Float] {
+    /// Map FFT magnitudes into log-spaced bands. Writes into pre-allocated
+    /// `bandResult` and uses pointer arithmetic to avoid per-band slice copies.
+    private func computeBands() {
         let count = Self.bandCount
-        let bins = magnitudes.count
-        var result = [Float](repeating: 0, count: count)
+        let bins = fftMagnitudes.count
         let minLog = log10(Float(2))
         let maxLog = log10(Float(bins))
-        for i in 0..<count {
-            let lo = Int(pow(10, minLog + (maxLog - minLog) * Float(i) / Float(count)))
-            let hi = max(lo + 1, Int(pow(10, minLog + (maxLog - minLog) * Float(i + 1) / Float(count))))
-            let clampedHi = min(hi, bins)
-            guard lo < clampedHi else { continue }
-            var sum: Float = 0
-            vDSP_meanv(Array(magnitudes[lo..<clampedHi]), 1, &sum, vDSP_Length(clampedHi - lo))
-            let scaled = log10(1 + sum * Float(sensitivity) * 2000)
-            result[i] = min(1.0, scaled)
+        let sens = Float(sensitivity)
+
+        fftMagnitudes.withUnsafeBufferPointer { magPtr in
+            for i in 0..<count {
+                let lo = Int(pow(10, minLog + (maxLog - minLog) * Float(i) / Float(count)))
+                let hi = max(lo + 1, Int(pow(10, minLog + (maxLog - minLog) * Float(i + 1) / Float(count))))
+                let clampedHi = min(hi, bins)
+                guard lo < clampedHi else {
+                    bandResult[i] = 0
+                    continue
+                }
+                var sum: Float = 0
+                vDSP_meanv(magPtr.baseAddress! + lo, 1, &sum, vDSP_Length(clampedHi - lo))
+                let scaled = log10(1 + sum * sens * 2000)
+                bandResult[i] = min(1.0, scaled)
+            }
         }
-        return result
     }
 }
 

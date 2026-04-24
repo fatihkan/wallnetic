@@ -214,13 +214,22 @@ private struct AudioVisualizerSourcePicker: View {
 
 struct PlaybackSettingsView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @AppStorage(BatteryPromptService.alwaysPlayKey) private var alwaysPlayOnBattery: Bool = false
 
     var body: some View {
         Form {
             Section("Power Management") {
                 Toggle("Pause when on battery power", isOn: $wallpaperManager.pauseOnBattery)
+                Toggle("Always play on battery (skip prompt)", isOn: $alwaysPlayOnBattery)
+                    .disabled(!wallpaperManager.pauseOnBattery)
+                    .help("When enabled, the live wallpaper keeps playing on battery without asking.")
                 Toggle("Pause when fullscreen app is active", isOn: $wallpaperManager.pauseOnFullscreen)
                 Toggle("Auto-resume when conditions change", isOn: $wallpaperManager.shouldAutoResume)
+                Button("Reset battery prompt") {
+                    BatteryPromptService.shared.resetPreferences()
+                    alwaysPlayOnBattery = false
+                }
+                .help("Clears saved battery-mode choice so the prompt appears again.")
             }
             Section("Performance") {
                 Toggle("Use Metal Renderer", isOn: $wallpaperManager.useMetalRenderer)

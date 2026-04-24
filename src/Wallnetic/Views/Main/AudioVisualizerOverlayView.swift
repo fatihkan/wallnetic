@@ -4,12 +4,30 @@ struct AudioVisualizerOverlayView: View {
     @EnvironmentObject var manager: AudioVisualizerManager
     @ObservedObject private var theme = ThemeManager.shared
 
+    // Cached accent RGB — avoids NSColor conversion every frame at 60fps.
+    @State private var accentRGB: (r: Double, g: Double, b: Double) = (0, 0, 0)
+
     var body: some View {
         Canvas(rendersAsynchronously: true) { ctx, size in
             draw(context: ctx, size: size)
         }
         .animation(.linear(duration: 1.0 / 60.0), value: manager.bands)
         .drawingGroup()
+        .onChange(of: theme.accentColor.description) { _ in
+            updateAccentRGB()
+        }
+        .onAppear {
+            updateAccentRGB()
+        }
+    }
+
+    private func updateAccentRGB() {
+        let ns = NSColor(theme.accentColor).usingColorSpace(.sRGB)
+        accentRGB = (
+            r: Double(ns?.redComponent ?? 0),
+            g: Double(ns?.greenComponent ?? 0),
+            b: Double(ns?.blueComponent ?? 0)
+        )
     }
 
     private func draw(context: GraphicsContext, size: CGSize) {
@@ -70,10 +88,9 @@ struct AudioVisualizerOverlayView: View {
         let maxTiles = max(1, Int(halfHeight / tilePitch))
         let centerGap: CGFloat = 1.5
 
-        let nsAccent = NSColor(accent).usingColorSpace(.sRGB)
-        let acR = Double(nsAccent?.redComponent ?? 0)
-        let acG = Double(nsAccent?.greenComponent ?? 0)
-        let acB = Double(nsAccent?.blueComponent ?? 0)
+        let acR = accentRGB.r
+        let acG = accentRGB.g
+        let acB = accentRGB.b
 
         for (i, value) in bands.enumerated() {
             let x = horizontalInset + CGFloat(i) * (barWidth + barSpacing)

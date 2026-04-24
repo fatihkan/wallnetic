@@ -73,3 +73,7 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Claude Code (local agent config, memory, logs)
+.claude/
+CLAUDE.md
