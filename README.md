@@ -254,6 +254,8 @@ open Wallnetic.xcodeproj
 - [x] WallpaperManager decomposition &mdash; Library / MetadataStore / WidgetSync services (#149)
 - [x] Notification → delegate refactor for direct playback calls (#170)
 - [x] 37 unit tests for Wallpaper, URL helpers, async init (#140)
+- [x] Privacy Manifest (`PrivacyInfo.xcprivacy`) for App Store compliance (#164)
+- [x] MRMediaRemote private framework gated to `#if DEBUG` for store builds (#165)
 
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
@@ -282,6 +284,9 @@ open Wallnetic.xcodeproj
 - **Tech Debt Batch** (#141-#158): Async `Wallpaper.init`, Settings split into three files, DynamicIsland split into controller/view, `PowerManager` leak fix, dead-code cleanup, async thumbnail upgrade, unified `WallpaperContextMenu`, timezone / Metal / memory / threading / error-handling improvements.
 - **Tests** (#140): 37 unit tests covering Wallpaper model, URL helpers, and async initialization.
 - **Now Playing**: Temporarily hidden until proper code signing is set up (MRMediaRemote private framework restrictions, #130).
+- **App Store Compliance**:
+  - Privacy Manifest declaring `UserDefaults` (CA92.1) and `FileTimestamp` (C617.1) required-reason APIs (#164).
+  - MRMediaRemote private framework loading wrapped in `#if DEBUG` so release builds ship without private API references (#165).
 
 ### v1.2.0
 - **Dynamic Island**: Floating pill UI at screen top with compact/expanded modes, playback controls, rename, and auto-collapse. Notch-aware layout for MacBook Pro.

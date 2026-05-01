@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02D4C66A91485C3B8B1A4F2F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C788B7EDDB89E2E9EEB97E43 /* PrivacyInfo.xcprivacy */; };
 		04BCEB8AB6239A8DB7D5C257 /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 102BCD8F05208BC14E211E51 /* StoreKitManager.swift */; };
 		0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */; };
 		0D0FFA07C32604C5448D9BD6 /* SpaceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2958EEAF2DA16543DBA9453F /* SpaceSettingsView.swift */; };
@@ -223,6 +224,7 @@
 		C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoRenderer.swift; sourceTree = "<group>"; };
 		C46699BC859D4FABE71BB58F /* LargeWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeWidgetView.swift; sourceTree = "<group>"; };
 		C649839F5BB66D43BA4A499A /* AudioVisualizerOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVisualizerOverlayController.swift; sourceTree = "<group>"; };
+		C788B7EDDB89E2E9EEB97E43 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D290998483830980DF7E2CD5 /* MLWDecryptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLWDecryptor.swift; sourceTree = "<group>"; };
 		D67C4A956B32F37A83450264 /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
 		D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
@@ -444,6 +446,7 @@
 			children = (
 				BF36E216B5F900C62E824B59 /* Assets.xcassets */,
 				843AD85E0F38C70B7B33DE40 /* Info.plist */,
+				C788B7EDDB89E2E9EEB97E43 /* PrivacyInfo.xcprivacy */,
 				85B6064EF5DE550677698666 /* Wallnetic.entitlements */,
 			);
 			path = Resources;
@@ -492,6 +495,7 @@
 			children = (
 				69A7F21804AB5D266A239578 /* WallneticWidget.swift */,
 				5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */,
+				FE863A105B48E8483FA4105E /* Models */,
 				245B5B74A9E9F71A64F7454D /* Provider */,
 				4295B025FC1E253129AEE445 /* Resources */,
 				359372CAF80A53CFB75544F5 /* Views */,
@@ -581,9 +585,11 @@
 						ProvisioningStyle = Automatic;
 					};
 					619B21F5247512020263D942 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					9D9A6596302C548CCE03E80C = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -615,6 +621,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				284D0925EA9AEC2B302910D1 /* Assets.xcassets in Resources */,
+				02D4C66A91485C3B8B1A4F2F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -759,7 +766,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -846,7 +852,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/Wallnetic.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -865,7 +870,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ../WallneticWidget/Resources/WallneticWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = ../WallneticWidget/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -902,7 +906,6 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ../WallneticWidget/Resources/WallneticWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = ../WallneticWidget/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
