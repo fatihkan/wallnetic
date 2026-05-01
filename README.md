@@ -103,10 +103,20 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 - Staggered entrance animations
 - Animated gradient backgrounds
 
+### Audio Visualizer
+- Real-time FFT spectrum overlay rendered on the desktop
+- 64-column center-out horizontal burst with accent-to-white color gradient
+- Captures microphone or system audio (ScreenCaptureKit)
+- Pre-allocated vDSP buffers for near-zero allocation on the hot path
+- Configurable sensitivity and placement
+
 ### Smart Power Management
-- Auto-pause on battery power
+- Auto-pause on battery power with opt-in prompt
+- "Always play on battery" toggle in Settings for users who prefer live playback
+- "Bir daha sorma" / remember-choice checkbox in the prompt
 - Pause when fullscreen apps are active
 - Automatic resume when conditions change
+- `CGWindowListCopyWindowInfo` runs off the main thread (no UI stalls)
 
 ### Apple Shortcuts & Siri
 - Set Wallpaper, Next Wallpaper, Toggle Playback, Random Wallpaper
@@ -183,6 +193,7 @@ open Wallnetic.xcodeproj
 
 ## Keyboard Shortcuts
 
+### In-App
 | Shortcut | Action |
 |----------|--------|
 | `Cmd + I` | Import videos |
@@ -191,6 +202,16 @@ open Wallnetic.xcodeproj
 | `Cmd + F` | Search |
 | `Cmd + O` | Open main window |
 | `Cmd + ,` | Settings |
+
+### Global (System-Wide)
+| Shortcut | Action |
+|----------|--------|
+| `Cmd + Shift + →` | Next wallpaper |
+| `Cmd + Shift + ←` | Previous wallpaper |
+| `Cmd + Shift + P` | Toggle play/pause |
+| `Cmd + Shift + R` | Random wallpaper |
+
+> Global hotkeys work from any app. Enable them in `Settings → General → Global hotkeys`.
 
 ---
 
@@ -217,19 +238,29 @@ open Wallnetic.xcodeproj
 - [x] Crossfade transitions
 - [x] Performance modes
 
-### v1.2 &mdash; Current
+### v1.2
 - [x] Dynamic Island &mdash; floating control pill at screen top (notch-aware)
 - [x] Wallpaper rename &mdash; custom display titles via right-click > Rename
 - [x] Dock icon hiding &mdash; run as menu bar-only app
 - [x] Striking UI effects &mdash; glow cards, neon navigation, glass morphism, staggered animations
 - [x] Code review bug fixes &mdash; Equatable/Hashable contract, import file copy, force-unwrap safety
 
+### v1.3 &mdash; Current
+- [x] Audio Visualizer overlay on desktop (#129) &mdash; 64-column FFT burst with color gradient
+- [x] Global hotkeys &mdash; `Cmd+Shift+←/→/P/R` for previous, next, play/pause, random
+- [x] Battery-mode prompt with "Always play on battery" Settings toggle (#172)
+- [x] FFT hot-path optimizations &mdash; pre-allocated vDSP buffers, pointer arithmetic (#163)
+- [x] PowerManager off-main-thread fullscreen detection (#168)
+- [x] WallpaperManager decomposition &mdash; Library / MetadataStore / WidgetSync services (#149)
+- [x] Notification → delegate refactor for direct playback calls (#170)
+- [x] 37 unit tests for Wallpaper, URL helpers, async init (#140)
+- [x] Privacy Manifest (`PrivacyInfo.xcprivacy`) for App Store compliance (#164)
+- [x] MRMediaRemote private framework gated to `#if DEBUG` for store builds (#165)
+
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
-- [ ] Audio visualizer overlay on desktop
 - [ ] 3D perspective wallpaper carousel
-- [ ] Global hotkeys for wallpaper control
-- [ ] Now Playing overlay on desktop
+- [ ] Now Playing overlay on desktop (currently gated on code signing)
 - [ ] Wallpaper marketplace
 - [ ] Music reactive mode
 - [ ] iCloud library sync
@@ -237,6 +268,25 @@ open Wallnetic.xcodeproj
 ---
 
 ## Changelog
+
+### Unreleased (v1.3.0)
+- **Audio Visualizer** (#129): Desktop overlay showing a 64-column FFT spectrum. Center-out horizontal burst with an accent-to-white color gradient; captures microphone or system audio via ScreenCaptureKit.
+- **Battery Prompt & Settings Toggle** (#172): When the Mac switches to battery power (or the app launches on battery), users see a prompt offering to keep the live wallpaper running. A new `Playback → Always play on battery` Settings toggle makes the choice permanent, with a `Reset battery prompt` button to bring it back.
+- **Global Hotkeys**: `⌘⇧→` next, `⌘⇧←` previous, `⌘⇧P` play/pause, `⌘⇧R` random.
+- **Performance**:
+  - FFT hot-path uses pre-allocated vDSP buffers and pointer arithmetic &mdash; eliminates ~280 allocations/sec on the visualizer path (#163).
+  - `CGWindowListCopyWindowInfo` moved off the main thread to keep the UI responsive (#168).
+  - NSColor → RGB conversion cached via `@State + .onChange` in `AudioVisualizerOverlayView`.
+- **Refactoring**:
+  - `WallpaperManager` reduced 808 → 462 lines; extracted `WallpaperLibrary`, `WallpaperMetadataStore`, `WidgetSyncService` (#149).
+  - NotificationCenter relay for playback replaced with a typed `PlaybackDelegate` protocol &mdash; direct calls, fewer main-thread hops (#170). Broadcast consumers (widget) still use notifications.
+  - Duplicate hotkey handlers in `AppDelegate` consolidated to call `WallpaperManager` directly.
+- **Tech Debt Batch** (#141-#158): Async `Wallpaper.init`, Settings split into three files, DynamicIsland split into controller/view, `PowerManager` leak fix, dead-code cleanup, async thumbnail upgrade, unified `WallpaperContextMenu`, timezone / Metal / memory / threading / error-handling improvements.
+- **Tests** (#140): 37 unit tests covering Wallpaper model, URL helpers, and async initialization.
+- **Now Playing**: Temporarily hidden until proper code signing is set up (MRMediaRemote private framework restrictions, #130).
+- **App Store Compliance**:
+  - Privacy Manifest declaring `UserDefaults` (CA92.1) and `FileTimestamp` (C617.1) required-reason APIs (#164).
+  - MRMediaRemote private framework loading wrapped in `#if DEBUG` so release builds ship without private API references (#165).
 
 ### v1.2.0
 - **Dynamic Island**: Floating pill UI at screen top with compact/expanded modes, playback controls, rename, and auto-collapse. Notch-aware layout for MacBook Pro.

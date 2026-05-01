@@ -45,7 +45,12 @@ final class NowPlayingManager: ObservableObject {
 
     // MARK: - Framework Loading
 
+    /// MRMediaRemote is a private framework — loading it triggers App Store
+    /// static-analysis rejection. We gate the entire framework path behind
+    /// `#if DEBUG` so release builds rely solely on the public
+    /// `DistributedNotificationCenter` fallback (Apple Music + Spotify).
     private func loadFramework() {
+        #if DEBUG
         let url = URL(fileURLWithPath: "/System/Library/PrivateFrameworks/MediaRemote.framework")
         guard let bundle = CFBundleCreate(kCFAllocatorDefault, url as CFURL) else { return }
         self.bundle = bundle
@@ -62,9 +67,7 @@ final class NowPlayingManager: ObservableObject {
         if let ptr = CFBundleGetFunctionPointerForName(bundle, "MRMediaRemoteRegisterForNowPlayingNotifications" as CFString) {
             registerNotifications = unsafeBitCast(ptr, to: RegisterNotifications.self)
         }
-        if let ptr = CFBundleGetFunctionPointerForName(bundle, "MRMediaRemoteGetNowPlayingApplicationPIDAsString" as CFString) {
-            // We'll use app bundle approach instead
-        }
+        #endif
     }
 
     // MARK: - Start / Stop
@@ -74,6 +77,7 @@ final class NowPlayingManager: ObservableObject {
         isEnabled = true
         consecutiveEmptyPolls = 0
 
+        #if DEBUG
         // Register for MRMediaRemote notifications (system-level).
         registerNotifications?(DispatchQueue.main)
         NotificationCenter.default.addObserver(
@@ -88,6 +92,7 @@ final class NowPlayingManager: ObservableObject {
             name: NSNotification.Name("kMRMediaRemoteNowPlayingApplicationIsPlayingDidChangeNotification"),
             object: nil
         )
+        #endif
 
         // Distributed notifications — always works, no signing required.
         let dnc = DistributedNotificationCenter.default()
@@ -96,11 +101,13 @@ final class NowPlayingManager: ObservableObject {
         dnc.addObserver(self, selector: #selector(spotifyInfoChanged(_:)),
                         name: NSNotification.Name("com.spotify.client.PlaybackStateChanged"), object: nil)
 
+        #if DEBUG
         // Slow poll as fallback for MRMediaRemote direct queries.
         pollMR()
         timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             self?.pollMR()
         }
+        #endif
     }
 
     func stop() {
@@ -114,6 +121,7 @@ final class NowPlayingManager: ObservableObject {
 
     // MARK: - MRMediaRemote notification callback
 
+    #if DEBUG
     @objc private func mrInfoDidChange() {
         pollMR()
     }
@@ -171,6 +179,7 @@ final class NowPlayingManager: ObservableObject {
             artwork = NSImage(data: data)
         }
     }
+    #endif
 
     // MARK: - Apple Music (distributed notification)
 
@@ -272,7 +281,21 @@ final class NowPlayingManager: ObservableObject {
         case previous = 5
     }
 
-    func togglePlayPause() { _ = sendCommand?(Command.togglePlayPause.rawValue, nil) }
-    func next() { _ = sendCommand?(Command.next.rawValue, nil) }
-    func previous() { _ = sendCommand?(Command.previous.rawValue, nil) }
+    func togglePlayPause() {
+        #if DEBUG
+        _ = sendCommand?(Command.togglePlayPause.rawValue, nil)
+        #endif
+    }
+
+    func next() {
+        #if DEBUG
+        _ = sendCommand?(Command.next.rawValue, nil)
+        #endif
+    }
+
+    func previous() {
+        #if DEBUG
+        _ = sendCommand?(Command.previous.rawValue, nil)
+        #endif
+    }
 }

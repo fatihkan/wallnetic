@@ -10,6 +10,8 @@ class PowerManager {
     var onShouldPausePlayback: (() -> Void)?
     var onShouldResumePlayback: (() -> Void)?
 
+    private let fullscreenQueue = DispatchQueue(label: "com.wallnetic.power.fullscreen", qos: .utility)
+
     // State tracking
     private(set) var isOnBattery = false
     private(set) var isLowPowerMode = false
@@ -20,9 +22,16 @@ class PowerManager {
     private var fullscreenCheckTimer: Timer?
     private var powerSourceRef: CFRunLoopSource?
 
+    /// False until `init` finishes seeding initial state. Used to suppress
+    /// the first-pass BatteryPromptService trigger — launch-time prompting is
+    /// owned by AppDelegate's delayed `checkOnLaunch()` so we don't race the
+    /// wallpaper restore.
+    private var isInitialized = false
+
     private init() {
         setupObservers()
         checkInitialPowerState()
+        isInitialized = true
         startFullscreenMonitoring()
     }
 
@@ -192,74 +201,69 @@ class PowerManager {
     private var fullscreenDebounceTimer: Timer?
 
     private func checkFullscreenApps() {
+        // Capture values that are safe to read on main thread.
+        let frontApp = NSWorkspace.shared.frontmostApplication
         let wasFullscreen = isFullscreenAppActive
+        let screens = NSScreen.screens.map { $0.frame }
 
-        // Get the frontmost app's windows
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
-            updateFullscreenState(false, wasFullscreen: wasFullscreen)
-            return
-        }
+        // Run the expensive CGWindowListCopyWindowInfo off the main thread.
+        fullscreenQueue.async { [weak self] in
+            guard let self else { return }
 
-        // Skip our own app and system apps
-        let skipBundleIds = [
-            Bundle.main.bundleIdentifier,
-            "com.apple.finder",
-            "com.apple.dock",
-            "com.apple.SystemUIServer",
-            "com.apple.controlcenter",
-            "com.apple.notificationcenterui"
-        ]
-
-        if skipBundleIds.contains(frontApp.bundleIdentifier) {
-            updateFullscreenState(false, wasFullscreen: wasFullscreen)
-            return
-        }
-
-        // Method 1: Check if app is in native macOS fullscreen mode
-        // This is the most reliable check for true fullscreen
-        let options = CGWindowListOption.optionOnScreenOnly
-        let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] ?? []
-
-        // Filter windows belonging to the front app
-        let appWindows = windowList.filter { windowInfo in
-            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? Int32 else {
-                return false
-            }
-            return ownerPID == frontApp.processIdentifier
-        }
-
-        // Check for true fullscreen windows only
-        // A window is considered fullscreen if it exactly matches screen dimensions
-        // AND covers the full height (including menu bar area)
-        let hasFullscreenWindow = appWindows.contains { windowInfo in
-            guard let layer = windowInfo[kCGWindowLayer as String] as? Int,
-                  layer == 0,  // Normal window layer
-                  let bounds = windowInfo[kCGWindowBounds as String] as? [String: CGFloat] else {
-                return false
+            guard let frontApp else {
+                DispatchQueue.main.async { self.updateFullscreenState(false, wasFullscreen: wasFullscreen) }
+                return
             }
 
-            let windowX = bounds["X"] ?? 0
-            let windowY = bounds["Y"] ?? 0
-            let windowWidth = bounds["Width"] ?? 0
-            let windowHeight = bounds["Height"] ?? 0
+            let skipBundleIds = [
+                Bundle.main.bundleIdentifier,
+                "com.apple.finder",
+                "com.apple.dock",
+                "com.apple.SystemUIServer",
+                "com.apple.controlcenter",
+                "com.apple.notificationcenterui"
+            ]
 
-            // Check if window matches any screen size EXACTLY (true fullscreen)
-            return NSScreen.screens.contains { screen in
-                let screenFrame = screen.frame
+            if skipBundleIds.contains(frontApp.bundleIdentifier) {
+                DispatchQueue.main.async { self.updateFullscreenState(false, wasFullscreen: wasFullscreen) }
+                return
+            }
 
-                // True fullscreen: window must start at screen origin and match exact dimensions
-                // This excludes maximized windows that don't cover the menu bar
-                let xMatches = abs(windowX - screenFrame.origin.x) < 2
-                let yMatches = abs(windowY - screenFrame.origin.y) < 2
-                let widthMatches = abs(windowWidth - screenFrame.width) < 2
-                let heightMatches = abs(windowHeight - screenFrame.height) < 2
+            let options = CGWindowListOption.optionOnScreenOnly
+            let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] ?? []
 
-                // Only true fullscreen (covers entire screen including menu bar)
-                return xMatches && yMatches && widthMatches && heightMatches
+            let appWindows = windowList.filter { windowInfo in
+                guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? Int32 else {
+                    return false
+                }
+                return ownerPID == frontApp.processIdentifier
+            }
+
+            let hasFullscreenWindow = appWindows.contains { windowInfo in
+                guard let layer = windowInfo[kCGWindowLayer as String] as? Int,
+                      layer == 0,
+                      let bounds = windowInfo[kCGWindowBounds as String] as? [String: CGFloat] else {
+                    return false
+                }
+
+                let windowX = bounds["X"] ?? 0
+                let windowY = bounds["Y"] ?? 0
+                let windowWidth = bounds["Width"] ?? 0
+                let windowHeight = bounds["Height"] ?? 0
+
+                return screens.contains { screenFrame in
+                    let xMatches = abs(windowX - screenFrame.origin.x) < 2
+                    let yMatches = abs(windowY - screenFrame.origin.y) < 2
+                    let widthMatches = abs(windowWidth - screenFrame.width) < 2
+                    let heightMatches = abs(windowHeight - screenFrame.height) < 2
+                    return xMatches && yMatches && widthMatches && heightMatches
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.updateFullscreenState(hasFullscreenWindow, wasFullscreen: wasFullscreen)
             }
         }
-
-        updateFullscreenState(hasFullscreenWindow, wasFullscreen: wasFullscreen)
     }
 
     private func updateFullscreenState(_ newState: Bool, wasFullscreen: Bool) {
@@ -292,8 +296,13 @@ class PowerManager {
     private func handlePowerSourceChange() {
         if isOnBattery {
             print("[PowerManager] Switched to battery power")
-            if WallpaperManager.shared.pauseOnBattery {
+            if BatteryPromptService.shared.effectivePauseOnBattery {
                 notifyPauseIfNeeded()
+            }
+            // Only prompt on genuine runtime transitions — launch-time prompts
+            // are handled by AppDelegate.checkOnLaunch after restore settles.
+            if isInitialized {
+                BatteryPromptService.shared.onSwitchedToBattery()
             }
         } else {
             print("[PowerManager] Switched to AC power")
@@ -387,7 +396,7 @@ class PowerManager {
             return true
         }
 
-        if isOnBattery && WallpaperManager.shared.pauseOnBattery {
+        if isOnBattery && BatteryPromptService.shared.effectivePauseOnBattery {
             return true
         }
 
