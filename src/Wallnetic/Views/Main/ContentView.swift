@@ -6,6 +6,7 @@ struct ContentView: View {
     @ObservedObject private var downloadManager = DownloadManager.shared
     @State private var selectedTab: NavigationTab = .home
     @State private var isImporting = false
+    @State private var showingPhotosImport = false
     @State private var searchText = ""
     @State private var scrollOffset: CGFloat = 0
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
@@ -22,6 +23,7 @@ struct ContentView: View {
                     selectedTab: $selectedTab,
                     searchText: $searchText,
                     isImporting: $isImporting,
+                    showingPhotosImport: $showingPhotosImport,
                     isScrolled: scrollOffset > 50
                 )
                 .zIndex(10)
@@ -77,6 +79,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(isPresented: $showingOnboarding)
+        }
+        .sheet(isPresented: $showingPhotosImport) {
+            CreateFromPhotosView()
+                .environmentObject(wallpaperManager)
         }
         .onAppear {
             if !hasCompletedOnboarding {
