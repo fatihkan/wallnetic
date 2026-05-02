@@ -2,19 +2,21 @@ import Foundation
 import AVFoundation
 import Photos
 import AppKit
-import CoreImage
 
 /// Generates an MP4 slideshow from a list of `PHAsset`s with optional
 /// Ken Burns pan/zoom and crossfade transitions (#137).
 ///
 /// Render strategy:
 /// 1. Load each PHAsset as a high-quality `NSImage`.
-/// 2. Build an offscreen CGContext at the target resolution, render each
-///    frame into it with the Ken Burns transform applied, and pipe pixel
-///    buffers into an `AVAssetWriter` configured for H.264.
-/// 3. Crossfades are realised by overlapping the last `transitionDuration`
-///    seconds of frame N with the first frame of N+1, blending alpha.
-@MainActor
+/// 2. Compute total output frames `N*d − (N−1)*T` and walk a single
+///    timeline. For each frame, decide which 1–2 photos are visible
+///    and render with their Ken Burns transforms + alpha blend.
+/// 3. Pixel buffers go through `AVAssetWriterInputPixelBufferAdaptor`
+///    to an H.264 `AVAssetWriter`.
+///
+/// Not main-actor isolated — the render loop is heavy and would freeze
+/// the UI if forced onto main. Cancellation is cooperative via Swift
+/// `Task.checkCancellation()`.
 final class SlideshowGenerator {
     enum Resolution {
         case hd1080, qhd1440, uhd4k
@@ -59,11 +61,16 @@ final class SlideshowGenerator {
             switch self {
             case .noAssets: return "No photos selected."
             case .writerFailed(let m): return "Video writer failed: \(m)"
-            case .imageLoadFailed: return "Could not load one of the selected photos."
+            case .imageLoadFailed: return "Could not load any of the selected photos."
             case .cancelled: return "Slideshow generation was cancelled."
             }
         }
     }
+
+    /// Cover-fit oversampling so Ken Burns pan never exposes black
+    /// edges at the minimum scale. `panRange = intensity * 80px` at the
+    /// canvas, `coverPad` keeps a safety margin around the cropped area.
+    private let coverPad: CGFloat = 1.12
 
     private let library: PhotosLibraryService
 
@@ -76,21 +83,24 @@ final class SlideshowGenerator {
     /// Generates the slideshow and writes it to a temporary file. The
     /// returned URL points at a `.mp4` ready to be imported via the
     /// `WallpaperManager` import flow.
+    ///
+    /// Cancel by cancelling the parent `Task` — the loop checks
+    /// `Task.checkCancellation()` per frame and throws `cancelled`.
     func generate(
         assets: [PHAsset],
         settings: Settings,
-        progress: @escaping (Double) -> Void
+        progress: @Sendable @escaping (Double) -> Void
     ) async throws -> URL {
         guard !assets.isEmpty else { throw GeneratorError.noAssets }
 
         let outputURL = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("Wallnetic-Slideshow-\(UUID().uuidString).mp4")
 
-        // Load all images upfront. For 30+ photos this is heavy, but slideshow
-        // counts realistically stay under 50 — the bottleneck is rendering, not
-        // load. Skip nil images so a single bad asset doesn't fail the whole job.
+        // Load all images upfront. Slideshow counts realistically stay under 50.
+        // Skip nil images so a single bad asset doesn't fail the whole job.
         var images: [NSImage] = []
         for (idx, asset) in assets.enumerated() {
+            try Task.checkCancellation()
             if let img = await library.requestFullImage(for: asset) {
                 images.append(img)
             }
@@ -98,12 +108,20 @@ final class SlideshowGenerator {
         }
         guard !images.isEmpty else { throw GeneratorError.imageLoadFailed }
 
-        try await renderToFile(
-            images: images,
-            settings: settings,
-            outputURL: outputURL,
-            progress: { progress(0.2 + $0 * 0.8) }
-        )
+        do {
+            try await renderToFile(
+                images: images,
+                settings: settings,
+                outputURL: outputURL,
+                progress: { progress(0.2 + $0 * 0.8) }
+            )
+        } catch is CancellationError {
+            try? FileManager.default.removeItem(at: outputURL)
+            throw GeneratorError.cancelled
+        } catch {
+            try? FileManager.default.removeItem(at: outputURL)
+            throw error
+        }
 
         return outputURL
     }
@@ -114,7 +132,7 @@ final class SlideshowGenerator {
         images: [NSImage],
         settings: Settings,
         outputURL: URL,
-        progress: @escaping (Double) -> Void
+        progress: @Sendable @escaping (Double) -> Void
     ) async throws {
         try? FileManager.default.removeItem(at: outputURL)
 
@@ -173,89 +191,95 @@ final class SlideshowGenerator {
         }
     }
 
-    /// Generates each frame and submits it to the adaptor. Caller has already
-    /// configured the writer + input.
+    /// Frame-by-frame timeline walker. Computes which 1–2 photos are
+    /// visible at each output frame and renders accordingly.
     private func renderFrames(
         images: [NSImage],
         settings: Settings,
         adaptor: AVAssetWriterInputPixelBufferAdaptor,
         writerInput: AVAssetWriterInput,
         outputSize: CGSize,
-        progress: @escaping (Double) -> Void
+        progress: @Sendable @escaping (Double) -> Void
     ) async throws {
         let fps = settings.fps
         let frameDuration = CMTime(value: 1, timescale: fps)
         let framesPerImage = Int(settings.perPhotoDuration * Double(fps))
         let transitionFrames = settings.transition == .crossfade
-            ? Int(settings.transitionDuration * Double(fps))
+            ? min(Int(settings.transitionDuration * Double(fps)), framesPerImage / 2)
             : 0
-        let totalFrames = images.count * framesPerImage - transitionFrames * (images.count - 1)
+        // Stride between successive photo starts. `framesPerImage − transitionFrames`
+        // because adjacent photos overlap during their transition.
+        let stride = framesPerImage - transitionFrames
+        let imageCount = images.count
+        let totalFrames = imageCount * framesPerImage - transitionFrames * (imageCount - 1)
 
-        var frameIndex: Int = 0
-        let kenBurns = generateKenBurnsTransforms(count: images.count, intensity: settings.kenBurns ? 0.18 : 0)
+        let kenBurns = generateKenBurnsTransforms(
+            count: imageCount,
+            intensity: settings.kenBurns ? 0.18 : 0
+        )
 
-        let pool = adaptor.pixelBufferPool
-        let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+        for f in 0..<totalFrames {
+            try Task.checkCancellation()
 
-        for imgIdx in 0..<images.count {
-            let isLast = imgIdx == images.count - 1
-            let blendInFrames = (imgIdx > 0 && transitionFrames > 0) ? transitionFrames : 0
-            let blendOutFrames = (!isLast && transitionFrames > 0) ? transitionFrames : 0
-            let solidFrames = framesPerImage - blendOutFrames
-
-            let frames = blendInFrames + solidFrames
-
-            for f in 0..<frames {
-                while !writerInput.isReadyForMoreMediaData {
-                    try await Task.sleep(nanoseconds: 5_000_000)
-                }
-
-                let progressInImage = Double(blendInFrames + f) / Double(framesPerImage)
-                let kbA = kenBurns[imgIdx].apply(progress: progressInImage)
-
-                guard let pool = pool, let buffer = makePixelBuffer(pool: pool) else {
-                    throw GeneratorError.writerFailed("could not allocate pixel buffer")
-                }
-
-                let alphaA: CGFloat
-                let alphaB: CGFloat
-                let prevImage: NSImage?
-                let prevTransform: CGAffineTransform?
-
-                if f < blendInFrames, imgIdx > 0 {
-                    // Crossfade-in from previous image
-                    let t = CGFloat(f) / CGFloat(max(blendInFrames, 1))
-                    alphaA = t
-                    alphaB = 1 - t
-                    prevImage = images[imgIdx - 1]
-                    let prevProgress = 1.0 - Double(blendInFrames - f) / Double(framesPerImage)
-                    prevTransform = kenBurns[imgIdx - 1].apply(progress: prevProgress)
-                } else {
-                    alphaA = 1
-                    alphaB = 0
-                    prevImage = nil
-                    prevTransform = nil
-                }
-
-                drawFrame(
-                    into: buffer,
-                    outputSize: outputSize,
-                    primary: images[imgIdx],
-                    primaryTransform: kbA,
-                    primaryAlpha: alphaA,
-                    secondary: prevImage,
-                    secondaryTransform: prevTransform,
-                    secondaryAlpha: alphaB,
-                    ciContext: ciContext
-                )
-
-                let pts = CMTimeMultiply(frameDuration, multiplier: Int32(frameIndex))
-                if !adaptor.append(buffer, withPresentationTime: pts) {
-                    throw GeneratorError.writerFailed("append failed at frame \(frameIndex)")
-                }
-                frameIndex += 1
-                progress(Double(frameIndex) / Double(totalFrames))
+            // Wait for adaptor to be ready without blocking main.
+            while !writerInput.isReadyForMoreMediaData {
+                try await Task.sleep(nanoseconds: 5_000_000)
+                try Task.checkCancellation()
             }
+
+            // Determine which photo(s) are visible at this frame.
+            // Photo i runs frames [i*stride, i*stride + framesPerImage).
+            let primaryIdx = min(f / max(stride, 1), imageCount - 1)
+            let frameInPrimary = f - primaryIdx * stride
+
+            // Crossfade region: first `transitionFrames` frames of any non-first photo.
+            let inOverlap = primaryIdx > 0 && transitionFrames > 0 && frameInPrimary < transitionFrames
+
+            let primaryProgress = Double(frameInPrimary) / Double(max(framesPerImage, 1))
+            let primaryTransform = kenBurns[primaryIdx].apply(progress: primaryProgress)
+
+            let primaryAlpha: CGFloat
+            let secondaryImage: NSImage?
+            let secondaryTransform: CGAffineTransform?
+            let secondaryAlpha: CGFloat
+
+            if inOverlap {
+                let t = CGFloat(frameInPrimary) / CGFloat(transitionFrames)
+                primaryAlpha = t
+                secondaryAlpha = 1 - t
+                secondaryImage = images[primaryIdx - 1]
+                let secondaryFrameInImage = stride + frameInPrimary
+                let secProgress = Double(secondaryFrameInImage) / Double(max(framesPerImage, 1))
+                secondaryTransform = kenBurns[primaryIdx - 1].apply(progress: secProgress)
+            } else {
+                primaryAlpha = 1
+                secondaryImage = nil
+                secondaryTransform = nil
+                secondaryAlpha = 0
+            }
+
+            guard let pool = adaptor.pixelBufferPool,
+                  let buffer = makePixelBuffer(pool: pool) else {
+                throw GeneratorError.writerFailed("could not allocate pixel buffer")
+            }
+
+            drawFrame(
+                into: buffer,
+                outputSize: outputSize,
+                primary: images[primaryIdx],
+                primaryTransform: primaryTransform,
+                primaryAlpha: primaryAlpha,
+                secondary: secondaryImage,
+                secondaryTransform: secondaryTransform,
+                secondaryAlpha: secondaryAlpha
+            )
+
+            let pts = CMTimeMultiply(frameDuration, multiplier: Int32(f))
+            if !adaptor.append(buffer, withPresentationTime: pts) {
+                throw GeneratorError.writerFailed("append failed at frame \(f)")
+            }
+
+            progress(Double(f + 1) / Double(totalFrames))
         }
     }
 
@@ -283,6 +307,8 @@ final class SlideshowGenerator {
         var seed = SystemRandomNumberGenerator()
         return (0..<count).map { _ in
             let zoomIn = Bool.random(using: &seed)
+            // Always start ≥ 1.0 — combined with `coverPad` oversampling in
+            // drawImage this prevents black edges from pan + scale.
             let startScale: CGFloat = zoomIn ? 1.0 : 1.0 + intensity
             let endScale: CGFloat = zoomIn ? 1.0 + intensity : 1.0
             let panRange = intensity * 80
@@ -315,8 +341,7 @@ final class SlideshowGenerator {
         primaryAlpha: CGFloat,
         secondary: NSImage?,
         secondaryTransform: CGAffineTransform?,
-        secondaryAlpha: CGFloat,
-        ciContext: CIContext
+        secondaryAlpha: CGFloat
     ) {
         CVPixelBufferLockBaseAddress(buffer, [])
         defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
@@ -356,25 +381,21 @@ final class SlideshowGenerator {
         var rect = CGRect(origin: .zero, size: outputSize)
         guard let cgImage = image.cgImage(forProposedRect: &rect, context: nil, hints: nil) else { return }
 
-        let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
-        let imageAspect = imageSize.width / imageSize.height
+        let imageAspect = CGFloat(cgImage.width) / CGFloat(cgImage.height)
         let outAspect = outputSize.width / outputSize.height
 
-        // aspect-fit: contain inside the output, then ken-burns scales/offsets
-        var drawSize = outputSize
-        if imageAspect > outAspect {
-            drawSize.height = outputSize.width / imageAspect
-        } else {
-            drawSize.width = outputSize.height * imageAspect
-        }
-
-        // Cover instead of fit — we want full-frame look when ken-burns crops in.
+        // Cover-fit so the image fills the output rect.
         var coverSize = outputSize
         if imageAspect > outAspect {
             coverSize.width = outputSize.height * imageAspect
         } else {
             coverSize.height = outputSize.width / imageAspect
         }
+
+        // Oversample so Ken Burns pan never exposes black edges around
+        // the canvas border at minimum scale (1.0).
+        coverSize.width *= coverPad
+        coverSize.height *= coverPad
 
         let drawOrigin = CGPoint(
             x: (outputSize.width - coverSize.width) / 2,

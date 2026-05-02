@@ -23,6 +23,12 @@ struct CreateFromPhotosView: View {
     @State private var generationProgress: Double = 0
     @State private var generationError: String?
     @State private var showingSuccess = false
+    @State private var generationTask: Task<Void, Never>?
+
+    /// Hard cap on selected photos. With 50 photos × 5s/each + 4K Ken Burns
+    /// the output is already ~4 minutes / a few GB — going higher risks
+    /// running out of memory and producing a wallpaper too long to loop.
+    private static let maxSelection = 50
 
     private let columns = [GridItem(.adaptive(minimum: 90, maximum: 110), spacing: 6)]
 
@@ -49,6 +55,10 @@ struct CreateFromPhotosView: View {
             if photos.isAuthorized {
                 loadAlbums()
             }
+        }
+        .onDisappear {
+            generationTask?.cancel()
+            photos.flushThumbnailCache()
         }
         .alert("Slideshow Error", isPresented: Binding(
             get: { generationError != nil },
@@ -184,9 +194,16 @@ struct CreateFromPhotosView: View {
             Divider()
             HStack(alignment: .top, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("\(selectedAssets.count) photo\(selectedAssets.count == 1 ? "" : "s") selected")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 6) {
+                        Text("\(selectedAssets.count) of max \(Self.maxSelection) photo\(selectedAssets.count == 1 ? "" : "s") selected")
+                            .font(.caption)
+                            .foregroundColor(selectedAssets.count >= Self.maxSelection ? .orange : .secondary)
+                        if selectedAssets.count >= Self.maxSelection {
+                            Image(systemName: "exclamationmark.circle")
+                                .foregroundColor(.orange)
+                                .font(.caption)
+                        }
+                    }
 
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -227,7 +244,7 @@ struct CreateFromPhotosView: View {
                 Spacer()
 
                 Button {
-                    Task { await generate() }
+                    startGeneration()
                 } label: {
                     Text("Create Wallpaper")
                         .padding(.horizontal, 8)
@@ -243,11 +260,17 @@ struct CreateFromPhotosView: View {
     private var generatingFooter: some View {
         VStack(spacing: 0) {
             Divider()
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Generating slideshow…")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                ProgressView(value: generationProgress)
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Generating slideshow…")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    ProgressView(value: generationProgress)
+                }
+                Button("Cancel") {
+                    generationTask?.cancel()
+                }
+                .keyboardShortcut(.escape, modifiers: [])
             }
             .padding()
         }
@@ -271,18 +294,16 @@ struct CreateFromPhotosView: View {
     private func toggleSelection(_ asset: PHAsset) {
         if selectedAssets.contains(asset.localIdentifier) {
             selectedAssets.remove(asset.localIdentifier)
-        } else {
+        } else if selectedAssets.count < Self.maxSelection {
             selectedAssets.insert(asset.localIdentifier)
         }
+        // At cap, additional taps are ignored. The footer label flips to
+        // orange to surface the limit.
     }
 
-    private func generate() async {
+    private func startGeneration() {
         let chosen = assets.filter { selectedAssets.contains($0.localIdentifier) }
         guard chosen.count >= 2 else { return }
-
-        isGenerating = true
-        generationProgress = 0
-        defer { isGenerating = false }
 
         let settings = SlideshowGenerator.Settings(
             perPhotoDuration: perPhotoDuration,
@@ -291,18 +312,35 @@ struct CreateFromPhotosView: View {
             resolution: resolution
         )
 
-        do {
-            let url = try await SlideshowGenerator().generate(
-                assets: chosen,
-                settings: settings
-            ) { progress in
-                Task { @MainActor in self.generationProgress = progress }
+        isGenerating = true
+        generationProgress = 0
+
+        generationTask = Task {
+            defer {
+                Task { @MainActor in
+                    isGenerating = false
+                    generationTask = nil
+                }
             }
-            _ = try await wallpaperManager.importVideo(from: url)
-            try? FileManager.default.removeItem(at: url)
-            showingSuccess = true
-        } catch {
-            generationError = error.localizedDescription
+            do {
+                let url = try await SlideshowGenerator().generate(
+                    assets: chosen,
+                    settings: settings
+                ) { progress in
+                    Task { @MainActor in self.generationProgress = progress }
+                }
+                _ = try await wallpaperManager.importVideo(from: url)
+                try? FileManager.default.removeItem(at: url)
+                await MainActor.run { showingSuccess = true }
+            } catch is CancellationError {
+                // User cancelled — silent close, no alert.
+            } catch SlideshowGenerator.GeneratorError.cancelled {
+                // Same — generator surfaced the cancellation as its own type.
+            } catch {
+                await MainActor.run {
+                    generationError = error.localizedDescription
+                }
+            }
         }
     }
 }

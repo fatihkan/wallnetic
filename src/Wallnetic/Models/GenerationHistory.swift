@@ -121,7 +121,8 @@ class GenerationHistoryManager: ObservableObject {
             // Sort by date, newest first
             items.sort { $0.createdAt > $1.createdAt }
         } catch {
-            Log.history.error("Failed to load history: \(error.localizedDescription, privacy: .public)")
+            let errDesc = String(describing: error)
+            Log.history.error("Failed to load history: \(errDesc, privacy: .public)")
             items = []
         }
     }
@@ -136,7 +137,8 @@ class GenerationHistoryManager: ObservableObject {
             let data = try encoder.encode(items)
             try data.write(to: fileURL)
         } catch {
-            Log.history.error("Failed to save history: \(error.localizedDescription, privacy: .public)")
+            let errDesc = String(describing: error)
+            Log.history.error("Failed to save history: \(errDesc, privacy: .public)")
         }
     }
 
@@ -163,7 +165,8 @@ class GenerationHistoryManager: ObservableObject {
         do {
             try FileManager.default.copyItem(at: videoURL, to: destVideoURL)
         } catch {
-            Log.history.error("Failed to copy video: \(error.localizedDescription, privacy: .public)")
+            let errDesc = String(describing: error)
+            Log.history.error("Failed to copy video: \(errDesc, privacy: .public)")
             return
         }
 
@@ -256,7 +259,8 @@ class GenerationHistoryManager: ObservableObject {
                 try jpegData.write(to: thumbnailURL)
             }
         } catch {
-            Log.history.error("Failed to generate thumbnail: \(error.localizedDescription, privacy: .public)")
+            let errDesc = String(describing: error)
+            Log.history.error("Failed to generate thumbnail: \(errDesc, privacy: .public)")
         }
     }
 }
