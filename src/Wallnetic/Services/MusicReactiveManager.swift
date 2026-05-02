@@ -63,8 +63,7 @@ class MusicReactiveManager: ObservableObject {
             self?.updateAudioLevel()
         }
 
-        NSLog("[MusicReactive] Started with effect: %@ (demo mode: %@)",
-              selectedEffect.rawValue, isDemoMode ? "yes" : "no")
+        Log.music.info("Started with effect: \(self.selectedEffect.rawValue, privacy: .public) (demo mode: \(self.isDemoMode ? "yes" : "no", privacy: .public))")
     }
 
     func stop() {

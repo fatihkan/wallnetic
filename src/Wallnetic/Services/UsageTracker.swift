@@ -97,7 +97,7 @@ class UsageTracker: ObservableObject {
             }
 
         } catch {
-            NSLog("[UsageTracker] Refresh error: %@", error.localizedDescription)
+            Log.usage.error("Refresh error: \(error.localizedDescription, privacy: .public)")
         }
 
         await MainActor.run { isLoading = false }
@@ -125,7 +125,7 @@ class UsageTracker: ObservableObject {
                 ]
             )
         } catch {
-            NSLog("[UsageTracker] Sync error: %@", error.localizedDescription)
+            Log.usage.error("Sync error: \(error.localizedDescription, privacy: .public)")
         }
     }
 

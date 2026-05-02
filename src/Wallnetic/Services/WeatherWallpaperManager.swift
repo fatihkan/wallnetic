@@ -134,7 +134,7 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
         guard !path.isEmpty else { return }
 
         if let wallpaper = WallpaperManager.shared.wallpapers.first(where: { $0.url.path == path }) {
-            NSLog("[Weather] Condition: %@ -> wallpaper: %@", condition.rawValue, wallpaper.name)
+            Log.weather.info("Condition: \(condition.rawValue, privacy: .public) -> wallpaper: \(wallpaper.name, privacy: .public)")
             WallpaperManager.shared.setWallpaper(wallpaper)
         }
     }

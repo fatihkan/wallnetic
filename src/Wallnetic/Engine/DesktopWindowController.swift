@@ -121,9 +121,8 @@ class DesktopWindowController {
         // Show window
         window.orderFront(nil)
 
-        #if DEBUG
-        print("[DesktopWindow] Created window for: \(screen.localizedName) using \(useMetalRenderer ? "Metal" : "AVFoundation") renderer")
-        #endif
+        let rendererName = useMetalRenderer ? "Metal" : "AVFoundation"
+        Log.window.debug("Created window for: \(screen.localizedName, privacy: .public) using \(rendererName, privacy: .public) renderer")
     }
 
     // MARK: - Playback Control

@@ -176,7 +176,7 @@ struct GeneralSettingsView: View {
             if enabled { try SMAppService.mainApp.register() }
             else { try SMAppService.mainApp.unregister() }
         } catch {
-            print("Failed to set launch at login: \(error)")
+            Log.app.error("Failed to set launch at login: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

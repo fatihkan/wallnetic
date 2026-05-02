@@ -121,7 +121,7 @@ class GenerationHistoryManager: ObservableObject {
             // Sort by date, newest first
             items.sort { $0.createdAt > $1.createdAt }
         } catch {
-            print("Failed to load history: \(error)")
+            Log.history.error("Failed to load history: \(error.localizedDescription, privacy: .public)")
             items = []
         }
     }
@@ -136,7 +136,7 @@ class GenerationHistoryManager: ObservableObject {
             let data = try encoder.encode(items)
             try data.write(to: fileURL)
         } catch {
-            print("Failed to save history: \(error)")
+            Log.history.error("Failed to save history: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -163,7 +163,7 @@ class GenerationHistoryManager: ObservableObject {
         do {
             try FileManager.default.copyItem(at: videoURL, to: destVideoURL)
         } catch {
-            print("Failed to copy video: \(error)")
+            Log.history.error("Failed to copy video: \(error.localizedDescription, privacy: .public)")
             return
         }
 
@@ -256,7 +256,7 @@ class GenerationHistoryManager: ObservableObject {
                 try jpegData.write(to: thumbnailURL)
             }
         } catch {
-            print("Failed to generate thumbnail: \(error)")
+            Log.history.error("Failed to generate thumbnail: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

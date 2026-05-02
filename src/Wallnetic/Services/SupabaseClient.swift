@@ -31,7 +31,7 @@ class SupabaseClient {
     func configure(url: String, anonKey: String) {
         supabaseURL = url
         supabaseAnonKey = anonKey
-        NSLog("[Supabase] Configured: %@", url)
+        Log.supabase.info("Configured: \(url, privacy: .public)")
     }
 
     // MARK: - Auth

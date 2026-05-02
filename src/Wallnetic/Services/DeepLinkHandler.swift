@@ -18,7 +18,7 @@ class DeepLinkHandler {
             }
         )
 
-        NSLog("[DeepLink] %@", url.absoluteString)
+        Log.deepLink.info("\(url.absoluteString, privacy: .public)")
 
         switch host {
         case "playPause":
@@ -63,7 +63,7 @@ class DeepLinkHandler {
             }
 
         default:
-            NSLog("[DeepLink] Unknown action: %@", host)
+            Log.deepLink.info("Unknown action: \(host, privacy: .public)")
         }
     }
 }

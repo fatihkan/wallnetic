@@ -23,7 +23,7 @@ final class ThumbnailCache {
         let source = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
         source.setEventHandler { [weak self] in
             self?.clearCache()
-            print("[ThumbnailCache] Cleared cache due to memory pressure")
+            Log.thumbnail.info("Cleared cache due to memory pressure")
         }
         source.resume()
         memoryPressureSource = source

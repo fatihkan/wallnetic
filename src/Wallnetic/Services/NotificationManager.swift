@@ -78,7 +78,7 @@ class NotificationManager: ObservableObject {
             DispatchQueue.main.async {
                 self.isAuthorized = granted
                 if let error = error {
-                    print("Notification authorization error: \(error)")
+                    Log.notification.error("Authorization error: \(error.localizedDescription, privacy: .public)")
                 }
             }
         }
@@ -132,7 +132,7 @@ class NotificationManager: ObservableObject {
 
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Failed to send notification: \(error)")
+                Log.notification.error("Failed to send notification: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

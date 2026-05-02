@@ -154,7 +154,8 @@ class TimeOfDayManager: ObservableObject {
 
         let url = URL(fileURLWithPath: path)
         if let wallpaper = WallpaperManager.shared.wallpapers.first(where: { $0.url.path == path }) {
-            NSLog("[TimeOfDay] Switching to %@ wallpaper: %@", currentSlot.rawValue, wallpaper.name)
+            let slot = currentSlot.rawValue
+            Log.timeOfDay.info("Switching to \(slot, privacy: .public) wallpaper: \(wallpaper.name, privacy: .public)")
             WallpaperManager.shared.setWallpaper(wallpaper)
         }
     }

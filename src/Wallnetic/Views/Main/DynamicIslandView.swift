@@ -312,7 +312,7 @@ struct DynamicIslandView: View {
                 }
             } catch {
                 await MainActor.run { island.isImporting = false }
-                print("[DynamicIsland] Drop import failed: \(error)")
+                Log.ui.error("Drop import failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

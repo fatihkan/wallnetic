@@ -107,7 +107,7 @@ class AIService {
         // Parse queue response
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let requestId = json["request_id"] as? String else {
-            print("[AIService] Failed to parse queue response: \(String(data: data, encoding: .utf8) ?? "nil")")
+            Log.ai.error("Failed to parse queue response: \(String(data: data, encoding: .utf8) ?? "nil", privacy: .public)")
             throw AIServiceError.invalidResponse
         }
 
@@ -366,7 +366,7 @@ class AIService {
         }
 
         // Log for debugging
-        print("[AIService] Unknown response format. Keys: \(json.keys)")
+        Log.ai.error("Unknown response format. Keys: \(json.keys.description, privacy: .public)")
         throw AIServiceError.invalidResponse
     }
 

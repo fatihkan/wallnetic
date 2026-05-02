@@ -132,12 +132,12 @@ class DownloadManager: NSObject, ObservableObject {
                         if importURL != localURL {
                             try? FileManager.default.removeItem(at: localURL)
                         }
-                        NSLog("[DownloadManager] Imported: %@", name)
+                        Log.download.info("Imported: \(name, privacy: .public)")
                     } catch {
-                        NSLog("[DownloadManager] Import failed: %@", error.localizedDescription)
+                        Log.download.error("Import failed: \(error.localizedDescription, privacy: .public)")
                     }
                 case .failure(let error):
-                    NSLog("[DownloadManager] Download failed: %@", error.localizedDescription)
+                    Log.download.error("Download failed: \(error.localizedDescription, privacy: .public)")
                 }
             }
         }
@@ -149,7 +149,7 @@ class DownloadManager: NSObject, ObservableObject {
 
         // ZIP file (likely from mylivewallpapers.com) — extract .mlw and decrypt
         if ext == "zip" || isZIPFile(at: localURL) {
-            NSLog("[DownloadManager] Processing ZIP for MLW content: %@", name)
+            Log.download.info("Processing ZIP for MLW content: \(name, privacy: .public)")
             let mp4URL = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension("mp4")
@@ -159,7 +159,7 @@ class DownloadManager: NSObject, ObservableObject {
 
         // Direct .mlw file
         if ext == "mlw" || isMLWFile(at: localURL) {
-            NSLog("[DownloadManager] Processing MLW file: %@", name)
+            Log.download.info("Processing MLW file: \(name, privacy: .public)")
             let mp4URL = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension("mp4")

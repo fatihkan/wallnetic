@@ -122,7 +122,7 @@ class iCloudSyncManager: ObservableObject {
 
         syncStatus = .synced
         lastSyncDate = Date()
-        NSLog("[iCloud] Synced to cloud: %d favorites", favoriteNames.count)
+        Log.icloud.info("Synced to cloud: \(favoriteNames.count) favorites")
     }
 
     // MARK: - Sync From Cloud
@@ -152,14 +152,14 @@ class iCloudSyncManager: ObservableObject {
         }
 
         syncStatus = .synced
-        NSLog("[iCloud] Synced from cloud")
+        Log.icloud.info("Synced from cloud")
     }
 
     // MARK: - External Changes
 
     private func handleExternalChange(_ notification: Notification) {
         guard isEnabled else { return }
-        NSLog("[iCloud] External change detected")
+        Log.icloud.info("External change detected")
         syncFromCloud()
     }
 }

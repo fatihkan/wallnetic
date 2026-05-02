@@ -56,7 +56,7 @@ class SpaceWallpaperManager: ObservableObject {
     func setWallpaper(_ wallpaper: Wallpaper, forSpace spaceIndex: Int) {
         spaceAssignments[spaceIndex] = wallpaper.url.path
         saveAssignments()
-        NSLog("[Spaces] Set wallpaper '%@' for space %d", wallpaper.name, spaceIndex)
+        Log.space.info("Set wallpaper '\(wallpaper.name, privacy: .public)' for space \(spaceIndex)")
 
         // Apply immediately if this is the current space
         if spaceIndex == currentSpaceIndex {
@@ -84,7 +84,8 @@ class SpaceWallpaperManager: ObservableObject {
 
         // Apply wallpaper for new space
         if let wallpaper = wallpaper(forSpace: currentSpaceIndex) {
-            NSLog("[Spaces] Space changed to %d, applying: %@", currentSpaceIndex, wallpaper.name)
+            let idx = currentSpaceIndex
+            Log.space.info("Space changed to \(idx), applying: \(wallpaper.name, privacy: .public)")
             WallpaperManager.shared.setWallpaper(wallpaper)
         }
     }
@@ -116,7 +117,7 @@ class SpaceWallpaperManager: ObservableObject {
         if let index = knownSpaceIDs.firstIndex(of: spaceSignature) {
             if index != currentSpaceIndex {
                 currentSpaceIndex = index
-                NSLog("[Spaces] Space changed to index %d", index)
+                Log.space.info("Space changed to index \(index)")
             }
         }
     }
