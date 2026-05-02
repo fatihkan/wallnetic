@@ -94,7 +94,9 @@ final class PhotosLibraryService: ObservableObject {
 
     /// Loads a square thumbnail for the asset at the requested point size
     /// (the manager scales by display scale internally). The completion is
-    /// always invoked on the main queue.
+    /// always invoked on the main queue exactly once with the final
+    /// (non-degraded) image — the opportunistic low-res placeholder is
+    /// skipped to avoid grid flicker.
     func requestThumbnail(for asset: PHAsset, targetSize: CGSize, completion: @escaping (NSImage?) -> Void) {
         let options = PHImageRequestOptions()
         options.deliveryMode = .opportunistic
@@ -106,9 +108,18 @@ final class PhotosLibraryService: ObservableObject {
             targetSize: targetSize,
             contentMode: .aspectFill,
             options: options
-        ) { image, _ in
+        ) { image, info in
+            // Skip the low-res preview pass; only deliver the final image.
+            if let isDegraded = info?[PHImageResultIsDegradedKey] as? Bool, isDegraded {
+                return
+            }
             DispatchQueue.main.async { completion(image) }
         }
+    }
+
+    /// Drops every cached thumbnail. Call when the photo grid disappears.
+    func flushThumbnailCache() {
+        imageManager.stopCachingImagesForAllAssets()
     }
 
     /// Loads a full-size image for slideshow rendering.
