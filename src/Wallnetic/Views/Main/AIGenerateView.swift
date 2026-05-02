@@ -3,28 +3,20 @@ import UniformTypeIdentifiers
 
 struct AIGenerateView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @StateObject private var vm = AIGenerateViewModel()
     @AppStorage("selectedVideoModel") private var selectedModelRaw: String = VideoModel.klingStandard.rawValue
 
+    // UI-only state (file picker / drag-hover / image preview)
     @State private var selectedImage: NSImage?
     @State private var selectedImageURL: URL?
     @State private var isImporting = false
     @State private var isDragging = false
-    @State private var errorMessage: String?
     @State private var isValidImage = false
 
-    // Prompt state
+    // Prompt state — view-local because the input field binds to it directly.
     @State private var prompt: String = ""
     @State private var selectedDuration: Int = 5
     @State private var selectedAspectRatio: String = "16:9"
-
-    // Generation state
-    @State private var isGenerating = false
-    @State private var generationProgress: Double = 0
-    @State private var generationStatus: String = ""
-    @State private var generatedVideoURL: URL?
-    @State private var generationTask: Task<Void, Never>?
-    @State private var generationStartTime: Date?
-    @State private var estimatedTimeRemaining: String = ""
 
     private var selectedModel: VideoModel {
         VideoModel(rawValue: selectedModelRaw) ?? .klingStandard
@@ -41,11 +33,11 @@ struct AIGenerateView: View {
             Divider()
 
             // Main content
-            if isGenerating {
+            if vm.isGenerating {
                 generationProgressView
-            } else if let videoURL = generatedVideoURL {
+            } else if let videoURL = vm.generatedVideoURL {
                 generatedVideoView(videoURL)
-            } else if errorMessage != nil && !isValidImage && selectedImage != nil {
+            } else if vm.errorMessage != nil {
                 errorView
             } else {
                 promptInputView
@@ -324,7 +316,13 @@ struct AIGenerateView: View {
     private var generateButton: some View {
         VStack(spacing: 12) {
             Button {
-                startGeneration()
+                vm.startGeneration(
+                    prompt: prompt,
+                    model: selectedModel,
+                    duration: selectedDuration,
+                    aspectRatio: selectedAspectRatio,
+                    sourceImage: selectedImage
+                )
             } label: {
                 HStack {
                     Image(systemName: "wand.and.stars")
@@ -370,7 +368,7 @@ struct AIGenerateView: View {
                 Text("Generating Video...")
                     .font(.headline)
 
-                Text(generationStatus)
+                Text(vm.generationStatus)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
 
@@ -381,20 +379,20 @@ struct AIGenerateView: View {
 
             // Progress bar
             VStack(spacing: 8) {
-                ProgressView(value: generationProgress)
+                ProgressView(value: vm.generationProgress)
                     .progressViewStyle(.linear)
                     .frame(maxWidth: 300)
 
                 HStack {
-                    Text("\(Int(generationProgress * 100))%")
+                    Text("\(Int(vm.generationProgress * 100))%")
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.accentColor)
 
                     Spacer()
 
-                    if !estimatedTimeRemaining.isEmpty {
-                        Text(estimatedTimeRemaining)
+                    if !vm.estimatedTimeRemaining.isEmpty {
+                        Text(vm.estimatedTimeRemaining)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -407,7 +405,7 @@ struct AIGenerateView: View {
                 .foregroundColor(.secondary)
 
             // Cancel button
-            Button(action: cancelGeneration) {
+            Button(action: vm.cancelGeneration) {
                 HStack {
                     Image(systemName: "xmark.circle")
                     Text("Cancel")
@@ -461,7 +459,10 @@ struct AIGenerateView: View {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
                     Button {
-                        addToLibrary(videoURL)
+                        if vm.addToLibrary(videoURL, wallpaperManager: wallpaperManager) {
+                            prompt = ""
+                            clearImage()
+                        }
                     } label: {
                         HStack {
                             Image(systemName: "square.and.arrow.down")
@@ -482,7 +483,7 @@ struct AIGenerateView: View {
                 }
 
                 Button("Generate Another") {
-                    generatedVideoURL = nil
+                    vm.clearGeneratedVideo()
                 }
                 .buttonStyle(.bordered)
                 .foregroundColor(.secondary)
@@ -504,7 +505,7 @@ struct AIGenerateView: View {
                 Text("Generation Failed")
                     .font(.headline)
 
-                Text(errorMessage ?? "An unknown error occurred")
+                Text(vm.errorMessage ?? "An unknown error occurred")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -513,13 +514,19 @@ struct AIGenerateView: View {
 
             HStack(spacing: 12) {
                 Button("Try Again") {
-                    errorMessage = nil
-                    startGeneration()
+                    vm.errorMessage = nil
+                    vm.startGeneration(
+                        prompt: prompt,
+                        model: selectedModel,
+                        duration: selectedDuration,
+                        aspectRatio: selectedAspectRatio,
+                        sourceImage: selectedImage
+                    )
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button("Start Over") {
-                    errorMessage = nil
+                    vm.errorMessage = nil
                     clearImage()
                     prompt = ""
                 }
@@ -533,21 +540,16 @@ struct AIGenerateView: View {
     // MARK: - Image Handling
 
     private func handleImageImport(_ result: Result<[URL], Error>) {
-        errorMessage = nil
-
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
             loadImage(from: url)
-
         case .failure(let error):
-            errorMessage = "Failed to open file: \(error.localizedDescription)"
+            ErrorReporter.shared.report(error, context: "Failed to open image file")
         }
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) {
-        errorMessage = nil
-
         guard let provider = providers.first else { return }
 
         if provider.canLoadObject(ofClass: NSImage.self) {
@@ -558,18 +560,18 @@ struct AIGenerateView: View {
                         self.selectedImageURL = nil
                         self.validateImage(nsImage)
                     } else if let error = error {
-                        self.errorMessage = "Failed to load image: \(error.localizedDescription)"
+                        ErrorReporter.shared.report(error, context: "Failed to load dropped image")
                     }
                 }
             }
             return
         }
 
-        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
+        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
             DispatchQueue.main.async {
                 guard let data = item as? Data,
                       let url = URL(dataRepresentation: data, relativeTo: nil) else {
-                    self.errorMessage = "Invalid file"
+                    ErrorReporter.shared.report(ImageError.invalidFile, context: "Drag and drop")
                     return
                 }
                 self.loadImage(from: url)
@@ -588,12 +590,12 @@ struct AIGenerateView: View {
         guard let typeIdentifier = try? url.resourceValues(forKeys: [.typeIdentifierKey]).typeIdentifier,
               let utType = UTType(typeIdentifier),
               supportedTypes.contains(where: { utType.conforms(to: $0) }) else {
-            errorMessage = "Unsupported file format. Please use JPEG, PNG, or HEIC."
+            ErrorReporter.shared.report(ImageError.unsupportedFormat, context: "Image import")
             return
         }
 
         guard let image = NSImage(contentsOf: url) else {
-            errorMessage = "Failed to load image from file"
+            ErrorReporter.shared.report(ImageError.loadFailed, context: "Image import")
             return
         }
 
@@ -604,136 +606,37 @@ struct AIGenerateView: View {
 
     private func validateImage(_ image: NSImage) {
         let minDimension: CGFloat = 256
-        let width = image.size.width
-        let height = image.size.height
-
-        if width < minDimension || height < minDimension {
-            errorMessage = "Image too small. Minimum size is \(Int(minDimension))×\(Int(minDimension)) pixels."
+        if image.size.width < minDimension || image.size.height < minDimension {
+            ErrorReporter.shared.report(ImageError.tooSmall(min: Int(minDimension)), context: "Image validation")
             isValidImage = false
             return
         }
-
         isValidImage = true
-        errorMessage = nil
     }
 
     private func clearImage() {
         selectedImage = nil
         selectedImageURL = nil
         isValidImage = false
-        errorMessage = nil
     }
 
-    // MARK: - Generation
+    // Generation, cancellation, and library import live in
+    // `AIGenerateViewModel` (#166).
+}
 
-    private func startGeneration() {
-        isGenerating = true
-        generationProgress = 0
-        generationStatus = "Starting..."
-        generationStartTime = Date()
-        estimatedTimeRemaining = ""
-        errorMessage = nil
+// Image-import errors surfaced via `ErrorReporter`.
+private enum ImageError: LocalizedError {
+    case invalidFile
+    case unsupportedFormat
+    case loadFailed
+    case tooSmall(min: Int)
 
-        let request = VideoGenerationRequest(
-            prompt: prompt,
-            model: selectedModel,
-            duration: selectedDuration,
-            aspectRatio: selectedAspectRatio,
-            sourceImage: selectedImage
-        )
-
-        generationTask = Task {
-            do {
-                let result = try await AIService.shared.generateVideo(
-                    request: request
-                ) { progress, status in
-                    Task { @MainActor in
-                        self.generationProgress = progress
-                        self.generationStatus = status
-                        self.updateEstimatedTime(progress: progress)
-                    }
-                }
-
-                if Task.isCancelled { return }
-
-                // Save to history
-                GenerationHistoryManager.shared.addGeneration(
-                    from: result,
-                    wasImg2Vid: selectedImage != nil,
-                    aspectRatio: selectedAspectRatio
-                )
-
-                await MainActor.run {
-                    isGenerating = false
-                    generationTask = nil
-                    generatedVideoURL = result.localURL
-                }
-            } catch {
-                if Task.isCancelled { return }
-
-                await MainActor.run {
-                    isGenerating = false
-                    generationTask = nil
-                    errorMessage = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    private func cancelGeneration() {
-        generationTask?.cancel()
-        generationTask = nil
-        isGenerating = false
-        generationProgress = 0
-        generationStatus = ""
-        estimatedTimeRemaining = ""
-    }
-
-    private func updateEstimatedTime(progress: Double) {
-        guard progress > 0.1,
-              let startTime = generationStartTime else {
-            estimatedTimeRemaining = ""
-            return
-        }
-
-        let elapsed = Date().timeIntervalSince(startTime)
-        let estimatedTotal = elapsed / progress
-        let remaining = estimatedTotal - elapsed
-
-        if remaining > 0 && remaining < 600 {
-            let seconds = Int(remaining)
-            if seconds >= 60 {
-                let minutes = seconds / 60
-                let secs = seconds % 60
-                estimatedTimeRemaining = "~\(minutes)m \(secs)s remaining"
-            } else {
-                estimatedTimeRemaining = "~\(seconds)s remaining"
-            }
-        } else {
-            estimatedTimeRemaining = ""
-        }
-    }
-
-    // MARK: - Library
-
-    private func addToLibrary(_ videoURL: URL) {
-        let libraryURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Wallnetic/Library")
-
-        do {
-            try FileManager.default.createDirectory(at: libraryURL, withIntermediateDirectories: true)
-
-            let filename = "AI_Video_\(Date().timeIntervalSince1970).mp4"
-            let destinationURL = libraryURL.appendingPathComponent(filename)
-
-            try FileManager.default.copyItem(at: videoURL, to: destinationURL)
-
-            wallpaperManager.loadWallpapers()
-            generatedVideoURL = nil
-            prompt = ""
-            clearImage()
-        } catch {
-            errorMessage = "Failed to add to library: \(error.localizedDescription)"
+    var errorDescription: String? {
+        switch self {
+        case .invalidFile:           return "Invalid file"
+        case .unsupportedFormat:     return "Unsupported file format. Please use JPEG, PNG, or HEIC."
+        case .loadFailed:            return "Failed to load image from file"
+        case .tooSmall(let min):     return "Image too small. Minimum size is \(min)×\(min) pixels."
         }
     }
 }
