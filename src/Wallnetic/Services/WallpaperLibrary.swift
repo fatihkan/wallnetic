@@ -10,8 +10,7 @@ final class WallpaperLibrary {
 
     /// Resolved once — avoids FileManager I/O on every call.
     lazy var libraryURL: URL = {
-        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = appSupport.appendingPathComponent("Wallnetic/Library", isDirectory: true)
+        let dir = applicationSupportURL().appendingPathComponent("Wallnetic/Library", isDirectory: true)
         if !fileManager.fileExists(atPath: dir.path) {
             try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
         }

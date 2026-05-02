@@ -377,8 +377,7 @@ class AIService {
         let (data, _) = try await URLSession.shared.data(from: url)
 
         // Save to Application Support
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let wallneticDir = appSupport.appendingPathComponent("Wallnetic/Generated")
+        let wallneticDir = applicationSupportURL().appendingPathComponent("Wallnetic/Generated")
 
         try FileManager.default.createDirectory(at: wallneticDir, withIntermediateDirectories: true)
 

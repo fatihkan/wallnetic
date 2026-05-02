@@ -161,8 +161,7 @@ struct GeneralSettingsView: View {
                     Text("\(wallpaperManager.wallpapers.count)")
                 }
                 Button("Open in Finder") {
-                    let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-                        .appendingPathComponent("Wallnetic/Library")
+                    let url = applicationSupportURL().appendingPathComponent("Wallnetic/Library")
                     NSWorkspace.shared.open(url)
                 }
             }

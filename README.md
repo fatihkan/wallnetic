@@ -272,38 +272,12 @@ open Wallnetic.xcodeproj
 
 ## Changelog
 
-### Unreleased (v1.3.0)
-- **Audio Visualizer** (#129): Desktop overlay showing a 64-column FFT spectrum. Center-out horizontal burst with an accent-to-white color gradient; captures microphone or system audio via ScreenCaptureKit.
-- **Battery Prompt & Settings Toggle** (#172): When the Mac switches to battery power (or the app launches on battery), users see a prompt offering to keep the live wallpaper running. A new `Playback → Always play on battery` Settings toggle makes the choice permanent, with a `Reset battery prompt` button to bring it back.
-- **Global Hotkeys**: `⌘⇧→` next, `⌘⇧←` previous, `⌘⇧P` play/pause, `⌘⇧R` random.
-- **Performance**:
-  - FFT hot-path uses pre-allocated vDSP buffers and pointer arithmetic &mdash; eliminates ~280 allocations/sec on the visualizer path (#163).
-  - `CGWindowListCopyWindowInfo` moved off the main thread to keep the UI responsive (#168).
-  - NSColor → RGB conversion cached via `@State + .onChange` in `AudioVisualizerOverlayView`.
-- **Refactoring**:
-  - `WallpaperManager` reduced 808 → 462 lines; extracted `WallpaperLibrary`, `WallpaperMetadataStore`, `WidgetSyncService` (#149).
-  - NotificationCenter relay for playback replaced with a typed `PlaybackDelegate` protocol &mdash; direct calls, fewer main-thread hops (#170). Broadcast consumers (widget) still use notifications.
-  - Duplicate hotkey handlers in `AppDelegate` consolidated to call `WallpaperManager` directly.
-- **Tech Debt Batch** (#141-#158): Async `Wallpaper.init`, Settings split into three files, DynamicIsland split into controller/view, `PowerManager` leak fix, dead-code cleanup, async thumbnail upgrade, unified `WallpaperContextMenu`, timezone / Metal / memory / threading / error-handling improvements.
-- **Tests** (#140): 37 unit tests covering Wallpaper model, URL helpers, and async initialization.
-- **Now Playing**: Temporarily hidden until proper code signing is set up (MRMediaRemote private framework restrictions, #130).
-- **App Store Compliance**:
-  - Privacy Manifest declaring `UserDefaults` (CA92.1) and `FileTimestamp` (C617.1) required-reason APIs (#164).
-  - MRMediaRemote private framework loading wrapped in `#if DEBUG` so release builds ship without private API references (#165).
+Release notes live in [CHANGELOG.md](CHANGELOG.md), formatted to
+[Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
 
-### v1.2.0
-- **Dynamic Island**: Floating pill UI at screen top with compact/expanded modes, playback controls, rename, and auto-collapse. Notch-aware layout for MacBook Pro.
-- **Wallpaper Rename**: Custom display titles via `customTitle` field. Right-click > Rename on all screens (Home, Explore, Popular, Library).
-- **Dock Icon Hiding**: Settings > General > "Hide Dock icon" to run as menu bar-only app.
-- **Striking UI Effects**: Glow cards, neon navigation tabs, glass morphism, shimmer, staggered entrance animations, animated gradient background.
-- **Bug Fixes**: Equatable/Hashable contract violation, importVideo copying wrong file after format conversion, force-unwrap safety on NSScreen and array access, infinite loop prevention in random wallpaper.
-
-### v1.1.0
-- Netflix-style UI redesign with Home, Explore, Popular, Discover tabs
-- Discover wallpaper sources (Pixabay, Pexels, MyLiveWallpapers, DesktopHut, MoeWalls, MotionBGs)
-- Per-Space wallpapers, Lock screen video, Wallpaper effects
-- Time-of-day auto switch, Apple Shortcuts & Siri integration
-- GIF/WebM/WebP format support, Crossfade transitions, Performance modes
+Latest: **[1.3.0](CHANGELOG.md#130--2026-05-02)** — Photos slideshow generator,
+audio visualizer customization, battery prompt, ViewModel layer, sandbox
+enablement, centralized error surfacing.
 
 ---
 

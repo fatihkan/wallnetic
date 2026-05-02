@@ -137,8 +137,7 @@ final class AIGenerateViewModel: ObservableObject {
     /// case the caller can clear its prompt / image state.
     @discardableResult
     func addToLibrary(_ videoURL: URL, wallpaperManager: WallpaperManager) -> Bool {
-        let libraryURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Wallnetic/Library")
+        let libraryURL = applicationSupportURL().appendingPathComponent("Wallnetic/Library")
 
         do {
             try FileManager.default.createDirectory(at: libraryURL, withIntermediateDirectories: true)

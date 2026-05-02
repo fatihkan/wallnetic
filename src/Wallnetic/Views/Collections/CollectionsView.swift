@@ -54,7 +54,7 @@ struct CollectionsView: View {
                             .tag(collection)
                             .contextMenu {
                                 Button("Rename") {
-                                    // TODO: Show rename dialog
+                                    // Implementation tracked in #181.
                                 }
 
                                 Button("Delete", role: .destructive) {
