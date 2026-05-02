@@ -22,10 +22,16 @@ class URLImporter: ObservableObject {
         return videoExtensions.contains(url.pathExtension.lowercased())
     }
 
-    /// Downloads a video from URL and imports it
+    /// Downloads a video from URL and imports it. HTTPS-only and verifies
+    /// the response Content-Type against a video-format allowlist before
+    /// returning the saved file.
     func downloadAndImport(from urlString: String) async throws -> URL {
         guard let url = URL(string: urlString) else {
             throw URLImportError.invalidURL
+        }
+
+        guard url.scheme?.lowercased() == "https" else {
+            throw URLImportError.invalidScheme
         }
 
         isDownloading = true
@@ -44,6 +50,24 @@ class URLImporter: ObservableObject {
                   httpResponse.statusCode == 200 else {
                 isDownloading = false
                 throw URLImportError.downloadFailed
+            }
+
+            // Verify Content-Type matches an expected video MIME so a
+            // mislabelled `.mp4`-suffixed payload (HTML, executable) is
+            // rejected before being imported.
+            let mime = (httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "")
+                .lowercased()
+                .components(separatedBy: ";").first
+                .map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+            let allowedMimes: Set<String> = [
+                "video/mp4", "video/quicktime", "video/x-m4v",
+                "video/webm", "video/x-matroska", "image/gif",
+                "image/webp", "application/octet-stream"
+            ]
+            if !allowedMimes.contains(mime) {
+                try? FileManager.default.removeItem(at: tempURL)
+                isDownloading = false
+                throw URLImportError.unsupportedContentType(mime)
             }
 
             // Move to stable location
@@ -79,12 +103,17 @@ class URLImporter: ObservableObject {
 
 enum URLImportError: LocalizedError {
     case invalidURL
+    case invalidScheme
     case downloadFailed
+    case unsupportedContentType(String)
 
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Invalid URL"
+        case .invalidScheme: return "Only HTTPS URLs are accepted."
         case .downloadFailed: return "Download failed"
+        case .unsupportedContentType(let mime):
+            return "Server returned unsupported content type: \(mime.isEmpty ? "(none)" : mime)"
         }
     }
 }

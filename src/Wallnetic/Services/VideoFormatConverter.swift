@@ -184,13 +184,19 @@ class VideoFormatConverter {
             "-y",           // Overwrite
             outputURL.path
         ]
+        // Capture stderr so a conversion failure leaves a diagnostic trail
+        // instead of just an opaque "ffmpegFailed".
+        let stderrPipe = Pipe()
         process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        process.standardError = stderrPipe
 
         try process.run()
         process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
+            let errorData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let tail = String(data: errorData, encoding: .utf8)?.suffix(500) ?? ""
+            Log.video.error("ffmpeg WebM conversion failed (exit \(process.terminationStatus)): \(String(tail), privacy: .public)")
             throw ConversionError.ffmpegFailed
         }
 

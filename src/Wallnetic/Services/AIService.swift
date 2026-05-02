@@ -107,7 +107,8 @@ class AIService {
         // Parse queue response
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let requestId = json["request_id"] as? String else {
-            Log.ai.error("Failed to parse queue response: \(String(data: data, encoding: .utf8) ?? "nil", privacy: .public)")
+            // Body may contain echoed prompt or user-provided context — keep private.
+            Log.ai.error("Failed to parse queue response (body redacted): \(String(data: data, encoding: .utf8) ?? "nil", privacy: .private)")
             throw AIServiceError.invalidResponse
         }
 

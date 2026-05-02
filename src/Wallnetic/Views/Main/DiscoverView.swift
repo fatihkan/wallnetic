@@ -491,7 +491,10 @@ struct WebViewWrapper: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.allowsAirPlayForMediaPlayback = false
-        config.preferences.javaScriptCanOpenWindowsAutomatically = true
+        // Refuse JavaScript-driven `window.open()` without a user gesture —
+        // common popup spam / drive-by-download vector when the user
+        // browses untrusted sites in Discover.
+        config.preferences.javaScriptCanOpenWindowsAutomatically = false
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
@@ -501,7 +504,12 @@ struct WebViewWrapper: NSViewRepresentable {
 
         DispatchQueue.main.async { self.webViewRef = webView }
 
-        if let url = URL(string: urlString) {
+        // HTTPS/HTTP only. Reject `file://`, `javascript:`, custom schemes
+        // — prevents local-file disclosure and JS execution against the
+        // WebView origin via crafted address bar input.
+        if let url = URL(string: urlString),
+           let scheme = url.scheme?.lowercased(),
+           scheme == "https" || scheme == "http" {
             webView.load(URLRequest(url: url))
         }
         return webView
