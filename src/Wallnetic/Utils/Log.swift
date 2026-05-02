@@ -28,6 +28,8 @@ enum Log {
     static let mlw          = Logger(subsystem: subsystem, category: "MLWDecryptor")
     static let music        = Logger(subsystem: subsystem, category: "MusicReactive")
     static let notification = Logger(subsystem: subsystem, category: "Notification")
+    static let photos       = Logger(subsystem: subsystem, category: "Photos")
+    static let slideshow    = Logger(subsystem: subsystem, category: "Slideshow")
     static let power        = Logger(subsystem: subsystem, category: "Power")
     static let render       = Logger(subsystem: subsystem, category: "Render")
     static let scheduler    = Logger(subsystem: subsystem, category: "Scheduler")

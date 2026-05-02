@@ -24,6 +24,7 @@ struct TopNavigationBar: View {
     @Binding var selectedTab: NavigationTab
     @Binding var searchText: String
     @Binding var isImporting: Bool
+    @Binding var showingPhotosImport: Bool
     @State private var isSearching = false
     @State private var hoveredTab: NavigationTab?
     var isScrolled: Bool = false
@@ -72,8 +73,19 @@ struct TopNavigationBar: View {
             HStack(spacing: 12) {
                 Spacer()
 
-                Button {
-                    isImporting = true
+                Menu {
+                    Button {
+                        isImporting = true
+                    } label: {
+                        Label("Import video file…", systemImage: "film")
+                    }
+                    .keyboardShortcut("i", modifiers: .command)
+
+                    Button {
+                        showingPhotosImport = true
+                    } label: {
+                        Label("Create from Photos…", systemImage: "photo.on.rectangle.angled")
+                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .bold))
@@ -85,8 +97,9 @@ struct TopNavigationBar: View {
                                 .overlay(Circle().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
                         )
                 }
-                .buttonStyle(.plain)
-                .keyboardShortcut("i", modifiers: .command)
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .frame(width: 28, height: 28)
 
                 if #available(macOS 14.0, *) {
                     SettingsLink {

@@ -43,6 +43,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Wallnetic uses microphone audio to drive the on-desktop audio visualizer.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Wallnetic reads selected photos from your library to generate slideshow wallpapers. Nothing is uploaded or shared.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSScreenCaptureUsageDescription</key>
