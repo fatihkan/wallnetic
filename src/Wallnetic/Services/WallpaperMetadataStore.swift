@@ -119,20 +119,23 @@ final class WallpaperMetadataStore {
     // MARK: - Generic JSON helpers
 
     private func decodeJSON<T: Decodable>(_ string: String, as type: T.Type) -> T where T: ExpressibleByDictionaryLiteral {
-        guard !string.isEmpty,
-              let data = string.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(T.self, from: data)
-        else {
-            let empty: T = [:]
+        let empty: T = [:]
+        guard !string.isEmpty, let data = string.data(using: .utf8) else { return empty }
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            Log.app.error("WallpaperMetadataStore decode failed for \(String(describing: T.self), privacy: .public); resetting cache. Error: \(String(describing: error), privacy: .public)")
             return empty
         }
-        return decoded
     }
 
     private func encodeJSON<T: Encodable>(_ value: T) -> String {
-        guard let data = try? JSONEncoder().encode(value),
-              let str = String(data: data, encoding: .utf8)
-        else { return "" }
-        return str
+        do {
+            let data = try JSONEncoder().encode(value)
+            return String(data: data, encoding: .utf8) ?? ""
+        } catch {
+            Log.app.error("WallpaperMetadataStore encode failed for \(String(describing: T.self), privacy: .public): \(String(describing: error), privacy: .public)")
+            return ""
+        }
     }
 }

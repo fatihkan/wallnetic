@@ -96,8 +96,11 @@ class WallpaperManager: ObservableObject {
         }
 
         if !screenWallpapersData.isEmpty {
-            if let decoded = try? JSONDecoder().decode([String: UUID].self, from: screenWallpapersData) {
-                screenWallpapers = decoded
+            do {
+                screenWallpapers = try JSONDecoder().decode([String: UUID].self, from: screenWallpapersData)
+            } catch {
+                Log.app.error("Failed to decode per-screen wallpaper map; resetting. \(String(describing: error), privacy: .public)")
+                screenWallpapersData = Data()
             }
         }
 
@@ -123,8 +126,10 @@ class WallpaperManager: ObservableObject {
     }
 
     private func saveScreenWallpapers() {
-        if let encoded = try? JSONEncoder().encode(screenWallpapers) {
-            screenWallpapersData = encoded
+        do {
+            screenWallpapersData = try JSONEncoder().encode(screenWallpapers)
+        } catch {
+            Log.app.error("Failed to persist per-screen wallpaper map: \(String(describing: error), privacy: .public)")
         }
     }
 
