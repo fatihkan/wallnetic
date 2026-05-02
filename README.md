@@ -256,6 +256,8 @@ open Wallnetic.xcodeproj
 - [x] 37 unit tests for Wallpaper, URL helpers, async init (#140)
 - [x] Privacy Manifest (`PrivacyInfo.xcprivacy`) for App Store compliance (#164)
 - [x] MRMediaRemote private framework gated to `#if DEBUG` for store builds (#165)
+- [x] Centralized `os.log` logging — 93 `print`/`NSLog` → `Log.*` registry across 31 categories (#169)
+- [x] Audio Visualizer customization &mdash; sensitivity slider, 3 styles (Bars/Waveform/Dots), 6 corner positions, S/M/L sizes (#159, #160, #161, #162)
 
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
