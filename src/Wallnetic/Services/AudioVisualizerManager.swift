@@ -23,9 +23,65 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
         }
     }
 
+    /// Rendering style for the overlay (#160). Implemented in
+    /// `AudioVisualizerOverlayView` — adding a case here requires a matching
+    /// branch in the view's draw routine.
+    enum Style: String, CaseIterable, Identifiable {
+        case bars      // Original 64-column burst (default)
+        case waveform  // Continuous mirrored waveform line
+        case dots      // Sparse circular dot grid
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .bars:     return "Bars"
+            case .waveform: return "Waveform"
+            case .dots:     return "Dots"
+            }
+        }
+    }
+
+    /// On-screen anchor point for the overlay panel (#161).
+    enum Position: String, CaseIterable, Identifiable {
+        case bottomRight, bottomLeft, topRight, topLeft, bottomCenter, topCenter
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .bottomRight:  return "Bottom Right"
+            case .bottomLeft:   return "Bottom Left"
+            case .topRight:     return "Top Right"
+            case .topLeft:      return "Top Left"
+            case .bottomCenter: return "Bottom Center"
+            case .topCenter:    return "Top Center"
+            }
+        }
+    }
+
+    /// Overlay panel size preset (#162).
+    enum Size: String, CaseIterable, Identifiable {
+        case small, medium, large
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .small:  return "Small"
+            case .medium: return "Medium"
+            case .large:  return "Large"
+            }
+        }
+        var dimensions: NSSize {
+            switch self {
+            case .small:  return NSSize(width: 380, height: 130)
+            case .medium: return NSSize(width: 520, height: 180)
+            case .large:  return NSSize(width: 720, height: 250)
+            }
+        }
+    }
+
     @AppStorage("audioVisualizer.enabled") var isEnabled: Bool = false
     @AppStorage("audioVisualizer.sensitivity") var sensitivity: Double = 1.0
     @AppStorage("audioVisualizer.source") private var sourceRaw: String = Source.system.rawValue
+    @AppStorage("audioVisualizer.style") private var styleRaw: String = Style.bars.rawValue
+    @AppStorage("audioVisualizer.position") private var positionRaw: String = Position.bottomRight.rawValue
+    @AppStorage("audioVisualizer.size") private var sizeRaw: String = Size.medium.rawValue
 
     @Published var bands: [Float] = Array(repeating: 0, count: bandCount)
     @Published var peaks: [Float] = Array(repeating: 0, count: bandCount)
@@ -42,6 +98,32 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
                 stop()
                 start()
             }
+        }
+    }
+
+    var style: Style {
+        get { Style(rawValue: styleRaw) ?? .bars }
+        set {
+            styleRaw = newValue.rawValue
+            objectWillChange.send()
+        }
+    }
+
+    var position: Position {
+        get { Position(rawValue: positionRaw) ?? .bottomRight }
+        set {
+            positionRaw = newValue.rawValue
+            objectWillChange.send()
+            NotificationCenter.default.post(name: .audioVisualizerLayoutDidChange, object: nil)
+        }
+    }
+
+    var sizePreset: Size {
+        get { Size(rawValue: sizeRaw) ?? .medium }
+        set {
+            sizeRaw = newValue.rawValue
+            objectWillChange.send()
+            NotificationCenter.default.post(name: .audioVisualizerLayoutDidChange, object: nil)
         }
     }
 
@@ -411,4 +493,10 @@ extension AudioVisualizerManager: SCStreamOutput, SCStreamDelegate {
             self.scStream = nil
         }
     }
+}
+
+extension Notification.Name {
+    /// Fired when the user changes the visualizer's position or size preset
+    /// (#161 / #162) so the overlay panel can re-anchor / resize.
+    static let audioVisualizerLayoutDidChange = Notification.Name("audioVisualizerLayoutDidChange")
 }

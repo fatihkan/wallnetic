@@ -184,6 +184,9 @@ struct GeneralSettingsView: View {
 private struct AudioVisualizerSourcePicker: View {
     @ObservedObject private var manager = AudioVisualizerManager.shared
     @State private var source: AudioVisualizerManager.Source = .system
+    @State private var style: AudioVisualizerManager.Style = .bars
+    @State private var position: AudioVisualizerManager.Position = .bottomRight
+    @State private var sizePreset: AudioVisualizerManager.Size = .medium
 
     var body: some View {
         Picker("Audio source", selection: $source) {
@@ -192,8 +195,51 @@ private struct AudioVisualizerSourcePicker: View {
             }
         }
         .pickerStyle(.segmented)
-        .onAppear { source = manager.source }
+        .onAppear {
+            source = manager.source
+            style = manager.style
+            position = manager.position
+            sizePreset = manager.sizePreset
+        }
         .onChange(of: source) { newValue in manager.source = newValue }
+
+        // #159 — sensitivity slider
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Sensitivity")
+                Spacer()
+                Text(String(format: "%.1fx", manager.sensitivity))
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
+            }
+            Slider(value: $manager.sensitivity, in: 0.3...3.0, step: 0.1)
+        }
+
+        // #160 — visual style
+        Picker("Style", selection: $style) {
+            ForEach(AudioVisualizerManager.Style.allCases) { s in
+                Text(s.label).tag(s)
+            }
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: style) { newValue in manager.style = newValue }
+
+        // #162 — size preset
+        Picker("Size", selection: $sizePreset) {
+            ForEach(AudioVisualizerManager.Size.allCases) { s in
+                Text(s.label).tag(s)
+            }
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: sizePreset) { newValue in manager.sizePreset = newValue }
+
+        // #161 — corner anchor
+        Picker("Position", selection: $position) {
+            ForEach(AudioVisualizerManager.Position.allCases) { p in
+                Text(p.label).tag(p)
+            }
+        }
+        .onChange(of: position) { newValue in manager.position = newValue }
 
         if let error = manager.lastError {
             Label(error, systemImage: "exclamationmark.triangle.fill")

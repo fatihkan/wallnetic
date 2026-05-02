@@ -40,15 +40,107 @@ struct AudioVisualizerOverlayView: View {
 
         drawBackground(context: context, size: size, centerY: centerY, accent: accent, loudness: loud)
 
-        context.drawLayer { layer in
-            layer.addFilter(.blur(radius: 10))
-            layer.opacity = 0.55
-            drawBurst(context: layer, size: size, centerY: centerY, bands: bands, accent: accent)
+        switch manager.style {
+        case .bars:
+            context.drawLayer { layer in
+                layer.addFilter(.blur(radius: 10))
+                layer.opacity = 0.55
+                drawBurst(context: layer, size: size, centerY: centerY, bands: bands, accent: accent)
+            }
+            drawBurst(context: context, size: size, centerY: centerY, bands: bands, accent: accent)
+            drawCenterLine(context: context, size: size, centerY: centerY, accent: accent, loudness: loud)
+
+        case .waveform:
+            context.drawLayer { layer in
+                layer.addFilter(.blur(radius: 8))
+                layer.opacity = 0.6
+                drawWaveform(context: layer, size: size, centerY: centerY, bands: bands, accent: accent)
+            }
+            drawWaveform(context: context, size: size, centerY: centerY, bands: bands, accent: accent)
+
+        case .dots:
+            context.drawLayer { layer in
+                layer.addFilter(.blur(radius: 6))
+                layer.opacity = 0.5
+                drawDots(context: layer, size: size, centerY: centerY, bands: bands, accent: accent)
+            }
+            drawDots(context: context, size: size, centerY: centerY, bands: bands, accent: accent)
+        }
+    }
+
+    // MARK: - Style: Waveform — mirrored continuous line driven by band amplitudes
+
+    private func drawWaveform(context: GraphicsContext, size: CGSize, centerY: CGFloat, bands: [Float], accent: Color) {
+        let inset: CGFloat = 8
+        let usableWidth = size.width - inset * 2
+        let halfHeight = centerY - 6
+        let count = bands.count
+        guard count > 1 else { return }
+
+        var topPath = Path()
+        var bottomPath = Path()
+
+        for (i, value) in bands.enumerated() {
+            let x = inset + CGFloat(i) / CGFloat(count - 1) * usableWidth
+            let amplitude = max(0.0, CGFloat(value)) * halfHeight
+            let yTop = centerY - amplitude
+            let yBottom = centerY + amplitude
+
+            if i == 0 {
+                topPath.move(to: CGPoint(x: x, y: yTop))
+                bottomPath.move(to: CGPoint(x: x, y: yBottom))
+            } else {
+                topPath.addLine(to: CGPoint(x: x, y: yTop))
+                bottomPath.addLine(to: CGPoint(x: x, y: yBottom))
+            }
         }
 
-        drawBurst(context: context, size: size, centerY: centerY, bands: bands, accent: accent)
+        context.stroke(topPath, with: .color(accent.opacity(0.95)), lineWidth: 1.6)
+        context.stroke(bottomPath, with: .color(accent.opacity(0.95)), lineWidth: 1.6)
 
-        drawCenterLine(context: context, size: size, centerY: centerY, accent: accent, loudness: loud)
+        // Center line for context
+        let line = CGRect(x: inset, y: centerY - 0.5, width: usableWidth, height: 1)
+        context.fill(Path(roundedRect: line, cornerRadius: 0.5), with: .color(.white.opacity(0.35)))
+    }
+
+    // MARK: - Style: Dots — sparse circular dot grid lit by amplitude
+
+    private func drawDots(context: GraphicsContext, size: CGSize, centerY: CGFloat, bands: [Float], accent: Color) {
+        let inset: CGFloat = 10
+        let usableWidth = size.width - inset * 2
+        let halfHeight = centerY - 8
+        let dotRadius: CGFloat = 1.6
+        let dotPitch: CGFloat = 6
+        let maxDots = max(1, Int(halfHeight / dotPitch))
+
+        let acR = accentRGB.r
+        let acG = accentRGB.g
+        let acB = accentRGB.b
+
+        let count = bands.count
+        for (i, value) in bands.enumerated() {
+            let x = inset + CGFloat(i) / CGFloat(max(count - 1, 1)) * usableWidth
+            let amplitude = max(0.0, CGFloat(value))
+            let litDots = max(1, Int(round(amplitude * CGFloat(maxDots))))
+
+            for d in 0..<litDots {
+                let progress = Double(d) / Double(max(litDots - 1, 1))
+                let tipMix = progress * progress
+                let alpha = 0.85 - progress * 0.3
+                let r = acR + (1.0 - acR) * tipMix
+                let g = acG + (1.0 - acG) * tipMix
+                let b = acB + (1.0 - acB) * tipMix
+                let color = Color(red: r, green: g, blue: b, opacity: alpha)
+
+                let offset = CGFloat(d) * dotPitch + 4
+                let topY = centerY - offset
+                let bottomY = centerY + offset
+                let topRect = CGRect(x: x - dotRadius, y: topY - dotRadius, width: dotRadius * 2, height: dotRadius * 2)
+                let bottomRect = CGRect(x: x - dotRadius, y: bottomY - dotRadius, width: dotRadius * 2, height: dotRadius * 2)
+                context.fill(Path(ellipseIn: topRect), with: .color(color))
+                context.fill(Path(ellipseIn: bottomRect), with: .color(color))
+            }
+        }
     }
 
     // MARK: - Background
