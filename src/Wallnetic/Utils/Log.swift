@@ -1,6 +1,16 @@
 import Foundation
 import os.log
 
+/// Resolves Application Support directory or aborts. macOS guarantees the
+/// directory exists for any signed app — `fatalError` here just makes the
+/// invariant loud instead of a silent force-unwrap.
+func applicationSupportURL() -> URL {
+    if let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+        return url
+    }
+    fatalError("Application Support directory unavailable — environment is unusable.")
+}
+
 /// Centralized `os.log` Logger registry. Replaces ad-hoc `print`/`NSLog`
 /// calls throughout the app so log output is filterable in Console.app
 /// (`subsystem == "com.wallnetic.app"`) and `.debug` entries are stripped

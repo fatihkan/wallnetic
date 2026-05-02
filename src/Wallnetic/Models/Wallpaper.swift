@@ -57,7 +57,13 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
                 self.resolution = CGSize(width: abs(size.width), height: abs(size.height))
             }
         } catch {
-            // Metadata unavailable — keep nil defaults
+            // Metadata unavailable — keep nil defaults. This is the
+            // expected path for newly-imported files where AVAsset hasn't
+            // loaded the track properties yet, and for files the system
+            // can't probe (truncated downloads). Logged at debug level so
+            // we can spot if it starts firing for healthy files.
+            let pathDescription = url.lastPathComponent
+            Log.video.debug("Wallpaper metadata probe skipped for \(pathDescription, privacy: .public): \(String(describing: error), privacy: .public)")
         }
     }
 
