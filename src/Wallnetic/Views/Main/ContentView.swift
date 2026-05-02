@@ -104,7 +104,7 @@ struct ContentView: View {
                 }
             }
         case .failure(let error):
-            print("File picker error: \(error)")
+            Log.ui.error("File picker error: \(error.localizedDescription, privacy: .public)")
         }
     }
 

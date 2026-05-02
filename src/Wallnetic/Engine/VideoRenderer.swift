@@ -47,7 +47,7 @@ class VideoRenderer: NSObject {
     /// Loads a video file for playback with performance optimizations
     func loadVideo(url: URL) {
         guard FileManager.default.fileExists(atPath: url.path) else {
-            print("[VideoRenderer] ERROR: File does not exist")
+            Log.video.error("File does not exist: \(url.path, privacy: .public)")
             return
         }
 
@@ -70,7 +70,7 @@ class VideoRenderer: NSObject {
             // Pre-load required properties asynchronously
             let isPlayable = try await asset.load(.isPlayable)
             guard isPlayable else {
-                print("[VideoRenderer] Asset is not playable")
+                Log.video.error("Asset is not playable")
                 return
             }
 
@@ -78,7 +78,7 @@ class VideoRenderer: NSObject {
                 self?.setupPlayer(with: asset)
             }
         } catch {
-            print("[VideoRenderer] Failed to load asset: \(error)")
+            Log.video.error("Failed to load asset: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -120,9 +120,7 @@ class VideoRenderer: NSObject {
         if shouldPlayWhenReady {
             player?.play()
             shouldPlayWhenReady = false
-            #if DEBUG
-            print("[VideoRenderer] Auto-playing after video ready")
-            #endif
+            Log.video.debug("Auto-playing after video ready")
         }
     }
 
@@ -133,9 +131,9 @@ class VideoRenderer: NSObject {
         playerItemObserver = playerItem.observe(\.status) { item, _ in
             switch item.status {
             case .readyToPlay:
-                print("[VideoRenderer] Ready to play")
+                Log.video.debug("Ready to play")
             case .failed:
-                print("[VideoRenderer] Failed: \(item.error?.localizedDescription ?? "unknown")")
+                Log.video.error("Failed: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
             default:
                 break
             }
@@ -151,9 +149,7 @@ class VideoRenderer: NSObject {
         } else {
             // Video not ready yet, play when ready
             shouldPlayWhenReady = true
-            #if DEBUG
-            print("[VideoRenderer] Play requested, will auto-play when ready")
-            #endif
+            Log.video.debug("Play requested, will auto-play when ready")
         }
     }
 

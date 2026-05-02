@@ -59,7 +59,7 @@ class UpdateChecker: ObservableObject {
 
             lastCheckTimestamp = Date().timeIntervalSince1970
         } catch {
-            NSLog("[UpdateChecker] Error: %@", error.localizedDescription)
+            Log.update.error("Error: \(error.localizedDescription, privacy: .public)")
         }
     }
 

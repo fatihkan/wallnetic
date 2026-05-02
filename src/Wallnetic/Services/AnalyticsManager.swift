@@ -18,7 +18,7 @@ class AnalyticsManager {
         // In production, send to TelemetryDeck API
         // For now, log locally
         #if DEBUG
-        NSLog("[Analytics] %@ %@", event, properties.description)
+        Log.analytics.debug("\(event, privacy: .public) \(properties.description, privacy: .public)")
         #endif
     }
 

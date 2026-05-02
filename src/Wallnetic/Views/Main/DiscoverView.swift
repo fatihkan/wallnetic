@@ -465,9 +465,9 @@ struct InAppBrowserView: View {
                 DispatchQueue.main.async {
                     self.foundVideos = urls
                     if urls.isEmpty {
-                        NSLog("[Browser] No videos found on page")
+                        Log.browser.info("No videos found on page")
                     } else {
-                        NSLog("[Browser] Found %d videos", urls.count)
+                        Log.browser.info("Found \(urls.count) videos")
                     }
                 }
             }
@@ -549,7 +549,7 @@ struct WebViewWrapper: NSViewRepresentable {
                      for navigationAction: WKNavigationAction,
                      windowFeatures: WKWindowFeatures) -> WKWebView? {
             if let url = navigationAction.request.url {
-                NSLog("[Browser] Popup intercepted: %@", url.absoluteString)
+                Log.browser.info("Popup intercepted: \(url.absoluteString, privacy: .public)")
                 webView.load(navigationAction.request)
             }
             return nil
@@ -570,7 +570,7 @@ struct WebViewWrapper: NSViewRepresentable {
             if WebViewWrapper.videoExtensions.contains(ext) {
                 decisionHandler(.cancel)
                 let name = url.deletingPathExtension().lastPathComponent
-                NSLog("[Browser] Intercepted video: %@", url.absoluteString)
+                Log.browser.info("Intercepted video: \(url.absoluteString, privacy: .public)")
                 DownloadManager.shared.downloadAndImport(name: name, from: url)
                 return
             }
@@ -587,7 +587,7 @@ struct WebViewWrapper: NSViewRepresentable {
 
             // Intercept video responses → WKDownload
             if mimeType.starts(with: "video/") {
-                NSLog("[Browser] Starting WKDownload for video: %@ (%@)", url?.absoluteString ?? "?", mimeType)
+                Log.browser.info("Starting WKDownload for video: \(url?.absoluteString ?? "?", privacy: .public) (\(mimeType, privacy: .public))")
                 decisionHandler(.download)
                 return
             }
@@ -595,7 +595,7 @@ struct WebViewWrapper: NSViewRepresentable {
             // Archives (zip/mlw) → WKDownload
             let archiveMimes = ["application/zip", "application/x-zip-compressed"]
             if archiveMimes.contains(mimeType) {
-                NSLog("[Browser] Starting WKDownload for archive: %@ (%@)", url?.absoluteString ?? "?", mimeType)
+                Log.browser.info("Starting WKDownload for archive: \(url?.absoluteString ?? "?", privacy: .public) (\(mimeType, privacy: .public))")
                 decisionHandler(.download)
                 return
             }
@@ -609,8 +609,7 @@ struct WebViewWrapper: NSViewRepresentable {
                 let hasVideoFilename = videoExts.contains { disposition.lowercased().contains(".\($0)") }
 
                 if hasVideoFilename {
-                    NSLog("[Browser] Starting WKDownload for octet-stream: %@ (disposition: %@)",
-                          url?.absoluteString ?? "?", disposition)
+                    Log.browser.info("Starting WKDownload for octet-stream: \(url?.absoluteString ?? "?", privacy: .public) (disposition: \(disposition, privacy: .public))")
                     decisionHandler(.download)
                     return
                 }
@@ -660,7 +659,7 @@ struct WebViewWrapper: NSViewRepresentable {
             }
             progressObservations[download] = obs
 
-            NSLog("[Browser] WKDownload saving to: %@ (name: %@)", dest.lastPathComponent, name)
+            Log.browser.info("WKDownload saving to: \(dest.lastPathComponent, privacy: .public) (name: \(name, privacy: .public))")
             completionHandler(dest)
         }
 
@@ -670,7 +669,7 @@ struct WebViewWrapper: NSViewRepresentable {
 
             // Update UI: show "Processing..." state at 100%
             DownloadManager.shared.updateProgress(id: info.trackingID, progress: 1.0)
-            NSLog("[Browser] WKDownload complete: %@", info.name)
+            Log.browser.info("WKDownload complete: \(info.name, privacy: .public)")
 
             // Process: ZIP → MLW → MP4 → import
             let trackingID = info.trackingID
@@ -682,12 +681,12 @@ struct WebViewWrapper: NSViewRepresentable {
                     if importURL != info.dest {
                         try? FileManager.default.removeItem(at: info.dest)
                     }
-                    NSLog("[Browser] Imported: %@", info.name)
+                    Log.browser.info("Imported: \(info.name, privacy: .public)")
                     await MainActor.run {
                         DownloadManager.shared.completeDownload(id: trackingID)
                     }
                 } catch {
-                    NSLog("[Browser] Import failed for %@: %@", info.name, error.localizedDescription)
+                    Log.browser.error("Import failed for \(info.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
                     await MainActor.run {
                         DownloadManager.shared.failDownload(id: trackingID)
                     }
@@ -701,7 +700,7 @@ struct WebViewWrapper: NSViewRepresentable {
             if let info {
                 DownloadManager.shared.failDownload(id: info.trackingID)
             }
-            NSLog("[Browser] WKDownload failed: %@ – %@", info?.name ?? "?", error.localizedDescription)
+            Log.browser.error("WKDownload failed: \(info?.name ?? "?", privacy: .public) – \(error.localizedDescription, privacy: .public)")
         }
 
         /// Process a downloaded file — detect format and decrypt if needed
@@ -714,7 +713,7 @@ struct WebViewWrapper: NSViewRepresentable {
             // ZIP file → extract .mlw → decrypt
             if header.count >= 4 && header[0] == 0x50 && header[1] == 0x4b
                 && header[2] == 0x03 && header[3] == 0x04 {
-                NSLog("[Browser] Processing ZIP for MLW: %@", name)
+                Log.browser.info("Processing ZIP for MLW: \(name, privacy: .public)")
                 let mp4URL = FileManager.default.temporaryDirectory
                     .appendingPathComponent(UUID().uuidString)
                     .appendingPathExtension("mp4")
@@ -725,7 +724,7 @@ struct WebViewWrapper: NSViewRepresentable {
             // MLW file → decrypt directly
             if header.count >= 9 && (header.starts(with: Data("MLW.VIDEO".utf8))
                 || header.starts(with: Data("MLW.DEPTH".utf8))) {
-                NSLog("[Browser] Processing MLW: %@", name)
+                Log.browser.info("Processing MLW: \(name, privacy: .public)")
                 let mp4URL = FileManager.default.temporaryDirectory
                     .appendingPathComponent(UUID().uuidString)
                     .appendingPathExtension("mp4")

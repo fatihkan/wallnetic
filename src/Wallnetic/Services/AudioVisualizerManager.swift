@@ -393,7 +393,7 @@ extension AudioVisualizerManager: SCStreamOutput, SCStreamDelegate {
         switch type {
         case .audio:
             guard let mono = samples(from: sampleBuffer) else {
-                NSLog("[AudioVisualizer] failed to extract samples from audio buffer")
+                Log.visualizer.error("Failed to extract samples from audio buffer")
                 return
             }
             feed(samples: mono)

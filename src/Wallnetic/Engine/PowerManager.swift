@@ -285,17 +285,17 @@ class PowerManager {
         isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
 
         if isLowPowerMode && !wasLowPower {
-            print("[PowerManager] Low Power Mode enabled")
+            Log.power.info("Low Power Mode enabled")
             notifyPauseIfNeeded()
         } else if !isLowPowerMode && wasLowPower {
-            print("[PowerManager] Low Power Mode disabled")
+            Log.power.info("Low Power Mode disabled")
             notifyResumeIfNeeded()
         }
     }
 
     private func handlePowerSourceChange() {
         if isOnBattery {
-            print("[PowerManager] Switched to battery power")
+            Log.power.info("Switched to battery power")
             if BatteryPromptService.shared.effectivePauseOnBattery {
                 notifyPauseIfNeeded()
             }
@@ -305,42 +305,42 @@ class PowerManager {
                 BatteryPromptService.shared.onSwitchedToBattery()
             }
         } else {
-            print("[PowerManager] Switched to AC power")
+            Log.power.info("Switched to AC power")
             notifyResumeIfNeeded()
         }
     }
 
     private func handleFullscreenChange() {
         if isFullscreenAppActive {
-            print("[PowerManager] Fullscreen app detected")
+            Log.power.info("Fullscreen app detected")
             if WallpaperManager.shared.pauseOnFullscreen {
                 notifyPauseIfNeeded()
             }
         } else {
-            print("[PowerManager] Fullscreen app closed")
+            Log.power.info("Fullscreen app closed")
             notifyResumeIfNeeded()
         }
     }
 
     @objc private func screensDidSleep() {
-        print("[PowerManager] Screens did sleep")
+        Log.power.info("Screens did sleep")
         isScreenAsleep = true
         notifyPauseIfNeeded()
     }
 
     @objc private func screensDidWake() {
-        print("[PowerManager] Screens did wake")
+        Log.power.info("Screens did wake")
         isScreenAsleep = false
         notifyResumeIfNeeded()
     }
 
     @objc private func systemWillSleep() {
-        print("[PowerManager] System will sleep")
+        Log.power.info("System will sleep")
         notifyPauseIfNeeded()
     }
 
     @objc private func systemDidWake() {
-        print("[PowerManager] System did wake")
+        Log.power.info("System did wake")
         // Small delay to let system stabilize
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.notifyResumeIfNeeded()
@@ -348,13 +348,13 @@ class PowerManager {
     }
 
     @objc private func screenSaverDidStart() {
-        print("[PowerManager] Screen saver started")
+        Log.power.info("Screen saver started")
         isScreenSaverActive = true
         notifyPauseIfNeeded()
     }
 
     @objc private func screenSaverDidStop() {
-        print("[PowerManager] Screen saver stopped")
+        Log.power.info("Screen saver stopped")
         isScreenSaverActive = false
         notifyResumeIfNeeded()
     }

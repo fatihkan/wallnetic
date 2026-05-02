@@ -3,7 +3,7 @@ import SwiftUI
 import Foundation
 import os.log
 
-private let logger = Logger(subsystem: "com.wallnetic.app", category: "AppDelegate")
+private let logger = Log.app
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var desktopWindowController: DesktopWindowController?
@@ -199,9 +199,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func displaysChanged() {
-        #if DEBUG
-        print("[AppDelegate] Display configuration changed")
-        #endif
+        Log.app.debug("Display configuration changed")
         desktopWindowController?.handleDisplayChange()
     }
 }
@@ -210,9 +208,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: PlaybackDelegate {
     func playbackSetWallpaper(url: URL) {
-        #if DEBUG
-        print("[AppDelegate] PlaybackDelegate: setWallpaper \(url.lastPathComponent)")
-        #endif
+        Log.app.debug("PlaybackDelegate: setWallpaper \(url.lastPathComponent, privacy: .public)")
         desktopWindowController?.setWallpaper(url: url)
         if !(powerManager?.shouldBePaused ?? false) {
             desktopWindowController?.play()
@@ -220,9 +216,7 @@ extension AppDelegate: PlaybackDelegate {
     }
 
     func playbackSetWallpaper(url: URL, for screen: NSScreen) {
-        #if DEBUG
-        print("[AppDelegate] PlaybackDelegate: setWallpaper for \(screen.localizedName)")
-        #endif
+        Log.app.debug("PlaybackDelegate: setWallpaper for \(screen.localizedName, privacy: .public)")
         desktopWindowController?.setWallpaper(url: url, for: screen)
         if !(powerManager?.shouldBePaused ?? false) {
             desktopWindowController?.play()
@@ -240,9 +234,7 @@ extension AppDelegate: PlaybackDelegate {
     }
 
     func playbackApplyScreenWallpapers() {
-        #if DEBUG
-        print("[AppDelegate] PlaybackDelegate: applyScreenWallpapers")
-        #endif
+        Log.app.debug("PlaybackDelegate: applyScreenWallpapers")
         for screen in NSScreen.screens {
             if let wallpaper = WallpaperManager.shared.wallpaper(for: screen) {
                 desktopWindowController?.setWallpaper(url: wallpaper.url, for: screen)

@@ -102,7 +102,7 @@ enum MLWDecryptor {
             let decrypted = try AES.GCM.open(sealedBox, using: key)
             return decrypted
         } catch {
-            NSLog("[MLWDecryptor] Decryption error: %@", error.localizedDescription)
+            Log.mlw.error("Decryption error: \(error.localizedDescription, privacy: .public)")
             throw MLWError.decryptionFailed
         }
     }
@@ -113,7 +113,7 @@ enum MLWDecryptor {
         let data = try Data(contentsOf: input)
         let mp4 = try decrypt(data: data)
         try mp4.write(to: output)
-        NSLog("[MLWDecryptor] Decrypted %d bytes → %@", mp4.count, output.lastPathComponent)
+        Log.mlw.info("Decrypted \(mp4.count) bytes → \(output.lastPathComponent, privacy: .public)")
         return output
     }
 
@@ -131,7 +131,7 @@ enum MLWDecryptor {
         let zipData = try Data(contentsOf: zipURL)
         let mp4 = try decryptFromZIP(data: zipData)
         try mp4.write(to: output)
-        NSLog("[MLWDecryptor] ZIP → MLW → MP4: %d bytes → %@", mp4.count, output.lastPathComponent)
+        Log.mlw.info("ZIP → MLW → MP4: \(mp4.count) bytes → \(output.lastPathComponent, privacy: .public)")
         return output
     }
 

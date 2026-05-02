@@ -26,7 +26,8 @@ class SharedDataManager {
         if let thumbnailsDir = thumbnailsDirectory {
             try? FileManager.default.createDirectory(at: thumbnailsDir, withIntermediateDirectories: true)
         }
-        NSLog("[SharedDataManager] Container: %@", sharedContainerURL?.path ?? "nil")
+        let containerPath = sharedContainerURL?.path ?? "nil"
+        Log.shared.info("Container: \(containerPath, privacy: .public)")
     }
 
     // MARK: - File-Based Read/Write
@@ -47,7 +48,7 @@ class SharedDataManager {
             let data = try JSONEncoder().encode(sharedData)
             try data.write(to: fileURL, options: .atomic)
         } catch {
-            NSLog("[SharedDataManager] Write error: %@", error.localizedDescription)
+            Log.shared.error("Write error: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -80,7 +81,7 @@ class SharedDataManager {
         data.favorites = wallpapers
         data.lastUpdated = Date()
         writeSharedData(data)
-        NSLog("[SharedDataManager] Saved %d favorites", wallpapers.count)
+        Log.shared.info("Saved \(wallpapers.count) favorites")
         reloadWidgetTimelines()
     }
 
@@ -94,7 +95,7 @@ class SharedDataManager {
             try data.write(to: fileURL)
             return filename
         } catch {
-            NSLog("[SharedDataManager] Thumbnail save error: %@", error.localizedDescription)
+            Log.shared.error("Thumbnail save error: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }

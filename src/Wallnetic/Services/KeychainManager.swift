@@ -35,7 +35,7 @@ class KeychainManager {
 
         #if DEBUG
         if status != errSecSuccess {
-            print("[KeychainManager] Failed to save API key: \(status)")
+            Log.keychain.error("Failed to save API key: \(status)")
         }
         #endif
 

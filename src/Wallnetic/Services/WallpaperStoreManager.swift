@@ -83,7 +83,7 @@ class WallpaperStoreManager: ObservableObject {
         // Cleanup temp file
         try? FileManager.default.removeItem(at: downloadedURL)
 
-        NSLog("[Store] Downloaded: %@", wallpaper.name)
+        Log.store.info("Downloaded: \(wallpaper.name, privacy: .public)")
     }
 }
 

@@ -39,7 +39,7 @@ class ScreenSaverBridge {
         defaults?.set(showClock, forKey: "showClock")
         defaults?.synchronize()
 
-        NSLog("[ScreenSaver] Synced wallpaper info to screen saver defaults")
+        Log.screenSaver.info("Synced wallpaper info to screen saver defaults")
     }
 
     /// Returns the path to install a .saver bundle

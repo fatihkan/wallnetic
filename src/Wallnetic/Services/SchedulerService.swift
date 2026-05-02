@@ -292,7 +292,7 @@ class SchedulerService: ObservableObject {
     func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error = error {
-                print("Notification permission error: \(error)")
+                Log.scheduler.error("Notification permission error: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

@@ -41,7 +41,7 @@ class AuthManager: NSObject, ObservableObject {
         userId = nil
         UserDefaults.standard.removeObject(forKey: "auth.userEmail")
         UserDefaults.standard.removeObject(forKey: "auth.userId")
-        NSLog("[Auth] Signed out")
+        Log.auth.info("Signed out")
     }
 
     // MARK: - Session
@@ -50,7 +50,8 @@ class AuthManager: NSObject, ObservableObject {
         userEmail = UserDefaults.standard.string(forKey: "auth.userEmail")
         userId = UserDefaults.standard.string(forKey: "auth.userId")
         isAuthenticated = true
-        NSLog("[Auth] Session restored for: %@", userEmail ?? "unknown")
+        let email = userEmail ?? "unknown"
+        Log.auth.info("Session restored for: \(email, privacy: .private)")
     }
 
     private func handleSignIn(idToken: String, email: String?) {
@@ -83,14 +84,14 @@ class AuthManager: NSObject, ObservableObject {
                         UserDefaults.standard.set(userEmail, forKey: "auth.userEmail")
                         UserDefaults.standard.set(uid, forKey: "auth.userId")
 
-                        NSLog("[Auth] Signed in: %@", userEmail ?? "unknown")
+                        Log.auth.info("Signed in: \(userEmail ?? "unknown", privacy: .private)")
                     }
                 }
             } catch {
                 await MainActor.run {
                     self.error = error.localizedDescription
                     self.isLoading = false
-                    NSLog("[Auth] Sign in error: %@", error.localizedDescription)
+                    Log.auth.error("Sign in error: \(error.localizedDescription, privacy: .public)")
                 }
             }
         }

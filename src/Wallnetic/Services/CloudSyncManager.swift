@@ -40,9 +40,9 @@ class CloudSyncManager: ObservableObject {
                 ],
                 headers: ["Prefer": "return=minimal"]
             )
-            NSLog("[CloudSync] Generation synced")
+            Log.cloud.info("Generation synced")
         } catch {
-            NSLog("[CloudSync] Sync error: %@", error.localizedDescription)
+            Log.cloud.error("Sync error: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -65,7 +65,7 @@ class CloudSyncManager: ObservableObject {
             }
             return generations
         } catch {
-            NSLog("[CloudSync] Fetch error: %@", error.localizedDescription)
+            Log.cloud.error("Fetch error: \(error.localizedDescription, privacy: .public)")
             return []
         }
     }

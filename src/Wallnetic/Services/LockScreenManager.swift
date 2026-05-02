@@ -50,13 +50,13 @@ class LockScreenManager: ObservableObject {
     private func onScreenLocked() {
         guard isEnabled else { return }
         isLocked = true
-        NSLog("[LockScreen] Screen locked - showing video wallpaper")
+        Log.lockScreen.info("Screen locked - showing video wallpaper")
         showLockScreenWallpaper()
     }
 
     private func onScreenUnlocked() {
         isLocked = false
-        NSLog("[LockScreen] Screen unlocked")
+        Log.lockScreen.info("Screen unlocked")
         hideLockScreenWallpaper()
     }
 
@@ -132,7 +132,7 @@ class LockScreenManager: ObservableObject {
     func setLockScreenWallpaper(_ wallpaper: Wallpaper) {
         wallpaperPath = wallpaper.url.path
         useCurrentWallpaper = false
-        NSLog("[LockScreen] Set lock screen wallpaper: %@", wallpaper.name)
+        Log.lockScreen.info("Set lock screen wallpaper: \(wallpaper.name, privacy: .public)")
     }
 
     func useCurrent() {
