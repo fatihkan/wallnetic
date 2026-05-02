@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @ObservedObject private var downloadManager = DownloadManager.shared
+    @ObservedObject private var errorReporter = ErrorReporter.shared
     @State private var selectedTab: NavigationTab = .home
     @State private var isImporting = false
     @State private var showingPhotosImport = false
@@ -76,6 +77,13 @@ struct ContentView: View {
             Button("OK") { importError = nil }
         } message: {
             Text(importError ?? "")
+        }
+        .alert(item: $errorReporter.current) { err in
+            Alert(
+                title: Text(err.title),
+                message: Text(err.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
         .sheet(isPresented: $showingOnboarding) {
             OnboardingView(isPresented: $showingOnboarding)

@@ -95,15 +95,21 @@ class CollectionManager: ObservableObject {
     // MARK: - Persistence
 
     private func loadCollections() {
-        if let data = defaults.data(forKey: collectionsKey),
-           let decoded = try? JSONDecoder().decode([WallpaperCollection].self, from: data) {
-            collections = decoded
+        guard let data = defaults.data(forKey: collectionsKey) else { return }
+        do {
+            collections = try JSONDecoder().decode([WallpaperCollection].self, from: data)
+        } catch {
+            Log.app.error("CollectionManager decode failed; resetting saved collections. \(String(describing: error), privacy: .public)")
+            defaults.removeObject(forKey: collectionsKey)
         }
     }
 
     private func saveCollections() {
-        if let encoded = try? JSONEncoder().encode(collections) {
+        do {
+            let encoded = try JSONEncoder().encode(collections)
             defaults.set(encoded, forKey: collectionsKey)
+        } catch {
+            Log.app.error("CollectionManager encode failed: \(String(describing: error), privacy: .public)")
         }
     }
 }

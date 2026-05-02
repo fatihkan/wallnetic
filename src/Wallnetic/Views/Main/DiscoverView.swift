@@ -689,6 +689,7 @@ struct WebViewWrapper: NSViewRepresentable {
                     Log.browser.error("Import failed for \(info.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
                     await MainActor.run {
                         DownloadManager.shared.failDownload(id: trackingID)
+                        ErrorReporter.shared.report(error, context: "Could not import \(info.name)")
                     }
                 }
             }

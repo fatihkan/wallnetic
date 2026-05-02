@@ -126,18 +126,27 @@ class SpaceWallpaperManager: ObservableObject {
 
     private func saveAssignments() {
         let stringKeyed = Dictionary(uniqueKeysWithValues: spaceAssignments.map { ("\($0.key)", $0.value) })
-        if let data = try? JSONEncoder().encode(stringKeyed),
-           let json = String(data: data, encoding: .utf8) {
-            assignmentsJSON = json
+        do {
+            let data = try JSONEncoder().encode(stringKeyed)
+            if let json = String(data: data, encoding: .utf8) {
+                assignmentsJSON = json
+            }
+        } catch {
+            Log.space.error("Failed to persist space assignments: \(String(describing: error), privacy: .public)")
         }
     }
 
     private func loadAssignments() {
-        guard let data = assignmentsJSON.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode([String: String].self, from: data) else { return }
-        spaceAssignments = Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
-            guard let intKey = Int(key) else { return nil }
-            return (intKey, value)
-        })
+        guard let data = assignmentsJSON.data(using: .utf8) else { return }
+        do {
+            let decoded = try JSONDecoder().decode([String: String].self, from: data)
+            spaceAssignments = Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
+                guard let intKey = Int(key) else { return nil }
+                return (intKey, value)
+            })
+        } catch {
+            Log.space.error("Failed to decode space assignments; resetting. \(String(describing: error), privacy: .public)")
+            assignmentsJSON = ""
+        }
     }
 }
