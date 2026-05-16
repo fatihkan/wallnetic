@@ -21,6 +21,9 @@ struct SettingsView: View {
             SpaceSettingsView()
                 .tabItem { Label("Spaces", systemImage: "square.stack.3d.up") }
 
+            SmartTaggingSettingsView()
+                .tabItem { Label("Smart Tags", systemImage: "tag") }
+
             DisplaySettingsView()
                 .tabItem { Label("Display", systemImage: "display") }
 
