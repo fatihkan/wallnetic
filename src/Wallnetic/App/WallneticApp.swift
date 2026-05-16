@@ -17,6 +17,7 @@ struct WallneticApp: App {
         WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(wallpaperManager)
+                .cinematicWindowChrome()
                 .onAppear {
                     WindowManager.shared.openMainWindow = { [openWindow] in
                         openWindow(id: "main")
@@ -35,6 +36,7 @@ struct WallneticApp: App {
         Settings {
             SettingsView()
                 .environmentObject(wallpaperManager)
+                .cinematicWindowChrome()
         }
 
         // Menu Bar Extra

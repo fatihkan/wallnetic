@@ -91,11 +91,31 @@ struct TopNavigationBar: View {
                 }
             }
         }
-        .padding(.horizontal, Space.md)
+        .padding(.leading, 84)        // reserve traffic-light real estate
+        .padding(.trailing, Space.md)
         .padding(.vertical, Space.xs + 2)
-        .liquidGlassHUD(radius: Radius.panel, accent: .accentColor)
-        .padding(.horizontal, Space.sm)
-        .padding(.top, Space.xs)
+        .background(navBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(LinearGradient(
+                    colors: [.clear, .white.opacity(0.08), .clear],
+                    startPoint: .leading, endPoint: .trailing
+                ))
+                .frame(height: 0.5)
+        }
+    }
+
+    /// In-window toolbar background. Traffic lights overlay this strip;
+    /// content scrolls beneath it. Glass intensifies as user scrolls.
+    private var navBackground: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(isScrolled ? 0.92 : 0.65)
+            Rectangle()
+                .fill(Color.black.opacity(isScrolled ? 0.35 : 0.20))
+        }
+        .animation(.easeInOut(duration: Anim.medium), value: isScrolled)
     }
 
     // MARK: - Tab Button
@@ -110,41 +130,36 @@ struct TopNavigationBar: View {
                 selectedTab = tab
             }
         } label: {
-            VStack(spacing: 3) {
-                HStack(spacing: 5) {
-                    Image(systemName: tab.icon)
-                        .font(.system(size: 10))
-                    Text(tab.rawValue)
-                        .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-                        .tracking(0.1)
-                }
-                .foregroundColor(isSelected ? .white : .white.opacity(isHovered ? 0.85 : 0.55))
-
-                // Active gradient underline — matched-geometry slide with
-                // stretch on transit. The capsule animates between tab
-                // positions instead of appearing/disappearing per tab.
-                ZStack {
-                    if isSelected {
-                        Capsule(style: .continuous)
-                            .fill(LinearGradient(
-                                colors: [.accentColor, .accentColor.opacity(0.6)],
-                                startPoint: .leading, endPoint: .trailing
-                            ))
-                            .matchedGeometryEffect(id: "tabUnderline", in: tabUnderlineNS)
-                            .shadow(color: .accentColor.opacity(0.65), radius: 5)
-                    } else {
-                        Capsule(style: .continuous)
-                            .fill(Color.clear)
-                    }
-                }
-                .frame(width: 28, height: 2)
+            HStack(spacing: 5) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 10, weight: .semibold))
+                Text(tab.rawValue)
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                    .tracking(0.1)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .foregroundColor(isSelected ? .white : .white.opacity(isHovered ? 0.85 : 0.55))
+            .padding(.horizontal, 11)
+            .padding(.vertical, 5)
             .contentShape(Rectangle())
             .background(
-                Capsule()
-                    .fill(isHovered && !isSelected ? Color.white.opacity(0.05) : .clear)
+                ZStack {
+                    // Selected: soft glass pill with hairline stroke — no
+                    // shouty underline, no accent color screaming
+                    if isSelected {
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.10))
+                            .matchedGeometryEffect(id: "tabPill", in: tabUnderlineNS)
+                        Capsule(style: .continuous)
+                            .strokeBorder(LinearGradient(
+                                colors: [.white.opacity(0.22), .white.opacity(0.04)],
+                                startPoint: .top, endPoint: .bottom
+                            ), lineWidth: 0.5)
+                            .matchedGeometryEffect(id: "tabPillStroke", in: tabUnderlineNS)
+                    } else if isHovered {
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                    }
+                }
             )
         }
         .buttonStyle(.plain)

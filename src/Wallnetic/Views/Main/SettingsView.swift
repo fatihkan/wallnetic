@@ -29,17 +29,26 @@ struct SettingsView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: Space.xs + 2) {
-                Image(systemName: "gearshape.2.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.accentColor)
-                    .shadow(color: .accentColor.opacity(0.55), radius: 5)
-                Text("SETTINGS")
-                    .styledKicker(color: .white.opacity(0.55))
+            // Traffic-light clearance — content stays under the lights, but
+            // we leave breathing room so the first row doesn't fight with
+            // the close/min/max buttons.
+            Color.clear.frame(height: 30)
+
+            // Subtle wordmark — no glowing icon, no startup-logo feel. The
+            // sidebar's purpose is obvious from context; this kicker is just
+            // a quiet anchor.
+            HStack(spacing: 0) {
+                Text("Wallnetic")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.92))
+                    .tracking(-0.1)
+                Text(" Settings")
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundColor(.white.opacity(0.45))
+                    .tracking(-0.1)
                 Spacer()
             }
-            .padding(.horizontal, Space.lg + 2)
-            .padding(.top, Space.lg + 4)
+            .padding(.horizontal, Space.lg)
             .padding(.bottom, Space.md)
 
             ScrollView(showsIndicators: false) {
@@ -111,31 +120,35 @@ struct SettingsView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
+            // Traffic-light clearance matching sidebar
+            Color.clear.frame(height: 30)
+
+            HStack(spacing: Space.sm) {
                 Image(systemName: selection.icon)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(selection.accent)
                     .frame(width: 26, height: 26)
                     .background(
-                        Circle()
-                            .fill(selection.accent.opacity(0.18))
+                        ZStack {
+                            Circle().fill(selection.accent.opacity(0.16))
+                            Circle().strokeBorder(selection.accent.opacity(0.30), lineWidth: 0.5)
+                        }
                     )
-                    .shadow(color: selection.accent.opacity(0.4), radius: 6)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(selection.title)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
+                        .tracking(-0.2)
                     Text(selection.tagline)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundColor(.white.opacity(0.42))
                 }
 
                 Spacer()
             }
-            .padding(.horizontal, 32)
-            .padding(.top, 26)
-            .padding(.bottom, 18)
+            .padding(.horizontal, Space.xl + 4)
+            .padding(.bottom, Space.md + 2)
 
             Divider()
                 .overlay(LinearGradient(
