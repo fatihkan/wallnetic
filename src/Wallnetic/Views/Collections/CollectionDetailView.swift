@@ -193,7 +193,6 @@ struct RenameCollectionSheet: View {
     @ObservedObject private var collectionManager = CollectionManager.shared
 
     @State private var name: String = ""
-    @FocusState private var nameFieldFocused: Bool
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -204,44 +203,33 @@ struct RenameCollectionSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Rename Collection")
-                .font(.headline)
+        WallneticSheet(title: "Rename Collection", icon: collection.icon, width: 380) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("NEW NAME")
+                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                    .tracking(2)
+                    .foregroundColor(.white.opacity(0.35))
 
-            HStack(spacing: 12) {
-                Image(systemName: collection.icon)
-                    .font(.title2)
-                    .foregroundColor(.accentColor)
-                    .frame(width: 32)
-
-                TextField("Collection name", text: $name)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($nameFieldFocused)
-                    .onSubmit { commit() }
-            }
-
-            HStack {
-                Button("Cancel") {
-                    dismiss()
-                }
-                .keyboardShortcut(.escape)
-
-                Spacer()
-
-                Button("Save") {
+                WallneticTextField(
+                    placeholder: collection.name,
+                    text: $name,
+                    icon: "pencil"
+                ) {
                     commit()
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canRename)
-                .keyboardShortcut(.return)
+
+                Text("Current: \(collection.name)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.35))
+            }
+        } footer: {
+            WallneticButton.cancel { dismiss() }
+            Spacer()
+            WallneticButton.primary("Save", icon: "checkmark", isEnabled: canRename) {
+                commit()
             }
         }
-        .padding()
-        .frame(width: 320)
-        .onAppear {
-            name = collection.name
-            nameFieldFocused = true
-        }
+        .onAppear { name = collection.name }
     }
 
     private func commit() {
@@ -261,46 +249,57 @@ struct IconPickerSheet: View {
     @State private var selectedIcon: String = ""
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Choose Icon")
-                .font(.headline)
-
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(44)), count: 5), spacing: 8) {
+        WallneticSheet(title: "Choose Icon", icon: selectedIcon.isEmpty ? "square.grid.2x2" : selectedIcon, width: 380) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(48)), count: 6), spacing: 6) {
                 ForEach(WallpaperCollection.availableIcons, id: \.self) { icon in
-                    Button {
+                    IconCell(icon: icon, isSelected: selectedIcon == icon) {
                         selectedIcon = icon
-                    } label: {
-                        Image(systemName: icon)
-                            .font(.title2)
-                            .frame(width: 40, height: 40)
-                            .background(selectedIcon == icon ? Color.accentColor.opacity(0.2) : Color.clear)
-                            .cornerRadius(8)
                     }
-                    .buttonStyle(.plain)
                 }
             }
-
-            HStack {
-                Button("Cancel") {
-                    dismiss()
-                }
-                .keyboardShortcut(.escape)
-
-                Spacer()
-
-                Button("Save") {
-                    collectionManager.changeIcon(collection, to: selectedIcon)
-                    dismiss()
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.return)
+        } footer: {
+            WallneticButton.cancel { dismiss() }
+            Spacer()
+            WallneticButton.primary("Save", icon: "checkmark") {
+                collectionManager.changeIcon(collection, to: selectedIcon)
+                dismiss()
             }
         }
-        .padding()
-        .frame(width: 300)
-        .onAppear {
-            selectedIcon = collection.icon
+        .onAppear { selectedIcon = collection.icon }
+    }
+}
+
+private struct IconCell: View {
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(isSelected ? .white : .white.opacity(hover ? 0.8 : 0.45))
+                .frame(width: 44, height: 44)
+                .background(
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(isSelected
+                                  ? AnyShapeStyle(LinearGradient(
+                                        colors: [Color.accentColor.opacity(0.3), Color.accentColor.opacity(0.15)],
+                                        startPoint: .topLeading, endPoint: .bottomTrailing
+                                    ))
+                                  : AnyShapeStyle(Color.white.opacity(hover ? 0.06 : 0.025)))
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.08), lineWidth: 0.5)
+                    }
+                )
+                .shadow(color: isSelected ? Color.accentColor.opacity(0.4) : .clear, radius: 8)
         }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .animation(.easeOut(duration: 0.15), value: hover)
     }
 }
 

@@ -483,46 +483,48 @@ struct RenameWallpaperSheet: View {
     let onSave: (String) -> Void
     let onCancel: () -> Void
 
+    private var trimmed: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("Rename Wallpaper")
-                    .font(.headline)
-                Spacer()
-            }
+        WallneticSheet(title: "Rename Wallpaper", icon: "play.rectangle.fill", width: 400) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("DISPLAY NAME")
+                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                    .tracking(2)
+                    .foregroundColor(.white.opacity(0.35))
 
-            TextField("Wallpaper name", text: $title)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit {
-                    if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        onSave(title)
-                    }
+                WallneticTextField(
+                    placeholder: wallpaper.name,
+                    text: $title,
+                    icon: "pencil"
+                ) {
+                    if !trimmed.isEmpty { onSave(title) }
                 }
 
-            HStack {
                 if wallpaper.customTitle != nil {
-                    Button("Reset to Original") {
+                    Button {
                         onSave("")
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.system(size: 10))
+                            Text("Reset to original filename")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.white.opacity(0.5))
                     }
-                    .foregroundColor(.secondary)
+                    .buttonStyle(.plain)
+                    .padding(.top, 4)
                 }
-
-                Spacer()
-
-                Button("Cancel") {
-                    onCancel()
-                }
-                .keyboardShortcut(.escape)
-
-                Button("Save") {
-                    onSave(title)
-                }
-                .keyboardShortcut(.return)
-                .buttonStyle(.borderedProminent)
-                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        } footer: {
+            WallneticButton.cancel { onCancel() }
+            Spacer()
+            WallneticButton.primary("Save", icon: "checkmark", isEnabled: !trimmed.isEmpty) {
+                onSave(title)
             }
         }
-        .padding(20)
-        .frame(width: 360)
     }
 }
