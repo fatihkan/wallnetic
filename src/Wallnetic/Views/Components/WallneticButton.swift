@@ -59,7 +59,7 @@ enum WallneticButton {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.white.opacity(0.55))
+                .foregroundColor(.primary.opacity(0.65))
         }
         .buttonStyle(.plain)
         .keyboardShortcut(.escape)
@@ -75,8 +75,11 @@ private struct LiquidPrimaryButtonStyle: ButtonStyle {
     @State private var wobble: CGFloat = 1.0
 
     func makeBody(configuration: Configuration) -> some View {
+        // Primary button keeps "dark text on accent fill" everywhere —
+        // the accent gradient is dense enough that white text loses
+        // contrast against it in both light and dark mode.
         configuration.label
-            .foregroundColor(isEnabled ? .black : .white.opacity(0.35))
+            .foregroundColor(isEnabled ? .black : .primary.opacity(0.45))
             .padding(.horizontal, Space.lg)
             .padding(.vertical, 10)
             .background(
@@ -86,7 +89,7 @@ private struct LiquidPrimaryButtonStyle: ButtonStyle {
                               ? AnyShapeStyle(LinearGradient(
                                     colors: [accent, accent.opacity(0.75)],
                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                              : AnyShapeStyle(Color.white.opacity(0.06)))
+                              : AnyShapeStyle(Surface.glassControl))
 
                     // Top inner highlight — light catching the lens edge
                     Capsule(style: .continuous)
@@ -127,19 +130,19 @@ private struct LiquidPrimaryButtonStyle: ButtonStyle {
 private struct LiquidGhostButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundColor(.white.opacity(0.85))
+            .foregroundColor(.primary.opacity(0.85))
             .padding(.horizontal, Space.md)
             .padding(.vertical, 9)
             .background(
                 ZStack {
                     Capsule(style: .continuous)
-                        .fill(Color.white.opacity(configuration.isPressed ? 0.06 : 0.09))
+                        .fill(Surface.glassControl.opacity(configuration.isPressed ? 0.6 : 1.0))
                     Capsule(style: .continuous)
                         .strokeBorder(LinearGradient(
                             stops: [
-                                .init(color: .white.opacity(0.20), location: 0),
-                                .init(color: .white.opacity(0.05), location: 0.5),
-                                .init(color: .black.opacity(0.25), location: 1)
+                                .init(color: Surface.glassTopStroke, location: 0),
+                                .init(color: Surface.glassInnerHighlight, location: 0.5),
+                                .init(color: Surface.glassBottomStroke, location: 1)
                             ],
                             startPoint: .top, endPoint: .bottom
                         ), lineWidth: 0.6)
@@ -167,11 +170,11 @@ struct WallneticTextField: View {
             if let icon {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(focused ? accent : .white.opacity(0.4))
+                    .foregroundColor(focused ? accent : .primary.opacity(0.5))
             }
-            TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.3)))
+            TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.primary.opacity(0.4)))
                 .textFieldStyle(.plain)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .font(Typo.body)
                 .focused($focused)
                 .onSubmit { onSubmit?() }
@@ -181,13 +184,13 @@ struct WallneticTextField: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .fill(Color.white.opacity(focused ? 0.08 : 0.04))
+                    .fill(Surface.glassControl.opacity(focused ? 1.5 : 1.0))
                 RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                     .strokeBorder(LinearGradient(
                         stops: [
-                            .init(color: focused ? accent.opacity(0.55) : .white.opacity(0.18), location: 0),
-                            .init(color: focused ? accent.opacity(0.25) : .white.opacity(0.04), location: 0.5),
-                            .init(color: focused ? accent.opacity(0.45) : .black.opacity(0.3), location: 1)
+                            .init(color: focused ? accent.opacity(0.55) : Surface.glassTopStroke, location: 0),
+                            .init(color: focused ? accent.opacity(0.25) : Surface.glassInnerHighlight, location: 0.5),
+                            .init(color: focused ? accent.opacity(0.45) : Surface.glassBottomStroke, location: 1)
                         ],
                         startPoint: .top, endPoint: .bottom
                     ), lineWidth: focused ? 1 : 0.6)

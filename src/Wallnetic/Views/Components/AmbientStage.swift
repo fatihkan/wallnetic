@@ -87,12 +87,12 @@ struct AmbientStage: ViewModifier {
 
     // MARK: - Floor (behind content)
 
-    /// Subtle base wash so the whole window is never pure black, even
-    /// before content fades in.
+    /// Subtle base wash so the whole window is never pure black/white, even
+    /// before content fades in. Theme-aware via `Surface.stageFloor`.
     private var stageFloor: some View {
         ZStack {
-            Color(red: 0.02, green: 0.025, blue: 0.05)
-            // Inverted radial — darker at corners
+            Surface.stageFloor
+            // Inverted radial — pulls the accent glow toward the center
             RadialGradient(
                 colors: [accent.primary.opacity(0.05 * accent.glow), .clear],
                 center: .init(x: 0.5, y: 0.4),
@@ -131,7 +131,7 @@ struct AmbientStage: ViewModifier {
                 )
 
                 RadialGradient(
-                    colors: [.clear, .black.opacity(0.35)],
+                    colors: [.clear, Surface.vignetteEdge],
                     center: .center,
                     startRadius: min(geo.size.width, geo.size.height) * 0.35,
                     endRadius: max(geo.size.width, geo.size.height) * 0.75

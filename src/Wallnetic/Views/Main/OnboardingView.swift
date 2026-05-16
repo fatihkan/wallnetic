@@ -86,7 +86,7 @@ struct OnboardingView: View {
 
     private var backdrop: some View {
         ZStack {
-            Color(red: 0.02, green: 0.025, blue: 0.055)
+            Surface.stageFloor
 
             // Drifting accent radial
             RadialGradient(
@@ -106,12 +106,12 @@ struct OnboardingView: View {
 
             // Diagonal noise lines
             DiagonalLines()
-                .stroke(Color.white.opacity(0.02), lineWidth: 0.5)
+                .stroke(Surface.glassInnerHighlight.opacity(0.4), lineWidth: 0.5)
                 .allowsHitTesting(false)
 
             // Vignette
             RadialGradient(
-                colors: [.clear, .black.opacity(0.45)],
+                colors: [.clear, Surface.vignetteEdge.opacity(1.3)],
                 center: .center,
                 startRadius: 200,
                 endRadius: 550
@@ -189,13 +189,13 @@ struct OnboardingView: View {
 
             Text(step.title)
                 .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .tracking(-0.4)
                 .multilineTextAlignment(.center)
 
             Text(step.description)
                 .font(.system(size: 13))
-                .foregroundColor(.white.opacity(0.62))
+                .foregroundColor(.primary.opacity(0.72))
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
                 .frame(maxWidth: 380)
@@ -221,7 +221,7 @@ struct OnboardingView: View {
                         .fill(i == currentStep ? AnyShapeStyle(LinearGradient(
                                 colors: [step.accent, step.secondary],
                                 startPoint: .leading, endPoint: .trailing
-                            )) : AnyShapeStyle(Color.white.opacity(0.12)))
+                            )) : AnyShapeStyle(Color.primary.opacity(0.18)))
                         .frame(width: i == currentStep ? 28 : 12, height: 4)
                         .shadow(color: i == currentStep ? step.accent.opacity(0.6) : .clear, radius: 4)
                         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: currentStep)

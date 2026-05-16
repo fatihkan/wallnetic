@@ -9,6 +9,7 @@ import SwiftUI
 /// Canvas-rendered once on appear, deterministic seed → same texture
 /// every launch (no flicker between resizes).
 struct GrainOverlay: View {
+    @Environment(\.colorScheme) private var colorScheme
     var intensity: Double = 0.05
     var dotsPerPx: Double = 0.0006  // ~600 dots in a 1000×1000 area
 
@@ -16,19 +17,25 @@ struct GrainOverlay: View {
         Canvas { ctx, size in
             let count = Int(Double(size.width * size.height) * dotsPerPx)
             var rng = SeedableRNG(seed: 1337)
+            // Light mode: grain is much less visible against white surfaces
+            // and gradient banding is also milder on bright backgrounds, so
+            // we use darker grain dots that still scatter the bands.
+            let grainColor: Color = colorScheme == .light
+                ? .black.opacity(1)
+                : .white.opacity(1)
             for _ in 0..<count {
                 let x = Double(rng.nextUInt() % UInt32(max(1, size.width)))
                 let y = Double(rng.nextUInt() % UInt32(max(1, size.height)))
                 let a = intensity * 0.4 + intensity * Double(rng.nextUInt() % 100) / 100.0
                 let rect = CGRect(x: x, y: y, width: 1, height: 1)
-                ctx.fill(Path(rect), with: .color(.white.opacity(a)))
+                ctx.fill(Path(rect), with: .color(grainColor.opacity(a)))
             }
         }
         // P0-1: rasterize into a Metal-backed cache. Without this the
         // Canvas closure re-runs on every ambient/Ken-Burns/cursor frame,
         // burning 0.5-1.5 ms/frame for noise that never changes.
         .drawingGroup(opaque: false)
-        .blendMode(.overlay)
+        .blendMode(colorScheme == .light ? .multiply : .overlay)
         .allowsHitTesting(false)
     }
 

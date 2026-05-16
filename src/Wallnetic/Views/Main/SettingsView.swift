@@ -6,8 +6,8 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack {
-            // Full bleed dark backdrop replacing the system Form chrome
-            Color(red: 0.04, green: 0.05, blue: 0.09)
+            // Full bleed theme-aware backdrop replacing the system Form chrome
+            Surface.windowFill
                 .ignoresSafeArea()
             // Subtle ambient tint — kept very low contrast and supported
             // by a grain overlay below so the radial doesn't band.
@@ -25,7 +25,7 @@ struct SettingsView: View {
             HStack(spacing: 0) {
                 sidebar
                 Divider()
-                    .overlay(Color.white.opacity(0.06))
+                    .overlay(Surface.hairline)
                 detail
             }
             .ignoresSafeArea(.all, edges: .top)  // claim the title-bar zone
@@ -50,11 +50,11 @@ struct SettingsView: View {
             HStack(spacing: 0) {
                 Text("Wallnetic")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.92))
+                    .foregroundColor(.primary.opacity(0.92))
                     .tracking(-0.1)
                 Text(" Settings")
                     .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundColor(.white.opacity(0.45))
+                    .foregroundColor(.primary.opacity(0.45))
                     .tracking(-0.1)
                 Spacer()
             }
@@ -72,7 +72,7 @@ struct SettingsView: View {
                     }
 
                     Rectangle()
-                        .fill(Color.white.opacity(0.06))
+                        .fill(Surface.hairline)
                         .frame(height: 0.5)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 14)
@@ -95,11 +95,11 @@ struct SettingsView: View {
                     .frame(width: 5, height: 5)
                     .shadow(color: .green.opacity(0.65), radius: 3)
                 Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
-                    .styledData(color: .white.opacity(0.5))
+                    .styledData(color: .primary.opacity(0.5))
                 Spacer()
                 Image(systemName: "lock.shield.fill")
                     .font(.system(size: 9))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(.primary.opacity(0.3))
             }
             .padding(.horizontal, Space.lg + 2)
             .padding(.bottom, Space.md + 2)
@@ -109,7 +109,7 @@ struct SettingsView: View {
             // Translucent over content — Liquid Glass sidebar
             ZStack {
                 Rectangle().fill(.ultraThinMaterial)
-                Rectangle().fill(Color.black.opacity(0.32))
+                Rectangle().fill(Surface.glassProminent)
                 // Inner accent wash
                 LinearGradient(
                     colors: [Color.accentColor.opacity(0.08), .clear],
@@ -121,7 +121,7 @@ struct SettingsView: View {
             // Right-edge refractive hairline
             Rectangle()
                 .fill(LinearGradient(
-                    colors: [.white.opacity(0.04), .white.opacity(0.12), .white.opacity(0.04)],
+                    colors: [Surface.glassInnerHighlight, Surface.glassTopStroke, Surface.glassInnerHighlight],
                     startPoint: .top, endPoint: .bottom
                 ))
                 .frame(width: 0.5)
@@ -152,11 +152,11 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(selection.title)
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .tracking(-0.2)
                     Text(selection.tagline)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.42))
+                        .foregroundColor(.primary.opacity(0.42))
                 }
 
                 Spacer()
@@ -293,13 +293,13 @@ private struct SidebarRow: View {
                     }
                     Image(systemName: section.icon)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isSelected ? .white : .white.opacity(hover ? 0.75 : 0.45))
+                        .foregroundColor(isSelected ? .white : .primary.opacity(hover ? 0.75 : 0.55))
                 }
                 .frame(width: 22, height: 22)
 
                 Text(section.title)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-                    .foregroundColor(isSelected ? .white : .white.opacity(hover ? 0.85 : 0.6))
+                    .foregroundColor(isSelected ? .primary : .primary.opacity(hover ? 0.85 : 0.7))
                     .tracking(isSelected ? 0.2 : 0)
 
                 Spacer()
@@ -317,15 +317,15 @@ private struct SidebarRow: View {
                 ZStack {
                     if isSelected {
                         RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
-                            .fill(Color.white.opacity(0.07))
+                            .fill(Surface.glassControl)
                         RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
                             .strokeBorder(LinearGradient(
-                                colors: [.white.opacity(0.16), .white.opacity(0.02)],
+                                colors: [Surface.glassTopStroke, Surface.glassInnerHighlight],
                                 startPoint: .top, endPoint: .bottom
                             ), lineWidth: 0.5)
                     } else if hover {
                         RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
-                            .fill(Color.white.opacity(0.04))
+                            .fill(Surface.glassControl)
                     }
                 }
             )

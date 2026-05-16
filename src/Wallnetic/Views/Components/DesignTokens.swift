@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 // MARK: - Concentric Radius Scale
 //
@@ -99,4 +100,91 @@ extension Text {
             .tracking(Typo.dataTracking)
             .foregroundColor(color)
     }
+}
+
+// MARK: - Adaptive Surface Palette
+//
+// One source of truth for every "this should be dark in dark mode, light
+// in light mode" color. Built on top of NSColor's dynamic provider so the
+// color tracks NSApp.appearance in real time — no @Environment plumbing.
+
+extension Color {
+    /// Returns dark on .darkAqua, light on .aqua. Tracks NSApp.appearance.
+    static func adaptive(dark: Color, light: Color) -> Color {
+        Color(NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            return isDark ? NSColor(dark) : NSColor(light)
+        })
+    }
+}
+
+/// Theme-aware surface tokens. Numbers chosen to match the existing dark
+/// stage exactly; light variants picked for contrast against `.primary`
+/// text and to keep accent gradients legible.
+enum Surface {
+    /// Deepest backdrop behind everything (ambient stage floor).
+    static var stageFloor: Color { .adaptive(
+        dark:  Color(red: 0.02, green: 0.025, blue: 0.05),
+        light: Color(red: 0.96, green: 0.965, blue: 0.98)
+    )}
+
+    /// Settings + onboarding window-fill background.
+    static var windowFill: Color { .adaptive(
+        dark:  Color(red: 0.04, green: 0.05, blue: 0.09),
+        light: Color(red: 0.97, green: 0.975, blue: 0.985)
+    )}
+
+    /// HomeView vignette / footer fade target.
+    static var deepFade: Color { .adaptive(
+        dark:  Color(red: 0.02, green: 0.02, blue: 0.06),
+        light: Color(red: 0.94, green: 0.945, blue: 0.96)
+    )}
+
+    /// Vignette darkening (or in light mode, mild edge softening).
+    static var vignetteEdge: Color { .adaptive(
+        dark:  .black.opacity(0.35),
+        light: .black.opacity(0.06)
+    )}
+
+    /// Liquid Glass base fill — standard tone.
+    static var glassStandard: Color { .adaptive(
+        dark:  .black.opacity(0.18),
+        light: .white.opacity(0.55)
+    )}
+
+    /// Liquid Glass base fill — prominent tone (denser floating chrome).
+    static var glassProminent: Color { .adaptive(
+        dark:  .black.opacity(0.32),
+        light: .white.opacity(0.70)
+    )}
+
+    /// Liquid Glass base fill — control tone (no material blur).
+    static var glassControl: Color { .adaptive(
+        dark:  .white.opacity(0.05),
+        light: .black.opacity(0.04)
+    )}
+
+    /// Top lensing stroke — bright on glass.
+    static var glassTopStroke: Color { .adaptive(
+        dark:  .white.opacity(0.16),
+        light: .white.opacity(0.85)
+    )}
+
+    /// Bottom lensing stroke — dim on glass.
+    static var glassBottomStroke: Color { .adaptive(
+        dark:  .black.opacity(0.32),
+        light: .black.opacity(0.14)
+    )}
+
+    /// Inner refraction highlight.
+    static var glassInnerHighlight: Color { .adaptive(
+        dark:  .white.opacity(0.06),
+        light: .white.opacity(0.55)
+    )}
+
+    /// Generic divider hairline color.
+    static var hairline: Color { .adaptive(
+        dark:  .white.opacity(0.06),
+        light: .black.opacity(0.08)
+    )}
 }

@@ -111,12 +111,12 @@ struct HomeView: View {
                         .animation(.easeInOut(duration: Anim.hero), value: heroIndex)
                 }
 
-                // Cinematic gradient overlay
+                // Cinematic gradient overlay (fades hero into window backdrop)
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0.2),
-                        .init(color: Color(red: 0.02, green: 0.02, blue: 0.06).opacity(0.5), location: 0.5),
-                        .init(color: Color(red: 0.02, green: 0.02, blue: 0.06), location: 1)
+                        .init(color: Surface.deepFade.opacity(0.5), location: 0.5),
+                        .init(color: Surface.deepFade, location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -126,13 +126,13 @@ struct HomeView: View {
                 // Side vignette
                 HStack {
                     LinearGradient(
-                        colors: [Color.black.opacity(0.4), .clear],
+                        colors: [Surface.vignetteEdge.opacity(1.2), .clear],
                         startPoint: .leading, endPoint: .trailing
                     )
                     .frame(width: 120)
                     Spacer()
                     LinearGradient(
-                        colors: [.clear, Color.black.opacity(0.4)],
+                        colors: [.clear, Surface.vignetteEdge.opacity(1.2)],
                         startPoint: .leading, endPoint: .trailing
                     )
                     .frame(width: 120)
@@ -156,16 +156,16 @@ struct HomeView: View {
             Text(wp.name)
                 .font(Typo.display)
                 .tracking(Typo.displayTracking)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .lineLimit(2)
                 .truncationMode(.tail)
-                .shadow(color: .black.opacity(0.55), radius: 8, y: 2)
+                .shadow(color: Surface.vignetteEdge.opacity(1.6), radius: 8, y: 2)
 
             // Metadata pills
             HStack(spacing: 8) {
                 metadataPill(wp.formattedResolution, color: .green)
-                metadataPill(wp.formattedDuration, color: .white.opacity(0.6))
-                metadataPill(wp.formattedFileSize, color: .white.opacity(0.6))
+                metadataPill(wp.formattedDuration, color: .primary.opacity(0.7))
+                metadataPill(wp.formattedFileSize, color: .primary.opacity(0.7))
 
                 if wp.id == wallpaperManager.currentWallpaper?.id {
                     HStack(spacing: 4) {
@@ -204,7 +204,7 @@ struct HomeView: View {
                 HStack(spacing: 5) {
                     ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
                         Capsule()
-                            .fill(i == heroIndex ? Color.accentColor : Color.white.opacity(0.2))
+                            .fill(i == heroIndex ? Color.accentColor : Color.primary.opacity(0.25))
                             .frame(width: i == heroIndex ? 22 : 10, height: 3)
                             .neonGlow(.accentColor, isActive: i == heroIndex, radius: 4)
                             .animation(.spring(response: Anim.medium, dampingFraction: 0.7), value: heroIndex)
@@ -289,7 +289,7 @@ struct HeroBannerCard: View {
                             y: (phase - 0.5) * 22
                         )
                 } else {
-                    Color.black
+                    Surface.deepFade
                 }
             }
         }
@@ -322,11 +322,11 @@ struct CarouselSection: View {
 
                 Text(title)
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
 
                 Text("\(wallpapers.count)")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(.primary.opacity(0.4))
             }
             .padding(.horizontal, homeHorizontalInset)
 
@@ -397,14 +397,16 @@ struct CarouselCard: View {
                             .aspectRatio(contentMode: .fill)
                     } else {
                         Rectangle()
-                            .fill(Color.white.opacity(0.03))
+                            .fill(Surface.glassControl)
                             .overlay { ProgressView().scaleEffect(0.6) }
                     }
                 }
                 .frame(width: cardWidth, height: cardHeight)
                 .clipped()
 
-                // Hover overlay
+                // Hover overlay — image content always dark, so keep
+                // contrast overlay dark (not theme-aware) for legibility
+                // of the play icon over thumbnails.
                 if isHovering {
                     Color.black.opacity(0.35)
 
@@ -421,7 +423,7 @@ struct CarouselCard: View {
                     }
                 }
 
-                // Duration badge
+                // Duration badge — over thumbnail image, stays dark for contrast
                 VStack {
                     HStack {
                         Spacer()
@@ -491,7 +493,7 @@ struct CarouselCard: View {
 
             Text(wallpaper.displayName)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(isHovering ? 0.95 : 0.7))
+                .foregroundColor(.primary.opacity(isHovering ? 0.95 : 0.75))
                 .lineLimit(2)
                 .truncationMode(.tail)
                 .frame(width: cardWidth, alignment: .leading)
