@@ -112,51 +112,87 @@ struct CreateCollectionSheet: View {
     @State private var name = ""
     @State private var selectedIcon = "folder.fill"
 
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("New Collection")
-                .font(.headline)
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
-            // Icon selection
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(44)), count: 5), spacing: 8) {
-                ForEach(WallpaperCollection.availableIcons, id: \.self) { icon in
-                    Button {
-                        selectedIcon = icon
-                    } label: {
-                        Image(systemName: icon)
-                            .font(.title2)
-                            .frame(width: 40, height: 40)
-                            .background(selectedIcon == icon ? Color.accentColor.opacity(0.2) : Color.clear)
-                            .cornerRadius(8)
+    var body: some View {
+        WallneticSheet(title: "New Collection", icon: selectedIcon, width: 380) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("ICON")
+                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                    .tracking(2)
+                    .foregroundColor(.white.opacity(0.35))
+
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(48)), count: 6), spacing: 6) {
+                    ForEach(WallpaperCollection.availableIcons, id: \.self) { icon in
+                        IconPickerCell(
+                            icon: icon,
+                            isSelected: selectedIcon == icon
+                        ) { selectedIcon = icon }
                     }
-                    .buttonStyle(.plain)
+                }
+
+                Text("NAME")
+                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                    .tracking(2)
+                    .foregroundColor(.white.opacity(0.35))
+                    .padding(.top, 4)
+
+                WallneticTextField(
+                    placeholder: "e.g. Cyberpunk Nights",
+                    text: $name,
+                    icon: "tag.fill"
+                ) {
+                    if !trimmedName.isEmpty {
+                        _ = collectionManager.createCollection(name: trimmedName, icon: selectedIcon)
+                        dismiss()
+                    }
                 }
             }
-
-            // Name input
-            TextField("Collection name", text: $name)
-                .textFieldStyle(.roundedBorder)
-
-            // Buttons
-            HStack {
-                Button("Cancel") {
-                    dismiss()
-                }
-                .keyboardShortcut(.escape)
-
-                Spacer()
-
-                Button("Create") {
-                    _ = collectionManager.createCollection(name: name, icon: selectedIcon)
-                    dismiss()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(name.isEmpty)
-                .keyboardShortcut(.return)
+        } footer: {
+            WallneticButton.cancel { dismiss() }
+            Spacer()
+            WallneticButton.primary("Create", icon: "plus", isEnabled: !trimmedName.isEmpty) {
+                _ = collectionManager.createCollection(name: trimmedName, icon: selectedIcon)
+                dismiss()
             }
         }
-        .padding()
-        .frame(width: 300)
+    }
+}
+
+private struct IconPickerCell: View {
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(isSelected ? .white : .white.opacity(hover ? 0.8 : 0.45))
+                .frame(width: 44, height: 44)
+                .background(
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(isSelected
+                                  ? AnyShapeStyle(LinearGradient(
+                                        colors: [Color.accentColor.opacity(0.3), Color.accentColor.opacity(0.15)],
+                                        startPoint: .topLeading, endPoint: .bottomTrailing
+                                    ))
+                                  : AnyShapeStyle(Color.white.opacity(hover ? 0.06 : 0.025)))
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.08), lineWidth: 0.5)
+                    }
+                )
+                .shadow(color: isSelected ? Color.accentColor.opacity(0.4) : .clear, radius: 8)
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .animation(.easeOut(duration: 0.15), value: hover)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 }
 

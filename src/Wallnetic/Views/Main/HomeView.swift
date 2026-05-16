@@ -5,12 +5,19 @@ struct HomeView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var heroIndex = 0
     @State private var heroTimer: Timer?
+    @State private var heroScrollY: CGFloat = 0
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
                 heroBanner
                     .padding(.top, -46)
+                    .background(GeometryReader { geo -> Color in
+                        DispatchQueue.main.async {
+                            heroScrollY = geo.frame(in: .named("homeScroll")).minY
+                        }
+                        return Color.clear
+                    })
 
                 VStack(spacing: 28) {
                     if !favoritesWallpapers.isEmpty {
@@ -45,6 +52,7 @@ struct HomeView: View {
                 .padding(.top, 20)
             }
         }
+        .coordinateSpace(name: "homeScroll")
         .background(Color.clear)
         .onAppear { startHeroTimer() }
         .onDisappear { heroTimer?.invalidate() }
@@ -65,11 +73,18 @@ struct HomeView: View {
         let wallpapers = Array(wallpaperManager.wallpapers.prefix(5))
         let currentWallpaper = heroIndex < wallpapers.count ? wallpapers[heroIndex] : nil
 
+        // Scroll-driven parallax: scale up + push down as user scrolls
+        let parallax = max(-200, min(200, heroScrollY))
+        let scale = 1.0 + max(0, parallax) * 0.0008
+        let yOffset = parallax * 0.45
+
         return VStack(spacing: 0) {
             ZStack {
                 if let wp = currentWallpaper {
                     HeroBannerCard(wallpaper: wp)
                         .id(heroIndex)
+                        .scaleEffect(scale)
+                        .offset(y: yOffset * 0.3)
                         .transition(.opacity)
                         .animation(.easeInOut(duration: Anim.hero), value: heroIndex)
                 }
@@ -320,9 +335,28 @@ struct CarouselCard: View {
     @State private var isHovering = false
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText = ""
+    @State private var pointer: CGPoint = .zero  // 0..1 within card
 
     private let cardWidth: CGFloat = 240
     private let cardHeight: CGFloat = 135
+
+    /// Subtle magnetic tilt: pointer's offset from center drives a ±6°
+    /// rotation around the y/x axes plus a 2-3px translation. Falls back
+    /// to flat when not hovering.
+    private var tiltX: Double {
+        guard isHovering else { return 0 }
+        return Double(0.5 - pointer.y) * 8  // top → tilt forward
+    }
+
+    private var tiltY: Double {
+        guard isHovering else { return 0 }
+        return Double(pointer.x - 0.5) * 8  // right → tilt right
+    }
+
+    private var glareOffset: CGFloat {
+        guard isHovering else { return -1 }
+        return pointer.x  // 0..1 follows pointer
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -384,8 +418,41 @@ struct CarouselCard: View {
                 }
             }
             .frame(width: cardWidth, height: cardHeight)
+            .overlay(
+                // Glare strip — follows pointer
+                LinearGradient(
+                    stops: [
+                        .init(color: .white.opacity(0), location: max(0, glareOffset - 0.25)),
+                        .init(color: .white.opacity(isHovering ? 0.14 : 0), location: glareOffset),
+                        .init(color: .white.opacity(0), location: min(1, glareOffset + 0.25))
+                    ],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .blendMode(.plusLighter)
+                .allowsHitTesting(false)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            )
             .glowCard(isHovering: isHovering, cornerRadius: 8)
-            .scaleEffect(isHovering ? 1.03 : 1.0)
+            .rotation3DEffect(.degrees(tiltX), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+            .rotation3DEffect(.degrees(tiltY), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+            .scaleEffect(isHovering ? 1.04 : 1.0)
+            .background(
+                // Trackpad/mouse position tracker (overlay placed in front of the card for hit testing)
+                GeometryReader { proxy in
+                    Color.clear.contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let loc):
+                                pointer = CGPoint(
+                                    x: min(max(loc.x / proxy.size.width, 0), 1),
+                                    y: min(max(loc.y / proxy.size.height, 0), 1)
+                                )
+                            case .ended:
+                                pointer = CGPoint(x: 0.5, y: 0.5)
+                            }
+                        }
+                }
+            )
 
             Text(wallpaper.displayName)
                 .font(.system(size: 11, weight: .medium))
