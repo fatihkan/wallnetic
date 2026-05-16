@@ -29,6 +29,7 @@
 		27E8C6194A802AD6C3726D0A /* AmbientStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA26B4DDB98EF77D98CE5821 /* AmbientStage.swift */; };
 		284D0925EA9AEC2B302910D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BF36E216B5F900C62E824B59 /* Assets.xcassets */; };
 		29D5A45CA0BA3716AFA45522 /* WallneticButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07818DDC6C7B04DED71808AA /* WallneticButton.swift */; };
+		2B0D5970F968D01CC1E3B8B8 /* GrainOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10E68AD45A1FAF11457CDB94 /* GrainOverlay.swift */; };
 		2C5619331688457B6A844B93 /* CollectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C51D17BDBBADCDF4D5CB43 /* CollectionsView.swift */; };
 		2D30EDC8BD2E940365F05AB0 /* WallneticWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A7F21804AB5D266A239578 /* WallneticWidget.swift */; };
 		38BD342CB024693C99DB8B35 /* AudioVisualizerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 082027791B67C0B2DBD43F97 /* AudioVisualizerManager.swift */; };
@@ -179,6 +180,7 @@
 		0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperGridView.swift; sourceTree = "<group>"; };
 		0DF980A4142FBBE468FBBD05 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
 		102BCD8F05208BC14E211E51 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
+		10E68AD45A1FAF11457CDB94 /* GrainOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrainOverlay.swift; sourceTree = "<group>"; };
 		11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		134AA54986991D7480CC4CD8 /* SmallWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmallWidgetView.swift; sourceTree = "<group>"; };
 		140AE9B28FFA1BF12B3651C5 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
@@ -505,6 +507,7 @@
 				BA26B4DDB98EF77D98CE5821 /* AmbientStage.swift */,
 				DFF460340111975F4DA40C32 /* DesignTokens.swift */,
 				F6E13A8C8EF384BF16EDF962 /* FocusHalo.swift */,
+				10E68AD45A1FAF11457CDB94 /* GrainOverlay.swift */,
 				4BD359DF3443AB6E3242CA90 /* LiquidGlass.swift */,
 				5FD8494A42E5AA356A35BA25 /* StrikingEffects.swift */,
 				07818DDC6C7B04DED71808AA /* WallneticButton.swift */,
@@ -803,6 +806,7 @@
 				CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */,
 				C1489B79C3339AE81BA61D13 /* FocusHalo.swift in Sources */,
 				E670DC0DFE3A0970082E73EF /* GenerationHistory.swift in Sources */,
+				2B0D5970F968D01CC1E3B8B8 /* GrainOverlay.swift in Sources */,
 				8BED6ED6D599D3F3C32821D5 /* HistoryView.swift in Sources */,
 				131EDF3DA15DA0EEA84918A4 /* HomeView.swift in Sources */,
 				1CA1504E421EAE5C547DF122 /* KeychainManager.swift in Sources */,
