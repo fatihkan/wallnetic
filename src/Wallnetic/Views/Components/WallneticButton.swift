@@ -30,6 +30,7 @@ enum WallneticButton {
         .buttonStyle(LiquidPrimaryButtonStyle(accent: accent, isEnabled: isEnabled))
         .disabled(!isEnabled)
         .keyboardShortcut(.return)
+        .suppressFocusRing()
     }
 
     static func ghost(
@@ -48,6 +49,7 @@ enum WallneticButton {
             }
         }
         .buttonStyle(LiquidGhostButtonStyle())
+        .suppressFocusRing()
     }
 
     static func cancel(
@@ -61,6 +63,7 @@ enum WallneticButton {
         }
         .buttonStyle(.plain)
         .keyboardShortcut(.escape)
+        .suppressFocusRing()
     }
 }
 

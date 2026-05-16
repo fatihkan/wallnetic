@@ -83,6 +83,7 @@ struct TopNavigationBar: View {
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .frame(width: 30, height: 30)
+                .suppressFocusRing()
 
                 Button {
                     openWindow(id: "settings")
@@ -91,6 +92,7 @@ struct TopNavigationBar: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(",", modifiers: .command)
+                .suppressFocusRing()
             }
         }
         .padding(.leading, 84)        // reserve traffic-light real estate
@@ -165,6 +167,7 @@ struct TopNavigationBar: View {
             )
         }
         .buttonStyle(.plain)
+        .suppressFocusRing()
         .onHover { h in
             withAnimation(.easeOut(duration: Anim.micro)) { hoveredTab = h ? tab : nil }
         }
@@ -201,6 +204,7 @@ struct TopNavigationBar: View {
                         .foregroundColor(.white.opacity(0.4))
                 }
                 .buttonStyle(.plain)
+                .suppressFocusRing()
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -242,6 +246,7 @@ struct TopNavigationBar: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut("f", modifiers: .command)
+            .suppressFocusRing()
         }
     }
 }

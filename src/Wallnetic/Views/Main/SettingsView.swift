@@ -8,9 +8,16 @@ struct SettingsView: View {
             // Full bleed dark backdrop replacing the system Form chrome
             Color(red: 0.04, green: 0.05, blue: 0.09)
                 .ignoresSafeArea()
+            // Subtle ambient tint — kept very low contrast and supported
+            // by a grain overlay below so the radial doesn't band.
             RadialGradient(
-                colors: [Color.accentColor.opacity(0.10), .clear],
-                center: .topLeading, startRadius: 5, endRadius: 360
+                colors: [
+                    Color.accentColor.opacity(0.08),
+                    Color.accentColor.opacity(0.02),
+                    .clear
+                ],
+                center: UnitPoint(x: 0.05, y: 0.05),
+                startRadius: 5, endRadius: 480
             )
             .ignoresSafeArea()
 
@@ -21,6 +28,11 @@ struct SettingsView: View {
                 detail
             }
             .ignoresSafeArea(.all, edges: .top)  // claim the title-bar zone
+
+            // Anti-banding noise — kills the concentric ring artifacts
+            // that show on dark radial gradients at 8-bit color depth.
+            GrainOverlay(intensity: 0.045)
+                .ignoresSafeArea()
         }
         .frame(width: 820, height: 540)
         .preferredColorScheme(.dark)

@@ -26,6 +26,10 @@ struct AmbientStage: ViewModifier {
             ambientOverlay
                 .allowsHitTesting(false)
                 .blendMode(.plusLighter)
+            // Anti-banding noise — applied once over the whole stage so
+            // every radial gradient layer dithers cleanly.
+            GrainOverlay(intensity: 0.04)
+                .ignoresSafeArea()
         }
         .background(stageFloor.ignoresSafeArea())
         .onAppear {
