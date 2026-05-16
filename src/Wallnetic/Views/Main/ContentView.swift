@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @ObservedObject private var downloadManager = DownloadManager.shared
     @ObservedObject private var errorReporter = ErrorReporter.shared
+    @StateObject private var dynamicAccent = DynamicAccent.shared
     @State private var selectedTab: NavigationTab = .home
     @State private var isImporting = false
     @State private var showingPhotosImport = false
@@ -16,9 +17,6 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // Animated gradient background
-            AnimatedGradientBackground()
-
             VStack(spacing: 0) {
                 TopNavigationBar(
                     selectedTab: $selectedTab,
@@ -57,6 +55,7 @@ struct ContentView: View {
                 }
             }
         }
+        .ambientStage()
         .preferredColorScheme(.dark)
         .fileImporter(
             isPresented: $isImporting,
@@ -92,11 +91,16 @@ struct ContentView: View {
             CreateFromPhotosView()
                 .environmentObject(wallpaperManager)
         }
+        .environment(\.accentTheme, dynamicAccent.theme)
         .onAppear {
             if !hasCompletedOnboarding {
                 showingOnboarding = true
                 hasCompletedOnboarding = true
             }
+            dynamicAccent.applyFrom(wallpaper: wallpaperManager.currentWallpaper)
+        }
+        .onChange(of: wallpaperManager.currentWallpaper) { newWp in
+            dynamicAccent.applyFrom(wallpaper: newWp)
         }
     }
 

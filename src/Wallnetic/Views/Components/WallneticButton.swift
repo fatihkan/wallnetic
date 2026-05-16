@@ -69,6 +69,7 @@ enum WallneticButton {
 private struct LiquidPrimaryButtonStyle: ButtonStyle {
     let accent: Color
     let isEnabled: Bool
+    @State private var wobble: CGFloat = 1.0
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -101,8 +102,20 @@ private struct LiquidPrimaryButtonStyle: ButtonStyle {
                 radius: configuration.isPressed ? 4 : 12,
                 y: configuration.isPressed ? 1 : 5
             )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            // Press: compress to 0.96. Release: bouncy spring back through
+            // 1.0 → ~1.025 → 1.0. Wobble is purely visual; the action
+            // already fired on touch-up.
+            .scaleEffect(configuration.isPressed ? 0.96 : wobble)
+            .onChange(of: configuration.isPressed) { newPressed in
+                guard isEnabled else { return }
+                if !newPressed {
+                    wobble = 1.025
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.55)) {
+                        wobble = 1.0
+                    }
+                }
+            }
+            .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
     }
 }
 
@@ -177,7 +190,7 @@ struct WallneticTextField: View {
                     ), lineWidth: focused ? 1 : 0.6)
             }
         )
-        .shadow(color: focused ? accent.opacity(0.35) : .clear, radius: focused ? 10 : 0, y: focused ? 4 : 0)
+        .focusHalo(focused, radius: Radius.control, accent: accent)
         .animation(.easeOut(duration: 0.16), value: focused)
     }
 }
