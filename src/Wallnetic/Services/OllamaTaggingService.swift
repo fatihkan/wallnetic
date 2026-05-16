@@ -18,10 +18,22 @@ final class OllamaTaggingService: ObservableObject {
     @Published private(set) var lastError: String?
 
     @AppStorageKeyed("ollama.endpoint")
-    var endpointString: String = "http://localhost:11434/api/generate"
+    var endpointString: String = "http://localhost:11434/api/generate" {
+        didSet {
+            // M1: any endpoint mutation invalidates batch authorization.
+            // Next batch must come from a fresh "Tag" click that confirms
+            // the user really intends to ship thumbnails to this new host.
+            consentedEndpoint = nil
+        }
+    }
 
     @AppStorageKeyed("ollama.model")
     var modelName: String = OllamaVisionTagger.defaultModel
+
+    /// The exact endpoint string the user explicitly authorized in the
+    /// current session. `tagAll(...)` refuses to run if the configured
+    /// endpoint doesn't match.
+    @Published private(set) var consentedEndpoint: String?
 
     private let tagger: OllamaVisionTagger
     private var task: Task<Void, Never>?
@@ -41,12 +53,34 @@ final class OllamaTaggingService: ObservableObject {
         )
     }
 
+    /// Validation surface for the Settings UI — returns rejection reason
+    /// or nil if endpoint is acceptable.
+    var endpointValidationError: String? {
+        guard let url = URL(string: endpointString) else {
+            return "Not a valid URL."
+        }
+        return OllamaVisionTagger.validate(endpoint: url)
+    }
+
     // MARK: - Batch Tagging
 
     /// Tags every wallpaper that has no existing tags. Existing tags are
     /// preserved — auto-tags only fill in the gap.
     func tagAll(wallpapers: [Wallpaper], manager: WallpaperManager) {
         guard !isRunning else { return }
+
+        // H1/M2: hard-block disallowed endpoints before doing anything.
+        if let reason = endpointValidationError {
+            lastError = reason
+            statusText = "Endpoint rejected."
+            return
+        }
+
+        // M1: every batch run grants consent for the *exact* endpoint
+        // string in effect at click time. Subsequent endpoint mutations
+        // invalidate this (didSet clears `consentedEndpoint`).
+        consentedEndpoint = endpointString
+
         let untagged = wallpapers.filter { $0.tags.isEmpty }
         guard !untagged.isEmpty else {
             statusText = "All wallpapers already tagged."

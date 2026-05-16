@@ -48,6 +48,47 @@ final class OllamaVisionTagger {
         case badStatus(Int)
         case decodeFailed
         case malformedResponse
+        case endpointBlocked(reason: String)
+    }
+
+    // MARK: - Endpoint Validation (H1 + M2)
+    //
+    // Defense against SSRF: thumbnails can contain user photos (via the
+    // Photos slideshow pipeline). We refuse to POST them anywhere except
+    // the local Ollama instance running on this Mac (or on the local LAN
+    // via `.local` mDNS). Non-loopback hosts must also be HTTPS.
+
+    /// `nil` if endpoint is allowed; otherwise human-readable rejection.
+    static func validate(endpoint: URL) -> String? {
+        guard let scheme = endpoint.scheme?.lowercased() else {
+            return "Endpoint has no scheme."
+        }
+        guard scheme == "http" || scheme == "https" else {
+            return "Only http or https endpoints are allowed."
+        }
+        guard let host = endpoint.host?.lowercased(), !host.isEmpty else {
+            return "Endpoint has no host."
+        }
+
+        if isLoopback(host: host) {
+            return nil  // localhost — any scheme OK
+        }
+
+        // Non-loopback: must be a *.local mDNS name AND https.
+        guard host.hasSuffix(".local") || host == "local" else {
+            return "Endpoint host must be localhost, 127.0.0.1, ::1, or *.local. Got \"\(host)\"."
+        }
+        guard scheme == "https" else {
+            return "Non-loopback endpoints must use https."
+        }
+        return nil
+    }
+
+    private static func isLoopback(host: String) -> Bool {
+        host == "localhost"
+            || host == "127.0.0.1"
+            || host == "::1"
+            || host == "[::1]"
     }
 
     private let session: URLSession
@@ -62,6 +103,15 @@ final class OllamaVisionTagger {
     /// Ollama is offline — distinguishable from "tagged with 0 results"
     /// because this method returns `nil` for the offline case.
     func tags(for image: NSImage, config: Config = Config()) async -> [String]? {
+        // H1/M2: refuse to ship thumbnails to a non-allowlisted endpoint.
+        // This is the second line of defense; the Settings UI rejects bad
+        // input on entry, but a stale UserDefaults value could still reach
+        // here.
+        if let reason = Self.validate(endpoint: config.endpoint) {
+            Log.ollama.error("Endpoint blocked: \(reason, privacy: .public)")
+            return nil
+        }
+
         guard let base64 = base64Encode(image: image, maxDimension: 512) else {
             Log.ollama.debug("Skipping — could not encode thumbnail to JPEG.")
             return nil
@@ -149,7 +199,11 @@ final class OllamaVisionTagger {
             else { s = String(describing: value) }
             return cleanTag(s)
         }
-        return cleaned.isEmpty ? nil : Array(Set(cleaned)).sorted()
+        if cleaned.isEmpty { return nil }
+        // L3: cap at 8 — a pathological model could return thousands of
+        // tags, which then go through O(n) `tags.contains` in addTag.
+        // 8 is well above what any reasonable wallpaper would have.
+        return Array(Array(Set(cleaned)).sorted().prefix(8))
     }
 
     static func cleanTag(_ raw: String) -> String? {

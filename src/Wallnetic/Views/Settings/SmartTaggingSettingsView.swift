@@ -21,6 +21,20 @@ struct SmartTaggingSettingsView: View {
                     TextField("http://localhost:11434/api/generate", text: $endpoint)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 360)
+                        .onChange(of: endpoint) { _ in
+                            // Persist live so validation reflects what the
+                            // user sees, and consent gets invalidated.
+                            service.endpointString = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+                        }
+                }
+                if let reason = service.endpointValidationError {
+                    Label(reason, systemImage: "shield.lefthalf.filled.slash")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                } else {
+                    Text("Only loopback (localhost / 127.0.0.1 / ::1) or *.local (https) hosts are allowed — your wallpaper thumbnails never leave this Mac/LAN.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
                 LabeledContent("Model") {
                     TextField("llava", text: $model)
@@ -46,6 +60,7 @@ struct SmartTaggingSettingsView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(!service.isRunning && service.endpointValidationError != nil)
 
                     Spacer()
                 }

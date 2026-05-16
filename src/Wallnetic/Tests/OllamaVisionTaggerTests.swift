@@ -103,4 +103,38 @@ final class OllamaVisionTaggerTests: XCTestCase {
         XCTAssertNil(OllamaVisionTagger.cleanTag(""))
         XCTAssertNil(OllamaVisionTagger.cleanTag(String(repeating: "x", count: 50)))
     }
+
+    // MARK: - Endpoint allowlist (H1 + M2)
+
+    func test_validate_accepts_localhost_http() {
+        XCTAssertNil(OllamaVisionTagger.validate(endpoint: URL(string: "http://localhost:11434/api/generate")!))
+        XCTAssertNil(OllamaVisionTagger.validate(endpoint: URL(string: "http://127.0.0.1:11434/api/generate")!))
+        XCTAssertNil(OllamaVisionTagger.validate(endpoint: URL(string: "http://[::1]:11434/api/generate")!))
+    }
+
+    func test_validate_accepts_dotlocal_https_only() {
+        XCTAssertNil(OllamaVisionTagger.validate(endpoint: URL(string: "https://mac-mini.local:11434/api/generate")!))
+        XCTAssertNotNil(OllamaVisionTagger.validate(endpoint: URL(string: "http://mac-mini.local:11434/api/generate")!))
+    }
+
+    func test_validate_rejects_public_internet_hosts() {
+        XCTAssertNotNil(OllamaVisionTagger.validate(endpoint: URL(string: "https://api.openai.com/v1/chat")!))
+        XCTAssertNotNil(OllamaVisionTagger.validate(endpoint: URL(string: "http://192.168.1.42:11434/api/generate")!))
+        XCTAssertNotNil(OllamaVisionTagger.validate(endpoint: URL(string: "https://attacker.example/exfil")!))
+    }
+
+    func test_validate_rejects_non_http_schemes() {
+        XCTAssertNotNil(OllamaVisionTagger.validate(endpoint: URL(string: "file:///etc/passwd")!))
+        XCTAssertNotNil(OllamaVisionTagger.validate(endpoint: URL(string: "ftp://localhost/api")!))
+    }
+
+    // MARK: - parseTags cap (L3)
+
+    func test_parseTags_caps_at_8() {
+        var entries: [String] = []
+        for i in 0..<50 { entries.append("\"tag\(i)\"") }
+        let payload = "{\"tags\": [\(entries.joined(separator: ","))]}"
+        let result = OllamaVisionTagger.parseTags(fromText: payload) ?? []
+        XCTAssertLessThanOrEqual(result.count, 8, "parseTags must cap at 8 to bound addTag cost.")
+    }
 }
