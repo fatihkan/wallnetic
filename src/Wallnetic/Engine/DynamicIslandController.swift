@@ -2,7 +2,11 @@ import Cocoa
 import SwiftUI
 import Combine
 
-/// Dynamic Island — wraps around the notch on MacBooks, or floats at top-center on other Macs
+/// Dynamic Island — wraps around the notch on MacBooks, or floats at top-center on other Macs.
+///
+/// Multi-monitor: when more than one display is attached, an island is rendered
+/// on every monitor and all of them share the same expand/collapse state (driven
+/// by `@Published state`, observed by the SwiftUI view).
 class DynamicIslandController: ObservableObject {
     static let shared = DynamicIslandController()
 
@@ -20,9 +24,10 @@ class DynamicIslandController: ObservableObject {
     @Published var isDragOver = false
     @Published var isImporting = false
 
-    private var islandWindow: NSPanel?
+    private var islandWindows: [CGDirectDisplayID: NSPanel] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var autoCollapseTimer: Timer?
+    private var screenObserver: NSObjectProtocol?
 
     // MARK: - Dimensions
 
@@ -47,45 +52,29 @@ class DynamicIslandController: ObservableObject {
     // MARK: - Show/Hide
 
     func show() {
-        guard islandWindow == nil else { return }
-        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
-        hasNotch = detectNotch(for: screen) > 0
-
-        let content = DynamicIslandView()
-            .environmentObject(WallpaperManager.shared)
-            .environmentObject(self)
-
-        let hostingView = NSHostingView(rootView: content)
-        let frame = islandFrame(for: screen, width: compactWidth, height: compactHeight)
-
-        let window = NSPanel(
-            contentRect: frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
-        )
-
-        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 2)
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.isMovableByWindowBackground = false
-        window.contentView = hostingView
-        window.ignoresMouseEvents = false
-
-        window.orderFront(nil)
-        islandWindow = window
+        guard islandWindows.isEmpty else { return }
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID else { continue }
+            islandWindows[id] = makePanel(for: screen)
+        }
+        hasNotch = NSScreen.screens.contains { detectNotch(for: $0) > 0 }
         isEnabled = true
         isVisible = true
         observeWallpaperChanges()
+        observeScreenChanges()
     }
 
     func hide() {
         autoCollapseTimer?.invalidate()
         cancellables.removeAll()
-        islandWindow?.close()
-        islandWindow = nil
+        if let screenObserver {
+            NotificationCenter.default.removeObserver(screenObserver)
+            self.screenObserver = nil
+        }
+        for panel in islandWindows.values {
+            panel.close()
+        }
+        islandWindows.removeAll()
         isEnabled = false
         isVisible = false
         state = .compact
@@ -95,12 +84,42 @@ class DynamicIslandController: ObservableObject {
         if isVisible { hide() } else { show() }
     }
 
+    // MARK: - Panel Factory
+
+    private func makePanel(for screen: NSScreen) -> NSPanel {
+        let frame = islandFrame(for: screen, width: compactWidth, height: compactHeight)
+        let hostingView = NSHostingView(
+            rootView: DynamicIslandView()
+                .environmentObject(WallpaperManager.shared)
+                .environmentObject(self)
+        )
+
+        let panel = NSPanel(
+            contentRect: frame,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: true
+        )
+
+        panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 2)
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.isMovableByWindowBackground = false
+        panel.contentView = hostingView
+        panel.ignoresMouseEvents = false
+
+        panel.orderFront(nil)
+        return panel
+    }
+
     // MARK: - State Transitions
 
     func expand() {
         guard state != .expanded else { return }
         state = .expanded
-        updateWindowFrame(animated: true)
+        updateWindowFrames(animated: true)
         scheduleAutoCollapse()
     }
 
@@ -108,7 +127,7 @@ class DynamicIslandController: ObservableObject {
         guard state != .compact, !isRenameActive else { return }
         autoCollapseTimer?.invalidate()
         state = .compact
-        updateWindowFrame(animated: true)
+        updateWindowFrames(animated: true)
     }
 
     func toggleState() {
@@ -135,20 +154,23 @@ class DynamicIslandController: ObservableObject {
         return NSRect(x: x, y: y, width: width, height: height)
     }
 
-    private func updateWindowFrame(animated: Bool) {
-        guard let window = islandWindow, let screen = NSScreen.main else { return }
+    private func updateWindowFrames(animated: Bool) {
         let targetWidth = state == .expanded ? expandedWidth : compactWidth
         let targetHeight = state == .expanded ? expandedHeight : compactHeight
-        let newFrame = islandFrame(for: screen, width: targetWidth, height: targetHeight)
 
-        if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.3
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(newFrame, display: true)
+        for (id, panel) in islandWindows {
+            guard let screen = NSScreen.screens.first(where: { $0.displayID == id }) else { continue }
+            let newFrame = islandFrame(for: screen, width: targetWidth, height: targetHeight)
+
+            if animated {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.3
+                    context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                    panel.animator().setFrame(newFrame, display: true)
+                }
+            } else {
+                panel.setFrame(newFrame, display: true)
             }
-        } else {
-            window.setFrame(newFrame, display: true)
         }
     }
 
@@ -162,5 +184,54 @@ class DynamicIslandController: ObservableObject {
                 self.expand()
             }
             .store(in: &cancellables)
+    }
+
+    /// Tracks display hot-plug / sleep / mirror toggles. Adds panels for
+    /// newly attached screens, drops panels for detached ones, and re-frames
+    /// the survivors so anchor math stays correct after a topology change.
+    private func observeScreenChanges() {
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.screensChanged()
+        }
+    }
+
+    private func screensChanged() {
+        guard isVisible else { return }
+
+        let currentIDs = Set(NSScreen.screens.compactMap { $0.displayID })
+        let knownIDs = Set(islandWindows.keys)
+
+        // Newly attached screens
+        for id in currentIDs.subtracting(knownIDs) {
+            if let screen = NSScreen.screens.first(where: { $0.displayID == id }) {
+                islandWindows[id] = makePanel(for: screen)
+            }
+        }
+
+        // Detached screens
+        for id in knownIDs.subtracting(currentIDs) {
+            islandWindows[id]?.close()
+            islandWindows.removeValue(forKey: id)
+        }
+
+        // Survivors may have moved (mirror on/off, resolution change)
+        updateWindowFrames(animated: false)
+
+        hasNotch = NSScreen.screens.contains { detectNotch(for: $0) > 0 }
+    }
+}
+
+// MARK: - NSScreen.displayID
+
+extension NSScreen {
+    /// Stable identifier for the underlying display — survives most
+    /// topology changes (sleep/wake, resolution toggle). Returns nil
+    /// for the rare screen that has no NSScreenNumber device entry.
+    var displayID: CGDirectDisplayID? {
+        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
     }
 }
