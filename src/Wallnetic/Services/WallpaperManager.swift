@@ -49,10 +49,37 @@ class WallpaperManager: ObservableObject {
 
     // MARK: - Published Properties
 
-    @Published var wallpapers: [Wallpaper] = []
+    @Published var wallpapers: [Wallpaper] = [] {
+        didSet {
+            // P1-4: keep id → index map in lockstep with the array.
+            // O(1) lookup vs O(n) firstIndex(where:) — meaningful on
+            // libraries of 500+ wallpapers where toggleFavorite /
+            // renameWallpaper / addTag are called rapidly.
+            rebuildIndex()
+        }
+    }
     @Published var currentWallpaper: Wallpaper?
     @Published var isPlaying: Bool = false
     @Published var wallpaperMode: WallpaperMode = .same
+
+    /// Maps wallpaper.id → index in `wallpapers`. Rebuilt on every
+    /// mutation via didSet; cost is one O(n) pass amortised over many
+    /// O(1) lookups.
+    private var indexById: [UUID: Int] = [:]
+
+    private func rebuildIndex() {
+        indexById = Dictionary(uniqueKeysWithValues: wallpapers.enumerated().map { ($0.element.id, $0.offset) })
+    }
+
+    /// O(1) index lookup. Returns nil if id is unknown.
+    private func index(of id: UUID) -> Int? {
+        if let i = indexById[id], i < wallpapers.count, wallpapers[i].id == id {
+            return i
+        }
+        // Defensive fallback (e.g. mid-mutation race) — rebuild and retry.
+        rebuildIndex()
+        return indexById[id]
+    }
 
     /// Per-screen wallpaper assignments (screenName -> wallpaperID)
     @Published var screenWallpapers: [String: UUID] = [:]
@@ -79,6 +106,45 @@ class WallpaperManager: ObservableObject {
     private let metadata = WallpaperMetadataStore.shared
     private let widgetSync = WidgetSyncService.shared
     private let cache = WallpaperMetadataCache.shared
+
+    // P1-6: persistence debouncers. Toggling favorites rapidly used to
+    // re-encode the entire favorites JSON per click. We now coalesce
+    // bursts into a single write 250ms after the last mutation.
+    private var pendingFavoritesWrite: DispatchWorkItem?
+    private var pendingTitlesWrite: DispatchWorkItem?
+    private var pendingTagsWrite: DispatchWorkItem?
+
+    private func scheduleFavoritesWrite() {
+        pendingFavoritesWrite?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.metadata.saveFavorites(from: self.wallpapers)
+        }
+        pendingFavoritesWrite = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: item)
+    }
+
+    private func scheduleTitlesWrite() {
+        pendingTitlesWrite?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.metadata.saveCustomTitles(from: self.wallpapers)
+        }
+        pendingTitlesWrite = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: item)
+    }
+
+    private func scheduleTagsWrite() {
+        pendingTagsWrite?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            var all: [String: [String]] = [:]
+            for wp in self.wallpapers { all[wp.url.path] = wp.tags }
+            self.metadata.savedTags = all
+        }
+        pendingTagsWrite = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: item)
+    }
 
     // MARK: - Initialization
 
@@ -166,6 +232,40 @@ class WallpaperManager: ObservableObject {
         return wallpaper
     }
 
+    /// P3-12: bulk-imports many URLs concurrently (TaskGroup) instead of
+    /// awaiting each file serially. Cap concurrency at 4 to avoid
+    /// pegging the CPU on 50-file Photos drops.
+    func importVideos(from sourceURLs: [URL]) async -> [Result<Wallpaper, Error>] {
+        await withTaskGroup(of: (Int, Result<Wallpaper, Error>).self) { group in
+            let chunkSize = 4
+            var results: [(Int, Result<Wallpaper, Error>)] = []
+
+            for batchStart in stride(from: 0, to: sourceURLs.count, by: chunkSize) {
+                let batchEnd = min(batchStart + chunkSize, sourceURLs.count)
+                for i in batchStart..<batchEnd {
+                    let url = sourceURLs[i]
+                    let index = i
+                    group.addTask { [weak self] in
+                        guard let self else {
+                            return (index, .failure(CancellationError()))
+                        }
+                        do {
+                            let wp = try await self.importVideo(from: url)
+                            return (index, .success(wp))
+                        } catch {
+                            return (index, .failure(error))
+                        }
+                    }
+                }
+                while let result = await group.next() {
+                    results.append(result)
+                    if results.count >= batchEnd { break }
+                }
+            }
+            return results.sorted { $0.0 < $1.0 }.map { $0.1 }
+        }
+    }
+
     private func postImportProcess(_ wallpaper: Wallpaper) {
         cache.upsert(wallpaper)
         Task {
@@ -174,7 +274,7 @@ class WallpaperManager: ObservableObject {
 
             if let hex = await wallpaper.extractDominantColor() {
                 await MainActor.run {
-                    if let idx = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) {
+                    if let idx = index(of: wallpaper.id) {
                         wallpapers[idx].dominantColorHex = hex
                         var colors = metadata.savedColors
                         colors[wallpaper.url.path] = hex
@@ -192,16 +292,16 @@ class WallpaperManager: ObservableObject {
         if currentWallpaper?.id == wallpaper.id {
             currentWallpaper = nil
         }
-        metadata.saveFavorites(from: wallpapers)
+        scheduleFavoritesWrite()
         cache.delete(id: wallpaper.id)
         Task { await widgetSync.syncFavorites(wallpapers.filter { $0.isFavorite }) }
     }
 
     func renameWallpaper(_ wallpaper: Wallpaper, to newTitle: String) {
-        if let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) {
+        if let index = index(of: wallpaper.id) {
             let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
             wallpapers[index].customTitle = trimmed.isEmpty ? nil : trimmed
-            metadata.saveCustomTitles(from: wallpapers)
+            scheduleTitlesWrite()
             cache.upsert(wallpapers[index])
             if currentWallpaper?.id == wallpaper.id {
                 currentWallpaper = wallpapers[index]
@@ -211,12 +311,12 @@ class WallpaperManager: ObservableObject {
     }
 
     func toggleFavorite(_ wallpaper: Wallpaper) {
-        if let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) {
+        if let index = index(of: wallpaper.id) {
             wallpapers[index].isFavorite.toggle()
             if currentWallpaper?.id == wallpaper.id {
                 currentWallpaper = wallpapers[index]
             }
-            metadata.saveFavorites(from: wallpapers)
+            scheduleFavoritesWrite()
             cache.upsert(wallpapers[index])
             Task { await widgetSync.syncFavorites(wallpapers.filter { $0.isFavorite }) }
         }
@@ -225,22 +325,18 @@ class WallpaperManager: ObservableObject {
     // MARK: - Tags
 
     func addTag(_ tag: String, to wallpaper: Wallpaper) {
-        guard let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) else { return }
+        guard let index = index(of: wallpaper.id) else { return }
         let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !trimmed.isEmpty, !wallpapers[index].tags.contains(trimmed) else { return }
         wallpapers[index].tags.append(trimmed)
-        var all = metadata.savedTags
-        all[wallpapers[index].url.path] = wallpapers[index].tags
-        metadata.savedTags = all
+        scheduleTagsWrite()
         cache.upsert(wallpapers[index])
     }
 
     func removeTag(_ tag: String, from wallpaper: Wallpaper) {
-        guard let index = wallpapers.firstIndex(where: { $0.id == wallpaper.id }) else { return }
+        guard let index = index(of: wallpaper.id) else { return }
         wallpapers[index].tags.removeAll { $0 == tag }
-        var all = metadata.savedTags
-        all[wallpapers[index].url.path] = wallpapers[index].tags
-        metadata.savedTags = all
+        scheduleTagsWrite()
         cache.upsert(wallpapers[index])
     }
 
@@ -253,6 +349,14 @@ class WallpaperManager: ObservableObject {
     func searchWallpapers(query: String) -> [Wallpaper] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !q.isEmpty else { return wallpapers }
+
+        // P3-11: small libraries hit the in-memory path; large libraries
+        // (>200) route through SQLite where indexes on name/tags pay off.
+        // Falls back to in-memory if the cache returns empty (e.g. cache
+        // not yet rebuilt at first launch).
+        if wallpapers.count > 200, let cached = sqlSearch(q: q), !cached.isEmpty {
+            return cached
+        }
 
         return wallpapers
             .map { wp -> (Wallpaper, Int) in
@@ -268,6 +372,15 @@ class WallpaperManager: ObservableObject {
             .filter { $0.1 > 0 }
             .sorted { $0.1 > $1.1 }
             .map { $0.0 }
+    }
+
+    private func sqlSearch(q: String) -> [Wallpaper]? {
+        let ids = cache.searchIds(query: q)
+        guard !ids.isEmpty else { return nil }
+        return ids.compactMap { id in
+            guard let i = indexById[id], i < wallpapers.count else { return nil }
+            return wallpapers[i]
+        }
     }
 
     private func fuzzyScore(query: String, in text: String) -> Int {
@@ -398,7 +511,7 @@ class WallpaperManager: ObservableObject {
     func cycleToPreviousWallpaper() {
         guard !wallpapers.isEmpty else { return }
         if let current = currentWallpaper,
-           let idx = wallpapers.firstIndex(where: { $0.id == current.id }) {
+           let idx = index(of: current.id) {
             let prevIdx = (idx - 1 + wallpapers.count) % wallpapers.count
             setWallpaper(wallpapers[prevIdx])
         } else if let last = wallpapers.last {
@@ -415,7 +528,7 @@ class WallpaperManager: ObservableObject {
     func cycleToNextWallpaper() {
         guard !wallpapers.isEmpty else { return }
         if let current = currentWallpaper,
-           let currentIndex = wallpapers.firstIndex(where: { $0.id == current.id }) {
+           let currentIndex = index(of: current.id) {
             let nextIndex = (currentIndex + 1) % wallpapers.count
             setWallpaper(wallpapers[nextIndex])
         } else {

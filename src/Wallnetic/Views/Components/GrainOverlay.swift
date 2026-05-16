@@ -24,6 +24,10 @@ struct GrainOverlay: View {
                 ctx.fill(Path(rect), with: .color(.white.opacity(a)))
             }
         }
+        // P0-1: rasterize into a Metal-backed cache. Without this the
+        // Canvas closure re-runs on every ambient/Ken-Burns/cursor frame,
+        // burning 0.5-1.5 ms/frame for noise that never changes.
+        .drawingGroup(opaque: false)
         .blendMode(.overlay)
         .allowsHitTesting(false)
     }

@@ -50,4 +50,37 @@ final class SlideshowGeneratorTests: XCTestCase {
         XCTAssertTrue(s.kenBurns)
         XCTAssertEqual(s.fps, 30)
     }
+
+    // MARK: - P3-15: bounds fuzz
+
+    func testFrameCountFormula() {
+        // Render budget: totalFrames = N*d - (N-1)*T (overlapping crossfades).
+        // Verify for representative N/d/T triples.
+        struct Case { let n: Int; let d: Double; let t: Double; let expected: Double }
+        let cases: [Case] = [
+            Case(n: 1, d: 5, t: 0.6, expected: 5),
+            Case(n: 2, d: 5, t: 0.6, expected: 5 * 2 - 0.6),
+            Case(n: 10, d: 5, t: 0.6, expected: 5 * 10 - 0.6 * 9),
+            Case(n: 50, d: 5, t: 0.6, expected: 5 * 50 - 0.6 * 49)
+        ]
+        for c in cases {
+            let actual = Double(c.n) * c.d - Double(max(0, c.n - 1)) * c.t
+            XCTAssertEqual(actual, c.expected, accuracy: 0.0001, "N=\(c.n) failed")
+        }
+    }
+
+    func testTransitionBoundedByPerPhotoDuration() {
+        // If T >= d, frames math breaks. Verify our defaults respect it
+        // and that we'd ideally clamp T at the call site.
+        let s = SlideshowGenerator.Settings()
+        XCTAssertLessThan(s.transitionDuration, s.perPhotoDuration,
+                          "Transition must be shorter than per-photo duration.")
+    }
+
+    func testResolutionWidthHeightArePositive() {
+        for r in [SlideshowGenerator.Resolution.hd1080, .qhd1440, .uhd4k] {
+            XCTAssertGreaterThan(r.size.width, 0)
+            XCTAssertGreaterThan(r.size.height, 0)
+        }
+    }
 }

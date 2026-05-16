@@ -40,9 +40,18 @@ final class DynamicAccent: ObservableObject {
         if let observer { NotificationCenter.default.removeObserver(observer) }
     }
 
+    /// P2-9: setting `dynamicAccent.smoothTransition = false` (via
+    /// UserDefaults key "accent.smoothTransition") cuts the 0.8s ease
+    /// to an instant swap. Cheap escape hatch for older Macs or users
+    /// who don't want the cascade. Default on.
+    private var smoothTransition: Bool {
+        // Default true; absent key → animated.
+        UserDefaults.standard.object(forKey: "accent.smoothTransition") as? Bool ?? true
+    }
+
     func applyFrom(wallpaper: Wallpaper?) {
         guard let wp = wallpaper else {
-            withAnimation(.easeInOut(duration: 0.8)) { theme = .signature }
+            applyTheme(.signature)
             return
         }
 
@@ -54,9 +63,7 @@ final class DynamicAccent: ObservableObject {
         // the optional chaining below is the actual sanitizer. No
         // additional validation needed.
         if let hex = wp.dominantColorHex, let ns = NSColor(hex: hex) {
-            withAnimation(.easeInOut(duration: 0.8)) {
-                theme = AccentTheme.derive(from: ns)
-            }
+            applyTheme(AccentTheme.derive(from: ns))
             return
         }
 
@@ -64,11 +71,17 @@ final class DynamicAccent: ObservableObject {
         Task { [weak self] in
             if let hex = await wp.extractDominantColor(), let ns = NSColor(hex: hex) {
                 await MainActor.run {
-                    withAnimation(.easeInOut(duration: 0.8)) {
-                        self?.theme = AccentTheme.derive(from: ns)
-                    }
+                    self?.applyTheme(AccentTheme.derive(from: ns))
                 }
             }
+        }
+    }
+
+    private func applyTheme(_ next: AccentTheme) {
+        if smoothTransition {
+            withAnimation(.easeInOut(duration: 0.8)) { theme = next }
+        } else {
+            theme = next
         }
     }
 }
