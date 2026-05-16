@@ -11,7 +11,7 @@ struct ExploreView: View {
     @State private var selectedColor: ColorCategory?
 
     enum ViewMode: String {
-        case grid, list
+        case grid, list, carousel3D
     }
 
     private let categories = ["All", "Favorites", "Recent", "Long", "Short", "HD", "4K"]
@@ -133,14 +133,16 @@ struct ExploreView: View {
                 HStack(spacing: 4) {
                     viewModeButton(icon: "square.grid.2x2", mode: .grid)
                     viewModeButton(icon: "list.bullet", mode: .list)
+                    viewModeButton(icon: "rectangle.stack", mode: .carousel3D)
                 }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 8)
 
-            // Content — grid or list
-            ScrollView {
-                if viewMode == .grid {
+            // Content — grid, list, or 3D carousel
+            switch viewMode {
+            case .grid:
+                ScrollView {
                     LazyVGrid(columns: columns, spacing: 14) {
                         ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
                             ExploreCard(wallpaper: wallpaper, index: index)
@@ -149,7 +151,9 @@ struct ExploreView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 4)
                     .padding(.bottom, 20)
-                } else {
+                }
+            case .list:
+                ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
                             ExploreListRow(wallpaper: wallpaper)
@@ -160,6 +164,13 @@ struct ExploreView: View {
                     .padding(.top, 4)
                     .padding(.bottom, 20)
                 }
+            case .carousel3D:
+                Carousel3DGallery(wallpapers: filteredWallpapers) { wallpaper in
+                    wallpaperManager.setWallpaper(wallpaper)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 20)
+                Spacer()
             }
         }
         .background(Color.clear)
