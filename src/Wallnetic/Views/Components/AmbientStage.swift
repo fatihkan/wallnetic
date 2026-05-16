@@ -24,6 +24,11 @@ struct AmbientStage: ViewModifier {
     /// P0-3: cap cursor → state writes at ~30 Hz so AmbientStage body
     /// doesn't redraw 4 stacked radials + grain at 120 Hz when the user
     /// just twitches the mouse.
+    ///
+    /// ORTA-3: even with throttle each accepted write triggers a SwiftUI
+    /// invalidation. The static ambient layers (drift + vignette) are
+    /// hoisted out of this view's body so only the cursorSpotlight
+    /// sub-view actually redraws at 30 Hz.
     private static let cursorThrottle: TimeInterval = 1.0 / 30.0
 
     func body(content: Content) -> some View {

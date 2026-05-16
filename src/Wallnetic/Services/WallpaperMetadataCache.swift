@@ -262,6 +262,12 @@ final class WallpaperMetadataCache {
     /// P1-5: async wrapper so call sites on MainActor never block on
     /// SQLite even when the disk is slow. Internally hops to the
     /// service's serial queue.
+    ///
+    /// DUSUK-1: continuation is always resumed exactly once — both
+    /// branches of the `guard` resume before returning. The singleton
+    /// queue outlives the process, so there's no practical leak risk;
+    /// the [weak self] guard exists only to handle the test-teardown
+    /// path where `makeInMemoryForTesting()` instances dealloc.
     func asyncSearchIds(query: String) async -> [UUID] {
         let q = query
         return await withCheckedContinuation { continuation in
