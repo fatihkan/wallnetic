@@ -259,6 +259,55 @@ final class WallpaperMetadataCache {
         }
     }
 
+    /// P1-5: async wrapper so call sites on MainActor never block on
+    /// SQLite even when the disk is slow. Internally hops to the
+    /// service's serial queue.
+    func asyncSearchIds(query: String) async -> [UUID] {
+        let q = query
+        return await withCheckedContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                continuation.resume(returning: self.unsafeSearchIds(query: q))
+            }
+        }
+    }
+
+    /// Body of `searchIds` factored out so both sync (legacy) and async
+    /// paths reuse the SQL.
+    private func unsafeSearchIds(query: String) -> [UUID] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let db = self.db else { return [] }
+        let like = "%\(trimmed.lowercased())%"
+        let sql = """
+        SELECT key,
+               (CASE WHEN lower(coalesce(custom_title, name)) = ? THEN 100
+                     WHEN lower(coalesce(custom_title, name)) LIKE ? THEN 70
+                     ELSE 0 END) +
+               (CASE WHEN lower(tags_json) LIKE ? THEN 50 ELSE 0 END) AS score
+          FROM wallpapers
+         WHERE score > 0
+         ORDER BY score DESC, name ASC;
+        """
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        let exact = trimmed.lowercased()
+        sqlite3_bind_text(stmt, 1, exact, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_text(stmt, 2, like, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_text(stmt, 3, like, -1, SQLITE_TRANSIENT)
+        var ids: [UUID] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let cstr = sqlite3_column_text(stmt, 0),
+               let uuid = UUID(uuidString: String(cString: cstr)) {
+                ids.append(uuid)
+            }
+        }
+        return ids
+    }
+
     func count() -> Int {
         return queue.sync {
             guard let db = self.db else { return 0 }

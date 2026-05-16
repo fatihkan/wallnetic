@@ -69,9 +69,14 @@ private struct LiquidGlassModifier: ViewModifier {
         content
             .background(
                 ZStack {
-                    // 1) Material blur
-                    RoundedRectangle(cornerRadius: style.radius, style: .continuous)
-                        .fill(.regularMaterial)
+                    // 1) Material blur — only for prominent/standard tones.
+                    // P2-8: .control tone skips material to avoid stacking
+                    // 3+ blur passes per window (TopNav + Sidebar + Sheet
+                    // already each carry one).
+                    if style.tone != .control {
+                        RoundedRectangle(cornerRadius: style.radius, style: .continuous)
+                            .fill(.regularMaterial)
+                    }
 
                     // 2) Base tint
                     RoundedRectangle(cornerRadius: style.radius, style: .continuous)

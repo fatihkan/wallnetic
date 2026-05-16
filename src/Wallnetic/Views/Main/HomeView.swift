@@ -1,5 +1,16 @@
 import SwiftUI
 
+private struct HeroScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+/// P3-13: shared horizontal inset for hero rows / carousel sections so we
+/// don't sprinkle the same magic number across 3 sites.
+private let homeHorizontalInset: CGFloat = 48
+
 /// Striking home with cinematic hero and glass carousel cards
 struct HomeView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
@@ -12,11 +23,15 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 heroBanner
                     .padding(.top, -46)
-                    .background(GeometryReader { geo -> Color in
-                        DispatchQueue.main.async {
-                            heroScrollY = geo.frame(in: .named("homeScroll")).minY
-                        }
-                        return Color.clear
+                    // P0-2: replaces the recursive DispatchQueue.async +
+                    // @State write antipattern. PreferenceKey reports
+                    // upward once per actual layout pass; no body
+                    // invalidation loop.
+                    .background(GeometryReader { geo in
+                        Color.clear.preference(
+                            key: HeroScrollOffsetKey.self,
+                            value: geo.frame(in: .named("homeScroll")).minY
+                        )
                     })
 
                 VStack(spacing: 28) {
@@ -53,6 +68,10 @@ struct HomeView: View {
             }
         }
         .coordinateSpace(name: "homeScroll")
+        .onPreferenceChange(HeroScrollOffsetKey.self) { value in
+            // Coalesced: only ever a single write per layout pass.
+            heroScrollY = value
+        }
         .background(Color.clear)
         .onAppear { startHeroTimer() }
         .onDisappear { heroTimer?.invalidate() }
@@ -190,7 +209,7 @@ struct HomeView: View {
                 }
             }
         }
-        .padding(.horizontal, 48)
+        .padding(.horizontal, homeHorizontalInset)
         .padding(.top, -40)
         .padding(.bottom, 16)
     }
@@ -241,31 +260,36 @@ struct HomeView: View {
 struct HeroBannerCard: View {
     let wallpaper: Wallpaper
     @State private var thumbnail: NSImage?
-    @State private var kenBurnsPhase: Double = 0
 
     var body: some View {
-        Group {
-            if let thumbnail = thumbnail {
-                Image(nsImage: thumbnail)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    // Ken Burns: scale 1.06 → 1.12, pan ±18pt over 14s
-                    .scaleEffect(1.06 + kenBurnsPhase * 0.06)
-                    .offset(
-                        x: (kenBurnsPhase - 0.5) * 36,
-                        y: (kenBurnsPhase - 0.5) * 22
-                    )
-            } else {
-                Color.black
+        // P2-10: TimelineView replaces the infinite withAnimation loop.
+        // Single timer drives the phase; no implicit-animation cascade
+        // through observers, no per-frame body invalidation outside
+        // this view's subtree.
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            let cycle: Double = 14
+            // Triangle wave 0 → 1 → 0
+            let raw = (t.truncatingRemainder(dividingBy: cycle)) / cycle
+            let phase = raw < 0.5 ? raw * 2 : (1 - raw) * 2
+
+            Group {
+                if let thumbnail = thumbnail {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .scaleEffect(1.06 + phase * 0.06)
+                        .offset(
+                            x: (phase - 0.5) * 36,
+                            y: (phase - 0.5) * 22
+                        )
+                } else {
+                    Color.black
+                }
             }
         }
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
-        }
-        .onAppear {
-            withAnimation(.linear(duration: 14).repeatForever(autoreverses: true)) {
-                kenBurnsPhase = 1
-            }
         }
     }
 }
@@ -294,7 +318,7 @@ struct CarouselSection: View {
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundColor(.white.opacity(0.3))
             }
-            .padding(.horizontal, 48)
+            .padding(.horizontal, homeHorizontalInset)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 10) {
@@ -303,7 +327,7 @@ struct CarouselSection: View {
                             .staggered(index: index)
                     }
                 }
-                .padding(.horizontal, 48)
+                .padding(.horizontal, homeHorizontalInset)
                 .padding(.vertical, 8)
             }
         }
@@ -320,6 +344,8 @@ struct CarouselCard: View {
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText = ""
     @State private var pointer: CGPoint = .zero  // 0..1 within card
+    @State private var lastPointerWrite: TimeInterval = 0
+    private static let pointerThrottle: TimeInterval = 1.0 / 30.0  // P1-7
 
     private let cardWidth: CGFloat = 240
     private let cardHeight: CGFloat = 135
@@ -439,6 +465,9 @@ struct CarouselCard: View {
                         .onContinuousHover { phase in
                             switch phase {
                             case .active(let loc):
+                                let now = CACurrentMediaTime()
+                                guard now - lastPointerWrite >= Self.pointerThrottle else { return }
+                                lastPointerWrite = now
                                 pointer = CGPoint(
                                     x: min(max(loc.x / proxy.size.width, 0), 1),
                                     y: min(max(loc.y / proxy.size.height, 0), 1)

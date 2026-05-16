@@ -19,15 +19,33 @@ struct AmbientStage: ViewModifier {
     @State private var driftPhase: Double = 0
     @State private var cursor: CGPoint = .init(x: 0.5, y: 0.5)
     @State private var cursorInside: Bool = false
+    @State private var lastCursorWrite: TimeInterval = 0
+
+    /// P0-3: cap cursor → state writes at ~30 Hz so AmbientStage body
+    /// doesn't redraw 4 stacked radials + grain at 120 Hz when the user
+    /// just twitches the mouse.
+    private static let cursorThrottle: TimeInterval = 1.0 / 30.0
 
     func body(content: Content) -> some View {
         ZStack {
             content
-            ambientOverlay
+            // Drift + vignette layers — these depend only on driftPhase
+            // and ignore the cursor; isolated so cursor invalidation
+            // doesn't redraw the whole stack.
+            staticAmbient
                 .allowsHitTesting(false)
                 .blendMode(.plusLighter)
+            // Cursor spotlight — separated view; its own redraws don't
+            // dirty the static ambient layers above.
+            if cursorInside {
+                cursorSpotlight
+                    .allowsHitTesting(false)
+                    .blendMode(.plusLighter)
+                    .transition(.opacity)
+            }
             // Anti-banding noise — applied once over the whole stage so
-            // every radial gradient layer dithers cleanly.
+            // every radial gradient layer dithers cleanly. Rasterized
+            // via drawingGroup() inside GrainOverlay.
             GrainOverlay(intensity: 0.04)
                 .ignoresSafeArea()
         }
@@ -45,6 +63,9 @@ struct AmbientStage: ViewModifier {
                     .onContinuousHover { phase in
                         switch phase {
                         case .active(let p):
+                            let now = CACurrentMediaTime()
+                            guard now - lastCursorWrite >= Self.cursorThrottle else { return }
+                            lastCursorWrite = now
                             cursor = CGPoint(
                                 x: min(max(p.x / geo.size.width, 0), 1),
                                 y: min(max(p.y / geo.size.height, 0), 1)
@@ -79,13 +100,13 @@ struct AmbientStage: ViewModifier {
 
     // MARK: - Overlay (in front of content)
 
-    private var ambientOverlay: some View {
+    /// Drift + vignette only — depends on driftPhase, not cursor.
+    private var staticAmbient: some View {
         GeometryReader { geo in
             let driftX = 0.30 + driftPhase * 0.40
             let driftY = 0.18 + sin(driftPhase * .pi) * 0.10
 
             ZStack {
-                // 1) Drifting accent wash
                 RadialGradient(
                     colors: [
                         accent.primary.opacity(0.16 * accent.glow),
@@ -97,7 +118,6 @@ struct AmbientStage: ViewModifier {
                     endRadius: 500
                 )
 
-                // 2) Secondary drift (counter direction)
                 RadialGradient(
                     colors: [accent.secondary.opacity(0.10 * accent.glow), .clear],
                     center: UnitPoint(x: 1.0 - driftX, y: 0.85 - driftY * 0.6),
@@ -105,7 +125,6 @@ struct AmbientStage: ViewModifier {
                     endRadius: 420
                 )
 
-                // 3) Vignette
                 RadialGradient(
                     colors: [.clear, .black.opacity(0.35)],
                     center: .center,
@@ -113,19 +132,20 @@ struct AmbientStage: ViewModifier {
                     endRadius: max(geo.size.width, geo.size.height) * 0.75
                 )
                 .blendMode(.multiply)
-
-                // 4) Cursor spotlight
-                if cursorInside {
-                    RadialGradient(
-                        colors: [accent.primary.opacity(0.13 * accent.glow), .clear],
-                        center: UnitPoint(x: cursor.x, y: cursor.y),
-                        startRadius: 4,
-                        endRadius: 180
-                    )
-                    .animation(.easeOut(duration: 0.18), value: cursor)
-                }
             }
         }
+    }
+
+    /// Cursor spotlight — separate so its high-frequency updates don't
+    /// redraw the static ambient stack.
+    private var cursorSpotlight: some View {
+        RadialGradient(
+            colors: [accent.primary.opacity(0.13 * accent.glow), .clear],
+            center: UnitPoint(x: cursor.x, y: cursor.y),
+            startRadius: 4,
+            endRadius: 180
+        )
+        .animation(.easeOut(duration: 0.18), value: cursor)
     }
 }
 
