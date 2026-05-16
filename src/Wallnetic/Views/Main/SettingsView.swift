@@ -319,6 +319,7 @@ private struct SidebarRow: View {
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
+        .suppressFocusRing()
         .onHover { hover = $0 }
         .animation(.easeOut(duration: 0.12), value: hover)
         .animation(.easeOut(duration: 0.18), value: isSelected)
