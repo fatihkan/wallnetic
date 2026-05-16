@@ -52,6 +52,7 @@
 		61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B106464A071BF6E736C3272 /* MenuBarView.swift */; };
 		61B8431DE4EA724F4E55C7B2 /* OllamaVisionTagger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD3DFBD42A5D9B294784C5F /* OllamaVisionTagger.swift */; };
 		6A650CD75C4B32AB9889A6A7 /* SharedWidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */; };
+		6ACA2AC7AD0702CFEFA50E1B /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFF460340111975F4DA40C32 /* DesignTokens.swift */; };
 		6ADBCB967C34EB7B36825043 /* WallpaperMetadataCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 941B25667F75E00393C7E895 /* WallpaperMetadataCacheTests.swift */; };
 		6B3FA8945F430A067CC4DB4D /* WallpaperLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F557952B625823A2689EBE7 /* WallpaperLibrary.swift */; };
 		6FDE90B9E751CC319C45BA54 /* MusicReactiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F48518E41B9C56DFE5EB099 /* MusicReactiveManager.swift */; };
@@ -60,6 +61,7 @@
 		725E4F9BF3A84F458A306BDF /* WallpaperModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 388D852D79939F22C5EF801C /* WallpaperModelTests.swift */; };
 		72F4CF08714A41746B6A0258 /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7021318E82664A8754F5FF1 /* AIProvider.swift */; };
 		73849203691B6B9B27EF0384 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1849D0D4B8C207540818A7E8 /* CollectionManager.swift */; };
+		782ADAB3D0278AD8028A151C /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD359DF3443AB6E3242CA90 /* LiquidGlass.swift */; };
 		7B8DE2A0443E6DC55D750FCB /* WallpaperManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532FE0E3069C64B6236A343C /* WallpaperManager.swift */; };
 		7CB0D6C70AC6586289801B6C /* DisplaySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658D24C439FCC30FFDEBC73C /* DisplaySettingsView.swift */; };
 		7CD2350BE3D4A9216B849C69 /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */; };
@@ -199,6 +201,7 @@
 		43A9F2E051E3DDAA18ACAC9D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		4662279ADB65DBA3957578B7 /* VideoFormatConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFormatConverter.swift; sourceTree = "<group>"; };
 		48513382BB8B61A6DD8431DC /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		4BD359DF3443AB6E3242CA90 /* LiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlass.swift; sourceTree = "<group>"; };
 		4C428B5A76D12B2D39EB866E /* SlideshowGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideshowGeneratorTests.swift; sourceTree = "<group>"; };
 		4C70B541C6297E485FF1E0AF /* ExceptionCatcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ExceptionCatcher.h; sourceTree = "<group>"; };
 		4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticApp.swift; sourceTree = "<group>"; };
@@ -280,6 +283,7 @@
 		DE3820804804CF982B3EAD9E /* AIGenerateViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerateViewModelTests.swift; sourceTree = "<group>"; };
 		DE3FD865C09D4CE6C4025020 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
 		DFC7F5C372D751F46660FA5C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DFF460340111975F4DA40C32 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		E0187521E8CC2C0BB29CE90D /* BatteryPromptService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryPromptService.swift; sourceTree = "<group>"; };
 		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalVideoRenderer.swift; sourceTree = "<group>"; };
@@ -489,6 +493,8 @@
 		6D154AD72514800F57D7A3AE /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				DFF460340111975F4DA40C32 /* DesignTokens.swift */,
+				4BD359DF3443AB6E3242CA90 /* LiquidGlass.swift */,
 				5FD8494A42E5AA356A35BA25 /* StrikingEffects.swift */,
 				07818DDC6C7B04DED71808AA /* WallneticButton.swift */,
 				B5803846B0B2BB84A1FDEE4E /* WallneticSheet.swift */,
@@ -768,6 +774,7 @@
 				D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */,
 				502AEDE09B50668E7154DC6E /* CreateFromPhotosView.swift in Sources */,
 				2445819EF402088E3689C8CD /* DeepLinkHandler.swift in Sources */,
+				6ACA2AC7AD0702CFEFA50E1B /* DesignTokens.swift in Sources */,
 				5E298128B4AE9AB89B656E86 /* DesktopOverlayController.swift in Sources */,
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
 				8EFAE3E67407537EC1B9A705 /* DiscoverView.swift in Sources */,
@@ -784,6 +791,7 @@
 				8BED6ED6D599D3F3C32821D5 /* HistoryView.swift in Sources */,
 				131EDF3DA15DA0EEA84918A4 /* HomeView.swift in Sources */,
 				1CA1504E421EAE5C547DF122 /* KeychainManager.swift in Sources */,
+				782ADAB3D0278AD8028A151C /* LiquidGlass.swift in Sources */,
 				42AF0F91E2BE36A155243433 /* LockScreenManager.swift in Sources */,
 				4BC3BA52E3938E15E6BC7AAA /* Log.swift in Sources */,
 				EA0AA7318BCBE3C944FF48ED /* MLWDecryptor.swift in Sources */,

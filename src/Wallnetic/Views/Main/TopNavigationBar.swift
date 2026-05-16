@@ -90,33 +90,11 @@ struct TopNavigationBar: View {
                 }
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 9)
-        .background(navBackground)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [.clear, .accentColor.opacity(isScrolled ? 0.25 : 0.05), .clear],
-                        startPoint: .leading, endPoint: .trailing
-                    )
-                )
-                .frame(height: 0.5)
-        }
-    }
-
-    // MARK: - Background
-
-    private var navBackground: some View {
-        ZStack {
-            // Frosted glass — stronger when content scrolls under
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(isScrolled ? 0.85 : 0.5)
-            // Dark tint underneath material so it never goes light
-            Color.black.opacity(isScrolled ? 0.35 : 0.18)
-        }
-        .animation(.easeInOut(duration: Anim.medium), value: isScrolled)
+        .padding(.horizontal, Space.md)
+        .padding(.vertical, Space.xs + 2)
+        .liquidGlassHUD(radius: Radius.panel, accent: .accentColor)
+        .padding(.horizontal, Space.sm)
+        .padding(.top, Space.xs)
     }
 
     // MARK: - Tab Button
@@ -255,26 +233,34 @@ private struct ActionChip: View {
         Image(systemName: icon)
             .font(.system(size: 11, weight: .semibold))
             .foregroundColor(.white.opacity(hover ? 1.0 : 0.75))
-            .frame(width: 28, height: 28)
+            .frame(width: 30, height: 30)
             .background(
                 ZStack {
-                    Circle().fill(
-                        accent && hover
-                            ? AnyShapeStyle(LinearGradient(
-                                colors: [Color.accentColor.opacity(0.4), Color.accentColor.opacity(0.18)],
-                                startPoint: .topLeading, endPoint: .bottomTrailing))
-                            : AnyShapeStyle(Color.white.opacity(hover ? 0.12 : 0.06))
-                    )
-                    Circle().stroke(
-                        accent && hover ? Color.accentColor.opacity(0.55) : Color.white.opacity(0.12),
-                        lineWidth: 0.5
-                    )
+                    Circle()
+                        .fill(
+                            accent && hover
+                                ? AnyShapeStyle(LinearGradient(
+                                    colors: [Color.accentColor.opacity(0.55), Color.accentColor.opacity(0.2)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing))
+                                : AnyShapeStyle(Color.white.opacity(hover ? 0.10 : 0.05))
+                        )
+                    // Refractive stroke
+                    Circle()
+                        .strokeBorder(LinearGradient(
+                            stops: [
+                                .init(color: accent && hover ? Color.accentColor.opacity(0.75) : Color.white.opacity(0.22), location: 0),
+                                .init(color: .white.opacity(0.04), location: 0.55),
+                                .init(color: .black.opacity(0.30), location: 1)
+                            ],
+                            startPoint: .top, endPoint: .bottom
+                        ), lineWidth: 0.75)
                 }
             )
             .shadow(
-                color: accent && hover ? Color.accentColor.opacity(0.45) : .clear,
-                radius: 8
+                color: accent && hover ? Color.accentColor.opacity(0.55) : .clear,
+                radius: 12, y: 4
             )
+            .scaleEffect(hover ? 1.04 : 1.0)
             .onHover { hover = $0 }
             .animation(.easeOut(duration: Anim.normal), value: hover)
     }

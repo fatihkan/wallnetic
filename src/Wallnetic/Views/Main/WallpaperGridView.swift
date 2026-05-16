@@ -382,32 +382,41 @@ struct SelectedWallpaperBar: View {
     let wallpaper: Wallpaper
 
     var body: some View {
-        HStack {
-            // Preview thumbnail
-            AsyncThumbnailView(wallpaper: wallpaper, size: CGSize(width: 80, height: 45))
-                .cornerRadius(4)
+        HStack(spacing: Space.sm) {
+            AsyncThumbnailView(
+                wallpaper: wallpaper,
+                size: CGSize(width: 84, height: 47),
+                cornerRadius: Radius.tag
+            )
+            .refractiveBorder(radius: Radius.tag)
 
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(wallpaper.displayName)
-                    .fontWeight(.medium)
-                Text("\(wallpaper.formattedResolution) • \(wallpaper.formattedDuration)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .tracking(-0.1)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(wallpaper.formattedResolution)
+                    Text("·").foregroundColor(.white.opacity(0.2))
+                    Text(wallpaper.formattedDuration)
+                }
+                .font(Typo.data)
+                .tracking(Typo.dataTracking)
+                .foregroundColor(.white.opacity(0.5))
             }
 
             Spacer()
 
-            // Apply button
-            Button {
+            WallneticButton.primary("Apply", icon: "play.fill") {
                 wallpaperManager.setWallpaper(wallpaper)
-            } label: {
-                Text("Apply Wallpaper")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
         }
-        .padding()
-        .background(.bar)
+        .padding(.horizontal, Space.md)
+        .padding(.vertical, Space.sm)
+        .liquidGlassHUD(radius: Radius.panel)
+        .padding(.horizontal, Space.md)
+        .padding(.bottom, Space.sm)
     }
 }
 

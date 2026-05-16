@@ -132,11 +132,12 @@ struct HomeView: View {
     private func heroInfo(_ wp: Wallpaper, wallpapers: [Wallpaper]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(wp.name)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(Typo.display)
+                .tracking(Typo.displayTracking)
                 .foregroundColor(.white)
                 .lineLimit(2)
                 .truncationMode(.tail)
-                .shadow(color: .black.opacity(0.5), radius: 8)
+                .shadow(color: .black.opacity(0.55), radius: 8, y: 2)
 
             // Metadata pills
             HStack(spacing: 8) {
@@ -161,48 +162,19 @@ struct HomeView: View {
             }
 
             // Action buttons
-            HStack(spacing: 10) {
-                // Play button with glow
-                Button {
+            HStack(spacing: Space.xs + 2) {
+                WallneticButton.primary("Use", icon: "play.fill", accent: .white) {
                     wallpaperManager.setWallpaper(wp)
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "play.fill")
-                        Text("Use")
-                            .fontWeight(.bold)
-                    }
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 10)
-                    .background(
-                        Capsule().fill(Color.white)
-                    )
                 }
-                .buttonStyle(.plain)
 
-                // My List button
-                Button {
+                WallneticButton.ghost(
+                    "My List",
+                    icon: wp.isFavorite ? "checkmark" : "plus"
+                ) {
                     withAnimation(.spring(response: Anim.medium, dampingFraction: 0.5)) {
                         wallpaperManager.toggleFavorite(wp)
                     }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: wp.isFavorite ? "checkmark" : "plus")
-                        Text("My List")
-                            .fontWeight(.semibold)
-                    }
-                    .font(.system(size: 14))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(
-                        Capsule()
-                            .fill(Color.white.opacity(0.1))
-                            .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.5))
-                    )
                 }
-                .buttonStyle(.plain)
 
                 Spacer()
 
