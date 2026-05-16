@@ -29,19 +29,18 @@ struct SettingsView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
+            HStack(spacing: Space.xs + 2) {
                 Image(systemName: "gearshape.2.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.accentColor)
+                    .shadow(color: .accentColor.opacity(0.55), radius: 5)
                 Text("SETTINGS")
-                    .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                    .tracking(2.4)
-                    .foregroundColor(.white.opacity(0.45))
+                    .styledKicker(color: .white.opacity(0.55))
                 Spacer()
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 24)
-            .padding(.bottom, 16)
+            .padding(.horizontal, Space.lg + 2)
+            .padding(.top, Space.lg + 4)
+            .padding(.bottom, Space.md)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -69,19 +68,43 @@ struct SettingsView: View {
             Spacer(minLength: 0)
 
             // Version badge
-            HStack(spacing: 6) {
+            HStack(spacing: Space.xxs + 2) {
                 Circle()
                     .fill(.green)
                     .frame(width: 5, height: 5)
-                    .shadow(color: .green.opacity(0.6), radius: 3)
+                    .shadow(color: .green.opacity(0.65), radius: 3)
                 Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.45))
+                    .styledData(color: .white.opacity(0.5))
+                Spacer()
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 9))
+                    .foregroundColor(.white.opacity(0.3))
             }
-            .padding(.horizontal, 22)
-            .padding(.bottom, 18)
+            .padding(.horizontal, Space.lg + 2)
+            .padding(.bottom, Space.md + 2)
         }
-        .frame(width: 220)
+        .frame(width: 224)
+        .background(
+            // Translucent over content — Liquid Glass sidebar
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(Color.black.opacity(0.32))
+                // Inner accent wash
+                LinearGradient(
+                    colors: [Color.accentColor.opacity(0.08), .clear],
+                    startPoint: .topLeading, endPoint: .center
+                )
+            }
+        )
+        .overlay(alignment: .trailing) {
+            // Right-edge refractive hairline
+            Rectangle()
+                .fill(LinearGradient(
+                    colors: [.white.opacity(0.04), .white.opacity(0.12), .white.opacity(0.04)],
+                    startPoint: .top, endPoint: .bottom
+                ))
+                .frame(width: 0.5)
+        }
     }
 
     // MARK: - Detail Pane
@@ -229,19 +252,27 @@ private struct SidebarRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: section.icon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(isSelected ? section.accent : .white.opacity(hover ? 0.7 : 0.45))
-                    .frame(width: 22, height: 22)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(isSelected ? section.accent.opacity(0.18) : Color.clear)
-                    )
+            HStack(spacing: Space.xs + 2) {
+                ZStack {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: Radius.accent, style: .continuous)
+                            .fill(section.accent.opacity(0.22))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Radius.accent, style: .continuous)
+                                    .strokeBorder(section.accent.opacity(0.4), lineWidth: 0.5)
+                            )
+                            .shadow(color: section.accent.opacity(0.45), radius: 4)
+                    }
+                    Image(systemName: section.icon)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : .white.opacity(hover ? 0.75 : 0.45))
+                }
+                .frame(width: 22, height: 22)
 
                 Text(section.title)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                     .foregroundColor(isSelected ? .white : .white.opacity(hover ? 0.85 : 0.6))
+                    .tracking(isSelected ? 0.2 : 0)
 
                 Spacer()
 
@@ -249,17 +280,30 @@ private struct SidebarRow: View {
                     Circle()
                         .fill(section.accent)
                         .frame(width: 4, height: 4)
-                        .shadow(color: section.accent.opacity(0.7), radius: 3)
+                        .shadow(color: section.accent.opacity(0.8), radius: 4)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, Space.sm - 2)
+            .padding(.vertical, Space.xs - 1)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.white.opacity(0.06) : (hover ? Color.white.opacity(0.03) : .clear))
+                ZStack {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
+                            .fill(Color.white.opacity(0.07))
+                        RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
+                            .strokeBorder(LinearGradient(
+                                colors: [.white.opacity(0.16), .white.opacity(0.02)],
+                                startPoint: .top, endPoint: .bottom
+                            ), lineWidth: 0.5)
+                    } else if hover {
+                        RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                    }
+                }
             )
         }
         .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .onHover { hover = $0 }
         .animation(.easeOut(duration: 0.12), value: hover)
         .animation(.easeOut(duration: 0.18), value: isSelected)
