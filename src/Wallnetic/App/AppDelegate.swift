@@ -38,9 +38,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup global hotkeys
         setupGlobalHotkeys()
 
-        // Initialize desktop overlays (they self-restore from AppStorage)
-        // NowPlayingOverlayController disabled until proper code signing is set up
-        _ = AudioVisualizerOverlayController.shared
+        // Audio visualizer overlay disabled in v1.3.1 — TCC/SCStream UX issues.
+        // Files retained for future re-enable; init is gated to skip the
+        // lazy singleton allocation so the overlay never auto-restores.
+        runAudioVisualizerMigration()
 
         // Battery prompt (#172) — if we launched while on battery, ask the user
         // whether to keep the live wallpaper running. Delayed so PowerManager
@@ -50,6 +51,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         logger.info("Wallnetic started successfully")
+    }
+
+    // MARK: - Audio Visualizer Migration (v1.3.1)
+
+    /// One-shot migration: turns off the audio visualizer overlay for users
+    /// who had it enabled before v1.3.1, where the feature is hidden from
+    /// the UI. Re-enabling is a no-op since the migration marker stops
+    /// the flag from being touched on subsequent launches.
+    private func runAudioVisualizerMigration() {
+        let key = "audioVisualizer.migrated.v1.3.1"
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: key) else { return }
+        defaults.set(false, forKey: "audioVisualizer.overlayEnabled")
+        defaults.set(false, forKey: "audioVisualizer.enabled")
+        defaults.set(true, forKey: key)
     }
 
     // MARK: - Global Hotkeys

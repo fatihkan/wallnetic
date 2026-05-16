@@ -114,7 +114,6 @@ struct GeneralSettingsView: View {
     @AppStorage("island.enabled") private var islandEnabled = false
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = false
     @AppStorage("nowPlayingOverlay.enabled") private var nowPlayingEnabled = false
-    @AppStorage("audioVisualizer.overlayEnabled") private var audioVisualizerEnabled = false
 
     var body: some View {
         Form {
@@ -139,17 +138,6 @@ struct GeneralSettingsView: View {
                     .help("Show wallpaper controls in a floating pill at the top of the screen")
                 Toggle("Global Hotkeys", isOn: $globalHotkeysEnabled)
                     .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
-            }
-            Section("Desktop Overlays") {
-                Toggle("Audio visualizer", isOn: $audioVisualizerEnabled)
-                    .onChange(of: audioVisualizerEnabled) { newValue in
-                        if newValue { AudioVisualizerOverlayController.shared.show() }
-                        else { AudioVisualizerOverlayController.shared.hide() }
-                    }
-                    .help("Frequency bars driven by system audio or the microphone")
-                if audioVisualizerEnabled {
-                    AudioVisualizerSourcePicker()
-                }
             }
             Section("Library") {
                 LabeledContent("Location") {
@@ -176,81 +164,6 @@ struct GeneralSettingsView: View {
             else { try SMAppService.mainApp.unregister() }
         } catch {
             Log.app.error("Failed to set launch at login: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-}
-
-private struct AudioVisualizerSourcePicker: View {
-    @ObservedObject private var manager = AudioVisualizerManager.shared
-    @State private var source: AudioVisualizerManager.Source = .system
-    @State private var style: AudioVisualizerManager.Style = .bars
-    @State private var position: AudioVisualizerManager.Position = .bottomRight
-    @State private var sizePreset: AudioVisualizerManager.Size = .medium
-
-    var body: some View {
-        Picker("Audio source", selection: $source) {
-            ForEach(AudioVisualizerManager.Source.allCases) { s in
-                Text(s.label).tag(s)
-            }
-        }
-        .pickerStyle(.segmented)
-        .onAppear {
-            source = manager.source
-            style = manager.style
-            position = manager.position
-            sizePreset = manager.sizePreset
-        }
-        .onChange(of: source) { newValue in manager.source = newValue }
-
-        // #159 — sensitivity slider
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Sensitivity")
-                Spacer()
-                Text(String(format: "%.1fx", manager.sensitivity))
-                    .foregroundColor(.secondary)
-                    .monospacedDigit()
-            }
-            Slider(value: $manager.sensitivity, in: 0.3...3.0, step: 0.1)
-        }
-
-        // #160 — visual style
-        Picker("Style", selection: $style) {
-            ForEach(AudioVisualizerManager.Style.allCases) { s in
-                Text(s.label).tag(s)
-            }
-        }
-        .pickerStyle(.segmented)
-        .onChange(of: style) { newValue in manager.style = newValue }
-
-        // #162 — size preset
-        Picker("Size", selection: $sizePreset) {
-            ForEach(AudioVisualizerManager.Size.allCases) { s in
-                Text(s.label).tag(s)
-            }
-        }
-        .pickerStyle(.segmented)
-        .onChange(of: sizePreset) { newValue in manager.sizePreset = newValue }
-
-        // #161 — corner anchor
-        Picker("Position", selection: $position) {
-            ForEach(AudioVisualizerManager.Position.allCases) { p in
-                Text(p.label).tag(p)
-            }
-        }
-        .onChange(of: position) { newValue in manager.position = newValue }
-
-        if let error = manager.lastError {
-            Label(error, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption)
-                .foregroundColor(.orange)
-        } else if manager.permissionDenied {
-            Label(
-                "Permission denied. Enable Screen Recording (for system audio) or Microphone access in System Settings.",
-                systemImage: "lock.fill"
-            )
-            .font(.caption)
-            .foregroundColor(.secondary)
         }
     }
 }
