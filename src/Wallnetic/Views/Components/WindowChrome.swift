@@ -8,20 +8,35 @@ struct WindowChrome: NSViewRepresentable {
     var configure: (NSWindow) -> Void
 
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            if let window = view.window {
-                configure(window)
-            }
-        }
+        let view = WindowAwareView(onWindow: configure)
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            if let window = nsView.window {
-                configure(window)
-            }
+        if let aware = nsView as? WindowAwareView {
+            aware.onWindow = configure
+            if let w = nsView.window { configure(w) }
+        }
+    }
+}
+
+/// NSView that fires its callback the moment it's attached to a window.
+/// More reliable than dispatch-async because that races the window's own
+/// configuration.
+private final class WindowAwareView: NSView {
+    var onWindow: ((NSWindow) -> Void)
+
+    init(onWindow: @escaping (NSWindow) -> Void) {
+        self.onWindow = onWindow
+        super.init(frame: .zero)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let w = window {
+            onWindow(w)
         }
     }
 }
