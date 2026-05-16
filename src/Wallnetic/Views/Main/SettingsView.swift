@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
     @State private var selection: SettingsSection = .general
 
     var body: some View {
@@ -35,7 +36,7 @@ struct SettingsView: View {
                 .ignoresSafeArea()
         }
         .frame(width: 820, height: 540)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
     }
 
     // MARK: - Sidebar

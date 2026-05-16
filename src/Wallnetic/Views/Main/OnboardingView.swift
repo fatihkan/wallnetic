@@ -4,6 +4,7 @@ import SwiftUI
 /// orb, staggered typography reveal, custom progress capsule.
 struct OnboardingView: View {
     @Binding var isPresented: Bool
+    @ObservedObject private var themeManager = ThemeManager.shared
     @State private var currentStep = 0
     @State private var orbPhase: Double = 0
 
@@ -73,7 +74,7 @@ struct OnboardingView: View {
             }
         }
         .frame(width: 640, height: 520)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
         .onAppear {
             withAnimation(.linear(duration: 16).repeatForever(autoreverses: true)) {
                 orbPhase = 1
