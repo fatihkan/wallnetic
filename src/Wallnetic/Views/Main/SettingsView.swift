@@ -21,7 +21,7 @@ struct SettingsView: View {
                 detail
             }
         }
-        .frame(width: 880, height: 560)
+        .frame(width: 820, height: 540)
         .preferredColorScheme(.dark)
     }
 
@@ -29,27 +29,25 @@ struct SettingsView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Traffic-light clearance — content stays under the lights, but
-            // we leave breathing room so the first row doesn't fight with
-            // the close/min/max buttons.
-            Color.clear.frame(height: 30)
-
-            // Subtle wordmark — no glowing icon, no startup-logo feel. The
-            // sidebar's purpose is obvious from context; this kicker is just
-            // a quiet anchor.
+            // Wordmark *inhabits* the title-bar row — no wasted clearance.
+            // Traffic lights occupy 0-66px from the leading edge; we offset
+            // the text so it never collides with them. ~28pt total height
+            // matches macOS's natural title-bar metrics.
             HStack(spacing: 0) {
                 Text("Wallnetic")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(.white.opacity(0.92))
                     .tracking(-0.1)
                 Text(" Settings")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
                     .foregroundColor(.white.opacity(0.45))
                     .tracking(-0.1)
                 Spacer()
             }
-            .padding(.horizontal, Space.lg)
-            .padding(.bottom, Space.md)
+            .padding(.leading, 80)  // traffic-light clearance
+            .padding(.trailing, Space.sm)
+            .frame(height: 28)
+            .padding(.bottom, Space.xs)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -120,8 +118,10 @@ struct SettingsView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Traffic-light clearance matching sidebar
-            Color.clear.frame(height: 30)
+            // Title-bar stripe — matches sidebar wordmark row height so the
+            // window top is one continuous horizontal band. Empty by design;
+            // gives the eye a clean rest above the section header.
+            Color.clear.frame(height: 28)
 
             HStack(spacing: Space.sm) {
                 Image(systemName: selection.icon)
@@ -148,7 +148,8 @@ struct SettingsView: View {
                 Spacer()
             }
             .padding(.horizontal, Space.xl + 4)
-            .padding(.bottom, Space.md + 2)
+            .padding(.top, Space.xs)
+            .padding(.bottom, Space.md - 2)
 
             Divider()
                 .overlay(LinearGradient(

@@ -41,7 +41,9 @@ extension View {
             window.appearance = NSAppearance(named: .darkAqua)
             window.backgroundColor = .clear
             window.isOpaque = false
-            // Allow dragging from anywhere in the title-bar region.
+            // Remove the hairline that macOS otherwise draws between the
+            // title-bar zone and content — we have our own design.
+            window.titlebarSeparatorStyle = .none
             window.isMovableByWindowBackground = false
         })
     }
