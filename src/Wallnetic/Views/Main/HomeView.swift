@@ -7,9 +7,12 @@ private struct HeroScrollOffsetKey: PreferenceKey {
     }
 }
 
-/// P3-13: shared horizontal inset for hero rows / carousel sections so we
-/// don't sprinkle the same magic number across 3 sites.
-private let homeHorizontalInset: CGFloat = 48
+// DUSUK-2: scoped to HomeView so it can't accidentally be reused as
+// app-wide. Access via `HomeView.horizontalInset`.
+extension HomeView {
+    static let horizontalInset: CGFloat = 48
+}
+private var homeHorizontalInset: CGFloat { HomeView.horizontalInset }
 
 /// Striking home with cinematic hero and glass carousel cards
 struct HomeView: View {
@@ -260,17 +263,19 @@ struct HomeView: View {
 struct HeroBannerCard: View {
     let wallpaper: Wallpaper
     @State private var thumbnail: NSImage?
+    @State private var startDate: Date = Date()
+    @State private var isWindowVisible: Bool = true
 
     var body: some View {
-        // P2-10: TimelineView replaces the infinite withAnimation loop.
-        // Single timer drives the phase; no implicit-animation cascade
-        // through observers, no per-frame body invalidation outside
-        // this view's subtree.
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
+        // P2-10 + ORTA-1: phase derived from elapsed-since-appear rather
+        // than absolute wall-clock — Mac sleep/wake doesn't cause the
+        // Ken Burns to teleport mid-cycle.
+        // ORTA-2: TimelineView paused when window is occluded so we
+        // don't tick the hero off-screen.
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isWindowVisible)) { ctx in
+            let elapsed = ctx.date.timeIntervalSince(startDate)
             let cycle: Double = 14
-            // Triangle wave 0 → 1 → 0
-            let raw = (t.truncatingRemainder(dividingBy: cycle)) / cycle
+            let raw = (elapsed.truncatingRemainder(dividingBy: cycle)) / cycle
             let phase = raw < 0.5 ? raw * 2 : (1 - raw) * 2
 
             Group {
@@ -291,6 +296,11 @@ struct HeroBannerCard: View {
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
         }
+        .onAppear {
+            startDate = Date()
+            isWindowVisible = true
+        }
+        .onDisappear { isWindowVisible = false }
     }
 }
 

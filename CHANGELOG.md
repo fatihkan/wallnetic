@@ -29,9 +29,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `WallpaperMetadataCache.pruneMissing` wraps DELETE loop in a single
   `BEGIN IMMEDIATE / COMMIT` transaction (L4) — atomic cache state on crash.
 
+### Performance
+- **GrainOverlay rasterized** (P0-1): noise canvas now drawn once via
+  `.drawingGroup()` and reused as a Metal-backed cache instead of redrawing
+  every animation frame.
+- **HomeView scroll telemetry** (P0-2): replaced the recursive
+  `DispatchQueue.async` + `@State` layout-invalidation pattern with a
+  `PreferenceKey` reader.
+- **AmbientStage cursor** (P0-3): cursor spotlight is now an independent
+  view from the drift/vignette layers, and pointer → state writes are
+  throttled to 30 Hz.
+- **WallpaperManager O(1) index** (P1-4, KRITIK-1): `indexById` dictionary
+  maintained alongside the array; index rebuild only fires on structural
+  changes (length/order), not on subscript mutations of existing entries.
+- **Debounced persistence** (P1-6): favorite/title/tag JSON writes coalesce
+  into a single 250 ms-deferred encode instead of one write per click.
+- **CarouselCard pointer throttle** (P1-7): same 30 Hz gate as ambient.
+- **Liquid Glass control tone** (P2-8): inline controls skip the
+  `.regularMaterial` blur, reducing stacked-material passes per window.
+- **Hero animation** (P2-10, ORTA-1): `withAnimation(repeatForever)` replaced
+  with `TimelineView` driven from elapsed-since-appear (no wall-clock jump
+  on sleep/wake), and paused when the window is occluded (ORTA-2).
+- **Search routing** (P3-11): libraries > 200 wallpapers route through the
+  SQLite cache index instead of fuzzy in-memory scan.
+- **Bulk import** (P3-12, YUKSEK-1, KRITIK-2): `importVideos` now maintains
+  a max-4 in-flight producer-consumer window (not a serial batch), and each
+  call's critical section (duplicate-check + file move + array append) runs
+  through a serial `ImportGate` actor — concurrent identical drops can no
+  longer race past duplicate detection.
+
 ### Tests
 - +5 unit tests covering endpoint allowlist (loopback / `*.local` / public /
-  non-http) and parseTags cap. Total 81/81 pass.
+  non-http) and parseTags cap.
+- +5 unit tests covering SlideshowGenerator.totalFrames (YUKSEK-2): empty
+  input, crossfade math, no-transition mode.
+- Total 84/84 pass.
 
 ## [1.3.0] — 2026-05-02
 

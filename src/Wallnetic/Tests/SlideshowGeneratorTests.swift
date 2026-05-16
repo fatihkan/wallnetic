@@ -54,19 +54,44 @@ final class SlideshowGeneratorTests: XCTestCase {
     // MARK: - P3-15: bounds fuzz
 
     func testFrameCountFormula() {
-        // Render budget: totalFrames = N*d - (N-1)*T (overlapping crossfades).
-        // Verify for representative N/d/T triples.
-        struct Case { let n: Int; let d: Double; let t: Double; let expected: Double }
-        let cases: [Case] = [
-            Case(n: 1, d: 5, t: 0.6, expected: 5),
-            Case(n: 2, d: 5, t: 0.6, expected: 5 * 2 - 0.6),
-            Case(n: 10, d: 5, t: 0.6, expected: 5 * 10 - 0.6 * 9),
-            Case(n: 50, d: 5, t: 0.6, expected: 5 * 50 - 0.6 * 49)
-        ]
-        for c in cases {
-            let actual = Double(c.n) * c.d - Double(max(0, c.n - 1)) * c.t
-            XCTAssertEqual(actual, c.expected, accuracy: 0.0001, "N=\(c.n) failed")
+        // YUKSEK-2: drive the actual SUT (totalFrames helper) instead of
+        // re-deriving the formula in-test. A regression in the renderer
+        // would now fail this test.
+        let fps = 30
+        let perPhoto = 5.0
+        let transition = 0.6
+        var s = SlideshowGenerator.Settings()
+        s.perPhotoDuration = perPhoto
+        s.transitionDuration = transition
+        s.fps = Int32(fps)
+        s.transition = .crossfade
+
+        let framesPerImage = Int(perPhoto * Double(fps))
+        let transitionFrames = min(Int(transition * Double(fps)), framesPerImage / 2)
+
+        let cases: [Int] = [0, 1, 2, 10, 50]
+        for n in cases {
+            let expected = n == 0 ? 0 : n * framesPerImage - transitionFrames * (n - 1)
+            let actual = SlideshowGenerator.totalFrames(assetCount: n, settings: s)
+            XCTAssertEqual(actual, expected, "N=\(n) failed")
         }
+    }
+
+    func testTotalFramesZeroForEmptyInput() {
+        let s = SlideshowGenerator.Settings()
+        XCTAssertEqual(SlideshowGenerator.totalFrames(assetCount: 0, settings: s), 0)
+    }
+
+    func testTotalFramesNoTransitionMode() {
+        var s = SlideshowGenerator.Settings()
+        s.transition = .none
+        // No transition → frames are pure N × framesPerImage.
+        let fps = Int(s.fps)
+        let framesPerImage = Int(s.perPhotoDuration * Double(fps))
+        XCTAssertEqual(
+            SlideshowGenerator.totalFrames(assetCount: 5, settings: s),
+            5 * framesPerImage
+        )
     }
 
     func testTransitionBoundedByPerPhotoDuration() {

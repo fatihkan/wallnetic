@@ -42,6 +42,19 @@ final class SlideshowGenerator {
         case none, crossfade
     }
 
+    /// YUKSEK-2: pure-function helper exposing the frame-count formula so
+    /// tests can validate the math without spinning up an AVAssetWriter.
+    /// Mirrors the same calculation used in `renderFrames(...)`.
+    static func totalFrames(assetCount: Int, settings: Settings) -> Int {
+        guard assetCount > 0 else { return 0 }
+        let fps = Int(settings.fps)
+        let framesPerImage = Int(settings.perPhotoDuration * Double(fps))
+        let transitionFrames = settings.transition == .crossfade
+            ? min(Int(settings.transitionDuration * Double(fps)), framesPerImage / 2)
+            : 0
+        return max(0, assetCount * framesPerImage - transitionFrames * (assetCount - 1))
+    }
+
     struct Settings {
         var perPhotoDuration: TimeInterval = 5.0
         var transition: Transition = .crossfade

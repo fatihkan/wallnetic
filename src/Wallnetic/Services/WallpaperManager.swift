@@ -32,6 +32,15 @@ enum WallpaperMode: String, CaseIterable {
     }
 }
 
+/// Serial gate for the import critical section (KRITIK-2). An actor's
+/// reentrancy semantics guarantee that only one call runs through the
+/// closure at a time across all concurrent importers.
+actor ImportGate {
+    func run<T: Sendable>(_ block: @Sendable () async throws -> T) async rethrows -> T {
+        try await block()
+    }
+}
+
 /// Receives playback commands directly instead of through NotificationCenter.
 protocol PlaybackDelegate: AnyObject {
     func playbackSetWallpaper(url: URL)
@@ -51,11 +60,17 @@ class WallpaperManager: ObservableObject {
 
     @Published var wallpapers: [Wallpaper] = [] {
         didSet {
-            // P1-4: keep id → index map in lockstep with the array.
-            // O(1) lookup vs O(n) firstIndex(where:) — meaningful on
-            // libraries of 500+ wallpapers where toggleFavorite /
-            // renameWallpaper / addTag are called rapidly.
-            rebuildIndex()
+            // P1-4 / KRITIK-1: only rebuild when the structural shape
+            // changes (length or ordering). Subscript mutations like
+            // `wallpapers[i].isFavorite.toggle()` ALSO fire didSet (Array
+            // is value-type, subscript = mutation). Without this guard we
+            // pay an O(n) Dictionary rebuild on every toggle — defeating
+            // the O(1) lookup the indexById exists to provide.
+            if oldValue.count != wallpapers.count
+                || !oldValue.elementsEqual(wallpapers, by: { $0.id == $1.id })
+            {
+                rebuildIndex()
+            }
         }
     }
     @Published var currentWallpaper: Wallpaper?
@@ -222,47 +237,73 @@ class WallpaperManager: ObservableObject {
         return wallpapers.first { $0.fileSize == sourceSize && $0.name == sourceName }
     }
 
+    /// KRITIK-2: serializes the (duplicate-check + file-import + array-
+    /// append) critical section so concurrent callers (e.g. drag-drop of
+    /// the same file twice, or `importVideos` running in parallel) can't
+    /// both pass duplicate-check on a stale snapshot and end up with two
+    /// records of the same source.
+    private let importGate = ImportGate()
+
     func importVideo(from sourceURL: URL) async throws -> Wallpaper {
-        let destURL = try await library.importFile(from: sourceURL, existingWallpapers: wallpapers)
-        let wallpaper = Wallpaper(url: destURL)
-        await MainActor.run {
-            wallpapers.append(wallpaper)
+        // Serialize the critical region. `postImportProcess` runs after
+        // the gate releases so thumbnails/color extraction stay parallel.
+        let wallpaper = try await importGate.run { [weak self] in
+            guard let self else { throw CancellationError() }
+            let destURL = try await self.library.importFile(
+                from: sourceURL,
+                existingWallpapers: self.wallpapers
+            )
+            let wp = Wallpaper(url: destURL)
+            await MainActor.run {
+                self.wallpapers.append(wp)
+            }
+            return wp
         }
         postImportProcess(wallpaper)
         return wallpaper
     }
 
-    /// P3-12: bulk-imports many URLs concurrently (TaskGroup) instead of
-    /// awaiting each file serially. Cap concurrency at 4 to avoid
-    /// pegging the CPU on 50-file Photos drops.
-    func importVideos(from sourceURLs: [URL]) async -> [Result<Wallpaper, Error>] {
-        await withTaskGroup(of: (Int, Result<Wallpaper, Error>).self) { group in
-            let chunkSize = 4
-            var results: [(Int, Result<Wallpaper, Error>)] = []
+    /// P3-12 / YUKSEK-1: true producer-consumer. Maintains up to
+    /// `maxInflight` tasks in flight at any moment; as each finishes a
+    /// new one is added until the input is exhausted. KRITIK-2's gate
+    /// serializes the actual duplicate-check + file-move + append step
+    /// inside each `importVideo` call, so this concurrency is safe.
+    func importVideos(from sourceURLs: [URL], maxInflight: Int = 4) async -> [Result<Wallpaper, Error>] {
+        await withTaskGroup(of: (Int, Result<Wallpaper, Error>).self, returning: [Result<Wallpaper, Error>].self) { group in
+            var nextIndex = 0
+            var inflight = 0
+            var collected: [(Int, Result<Wallpaper, Error>)] = []
 
-            for batchStart in stride(from: 0, to: sourceURLs.count, by: chunkSize) {
-                let batchEnd = min(batchStart + chunkSize, sourceURLs.count)
-                for i in batchStart..<batchEnd {
-                    let url = sourceURLs[i]
-                    let index = i
-                    group.addTask { [weak self] in
-                        guard let self else {
-                            return (index, .failure(CancellationError()))
-                        }
-                        do {
-                            let wp = try await self.importVideo(from: url)
-                            return (index, .success(wp))
-                        } catch {
-                            return (index, .failure(error))
-                        }
+            func dispatch(_ i: Int) {
+                let url = sourceURLs[i]
+                group.addTask { [weak self] in
+                    guard let self else { return (i, .failure(CancellationError())) }
+                    do {
+                        return (i, .success(try await self.importVideo(from: url)))
+                    } catch {
+                        return (i, .failure(error))
                     }
                 }
-                while let result = await group.next() {
-                    results.append(result)
-                    if results.count >= batchEnd { break }
+                inflight += 1
+                nextIndex += 1
+            }
+
+            // Prime — fill the in-flight window.
+            while nextIndex < sourceURLs.count && inflight < maxInflight {
+                dispatch(nextIndex)
+            }
+
+            // Drain + refill: as each task completes, immediately
+            // dispatch the next pending URL.
+            while let result = await group.next() {
+                collected.append(result)
+                inflight -= 1
+                if nextIndex < sourceURLs.count {
+                    dispatch(nextIndex)
                 }
             }
-            return results.sorted { $0.0 < $1.0 }.map { $0.1 }
+
+            return collected.sorted { $0.0 < $1.0 }.map { $0.1 }
         }
     }
 
