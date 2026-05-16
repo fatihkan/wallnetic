@@ -20,6 +20,7 @@ struct SettingsView: View {
                     .overlay(Color.white.opacity(0.06))
                 detail
             }
+            .ignoresSafeArea(.all, edges: .top)  // claim the title-bar zone
         }
         .frame(width: 820, height: 540)
         .preferredColorScheme(.dark)
