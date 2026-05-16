@@ -241,6 +241,7 @@ struct HomeView: View {
 struct HeroBannerCard: View {
     let wallpaper: Wallpaper
     @State private var thumbnail: NSImage?
+    @State private var kenBurnsPhase: Double = 0
 
     var body: some View {
         Group {
@@ -248,12 +249,23 @@ struct HeroBannerCard: View {
                 Image(nsImage: thumbnail)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
+                    // Ken Burns: scale 1.06 → 1.12, pan ±18pt over 14s
+                    .scaleEffect(1.06 + kenBurnsPhase * 0.06)
+                    .offset(
+                        x: (kenBurnsPhase - 0.5) * 36,
+                        y: (kenBurnsPhase - 0.5) * 22
+                    )
             } else {
                 Color.black
             }
         }
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
+        }
+        .onAppear {
+            withAnimation(.linear(duration: 14).repeatForever(autoreverses: true)) {
+                kenBurnsPhase = 1
+            }
         }
     }
 }
@@ -330,6 +342,14 @@ struct CarouselCard: View {
         return pointer.x  // 0..1 follows pointer
     }
 
+    /// Specular intensity scales with tilt magnitude — like a real lens
+    /// reflecting more light when angled.
+    private var specularIntensity: Double {
+        guard isHovering else { return 0 }
+        let mag = sqrt(tiltX * tiltX + tiltY * tiltY)
+        return min(0.22, 0.06 + mag / 60)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .bottom) {
@@ -391,14 +411,18 @@ struct CarouselCard: View {
             }
             .frame(width: cardWidth, height: cardHeight)
             .overlay(
-                // Glare strip — follows pointer
+                // Specular highlight — follows pointer, intensifies with
+                // tilt magnitude. The gradient angle subtly tracks the
+                // y-axis rotation so it looks like a real light source
+                // staying overhead as the card tilts.
                 LinearGradient(
                     stops: [
-                        .init(color: .white.opacity(0), location: max(0, glareOffset - 0.25)),
-                        .init(color: .white.opacity(isHovering ? 0.14 : 0), location: glareOffset),
-                        .init(color: .white.opacity(0), location: min(1, glareOffset + 0.25))
+                        .init(color: .white.opacity(0), location: max(0, glareOffset - 0.28)),
+                        .init(color: .white.opacity(specularIntensity), location: glareOffset),
+                        .init(color: .white.opacity(0), location: min(1, glareOffset + 0.28))
                     ],
-                    startPoint: .leading, endPoint: .trailing
+                    startPoint: UnitPoint(x: 0.5 - tiltY / 50, y: 0),
+                    endPoint: UnitPoint(x: 0.5 + tiltY / 50, y: 1)
                 )
                 .blendMode(.plusLighter)
                 .allowsHitTesting(false)

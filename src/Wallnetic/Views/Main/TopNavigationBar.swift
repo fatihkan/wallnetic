@@ -31,6 +31,7 @@ struct TopNavigationBar: View {
     @State private var isSearching = false
     @State private var hoveredTab: NavigationTab?
     @FocusState private var searchFocused: Bool
+    @Namespace private var tabUnderlineNS
     var isScrolled: Bool = false
 
     var body: some View {
@@ -105,7 +106,7 @@ struct TopNavigationBar: View {
         let isHovered = hoveredTab == tab
 
         Button {
-            withAnimation(.spring(response: Anim.enter, dampingFraction: 0.8)) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.72, blendDuration: 0.2)) {
                 selectedTab = tab
             }
         } label: {
@@ -119,18 +120,24 @@ struct TopNavigationBar: View {
                 }
                 .foregroundColor(isSelected ? .white : .white.opacity(isHovered ? 0.85 : 0.55))
 
-                // Active gradient underline
-                Capsule()
-                    .fill(
-                        isSelected
-                            ? AnyShapeStyle(LinearGradient(
+                // Active gradient underline — matched-geometry slide with
+                // stretch on transit. The capsule animates between tab
+                // positions instead of appearing/disappearing per tab.
+                ZStack {
+                    if isSelected {
+                        Capsule(style: .continuous)
+                            .fill(LinearGradient(
                                 colors: [.accentColor, .accentColor.opacity(0.6)],
                                 startPoint: .leading, endPoint: .trailing
                             ))
-                            : AnyShapeStyle(Color.clear)
-                    )
-                    .frame(width: isSelected ? 28 : 0, height: 2)
-                    .shadow(color: .accentColor.opacity(0.6), radius: 4)
+                            .matchedGeometryEffect(id: "tabUnderline", in: tabUnderlineNS)
+                            .shadow(color: .accentColor.opacity(0.65), radius: 5)
+                    } else {
+                        Capsule(style: .continuous)
+                            .fill(Color.clear)
+                    }
+                }
+                .frame(width: 28, height: 2)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
