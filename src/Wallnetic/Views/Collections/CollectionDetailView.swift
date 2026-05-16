@@ -193,14 +193,32 @@ struct RenameCollectionSheet: View {
     @ObservedObject private var collectionManager = CollectionManager.shared
 
     @State private var name: String = ""
+    @FocusState private var nameFieldFocused: Bool
+
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canRename: Bool {
+        !trimmedName.isEmpty && trimmedName != collection.name
+    }
 
     var body: some View {
         VStack(spacing: 16) {
             Text("Rename Collection")
                 .font(.headline)
 
-            TextField("Collection name", text: $name)
-                .textFieldStyle(.roundedBorder)
+            HStack(spacing: 12) {
+                Image(systemName: collection.icon)
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+                    .frame(width: 32)
+
+                TextField("Collection name", text: $name)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($nameFieldFocused)
+                    .onSubmit { commit() }
+            }
 
             HStack {
                 Button("Cancel") {
@@ -211,19 +229,25 @@ struct RenameCollectionSheet: View {
                 Spacer()
 
                 Button("Save") {
-                    collectionManager.renameCollection(collection, to: name)
-                    dismiss()
+                    commit()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(name.isEmpty)
+                .disabled(!canRename)
                 .keyboardShortcut(.return)
             }
         }
         .padding()
-        .frame(width: 300)
+        .frame(width: 320)
         .onAppear {
             name = collection.name
+            nameFieldFocused = true
         }
+    }
+
+    private func commit() {
+        guard canRename else { return }
+        collectionManager.renameCollection(collection, to: trimmedName)
+        dismiss()
     }
 }
 
