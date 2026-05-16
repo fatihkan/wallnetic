@@ -39,6 +39,7 @@
 		4BC3BA52E3938E15E6BC7AAA /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62ADB679C576DF4637BA6C9 /* Log.swift */; };
 		4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */; };
 		4DC3D57FC37765D6CEABF304 /* ColorCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F59C3C7AB56348DA1D9D45 /* ColorCategoryTests.swift */; };
+		4E139BC5AAC4545984E4B4D3 /* SmartTaggingSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76DFDCB44158B7225C519C63 /* SmartTaggingSettingsView.swift */; };
 		502AEDE09B50668E7154DC6E /* CreateFromPhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC8F63EBF5F78663165C4697 /* CreateFromPhotosView.swift */; };
 		51355B920BE931D2A9A3BE58 /* WallpaperCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8562F59693CF276239AD0905 /* WallpaperCollection.swift */; };
 		53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */; };
@@ -48,6 +49,7 @@
 		5E298128B4AE9AB89B656E86 /* DesktopOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D726427A9199C4D93B9E93F2 /* DesktopOverlayController.swift */; };
 		61773D343F4EBEEB12FF8AFB /* BatteryPromptService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0187521E8CC2C0BB29CE90D /* BatteryPromptService.swift */; };
 		61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B106464A071BF6E736C3272 /* MenuBarView.swift */; };
+		61B8431DE4EA724F4E55C7B2 /* OllamaVisionTagger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD3DFBD42A5D9B294784C5F /* OllamaVisionTagger.swift */; };
 		6A650CD75C4B32AB9889A6A7 /* SharedWidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */; };
 		6ADBCB967C34EB7B36825043 /* WallpaperMetadataCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 941B25667F75E00393C7E895 /* WallpaperMetadataCacheTests.swift */; };
 		6B3FA8945F430A067CC4DB4D /* WallpaperLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F557952B625823A2689EBE7 /* WallpaperLibrary.swift */; };
@@ -63,10 +65,12 @@
 		80B94DC02A568914623EDE05 /* VideoFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4662279ADB65DBA3957578B7 /* VideoFormatConverter.swift */; };
 		82F024AE9E99C4A77098AD9B /* FuzzySearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA18283F2FD8E99F3FFDC805 /* FuzzySearchTests.swift */; };
 		84ACCBC72C120B8B6E00A64F /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CEBCAF9E5F767C08A15158C /* SupabaseClient.swift */; };
+		8690167783A5141E8CA3EC71 /* OllamaTaggingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB89C6E613696A053681E46 /* OllamaTaggingService.swift */; };
 		88C6A7F9AD19AA876CEEC465 /* iCloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9960B917192178D2217E668 /* iCloudSyncManager.swift */; };
 		8AAE56E8D08264474270D889 /* AIGenerateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B59109A0A0707AFA611D15A /* AIGenerateViewModel.swift */; };
 		8BED6ED6D599D3F3C32821D5 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32AE3710192737ABA41FDA0 /* HistoryView.swift */; };
 		8EFAE3E67407537EC1B9A705 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB036BA69CC6D00731C1D273 /* DiscoverView.swift */; };
+		92D9C1672FDC4498193B9949 /* OllamaVisionTaggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D709F3F20160782C077CAF5 /* OllamaVisionTaggerTests.swift */; };
 		93BC58F85DF7EBC9B6D3970F /* SharedWidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */; };
 		93CA4E731227254F983F6270 /* TimeOfDaySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84E4002911F0B7869F3183DA /* TimeOfDaySettingsView.swift */; };
 		9721B6140E12A2FA558584B8 /* NowPlayingOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79BC197A9E8C082F2C39C673 /* NowPlayingOverlayView.swift */; };
@@ -162,6 +166,7 @@
 		08B2A227CEA1CA39347CC37A /* WallneticWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WallneticWidget.entitlements; sourceTree = "<group>"; };
 		0990FC999E1DE89A3D776B05 /* WidgetSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSyncService.swift; sourceTree = "<group>"; };
 		0B86B489A26E64EF63ED72A8 /* WallpaperEffectsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperEffectsManager.swift; sourceTree = "<group>"; };
+		0BB89C6E613696A053681E46 /* OllamaTaggingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaTaggingService.swift; sourceTree = "<group>"; };
 		0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperGridView.swift; sourceTree = "<group>"; };
 		0DF980A4142FBBE468FBBD05 /* SchedulerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerSettingsView.swift; sourceTree = "<group>"; };
 		102BCD8F05208BC14E211E51 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
@@ -177,6 +182,7 @@
 		2958EEAF2DA16543DBA9453F /* SpaceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSettingsView.swift; sourceTree = "<group>"; };
 		2A3CC73608BAFA155E615F1B /* SchedulerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerService.swift; sourceTree = "<group>"; };
 		2A9660F71829E6C2D5F2B5E6 /* DeepLinkHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandlerTests.swift; sourceTree = "<group>"; };
+		2D709F3F20160782C077CAF5 /* OllamaVisionTaggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaVisionTaggerTests.swift; sourceTree = "<group>"; };
 		2F48518E41B9C56DFE5EB099 /* MusicReactiveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicReactiveManager.swift; sourceTree = "<group>"; };
 		31C51D17BDBBADCDF4D5CB43 /* CollectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsView.swift; sourceTree = "<group>"; };
 		35A70D71A1BFA621DE839CA5 /* MLWDecryptorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLWDecryptorTests.swift; sourceTree = "<group>"; };
@@ -185,6 +191,7 @@
 		3A5D74A5C252020316F511D6 /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		3C858C83BC8D22A21A53D7BD /* AudioVisualizerOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVisualizerOverlayView.swift; sourceTree = "<group>"; };
 		3CFBA173095D37D5702C5C18 /* PerformanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceManager.swift; sourceTree = "<group>"; };
+		3FD3DFBD42A5D9B294784C5F /* OllamaVisionTagger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaVisionTagger.swift; sourceTree = "<group>"; };
 		40A93EE0CF1D353315FEA25D /* WallpaperStoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperStoreManager.swift; sourceTree = "<group>"; };
 		43A9F2E051E3DDAA18ACAC9D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		4662279ADB65DBA3957578B7 /* VideoFormatConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFormatConverter.swift; sourceTree = "<group>"; };
@@ -218,6 +225,7 @@
 		6D0396F7C77849244B424DD5 /* ScreenSaverBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenSaverBridge.swift; sourceTree = "<group>"; };
 		739D8C6AD1566F8C21F48DFD /* WeatherWallpaperManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherWallpaperManager.swift; sourceTree = "<group>"; };
 		73A3E9458476683E0230677D /* ErrorReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorReporter.swift; sourceTree = "<group>"; };
+		76DFDCB44158B7225C519C63 /* SmartTaggingSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartTaggingSettingsView.swift; sourceTree = "<group>"; };
 		77E4D58C6269978E4994C7CE /* AppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShortcuts.swift; sourceTree = "<group>"; };
 		79BC197A9E8C082F2C39C673 /* NowPlayingOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingOverlayView.swift; sourceTree = "<group>"; };
 		7BB04CF2E27DC75B29EE8A67 /* ErrorReporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorReporterTests.swift; sourceTree = "<group>"; };
@@ -358,6 +366,8 @@
 				2F48518E41B9C56DFE5EB099 /* MusicReactiveManager.swift */,
 				140AE9B28FFA1BF12B3651C5 /* NotificationManager.swift */,
 				5B7D2F1C8E95985C42051A32 /* NowPlayingManager.swift */,
+				0BB89C6E613696A053681E46 /* OllamaTaggingService.swift */,
+				3FD3DFBD42A5D9B294784C5F /* OllamaVisionTagger.swift */,
 				3CFBA173095D37D5702C5C18 /* PerformanceManager.swift */,
 				65B960F4D2BFD36368F336A4 /* PexelsService.swift */,
 				BA4D12B25631A66EDCB10593 /* PhotosLibraryService.swift */,
@@ -397,6 +407,7 @@
 				BA2392B868E0D5B6994FF657 /* EffectsSettingsView.swift */,
 				0DF980A4142FBBE468FBBD05 /* SchedulerSettingsView.swift */,
 				02604286446C78C5C8935E45 /* SettingsSubViews.swift */,
+				76DFDCB44158B7225C519C63 /* SmartTaggingSettingsView.swift */,
 				2958EEAF2DA16543DBA9453F /* SpaceSettingsView.swift */,
 				84E4002911F0B7869F3183DA /* TimeOfDaySettingsView.swift */,
 			);
@@ -543,6 +554,7 @@
 				7BB04CF2E27DC75B29EE8A67 /* ErrorReporterTests.swift */,
 				DA18283F2FD8E99F3FFDC805 /* FuzzySearchTests.swift */,
 				35A70D71A1BFA621DE839CA5 /* MLWDecryptorTests.swift */,
+				2D709F3F20160782C077CAF5 /* OllamaVisionTaggerTests.swift */,
 				4C428B5A76D12B2D39EB866E /* SlideshowGeneratorTests.swift */,
 				A0AADE7F3045087811919B3C /* URLImporterTests.swift */,
 				941B25667F75E00393C7E895 /* WallpaperMetadataCacheTests.swift */,
@@ -715,6 +727,7 @@
 				1AEF59FC27860B386A6D7049 /* ErrorReporterTests.swift in Sources */,
 				82F024AE9E99C4A77098AD9B /* FuzzySearchTests.swift in Sources */,
 				1ACE67A285A3AC235ECF7904 /* MLWDecryptorTests.swift in Sources */,
+				92D9C1672FDC4498193B9949 /* OllamaVisionTaggerTests.swift in Sources */,
 				D812BECBE0458A174EF2696E /* SlideshowGeneratorTests.swift in Sources */,
 				B03176CE3858D5C7915FA8BB /* URLImporterTests.swift in Sources */,
 				6ADBCB967C34EB7B36825043 /* WallpaperMetadataCacheTests.swift in Sources */,
@@ -775,6 +788,8 @@
 				A160526FEFD4F71CB15980CA /* NowPlayingManager.swift in Sources */,
 				B33B54C0FB9B7ADD1373DCA8 /* NowPlayingOverlayController.swift in Sources */,
 				9721B6140E12A2FA558584B8 /* NowPlayingOverlayView.swift in Sources */,
+				8690167783A5141E8CA3EC71 /* OllamaTaggingService.swift in Sources */,
+				61B8431DE4EA724F4E55C7B2 /* OllamaVisionTagger.swift in Sources */,
 				BED9A1AD659C124D26D37355 /* OnboardingView.swift in Sources */,
 				D729B636A0E78713E53C77FD /* PerformanceManager.swift in Sources */,
 				39C032EFB614D68ADAE9403B /* PexelsService.swift in Sources */,
@@ -790,6 +805,7 @@
 				AE9FCE08CE4EDEECE7A843BD /* SharedDataManager.swift in Sources */,
 				6A650CD75C4B32AB9889A6A7 /* SharedWidgetModels.swift in Sources */,
 				AC32B1A81A352A35055916BC /* SlideshowGenerator.swift in Sources */,
+				4E139BC5AAC4545984E4B4D3 /* SmartTaggingSettingsView.swift in Sources */,
 				0D0FFA07C32604C5448D9BD6 /* SpaceSettingsView.swift in Sources */,
 				B61FA302398523F6F9AFE321 /* SpaceWallpaperManager.swift in Sources */,
 				04BCEB8AB6239A8DB7D5C257 /* StoreKitManager.swift in Sources */,
