@@ -32,6 +32,7 @@ struct TopNavigationBar: View {
     @State private var hoveredTab: NavigationTab?
     @FocusState private var searchFocused: Bool
     @Namespace private var tabUnderlineNS
+    @Environment(\.openWindow) private var openWindow
     var isScrolled: Bool = false
 
     var body: some View {
@@ -83,12 +84,13 @@ struct TopNavigationBar: View {
                 .menuIndicator(.hidden)
                 .frame(width: 30, height: 30)
 
-                if #available(macOS 14.0, *) {
-                    SettingsLink {
-                        ActionChip(icon: "gearshape.fill", accent: false)
-                    }
-                    .buttonStyle(.plain)
+                Button {
+                    openWindow(id: "settings")
+                } label: {
+                    ActionChip(icon: "gearshape.fill", accent: false)
                 }
+                .buttonStyle(.plain)
+                .keyboardShortcut(",", modifiers: .command)
             }
         }
         .padding(.leading, 84)        // reserve traffic-light real estate

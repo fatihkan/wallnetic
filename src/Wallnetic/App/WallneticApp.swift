@@ -29,15 +29,27 @@ struct WallneticApp: App {
         .defaultPosition(.center)
         .commands {
             CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    openWindow(id: "settings")
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
         }
         .handlesExternalEvents(matching: [])
 
-        // Settings Window
-        Settings {
+        // Settings Window — own WindowGroup so .windowStyle(.hiddenTitleBar)
+        // actually applies (`Settings {}` scene resists it). We wire ⌘,
+        // manually so the keyboard shortcut and menu item still work.
+        WindowGroup(id: "settings") {
             SettingsView()
                 .environmentObject(wallpaperManager)
                 .cinematicWindowChrome()
         }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .handlesExternalEvents(matching: [])
 
         // Menu Bar Extra
         MenuBarExtra {
