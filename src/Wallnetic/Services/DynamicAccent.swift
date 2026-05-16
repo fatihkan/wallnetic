@@ -46,6 +46,13 @@ final class DynamicAccent: ObservableObject {
             return
         }
 
+        // L2 note: `dominantColorHex` can come from UserDefaults
+        // (WallpaperMetadataStore.savedColors), which means external
+        // processes with read/write access could feed malformed hex.
+        // `NSColor(hex:)` returns nil for any non-conforming input
+        // (verified by extension in WallpaperEffectsManager.swift) so
+        // the optional chaining below is the actual sanitizer. No
+        // additional validation needed.
         if let hex = wp.dominantColorHex, let ns = NSColor(hex: hex) {
             withAnimation(.easeInOut(duration: 0.8)) {
                 theme = AccentTheme.derive(from: ns)

@@ -52,7 +52,8 @@ final class WallpaperMetadataCache {
         var handle: OpaquePointer?
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
         guard sqlite3_open_v2(path, &handle, flags, nil) == SQLITE_OK, let handle else {
-            Log.cache.error("sqlite3_open_v2 failed for \(path, privacy: .public)")
+            // L1: path contains /Users/<name>/... — keep at .private.
+            Log.cache.error("sqlite3_open_v2 failed for \(path, privacy: .private)")
             if handle != nil { sqlite3_close(handle) }
             return
         }
@@ -155,12 +156,16 @@ final class WallpaperMetadataCache {
 
     /// Drop rows whose `path` is not present in `currentPaths` — used after
     /// a library rescan to discard rows for files that disappeared.
+    /// L4: deletes run inside a single transaction so a crash mid-prune
+    /// leaves the cache atomically consistent.
     func pruneMissing(currentPaths: Set<String>) {
         queue.async { [weak self] in
             guard let self, let db = self.db else { return }
             var stmt: OpaquePointer?
-            defer { sqlite3_finalize(stmt) }
-            guard sqlite3_prepare_v2(db, "SELECT path FROM wallpapers;", -1, &stmt, nil) == SQLITE_OK else { return }
+            guard sqlite3_prepare_v2(db, "SELECT path FROM wallpapers;", -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt)
+                return
+            }
             var toDelete: [String] = []
             while sqlite3_step(stmt) == SQLITE_ROW {
                 if let cstr = sqlite3_column_text(stmt, 0) {
@@ -168,14 +173,20 @@ final class WallpaperMetadataCache {
                     if !currentPaths.contains(path) { toDelete.append(path) }
                 }
             }
+            sqlite3_finalize(stmt)
+
+            guard !toDelete.isEmpty else { return }
+
+            self.exec("BEGIN IMMEDIATE TRANSACTION;")
             for path in toDelete {
                 var d: OpaquePointer?
-                defer { sqlite3_finalize(d) }
                 if sqlite3_prepare_v2(db, "DELETE FROM wallpapers WHERE path=?;", -1, &d, nil) == SQLITE_OK {
                     sqlite3_bind_text(d, 1, path, -1, SQLITE_TRANSIENT)
                     _ = sqlite3_step(d)
                 }
+                sqlite3_finalize(d)
             }
+            self.exec("COMMIT;")
         }
     }
 

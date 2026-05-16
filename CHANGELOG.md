@@ -5,6 +5,34 @@ All notable changes to Wallnetic are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- **SSRF hardening** (H1, M2): Ollama Vision endpoint is now hard-restricted
+  to loopback (`localhost`, `127.0.0.1`, `::1`) or `*.local` mDNS hosts. Non-
+  loopback hosts must use HTTPS. Validation runs in two places: the Settings
+  text field surfaces rejections inline (Tag button disabled until the
+  endpoint is valid), and `OllamaVisionTagger.tags(for:)` re-checks at request
+  time as defense-in-depth.
+- **Re-consent on endpoint change** (M1): Any mutation of `ollama.endpoint`
+  invalidates the in-session batch authorization; users must explicitly click
+  "Tag" again before the next batch ships thumbnails to the new host.
+- **Window chrome guard** (M3): `cinematicWindowChrome()` now skips
+  non-`.titled` windows (popovers, sheets, panels) so the modifier can't
+  accidentally corrupt unrelated NSWindow chrome if misapplied.
+
+### Changed
+- File-system paths in `WallpaperMetadataCache` logs now use `privacy(.private)`
+  (L1).
+- `OllamaVisionTagger.parseTags` caps results at 8 tags (L3) — bounds
+  worst-case `addTag` cost against pathological model responses.
+- `WallpaperMetadataCache.pruneMissing` wraps DELETE loop in a single
+  `BEGIN IMMEDIATE / COMMIT` transaction (L4) — atomic cache state on crash.
+
+### Tests
+- +5 unit tests covering endpoint allowlist (loopback / `*.local` / public /
+  non-http) and parseTags cap. Total 81/81 pass.
+
 ## [1.3.0] — 2026-05-02
 
 ### Added

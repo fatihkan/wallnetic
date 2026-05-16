@@ -48,8 +48,17 @@ extension View {
     ///  - full-size content view (no reserved title-bar strip)
     ///  - forced dark appearance
     ///  - clear NSWindow bg so the SwiftUI ambient stage shows through
+    ///
+    /// **Apply at scene root only.** If the view is hosted in a
+    /// non-`.titled` NSWindow (popover, sheet, panel, menu) the call
+    /// short-circuits to avoid corrupting unrelated chrome. M3 guard.
     func cinematicWindowChrome() -> some View {
         background(WindowChrome { window in
+            // M3: skip popovers/sheets/panels — they have their own chrome
+            // and don't carry traffic lights, so applying these flags
+            // would either be a no-op or break their layout.
+            guard window.styleMask.contains(.titled) else { return }
+
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.styleMask.insert(.fullSizeContentView)
