@@ -13,6 +13,36 @@ enum AppearanceMode: String, CaseIterable, Codable {
         case .dark: return "moon.fill"
         }
     }
+
+    /// SwiftUI color scheme override — `nil` means "follow system".
+    /// Used in place of hardcoded `.preferredColorScheme(.dark)` so the
+    /// Appearance setting actually takes effect.
+    var swiftUIColorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light:  return .light
+        case .dark:   return .dark
+        }
+    }
+
+    /// AppKit NSAppearance — `nil` means "follow NSApp/system".
+    /// Used by WindowChrome so traffic lights + scrollbars match the
+    /// SwiftUI color scheme instead of being permanently dark.
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light:  return NSAppearance(named: .aqua)
+        case .dark:   return NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
+extension Notification.Name {
+    /// Fired by ThemeManager whenever appearanceMode changes so AppKit
+    /// chrome (WindowChrome) can re-apply NSAppearance to already-open
+    /// windows. Without this, only newly-created windows pick up the
+    /// new appearance.
+    static let appAppearanceDidChange = Notification.Name("appAppearanceDidChange")
 }
 
 /// Manager for app theme/appearance settings
@@ -96,14 +126,15 @@ class ThemeManager: ObservableObject {
 
     func applyAppearance() {
         DispatchQueue.main.async {
-            switch self.appearanceMode {
-            case .system:
-                NSApp.appearance = nil
-            case .light:
-                NSApp.appearance = NSAppearance(named: .aqua)
-            case .dark:
-                NSApp.appearance = NSAppearance(named: .darkAqua)
+            let appearance = self.appearanceMode.nsAppearance
+            NSApp.appearance = appearance
+            // Already-open titled windows don't re-read NSApp.appearance,
+            // so we have to push the change down to each one. Sheets,
+            // popovers and panels keep their own chrome.
+            for window in NSApp.windows where window.styleMask.contains(.titled) {
+                window.appearance = appearance
             }
+            NotificationCenter.default.post(name: .appAppearanceDidChange, object: nil)
         }
     }
 }

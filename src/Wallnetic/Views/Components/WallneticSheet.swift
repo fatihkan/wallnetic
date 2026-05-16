@@ -22,6 +22,7 @@ struct WallneticSheet<Content: View, Footer: View>: View {
     var width: CGFloat = 380
     @ViewBuilder let content: () -> Content
     @ViewBuilder let footer: () -> Footer
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,7 +48,7 @@ struct WallneticSheet<Content: View, Footer: View>: View {
             accentStrength: 0.14,
             tone: .prominent
         ))
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
     }
 
     // MARK: - Header

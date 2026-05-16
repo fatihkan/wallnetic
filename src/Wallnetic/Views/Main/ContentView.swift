@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @ObservedObject private var downloadManager = DownloadManager.shared
     @ObservedObject private var errorReporter = ErrorReporter.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var dynamicAccent = DynamicAccent.shared
     @State private var selectedTab: NavigationTab = .home
     @State private var isImporting = false
@@ -56,7 +57,7 @@ struct ContentView: View {
             }
         }
         .ambientStage()
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
         .fileImporter(
             isPresented: $isImporting,
             allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
