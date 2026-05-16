@@ -78,6 +78,7 @@ class WallpaperManager: ObservableObject {
     private let library = WallpaperLibrary.shared
     private let metadata = WallpaperMetadataStore.shared
     private let widgetSync = WidgetSyncService.shared
+    private let cache = WallpaperMetadataCache.shared
 
     // MARK: - Initialization
 
@@ -143,6 +144,8 @@ class WallpaperManager: ObservableObject {
         metadata.applySavedColors(to: &wallpapers)
         metadata.applySavedTags(to: &wallpapers)
 
+        cache.replaceAll(with: wallpapers)
+
         loadMetadataInBackground()
         extractMissingColors()
     }
@@ -164,6 +167,7 @@ class WallpaperManager: ObservableObject {
     }
 
     private func postImportProcess(_ wallpaper: Wallpaper) {
+        cache.upsert(wallpaper)
         Task {
             _ = await wallpaper.generateThumbnail(size: CGSize(width: 320, height: 180))
             _ = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90))
@@ -175,6 +179,7 @@ class WallpaperManager: ObservableObject {
                         var colors = metadata.savedColors
                         colors[wallpaper.url.path] = hex
                         metadata.savedColors = colors
+                        cache.upsert(wallpapers[idx])
                     }
                 }
             }
@@ -188,6 +193,7 @@ class WallpaperManager: ObservableObject {
             currentWallpaper = nil
         }
         metadata.saveFavorites(from: wallpapers)
+        cache.delete(id: wallpaper.id)
         Task { await widgetSync.syncFavorites(wallpapers.filter { $0.isFavorite }) }
     }
 
@@ -196,6 +202,7 @@ class WallpaperManager: ObservableObject {
             let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
             wallpapers[index].customTitle = trimmed.isEmpty ? nil : trimmed
             metadata.saveCustomTitles(from: wallpapers)
+            cache.upsert(wallpapers[index])
             if currentWallpaper?.id == wallpaper.id {
                 currentWallpaper = wallpapers[index]
                 Task { await widgetSync.syncCurrentWallpaper(currentWallpaper) }
@@ -210,6 +217,7 @@ class WallpaperManager: ObservableObject {
                 currentWallpaper = wallpapers[index]
             }
             metadata.saveFavorites(from: wallpapers)
+            cache.upsert(wallpapers[index])
             Task { await widgetSync.syncFavorites(wallpapers.filter { $0.isFavorite }) }
         }
     }
@@ -224,6 +232,7 @@ class WallpaperManager: ObservableObject {
         var all = metadata.savedTags
         all[wallpapers[index].url.path] = wallpapers[index].tags
         metadata.savedTags = all
+        cache.upsert(wallpapers[index])
     }
 
     func removeTag(_ tag: String, from wallpaper: Wallpaper) {
@@ -232,6 +241,7 @@ class WallpaperManager: ObservableObject {
         var all = metadata.savedTags
         all[wallpapers[index].url.path] = wallpapers[index].tags
         metadata.savedTags = all
+        cache.upsert(wallpapers[index])
     }
 
     var allTags: [String] {

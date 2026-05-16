@@ -47,6 +47,7 @@ enum Log {
     static let shared       = Logger(subsystem: subsystem, category: "SharedData")
     static let space        = Logger(subsystem: subsystem, category: "SpaceWallpaper")
     static let store        = Logger(subsystem: subsystem, category: "WallpaperStore")
+    static let cache        = Logger(subsystem: subsystem, category: "MetadataCache")
     static let supabase     = Logger(subsystem: subsystem, category: "Supabase")
     static let thumbnail    = Logger(subsystem: subsystem, category: "Thumbnail")
     static let timeOfDay    = Logger(subsystem: subsystem, category: "TimeOfDay")
