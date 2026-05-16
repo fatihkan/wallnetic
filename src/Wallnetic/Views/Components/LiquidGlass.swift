@@ -35,20 +35,20 @@ struct LiquidGlassStyle {
 
     fileprivate var baseFill: Color {
         switch tone {
-        case .standard:  return Color.black.opacity(0.18)
-        case .prominent: return Color.black.opacity(0.32)
-        case .control:   return Color.white.opacity(0.05)
+        case .standard:  return Surface.glassStandard
+        case .prominent: return Surface.glassProminent
+        case .control:   return Surface.glassControl
         }
     }
 
-    fileprivate var topStroke: Color { .white.opacity(0.16) }
-    fileprivate var bottomStroke: Color { .black.opacity(0.32) }
-    fileprivate var innerHighlight: Color { .white.opacity(0.06) }
+    fileprivate var topStroke: Color { Surface.glassTopStroke }
+    fileprivate var bottomStroke: Color { Surface.glassBottomStroke }
+    fileprivate var innerHighlight: Color { Surface.glassInnerHighlight }
     fileprivate var ambientShadow: Color {
         switch tone {
-        case .prominent: return .black.opacity(0.35)
-        case .standard:  return .black.opacity(0.25)
-        case .control:   return .black.opacity(0.15)
+        case .prominent: return Color.adaptive(dark: .black.opacity(0.35), light: .black.opacity(0.12))
+        case .standard:  return Color.adaptive(dark: .black.opacity(0.25), light: .black.opacity(0.08))
+        case .control:   return Color.adaptive(dark: .black.opacity(0.15), light: .black.opacity(0.05))
         }
     }
 
@@ -154,9 +154,9 @@ extension View {
                 .strokeBorder(
                     LinearGradient(
                         stops: [
-                            .init(color: isActive ? accent.opacity(0.7) : .white.opacity(0.18), location: 0),
-                            .init(color: .white.opacity(0.05), location: 0.5),
-                            .init(color: isActive ? accent.opacity(0.4) : .black.opacity(0.3), location: 1)
+                            .init(color: isActive ? accent.opacity(0.7) : Surface.glassTopStroke, location: 0),
+                            .init(color: Surface.glassInnerHighlight, location: 0.5),
+                            .init(color: isActive ? accent.opacity(0.4) : Surface.glassBottomStroke, location: 1)
                         ],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ),

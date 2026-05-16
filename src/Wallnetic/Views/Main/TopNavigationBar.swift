@@ -102,7 +102,7 @@ struct TopNavigationBar: View {
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(LinearGradient(
-                    colors: [.clear, .white.opacity(0.08), .clear],
+                    colors: [.clear, Surface.hairline, .clear],
                     startPoint: .leading, endPoint: .trailing
                 ))
                 .frame(height: 0.5)
@@ -117,7 +117,7 @@ struct TopNavigationBar: View {
                 .fill(.ultraThinMaterial)
                 .opacity(isScrolled ? 0.92 : 0.65)
             Rectangle()
-                .fill(Color.black.opacity(isScrolled ? 0.35 : 0.20))
+                .fill(isScrolled ? Surface.glassProminent : Surface.glassStandard)
         }
         .animation(.easeInOut(duration: Anim.medium), value: isScrolled)
     }
@@ -141,7 +141,7 @@ struct TopNavigationBar: View {
                     .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
                     .tracking(0.1)
             }
-            .foregroundColor(isSelected ? .white : .white.opacity(isHovered ? 0.85 : 0.55))
+            .foregroundColor(isSelected ? .primary : .primary.opacity(isHovered ? 0.85 : 0.65))
             .padding(.horizontal, 11)
             .padding(.vertical, 5)
             .contentShape(Rectangle())
@@ -151,17 +151,17 @@ struct TopNavigationBar: View {
                     // shouty underline, no accent color screaming
                     if isSelected {
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.10))
+                            .fill(Surface.glassControl)
                             .matchedGeometryEffect(id: "tabPill", in: tabUnderlineNS)
                         Capsule(style: .continuous)
                             .strokeBorder(LinearGradient(
-                                colors: [.white.opacity(0.22), .white.opacity(0.04)],
+                                colors: [Surface.glassTopStroke, Surface.glassInnerHighlight],
                                 startPoint: .top, endPoint: .bottom
                             ), lineWidth: 0.5)
                             .matchedGeometryEffect(id: "tabPillStroke", in: tabUnderlineNS)
                     } else if isHovered {
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.04))
+                            .fill(Surface.glassControl)
                     }
                 }
             )
@@ -185,11 +185,11 @@ struct TopNavigationBar: View {
                     .shadow(color: .accentColor.opacity(0.6), radius: 4)
 
                 TextField("Search wallpapers…", text: $searchText, prompt:
-                    Text("Search wallpapers…").foregroundColor(.white.opacity(0.32))
+                    Text("Search wallpapers…").foregroundColor(.primary.opacity(0.42))
                 )
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .focused($searchFocused)
                 .frame(width: 170)
 
@@ -201,7 +201,7 @@ struct TopNavigationBar: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(.primary.opacity(0.45))
                 }
                 .buttonStyle(.plain)
                 .suppressFocusRing()
@@ -210,7 +210,7 @@ struct TopNavigationBar: View {
             .padding(.vertical, 6)
             .background(
                 ZStack {
-                    Capsule().fill(Color.white.opacity(0.06))
+                    Capsule().fill(Surface.glassControl)
                     Capsule().stroke(Color.accentColor.opacity(0.45), lineWidth: 0.6)
                 }
             )
@@ -224,23 +224,23 @@ struct TopNavigationBar: View {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundColor(.primary.opacity(0.55))
                     Text("Search")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(.primary.opacity(0.5))
                     Spacer(minLength: 0)
                     Text("⌘F")
                         .font(.system(size: 9, weight: .heavy, design: .monospaced))
                         .tracking(0.5)
-                        .foregroundColor(.white.opacity(0.28))
+                        .foregroundColor(.primary.opacity(0.38))
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .frame(width: 180)
                 .background(
                     ZStack {
-                        Capsule().fill(Color.white.opacity(0.04))
-                        Capsule().stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                        Capsule().fill(Surface.glassControl)
+                        Capsule().stroke(Surface.hairline, lineWidth: 0.5)
                     }
                 )
             }
@@ -261,7 +261,7 @@ private struct ActionChip: View {
     var body: some View {
         Image(systemName: icon)
             .font(.system(size: 11, weight: .semibold))
-            .foregroundColor(.white.opacity(hover ? 1.0 : 0.75))
+            .foregroundColor(accent && hover ? .white : .primary.opacity(hover ? 1.0 : 0.78))
             .frame(width: 30, height: 30)
             .background(
                 ZStack {
@@ -271,15 +271,15 @@ private struct ActionChip: View {
                                 ? AnyShapeStyle(LinearGradient(
                                     colors: [Color.accentColor.opacity(0.55), Color.accentColor.opacity(0.2)],
                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                                : AnyShapeStyle(Color.white.opacity(hover ? 0.10 : 0.05))
+                                : AnyShapeStyle(Surface.glassControl)
                         )
                     // Refractive stroke
                     Circle()
                         .strokeBorder(LinearGradient(
                             stops: [
-                                .init(color: accent && hover ? Color.accentColor.opacity(0.75) : Color.white.opacity(0.22), location: 0),
-                                .init(color: .white.opacity(0.04), location: 0.55),
-                                .init(color: .black.opacity(0.30), location: 1)
+                                .init(color: accent && hover ? Color.accentColor.opacity(0.75) : Surface.glassTopStroke, location: 0),
+                                .init(color: Surface.glassInnerHighlight, location: 0.55),
+                                .init(color: Surface.glassBottomStroke, location: 1)
                             ],
                             startPoint: .top, endPoint: .bottom
                         ), lineWidth: 0.75)
