@@ -139,16 +139,6 @@ struct MenuBarView: View {
                 )
             }
 
-            // Audio Visualizer toggle
-            Button {
-                AudioVisualizerOverlayController.shared.toggle()
-            } label: {
-                Label(
-                    AudioVisualizerOverlayController.shared.isVisible ? "Hide Audio Visualizer" : "Show Audio Visualizer",
-                    systemImage: "waveform"
-                )
-            }
-
             Divider()
 
             // About & Quit
