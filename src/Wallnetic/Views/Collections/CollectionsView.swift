@@ -4,6 +4,7 @@ struct CollectionsView: View {
     @ObservedObject private var collectionManager = CollectionManager.shared
     @State private var showingCreateSheet = false
     @State private var selectedCollection: WallpaperCollection?
+    @State private var collectionToRename: WallpaperCollection?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -54,7 +55,7 @@ struct CollectionsView: View {
                             .tag(collection)
                             .contextMenu {
                                 Button("Rename") {
-                                    // Implementation tracked in #181.
+                                    collectionToRename = collection
                                 }
 
                                 Button("Delete", role: .destructive) {
@@ -68,6 +69,9 @@ struct CollectionsView: View {
         }
         .sheet(isPresented: $showingCreateSheet) {
             CreateCollectionSheet()
+        }
+        .sheet(item: $collectionToRename) { collection in
+            RenameCollectionSheet(collection: collection)
         }
     }
 }
