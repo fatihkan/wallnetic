@@ -67,7 +67,7 @@ struct DiscoverView: View {
                         .neonGlow(.blue, isActive: true, radius: 6)
                     Text("Discover Wallpapers")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                 }
 
                 Spacer()
@@ -78,7 +78,7 @@ struct DiscoverView: View {
                 +
                 Text(" sources")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.primary.opacity(0.55))
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
@@ -135,7 +135,7 @@ struct SourceCard: View {
                 HStack(spacing: 6) {
                     Text(source.name)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
 
                     if source.type == .api {
                         Text("API")
@@ -150,7 +150,7 @@ struct SourceCard: View {
 
                 Text(source.description)
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.45))
+                    .foregroundColor(.primary.opacity(0.6))
                     .lineLimit(2)
 
                 Text("\(source.estimatedCount) wallpapers")
@@ -162,7 +162,7 @@ struct SourceCard: View {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(isHovering ? source.color.opacity(0.6) : .white.opacity(0.2))
+                .foregroundColor(isHovering ? source.color.opacity(0.6) : .primary.opacity(0.35))
                 .offset(x: isHovering ? 3 : 0)
         }
         .padding(16)
@@ -170,7 +170,7 @@ struct SourceCard: View {
         .glowCard(isHovering: isHovering, cornerRadius: 12, glowColor: source.color)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(isHovering ? 0.06 : 0.03))
+                .fill(Surface.glassControl.opacity(isHovering ? 1.5 : 1.0))
         )
         .scaleEffect(isHovering ? 1.02 : 1.0)
         .animation(.spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
@@ -207,7 +207,7 @@ struct InAppBrowserView: View {
                     .foregroundColor(source.color)
                 Text(source.name)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
 
                 // Back / Forward
                 HStack(spacing: 2) {
@@ -216,9 +216,9 @@ struct InAppBrowserView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(canGoBack ? .white.opacity(0.8) : .white.opacity(0.2))
+                            .foregroundColor(canGoBack ? .primary.opacity(0.85) : .primary.opacity(0.3))
                             .frame(width: 28, height: 28)
-                            .background(Color.white.opacity(canGoBack ? 0.1 : 0.04))
+                            .background(Surface.glassControl.opacity(canGoBack ? 2.0 : 0.8))
                             .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
@@ -229,9 +229,9 @@ struct InAppBrowserView: View {
                     } label: {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(canGoForward ? .white.opacity(0.8) : .white.opacity(0.2))
+                            .foregroundColor(canGoForward ? .primary.opacity(0.85) : .primary.opacity(0.3))
                             .frame(width: 28, height: 28)
-                            .background(Color.white.opacity(canGoForward ? 0.1 : 0.04))
+                            .background(Surface.glassControl.opacity(canGoForward ? 2.0 : 0.8))
                             .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
@@ -241,12 +241,12 @@ struct InAppBrowserView: View {
                 // URL bar
                 Text(currentURL)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.primary.opacity(0.55))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.06))
+                    .background(Surface.glassControl)
                     .cornerRadius(6)
 
                 if isLoading {
@@ -264,10 +264,10 @@ struct InAppBrowserView: View {
                         Text("Scan")
                             .font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.primary.opacity(0.85))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.1))
+                    .background(Surface.glassControl.opacity(2.0))
                     .cornerRadius(6)
                 }
                 .buttonStyle(.plain)
@@ -294,9 +294,9 @@ struct InAppBrowserView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.primary.opacity(0.7))
                         .frame(width: 28, height: 28)
-                        .background(Color.white.opacity(0.1))
+                        .background(Surface.glassControl.opacity(2.0))
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -304,7 +304,7 @@ struct InAppBrowserView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color(white: 0.12))
+            .background(Surface.glassProminent)
 
             // Active downloads bar
             if !downloadManager.downloads.filter({ [.downloading, .completed, .failed].contains($0.status) }).isEmpty {
@@ -327,7 +327,7 @@ struct InAppBrowserView: View {
 
                             Text(dl.name)
                                 .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(.primary.opacity(0.8))
                                 .lineLimit(1)
 
                             if dl.status == .downloading {
@@ -336,7 +336,7 @@ struct InAppBrowserView: View {
 
                                 Text("\(Int(dl.progress * 100))%")
                                     .font(.system(size: 9, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.5))
+                                    .foregroundColor(.primary.opacity(0.6))
                                     .frame(width: 30)
                             } else if dl.status == .completed {
                                 Text("Imported")
@@ -352,7 +352,7 @@ struct InAppBrowserView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
-                .background(Color(white: 0.08))
+                .background(Surface.glassStandard)
             }
 
             // Found videos panel
@@ -363,7 +363,7 @@ struct InAppBrowserView: View {
                             .foregroundColor(.blue)
                         Text("Found \(foundVideos.count) video\(foundVideos.count == 1 ? "" : "s") on this page")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
 
                         Spacer()
 
@@ -385,7 +385,7 @@ struct InAppBrowserView: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 9))
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(.primary.opacity(0.55))
                         }
                         .buttonStyle(.plain)
                     }
@@ -397,11 +397,11 @@ struct InAppBrowserView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "film")
                                 .font(.system(size: 9))
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(.primary.opacity(0.55))
 
                             Text(URL(string: urlStr)?.lastPathComponent ?? urlStr)
                                 .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(.primary.opacity(0.7))
                                 .lineLimit(1)
 
                             Spacer()
@@ -421,7 +421,7 @@ struct InAppBrowserView: View {
                         .padding(.vertical, 3)
                     }
                 }
-                .background(Color(white: 0.06))
+                .background(Surface.glassStandard)
             }
 
             // WebView
@@ -434,7 +434,7 @@ struct InAppBrowserView: View {
                 canGoForward: $canGoForward
             )
         }
-        .background(Color.black)
+        .background(Surface.windowFill)
     }
 
     /// Scans current page for video URLs using JavaScript

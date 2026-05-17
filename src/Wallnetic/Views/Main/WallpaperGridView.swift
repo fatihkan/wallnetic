@@ -252,16 +252,16 @@ struct WallpaperCard: View {
     private var backView: some View {
         ZStack {
             Rectangle()
-                .fill(Color(white: 0.12))
+                .fill(Surface.glassProminent)
                 .aspectRatio(16/9, contentMode: .fit)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(wallpaper.displayName)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .lineLimit(2)
 
-                Divider().background(.white.opacity(0.1))
+                Divider().background(Surface.hairline)
 
                 metadataRow("Resolution", value: wallpaper.formattedResolution)
                 metadataRow("Duration", value: wallpaper.formattedDuration)
@@ -287,11 +287,11 @@ struct WallpaperCard: View {
         HStack {
             Text(label)
                 .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(.primary.opacity(0.55))
             Spacer()
             Text(value)
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(.primary.opacity(0.85))
         }
     }
 }
@@ -393,17 +393,17 @@ struct SelectedWallpaperBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(wallpaper.displayName)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .tracking(-0.1)
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     Text(wallpaper.formattedResolution)
-                    Text("·").foregroundColor(.white.opacity(0.2))
+                    Text("·").foregroundColor(.primary.opacity(0.3))
                     Text(wallpaper.formattedDuration)
                 }
                 .font(Typo.data)
                 .tracking(Typo.dataTracking)
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(.primary.opacity(0.6))
             }
 
             Spacer()
@@ -502,7 +502,7 @@ struct RenameWallpaperSheet: View {
                 Text("DISPLAY NAME")
                     .font(.system(size: 9, weight: .heavy, design: .monospaced))
                     .tracking(2)
-                    .foregroundColor(.white.opacity(0.35))
+                    .foregroundColor(.primary.opacity(0.5))
 
                 WallneticTextField(
                     placeholder: wallpaper.name,
@@ -522,7 +522,7 @@ struct RenameWallpaperSheet: View {
                             Text("Reset to original filename")
                                 .font(.system(size: 11))
                         }
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.primary.opacity(0.6))
                     }
                     .buttonStyle(.plain)
                     .padding(.top, 4)
