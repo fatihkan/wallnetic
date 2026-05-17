@@ -77,11 +77,11 @@ struct ExploreView: View {
                     } label: {
                         Text("All")
                             .font(.system(size: 10, weight: selectedColor == nil ? .bold : .medium))
-                            .foregroundColor(selectedColor == nil ? .white : .white.opacity(0.5))
+                            .foregroundColor(selectedColor == nil ? .primary : .primary.opacity(0.6))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(
-                                Capsule().fill(selectedColor == nil ? Color.white.opacity(0.12) : Color.white.opacity(0.04))
+                                Capsule().fill(selectedColor == nil ? Surface.glassControl.opacity(2.4) : Surface.glassControl)
                             )
                     }
                     .buttonStyle(.plain)
@@ -96,7 +96,7 @@ struct ExploreView: View {
                                 .fill(cat.color)
                                 .frame(width: 18, height: 18)
                                 .overlay(
-                                    Circle().stroke(.white.opacity(selectedColor == cat ? 0.8 : 0.15), lineWidth: selectedColor == cat ? 2 : 0.5)
+                                    Circle().stroke(Color.primary.opacity(selectedColor == cat ? 0.8 : 0.2), lineWidth: selectedColor == cat ? 2 : 0.5)
                                 )
                                 .scaleEffect(selectedColor == cat ? 1.2 : 1.0)
                         }
@@ -125,7 +125,7 @@ struct ExploreView: View {
                 +
                 Text(" wallpapers")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.primary.opacity(0.55))
 
                 Spacer()
 
@@ -194,11 +194,11 @@ struct ExploreView: View {
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 11))
-                .foregroundColor(viewMode == mode ? .white : .white.opacity(0.3))
+                .foregroundColor(viewMode == mode ? .primary : .primary.opacity(0.45))
                 .frame(width: 24, height: 24)
                 .background(
                     RoundedRectangle(cornerRadius: 5)
-                        .fill(viewMode == mode ? Color.white.opacity(0.1) : .clear)
+                        .fill(viewMode == mode ? Surface.glassControl.opacity(2.0) : .clear)
                 )
         }
         .buttonStyle(.plain)
@@ -218,7 +218,7 @@ struct ExploreView: View {
         } label: {
             Text(category)
                 .font(.system(size: 12, weight: isSelected ? .bold : .medium))
-                .foregroundColor(isSelected ? .white : .white.opacity(isHovered ? 0.8 : 0.6))
+                .foregroundColor(isSelected ? .primary : .primary.opacity(isHovered ? 0.85 : 0.7))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(
@@ -227,10 +227,10 @@ struct ExploreView: View {
                             Capsule().fill(Color.accentColor.opacity(0.25))
                             Capsule().stroke(Color.accentColor.opacity(0.4), lineWidth: 0.5)
                         } else if isHovered {
-                            Capsule().fill(Color.white.opacity(0.06))
+                            Capsule().fill(Surface.glassControl.opacity(1.5))
                         } else {
-                            Capsule().fill(Color.white.opacity(0.03))
-                            Capsule().stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                            Capsule().fill(Surface.glassControl)
+                            Capsule().stroke(Surface.hairline, lineWidth: 0.5)
                         }
                     }
                 )
@@ -268,7 +268,7 @@ struct ExploreCard: View {
                                     .aspectRatio(contentMode: .fill)
                             } else {
                                 Rectangle()
-                                    .fill(Color.white.opacity(0.03))
+                                    .fill(Surface.glassControl)
                                     .overlay { ProgressView().scaleEffect(0.6) }
                             }
                         }
@@ -325,13 +325,13 @@ struct ExploreCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(wallpaper.displayName)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(isHovering ? 0.95 : 0.75))
+                    .foregroundColor(.primary.opacity(isHovering ? 0.95 : 0.8))
                     .lineLimit(2)
                     .truncationMode(.tail)
 
                 Text("\(wallpaper.formattedResolution) \u{2022} \(wallpaper.formattedFileSize)")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.35))
+                    .foregroundColor(.primary.opacity(0.5))
             }
         }
         .animation(.spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
@@ -372,7 +372,7 @@ struct ExploreListRow: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(Surface.glassControl)
                     .frame(width: 80, height: 45)
                     .overlay { ProgressView().scaleEffect(0.5) }
             }
@@ -381,7 +381,7 @@ struct ExploreListRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(wallpaper.displayName)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(.primary.opacity(0.95))
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
@@ -390,7 +390,7 @@ struct ExploreListRow: View {
                     Text(wallpaper.formattedFileSize)
                 }
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(.primary.opacity(0.55))
             }
 
             Spacer()
@@ -409,9 +409,9 @@ struct ExploreListRow: View {
                 } label: {
                     Image(systemName: "play.fill")
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(.primary.opacity(0.85))
                         .frame(width: 28, height: 28)
-                        .background(Circle().fill(.white.opacity(0.1)))
+                        .background(Circle().fill(Surface.glassControl.opacity(1.5)))
                 }
                 .buttonStyle(.plain)
             }
@@ -420,7 +420,7 @@ struct ExploreListRow: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isHovering ? Color.white.opacity(0.04) : .clear)
+                .fill(isHovering ? Surface.glassControl : Color.clear)
         )
         .onHover { h in withAnimation(Anim.hover) { isHovering = h } }
         .onTapGesture(count: 2) { wallpaperManager.setWallpaper(wallpaper) }

@@ -47,7 +47,7 @@ struct PopularView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(.primary.opacity(0.55))
 
                     Picker("", selection: $sortOption) {
                         ForEach(SortOption.allCases, id: \.self) { option in
@@ -63,7 +63,7 @@ struct PopularView: View {
                 +
                 Text(" wallpapers")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.primary.opacity(0.55))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -114,7 +114,7 @@ struct PopularCard: View {
         case 1: return .orange
         case 2: return Color(red: 0.85, green: 0.65, blue: 0.1)
         case 3: return Color(red: 0.7, green: 0.45, blue: 0.15)
-        default: return .white.opacity(0.4)
+        default: return .primary.opacity(0.5)
         }
     }
 
@@ -132,7 +132,7 @@ struct PopularCard: View {
                                     .aspectRatio(contentMode: .fill)
                             } else {
                                 Rectangle()
-                                    .fill(Color.white.opacity(0.03))
+                                    .fill(Surface.glassControl)
                                     .overlay { ProgressView().scaleEffect(0.6) }
                             }
                         }
@@ -172,13 +172,13 @@ struct PopularCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(wallpaper.displayName)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(isHovering ? 0.95 : 0.75))
+                        .foregroundColor(.primary.opacity(isHovering ? 0.95 : 0.8))
                         .lineLimit(2)
                         .truncationMode(.tail)
 
                     Text("\(wallpaper.formattedResolution) \u{2022} \(wallpaper.formattedDuration)")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.35))
+                        .foregroundColor(.primary.opacity(0.5))
                 }
 
                 Spacer()
