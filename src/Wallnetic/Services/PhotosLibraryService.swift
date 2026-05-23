@@ -131,19 +131,45 @@ final class PhotosLibraryService: ObservableObject {
             options.isNetworkAccessAllowed = true
             options.isSynchronous = false
 
+            // PHImageManager can deliver the result handler twice (degraded
+            // preview + final), or zero times in error paths. A capture-by-
+            // reference flag guarantees we resume the continuation exactly
+            // once — early-returning on a degraded delivery without resuming
+            // would permanently hang the Task.
+            let resumed = ContinuationResumeFlag()
             imageManager.requestImage(
                 for: asset,
                 targetSize: PHImageManagerMaximumSize,
                 contentMode: .aspectFit,
                 options: options
             ) { image, info in
-                // Skip the low-res "opportunistic" preview if a degraded flag is set.
-                if let isDegraded = info?[PHImageResultIsDegradedKey] as? Bool, isDegraded {
-                    return
+                // Skip the low-res "opportunistic" preview if degraded — but
+                // only if we know a non-degraded delivery is still coming.
+                // Treat cancel/error (image==nil with degraded flag) as a
+                // terminal result so the Task can complete.
+                let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                let isError = (info?[PHImageErrorKey] != nil)
+                                || ((info?[PHImageCancelledKey] as? Bool) ?? false)
+                if degraded && image != nil && !isError {
+                    return  // wait for the final hi-res callback
                 }
-                cont.resume(returning: image)
+                if resumed.tryConsume() {
+                    cont.resume(returning: image)
+                }
             }
         }
+    }
+}
+
+/// One-shot resumption guard for callbacks that may fire 0, 1, or 2 times.
+private final class ContinuationResumeFlag {
+    private var consumed = false
+    private let lock = NSLock()
+    func tryConsume() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard !consumed else { return false }
+        consumed = true
+        return true
     }
 }
 

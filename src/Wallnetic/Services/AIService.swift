@@ -234,12 +234,23 @@ class AIService {
         let maxAttempts = 120  // 4 minutes max (2s intervals)
         var attempts = 0
 
-        // Use status URL or construct one
+        // Use status URL or construct one. Both branches must surface a
+        // throwable error if URL parsing fails — a force-unwrap here can
+        // crash the app when fal.ai returns a requestId with URL-invalid
+        // characters (spaces, brackets, unicode).
         let pollURL: URL
-        if let statusURL = statusURL, let url = URL(string: statusURL) {
+        if let statusURL, let url = URL(string: statusURL) {
             pollURL = url
         } else {
-            pollURL = URL(string: "\(statusBaseURL)/\(request.model.falEndpoint)/requests/\(requestId)/status")!
+            let escapedId = requestId.addingPercentEncoding(
+                withAllowedCharacters: .urlPathAllowed
+            ) ?? requestId
+            guard let url = URL(
+                string: "\(statusBaseURL)/\(request.model.falEndpoint)/requests/\(escapedId)/status"
+            ) else {
+                throw AIServiceError.invalidURL
+            }
+            pollURL = url
         }
 
         while attempts < maxAttempts {
