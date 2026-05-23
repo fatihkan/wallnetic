@@ -517,6 +517,21 @@ class WallpaperManager: ObservableObject {
         playbackDelegate?.playbackSetWallpaper(url: wallpaper.url, for: screen)
         playbackDelegate?.playbackPlay()
 
+        // The active screen's wallpaper is what DynamicAccent, DynamicIsland,
+        // ThemeManager, and the widget should reflect. Without updating
+        // currentWallpaper + posting .wallpaperDidChange these consumers
+        // remain stuck on stale data whenever per-screen mode is used.
+        let activeScreen = NSScreen.main ?? screen
+        if screen == activeScreen {
+            currentWallpaper = wallpaper
+            lastWallpaperURL = wallpaper.url.path
+            NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
+            Task {
+                await widgetSync.syncCurrentWallpaper(wallpaper)
+                widgetSync.syncPlaybackState(isPlaying: true)
+            }
+        }
+
         NotificationCenter.default.post(
             name: .screenWallpaperDidChange,
             object: ScreenWallpaperInfo(wallpaper: wallpaper, screen: screen)

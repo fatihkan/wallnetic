@@ -287,14 +287,17 @@ final class NowPlayingManager: ObservableObject {
             end if
         end tell
         """
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            if let appleScript = NSAppleScript(source: script) {
-                var error: NSDictionary?
-                let result = appleScript.executeAndReturnError(&error)
-                let data = result.data
-                if let image = NSImage(data: data) {
-                    DispatchQueue.main.async { self?.artwork = image }
-                }
+        // NSAppleScript must run on the main thread; documented in the
+        // AppleScript framework reference. Off-main execution sporadically
+        // hangs the event loop or returns empty Data.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard let appleScript = NSAppleScript(source: script) else { return }
+            var error: NSDictionary?
+            let result = appleScript.executeAndReturnError(&error)
+            let data = result.data
+            if let image = NSImage(data: data) {
+                self.artwork = image
             }
         }
     }
