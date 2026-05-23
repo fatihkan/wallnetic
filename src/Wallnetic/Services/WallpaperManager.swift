@@ -459,13 +459,23 @@ class WallpaperManager: ObservableObject {
 
     func extractMissingColors() {
         Task {
+            // Snapshot the wallpapers needing color extraction by their id;
+            // after each suspension we re-resolve the index via id so the
+            // write goes to the right wallpaper (or no-op if it was deleted
+            // during the async gap).
+            let targets: [(id: UUID, url: URL)] = wallpapers
+                .filter { $0.dominantColorHex == nil }
+                .map { ($0.id, $0.url) }
             var updatedColors = metadata.savedColors
-            for i in wallpapers.indices where wallpapers[i].dominantColorHex == nil {
-                if let hex = await wallpapers[i].extractDominantColor() {
+            for target in targets {
+                guard let snapshot = wallpapers.first(where: { $0.id == target.id }) else { continue }
+                if let hex = await snapshot.extractDominantColor() {
                     await MainActor.run {
-                        wallpapers[i].dominantColorHex = hex
+                        if let idx = wallpapers.firstIndex(where: { $0.id == target.id }) {
+                            wallpapers[idx].dominantColorHex = hex
+                        }
                     }
-                    updatedColors[wallpapers[i].url.path] = hex
+                    updatedColors[target.url.path] = hex
                 }
             }
             await MainActor.run {
