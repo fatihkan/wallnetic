@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-05-23
+
+> Hardening release. /code-review xhigh-effort tarama 15 bulgu yakaladı; 4 PR
+> (security/privacy → crash → functional → correctness) ile hepsi kapatıldı.
+> Audio Visualizer entitlement'i tamamen kaldırıldı (UI zaten v1.3.0'da
+> soft-remove edilmişti). Build 8.
+
+### Security & Privacy (PR #207)
+- **Spotify SSRF blocked** (`NowPlayingManager`): `DistributedNotificationCenter`
+  herhangi bir lokal işlemden artwork URL inject edebiliyordu; artık https-only
+  + non-loopback + non-RFC1918 host şart, file:// kapatıldı.
+- **Content-Disposition substring injection** (`BrowserWebView`): `.mp4`
+  substring match `video.mp4.dylib` filename'ini geçiriyordu; gerçek `filename=`
+  parametresi regex ile parse ediliyor, saved file extension allowlist dışına
+  çıkarsa `.zip`'e düşürülüyor.
+- **PII → Keychain migration** (`AuthManager`): `userEmail`/`userId`
+  UserDefaults'ta plaintext duruyordu (App Group geniş erişim, backup
+  unencrypted). `KeychainManager.setSecureString` ile Keychain'e taşındı.
+- **Audio Visualizer entitlement temizliği**: `com.apple.security.device.audio-input`
+  + `NSMicrophoneUsageDescription` + `NSScreenCaptureUsageDescription` silindi
+  (PR #199'da UI kaldırılmıştı).
+
+### Bug Fixes — Crashes & Hangs (PR #208)
+- **AIService URL force-unwrap crash**: fal.ai `requestId` URL-invalid karakter
+  içeriyorsa `URL(string:)!` crash. Percent-encoded + guard + throw.
+- **PhotosLibraryService continuation hang**: `requestFullImage` degraded-only
+  delivery sonrasında resume çağırmıyordu; NSLock-backed `ContinuationResumeFlag`
+  ile exactly-once resume.
+- **WallpaperManager extractMissingColors index race**: id-tuple snapshot +
+  re-resolve via `firstIndex(where: id==)`.
+
+### Bug Fixes — Functional Regressions (PR #209)
+- **NSAppleScript main thread** (`NowPlayingManager`): main thread'e taşındı.
+- **Per-screen URL equality guard** (`DesktopWindowController`): per-screen
+  modda aynı wallpaper iki ekrana atandığında ikinci ekran skip oluyordu;
+  `screenWallpaperURLs` dict ile scope-aware skip.
+- **Per-screen currentWallpaper sync** (`WallpaperManager`): per-screen modda
+  `currentWallpaper` güncellenmiyordu; Dynamic Island/accent/widget stale
+  kalıyordu. Active screen tespitiyle uniform pipeline tetikleniyor.
+- **Signature-keyed Space assignments**: index-based + unstable window-ID
+  signatures relaunch sonrası wallpaper'ları yanlış Space'e bağlıyordu;
+  artık signature-keyed (eski stored index'ler harmless ignore).
+
+### Bug Fixes — Correctness (PR #210)
+- **DownloadManager data race**: tasks/completionHandlers dict'leri delegate
+  queue ve main queue'dan eşzamanlı mutate ediliyordu; tüm erişim
+  `stateQueue: DispatchQueue` üzerinden serialize.
+- **AudioVisualizerManager stop/start race**: `isRunning = false` artık
+  synchronous (önceden `DispatchQueue.main.async`'e erteleniyordu, hızlı
+  toggle visualizer'ı dead state'te bırakıyordu).
+- **OllamaTaggingService objectWillChange**: `@AppStorageKeyed` setter'ları
+  `willSet { objectWillChange.send() }` ile SwiftUI re-render fire ediyor.
+
+### Removed
+- `com.apple.security.device.audio-input` entitlement
+- `NSMicrophoneUsageDescription`, `NSScreenCaptureUsageDescription` (Info.plist + project.yml)
+
+### Breaking Change
+- Space wallpaper assignment storage formatı index→signature olarak değişti.
+  Pre-v1.3.1 saved data otomatik ignore — kullanıcı Space wallpaper'larını
+  bir kez re-assign etmek zorunda.
+
+### Code Review Stats
+- /code-review xhigh-effort: 5 angles × 8 candidates → 1-vote verify → 15
+- 3 false positives refuted: MLWDecryptor matematik (zaten doğru),
+  ScreenCaptureKit availability (deployment target 13.0 zaten kapsıyor),
+  ZIPReader.swift (hallüsinasyon, dosya yok).
+- 4 PR sequential: #207 → #208 → #209 → #210 (this).
+
 ## [1.3.0] — 2026-05-17
 
 > First release on the v1.3 track. Bundles the entire May development cycle
