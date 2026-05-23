@@ -85,4 +85,54 @@ class KeychainManager {
     func hasAPIKey(for provider: APIProvider) -> Bool {
         return getAPIKey(for: provider) != nil
     }
+
+    // MARK: - Generic Secure String Storage
+    //
+    // For PII like signed-in user identifiers we use the same Keychain
+    // service but a dedicated account namespace so they're segregated from
+    // API keys and survive App Group changes.
+
+    private static let securePrefix = "secure."
+
+    @discardableResult
+    func setSecureString(_ value: String?, forKey key: String) -> Bool {
+        let account = Self.securePrefix + key
+        // Always delete first so update is idempotent.
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+
+        guard let value, let data = value.data(using: .utf8) else {
+            return true  // nil/empty → just delete
+        }
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+        ]
+        return SecItemAdd(addQuery as CFDictionary, nil) == errSecSuccess
+    }
+
+    func secureString(forKey key: String) -> String? {
+        let account = Self.securePrefix + key
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let str = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return str
+    }
 }

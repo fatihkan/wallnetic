@@ -235,10 +235,45 @@ final class NowPlayingManager: ObservableObject {
         hasTrack = true
         appName = "Spotify"
 
-        if titleChanged, let artURL = info["Album Art URL"] as? String ?? info["artUrl"] as? String,
-           let url = URL(string: artURL) {
+        if titleChanged,
+           let artURL = info["Album Art URL"] as? String ?? info["artUrl"] as? String,
+           let url = sanitizeRemoteArtworkURL(artURL) {
             fetchArtwork(from: url)
         }
+    }
+
+    // DistributedNotificationCenter delivers userInfo from ANY local process,
+    // so the artwork URL is untrusted. Reject file://, schemes other than
+    // https, and loopback/RFC1918 hosts to prevent SSRF reads of local files
+    // or internal services.
+    private func sanitizeRemoteArtworkURL(_ raw: String) -> URL? {
+        guard let url = URL(string: raw),
+              url.scheme?.lowercased() == "https",
+              let host = url.host?.lowercased(),
+              !host.isEmpty,
+              !isLoopbackOrPrivate(host: host)
+        else { return nil }
+        return url
+    }
+
+    private func isLoopbackOrPrivate(host: String) -> Bool {
+        if host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]" {
+            return true
+        }
+        if host.hasSuffix(".local") || host == "local" {
+            return true
+        }
+        // RFC 1918: 10.x.x.x, 172.16-31.x.x, 192.168.x.x
+        if host.hasPrefix("10.") || host.hasPrefix("192.168.") {
+            return true
+        }
+        if host.hasPrefix("172.") {
+            let parts = host.split(separator: ".")
+            if parts.count >= 2, let octet = Int(parts[1]), (16...31).contains(octet) {
+                return true
+            }
+        }
+        return false
     }
 
     // MARK: - Artwork helpers

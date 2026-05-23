@@ -53,6 +53,37 @@ struct WebViewWrapper: NSViewRepresentable {
         private var pendingDownloads: [WKDownload: (dest: URL, name: String, trackingID: UUID)] = [:]
         private var progressObservations: [WKDownload: NSKeyValueObservation] = [:]
 
+        // Saved-file extension allowlist. Anything not in this set is rewritten to
+        // ".zip" so a hostile server cannot land a binary like `video.mp4.dylib`.
+        static let allowedDownloadExtensions: Set<String> =
+            ["mp4", "mov", "m4v", "webm", "mkv", "zip", "mlw"]
+
+        /// Extracts the file extension from a Content-Disposition header by
+        /// parsing the `filename=` (or `filename*=`) parameter and applying
+        /// `pathExtension`. Returns lowercased extension or nil if no valid
+        /// filename parameter is found.
+        static func extensionFromContentDisposition(_ header: String) -> String? {
+            // RFC 6266 filename parameter. Accept filename="x.mp4", filename=x.mp4,
+            // and filename*=UTF-8''x.mp4 forms.
+            let patterns = [
+                #"filename\*=[^']*''([^;]+)"#,
+                #"filename="([^"]+)""#,
+                #"filename=([^;]+)"#
+            ]
+            for pattern in patterns {
+                guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { continue }
+                let range = NSRange(header.startIndex..<header.endIndex, in: header)
+                if let match = regex.firstMatch(in: header, range: range), match.numberOfRanges > 1,
+                   let r = Range(match.range(at: 1), in: header) {
+                    let raw = header[r].trimmingCharacters(in: .whitespacesAndNewlines)
+                    let decoded = raw.removingPercentEncoding ?? String(raw)
+                    let ext = (decoded as NSString).pathExtension.lowercased()
+                    if !ext.isEmpty { return ext }
+                }
+            }
+            return nil
+        }
+
         init(_ parent: WebViewWrapper) { self.parent = parent }
 
         func observeNavigation(of webView: WKWebView) {
@@ -136,14 +167,15 @@ struct WebViewWrapper: NSViewRepresentable {
 
             // application/octet-stream — check Content-Disposition for video filename
             // Sites like moewalls.com serve video as octet-stream with filename=...mp4
+            // Parse the actual `filename=` value rather than substring-matching the
+            // raw header — a hostile filename like "video.mp4.dylib" would pass a
+            // naive `.contains(".mp4")` check.
             if mimeType == "application/octet-stream" {
                 let disposition = (navigationResponse.response as? HTTPURLResponse)?
                     .value(forHTTPHeaderField: "Content-Disposition") ?? ""
-                let videoExts = ["mp4", "mov", "m4v", "webm", "mkv", "zip", "mlw"]
-                let hasVideoFilename = videoExts.contains { disposition.lowercased().contains(".\($0)") }
-
-                if hasVideoFilename {
-                    Log.browser.info("Starting WKDownload for octet-stream: \(url?.absoluteString ?? "?", privacy: .public) (disposition: \(disposition, privacy: .public))")
+                let parsedExt = Self.extensionFromContentDisposition(disposition)
+                if let ext = parsedExt, Self.allowedDownloadExtensions.contains(ext) {
+                    Log.browser.info("Starting WKDownload for octet-stream: \(url?.absoluteString ?? "?", privacy: .public) (ext: \(ext, privacy: .public))")
                     decisionHandler(.download)
                     return
                 }
@@ -175,8 +207,11 @@ struct WebViewWrapper: NSViewRepresentable {
                       suggestedFilename: String,
                       completionHandler: @escaping (URL?) -> Void) {
             let name = (suggestedFilename as NSString).deletingPathExtension
-            let ext = (suggestedFilename as NSString).pathExtension.lowercased()
-            let destExt = ext.isEmpty ? "zip" : ext
+            let rawExt = (suggestedFilename as NSString).pathExtension.lowercased()
+            // Lock the saved file's extension to the allowlist so a hostile
+            // server cannot land a binary like `video.mp4.dylib` on disk via
+            // a crafted suggestedFilename.
+            let destExt = Self.allowedDownloadExtensions.contains(rawExt) ? rawExt : "zip"
             let dest = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
                 .appendingPathExtension(destExt)
