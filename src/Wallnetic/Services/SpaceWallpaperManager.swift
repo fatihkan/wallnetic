@@ -11,8 +11,15 @@ class SpaceWallpaperManager: ObservableObject {
 
     @Published var currentSpaceIndex: Int = 0
     @Published var currentSpaceID: Int = 0
-    @Published var spaceAssignments: [Int: String] = [:] // spaceIndex -> wallpaper URL path
-    @Published var knownSpaceIDs: [Int] = [] // ordered list of discovered space IDs
+    // NOTE on identity: macOS does not expose a stable, App-Store-safe
+    // Space identifier. Our signature is derived from Dock/Finder window
+    // IDs (kernel-assigned, not portable across reboots), so assignments
+    // keyed by signature do *not* survive a relaunch. We deliberately key
+    // by signature anyway so a stale assignment cannot be applied to the
+    // *wrong* Space — after a restart the user simply has to re-assign,
+    // which is correct behavior in the face of unknown identity.
+    @Published var spaceAssignments: [Int: String] = [:] // spaceID (signature) -> wallpaper URL path
+    @Published var knownSpaceIDs: [Int] = [] // ordered list of discovered space IDs (current session)
 
     private var spaceObserver: Any?
 
@@ -54,24 +61,41 @@ class SpaceWallpaperManager: ObservableObject {
     // MARK: - Assignment
 
     func setWallpaper(_ wallpaper: Wallpaper, forSpace spaceIndex: Int) {
-        spaceAssignments[spaceIndex] = wallpaper.url.path
+        // spaceIndex is the position in knownSpaceIDs; resolve it to a
+        // signature so the binding survives subsequent space discoveries
+        // re-ordering the list.
+        guard spaceIndex >= 0, spaceIndex < knownSpaceIDs.count else { return }
+        let signature = knownSpaceIDs[spaceIndex]
+        spaceAssignments[signature] = wallpaper.url.path
         saveAssignments()
-        Log.space.info("Set wallpaper '\(wallpaper.name, privacy: .public)' for space \(spaceIndex)")
+        Log.space.info("Set wallpaper '\(wallpaper.name, privacy: .public)' for space signature \(signature)")
 
-        // Apply immediately if this is the current space
         if spaceIndex == currentSpaceIndex {
             WallpaperManager.shared.setWallpaper(wallpaper)
         }
     }
 
     func wallpaper(forSpace spaceIndex: Int) -> Wallpaper? {
-        guard let path = spaceAssignments[spaceIndex] else { return nil }
+        guard spaceIndex >= 0, spaceIndex < knownSpaceIDs.count else { return nil }
+        let signature = knownSpaceIDs[spaceIndex]
+        guard let path = spaceAssignments[signature] else { return nil }
         return WallpaperManager.shared.wallpapers.first { $0.url.path == path }
     }
 
     func clearAssignment(forSpace spaceIndex: Int) {
-        spaceAssignments.removeValue(forKey: spaceIndex)
+        guard spaceIndex >= 0, spaceIndex < knownSpaceIDs.count else { return }
+        let signature = knownSpaceIDs[spaceIndex]
+        spaceAssignments.removeValue(forKey: signature)
         saveAssignments()
+    }
+
+    /// Drops all per-Space assignments. UI surface should expose this so a
+    /// user whose stored signatures no longer match (after restart) can
+    /// reset state instead of seeing wallpapers go missing.
+    func resetAllAssignments() {
+        spaceAssignments.removeAll()
+        saveAssignments()
+        Log.space.info("Cleared all space assignments")
     }
 
     // MARK: - Space Detection
@@ -140,6 +164,11 @@ class SpaceWallpaperManager: ObservableObject {
         guard let data = assignmentsJSON.data(using: .utf8) else { return }
         do {
             let decoded = try JSONDecoder().decode([String: String].self, from: data)
+            // Stored keys are now space signatures, not indices. Pre-v1.3.1
+            // saved data may still contain index keys (0,1,2…) — those
+            // would never match a signature so they get harmlessly ignored,
+            // which is the correct outcome (we don't know what space they
+            // referred to).
             spaceAssignments = Dictionary(uniqueKeysWithValues: decoded.compactMap { key, value in
                 guard let intKey = Int(key) else { return nil }
                 return (intKey, value)

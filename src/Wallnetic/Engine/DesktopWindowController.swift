@@ -27,7 +27,13 @@ class DesktopWindowController {
     private var renderers: [NSScreen: WallpaperRenderer] = [:]
     private var effectOverlays: [NSScreen: NSView] = [:]
     private var isPlaying = false
+    /// Last URL applied to *all* screens (uniform mode). Used to restore
+    /// new screens on hot-plug and to skip redundant uniform reapplies.
     private var currentWallpaperURL: URL?
+    /// Per-screen URL state. Lets the per-screen path skip a redundant
+    /// reload on the same screen while still allowing two screens to share
+    /// the same source URL in "different per display" mode.
+    private var screenWallpaperURLs: [NSScreen: URL] = [:]
     private var useMetalRenderer: Bool
 
     init() {
@@ -129,8 +135,22 @@ class DesktopWindowController {
 
     /// Sets the wallpaper video with animated transition
     func setWallpaper(url: URL, for screen: NSScreen? = nil) {
-        guard url != currentWallpaperURL else { return }
-        currentWallpaperURL = url
+        // Guard per scope: uniform-mode (screen=nil) skips redundant
+        // reapplies only when the URL hasn't changed at all; per-screen
+        // mode keys the skip check on the target screen so two screens
+        // can share the same source URL without one being silently dropped.
+        if let screen {
+            guard screenWallpaperURLs[screen] != url else { return }
+            screenWallpaperURLs[screen] = url
+        } else {
+            guard currentWallpaperURL != url else { return }
+            currentWallpaperURL = url
+            // Uniform reapply: reset per-screen state so hot-plug and
+            // mode transitions see a consistent picture.
+            for s in desktopWindows.keys {
+                screenWallpaperURLs[s] = url
+            }
+        }
 
         let style = WallpaperManager.shared.transitionStyle
         let duration = WallpaperManager.shared.transitionDuration
@@ -223,6 +243,7 @@ class DesktopWindowController {
             desktopWindows[screen]?.close()
             desktopWindows.removeValue(forKey: screen)
             renderers.removeValue(forKey: screen)
+            screenWallpaperURLs.removeValue(forKey: screen)
         }
 
         // Add windows for new screens
