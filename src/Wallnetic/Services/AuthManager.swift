@@ -39,6 +39,9 @@ class AuthManager: NSObject, ObservableObject {
         isAuthenticated = false
         userEmail = nil
         userId = nil
+        KeychainManager.shared.setSecureString(nil, forKey: "auth.userEmail")
+        KeychainManager.shared.setSecureString(nil, forKey: "auth.userId")
+        // Clean up legacy UserDefaults storage (pre-v1.3.1 stored PII here)
         UserDefaults.standard.removeObject(forKey: "auth.userEmail")
         UserDefaults.standard.removeObject(forKey: "auth.userId")
         Log.auth.info("Signed out")
@@ -47,11 +50,26 @@ class AuthManager: NSObject, ObservableObject {
     // MARK: - Session
 
     private func restoreSession() {
-        userEmail = UserDefaults.standard.string(forKey: "auth.userEmail")
-        userId = UserDefaults.standard.string(forKey: "auth.userId")
+        // Read from Keychain first (v1.3.1+). One-shot migrate any legacy
+        // UserDefaults values then wipe them.
+        migrateLegacyAuthStorageIfNeeded()
+        userEmail = KeychainManager.shared.secureString(forKey: "auth.userEmail")
+        userId = KeychainManager.shared.secureString(forKey: "auth.userId")
         isAuthenticated = true
         let email = userEmail ?? "unknown"
         Log.auth.info("Session restored for: \(email, privacy: .private)")
+    }
+
+    private func migrateLegacyAuthStorageIfNeeded() {
+        let defaults = UserDefaults.standard
+        if let legacyEmail = defaults.string(forKey: "auth.userEmail") {
+            KeychainManager.shared.setSecureString(legacyEmail, forKey: "auth.userEmail")
+            defaults.removeObject(forKey: "auth.userEmail")
+        }
+        if let legacyId = defaults.string(forKey: "auth.userId") {
+            KeychainManager.shared.setSecureString(legacyId, forKey: "auth.userId")
+            defaults.removeObject(forKey: "auth.userId")
+        }
     }
 
     private func handleSignIn(idToken: String, email: String?) {
@@ -81,8 +99,8 @@ class AuthManager: NSObject, ObservableObject {
                         self.userEmail = userEmail
                         self.isLoading = false
 
-                        UserDefaults.standard.set(userEmail, forKey: "auth.userEmail")
-                        UserDefaults.standard.set(uid, forKey: "auth.userId")
+                        KeychainManager.shared.setSecureString(userEmail, forKey: "auth.userEmail")
+                        KeychainManager.shared.setSecureString(uid, forKey: "auth.userId")
 
                         Log.auth.info("Signed in: \(userEmail ?? "unknown", privacy: .private)")
                     }
