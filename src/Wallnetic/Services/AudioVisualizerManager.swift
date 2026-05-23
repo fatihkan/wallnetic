@@ -194,7 +194,11 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
     }
 
     func stop() {
+        // Synchronously clear isRunning so an immediate start() does not
+        // see stale state and bail out. Visual state (bands/peaks) can be
+        // reset asynchronously since it only drives the UI.
         isEnabled = false
+        isRunning = false
         stopMicCapture()
         stopSystemCapture()
         DispatchQueue.main.async {
@@ -203,7 +207,6 @@ final class AudioVisualizerManager: NSObject, ObservableObject {
             self.decayBands = Array(repeating: 0, count: Self.bandCount)
             self.peakHold = Array(repeating: 0, count: Self.bandCount)
             self.loudness = 0
-            self.isRunning = false
         }
     }
 

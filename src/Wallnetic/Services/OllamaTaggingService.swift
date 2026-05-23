@@ -17,8 +17,14 @@ final class OllamaTaggingService: ObservableObject {
     @Published private(set) var statusText: String = ""
     @Published private(set) var lastError: String?
 
+    // @AppStorageKeyed reads/writes UserDefaults directly without going
+    // through ObservableObject's publisher. We hand-fire objectWillChange
+    // in willSet so SwiftUI views observing this service (the validation
+    // label, the Save button enabled-state) re-render when the user edits
+    // the endpoint or model.
     @AppStorageKeyed("ollama.endpoint")
     var endpointString: String = "http://localhost:11434/api/generate" {
+        willSet { objectWillChange.send() }
         didSet {
             // M1: any endpoint mutation invalidates batch authorization.
             // Next batch must come from a fresh "Tag" click that confirms
@@ -28,7 +34,9 @@ final class OllamaTaggingService: ObservableObject {
     }
 
     @AppStorageKeyed("ollama.model")
-    var modelName: String = OllamaVisionTagger.defaultModel
+    var modelName: String = OllamaVisionTagger.defaultModel {
+        willSet { objectWillChange.send() }
+    }
 
     /// The exact endpoint string the user explicitly authorized in the
     /// current session. `tagAll(...)` refuses to run if the configured

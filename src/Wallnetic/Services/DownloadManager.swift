@@ -26,6 +26,11 @@ class DownloadManager: NSObject, ObservableObject {
     @Published var activeCount: Int = 0
 
     private let maxConcurrent = 3
+    // Dictionary state is read/written from BOTH the URLSession delegate
+    // queue (serial OperationQueue) and the main queue (from download(),
+    // cancel(), etc.). Without serialization Swift's collection mutation
+    // is undefined behavior. All access funnels through `stateQueue`.
+    private let stateQueue = DispatchQueue(label: "com.wallnetic.DownloadManager.state")
     private var tasks: [UUID: URLSessionDownloadTask] = [:]
     private var progressHandlers: [UUID: (Double) -> Void] = [:]
     private var completionHandlers: [UUID: (Result<URL, Error>) -> Void] = [:]
@@ -38,6 +43,37 @@ class DownloadManager: NSObject, ObservableObject {
     }()
 
     private override init() { super.init() }
+
+    // MARK: - Thread-safe dictionary helpers
+
+    private func storeTask(_ task: URLSessionDownloadTask, for id: UUID) {
+        stateQueue.sync { tasks[id] = task }
+    }
+
+    private func storeCompletion(_ handler: @escaping (Result<URL, Error>) -> Void, for id: UUID) {
+        stateQueue.sync { completionHandlers[id] = handler }
+    }
+
+    @discardableResult
+    private func popCompletion(for id: UUID) -> ((Result<URL, Error>) -> Void)? {
+        stateQueue.sync {
+            let h = completionHandlers.removeValue(forKey: id)
+            tasks.removeValue(forKey: id)
+            return h
+        }
+    }
+
+    private func taskID(for task: URLSessionTask) -> UUID? {
+        stateQueue.sync { tasks.first(where: { $0.value === task })?.key }
+    }
+
+    private func cancelTask(id: UUID) {
+        stateQueue.sync {
+            tasks[id]?.cancel()
+            tasks.removeValue(forKey: id)
+            completionHandlers.removeValue(forKey: id)
+        }
+    }
 
     /// Start downloading a file
     @discardableResult
@@ -55,8 +91,8 @@ class DownloadManager: NSObject, ObservableObject {
         activeCount += 1
 
         let task = session.downloadTask(with: request)
-        tasks[id] = task
-        completionHandlers[id] = completion
+        storeTask(task, for: id)
+        storeCompletion(completion, for: id)
 
         task.resume()
         return id
@@ -64,8 +100,7 @@ class DownloadManager: NSObject, ObservableObject {
 
     /// Cancel a download
     func cancel(id: UUID) {
-        tasks[id]?.cancel()
-        tasks.removeValue(forKey: id)
+        cancelTask(id: id)
         if let idx = downloads.firstIndex(where: { $0.id == id }) {
             downloads[idx].status = .cancelled
             activeCount = max(0, activeCount - 1)
@@ -194,13 +229,14 @@ class DownloadManager: NSObject, ObservableObject {
 extension DownloadManager: URLSessionDownloadDelegate {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didFinishDownloadingTo location: URL) {
-        guard let id = tasks.first(where: { $0.value == downloadTask })?.key else { return }
+        guard let id = taskID(for: downloadTask) else { return }
 
         let ext = Self.resolveExtension(for: downloadTask)
         let dest = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension(ext)
 
+        let handler = popCompletion(for: id)
         do {
             try FileManager.default.moveItem(at: location, to: dest)
             DispatchQueue.main.async { [self] in
@@ -211,19 +247,16 @@ extension DownloadManager: URLSessionDownloadDelegate {
                 }
                 activeCount = max(0, activeCount - 1)
             }
-            completionHandlers[id]?(.success(dest))
+            handler?(.success(dest))
         } catch {
-            completionHandlers[id]?(.failure(error))
+            handler?(.failure(error))
         }
-
-        tasks.removeValue(forKey: id)
-        completionHandlers.removeValue(forKey: id)
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
                     totalBytesExpectedToWrite: Int64) {
-        guard let id = tasks.first(where: { $0.value == downloadTask })?.key else { return }
+        guard let id = taskID(for: downloadTask) else { return }
 
         let progress = totalBytesExpectedToWrite > 0
             ? Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
@@ -237,8 +270,7 @@ extension DownloadManager: URLSessionDownloadDelegate {
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        guard let error = error,
-              let id = tasks.first(where: { $0.value === task })?.key else { return }
+        guard let error = error, let id = taskID(for: task) else { return }
 
         DispatchQueue.main.async { [self] in
             if let idx = downloads.firstIndex(where: { $0.id == id }) {
@@ -246,9 +278,7 @@ extension DownloadManager: URLSessionDownloadDelegate {
             }
             activeCount = max(0, activeCount - 1)
         }
-        completionHandlers[id]?(.failure(error))
-        tasks.removeValue(forKey: id)
-        completionHandlers.removeValue(forKey: id)
+        popCompletion(for: id)?(.failure(error))
     }
 
     /// Determine the correct file extension from response headers or URL
