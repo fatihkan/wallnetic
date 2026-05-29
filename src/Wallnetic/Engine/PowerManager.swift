@@ -374,7 +374,8 @@ class PowerManager {
     // MARK: - Notifications
 
     private func notifyPauseIfNeeded() {
-        onShouldPausePlayback?()
+        let callback = onShouldPausePlayback
+        runOnMain { callback?() }
     }
 
     private func notifyResumeIfNeeded() {
@@ -382,7 +383,21 @@ class PowerManager {
         guard !shouldBePaused else { return }
 
         if WallpaperManager.shared.shouldAutoResume {
-            onShouldResumePlayback?()
+            let callback = onShouldResumePlayback
+            runOnMain { callback?() }
+        }
+    }
+
+    /// Routes playback callbacks to the main thread before they touch
+    /// AppKit/AVKit (NSWindow, AVPlayer-on-view). Sleep/wake, screen-parameter
+    /// and IOPS battery notifications already arrive on main and run
+    /// synchronously here; only NSProcessInfoPowerStateDidChange (Low Power
+    /// Mode) is not guaranteed main-thread, so it hops via async. [#206]
+    private func runOnMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
         }
     }
 
