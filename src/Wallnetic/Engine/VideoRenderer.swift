@@ -97,12 +97,13 @@ class VideoRenderer: NSObject {
         // Audio disabled via player.isMuted + volume=0 below
 
         // Use AVQueuePlayer with AVPlayerLooper for seamless looping
-        queuePlayer = AVQueuePlayer()
-        queuePlayer?.automaticallyWaitsToMinimizeStalling = false  // Start immediately
-        queuePlayer?.preventsDisplaySleepDuringVideoPlayback = false  // Allow display sleep
+        let queue = AVQueuePlayer()
+        queue.automaticallyWaitsToMinimizeStalling = false  // Start immediately
+        queue.preventsDisplaySleepDuringVideoPlayback = false  // Allow display sleep
+        queuePlayer = queue
 
-        playerLooper = AVPlayerLooper(player: queuePlayer!, templateItem: playerItem)
-        player = queuePlayer
+        playerLooper = AVPlayerLooper(player: queue, templateItem: playerItem)
+        player = queue
 
         // Configure player for optimal performance
         player?.isMuted = true  // No audio needed

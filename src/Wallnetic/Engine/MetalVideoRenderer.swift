@@ -206,17 +206,19 @@ final class MetalVideoRenderer: NSObject {
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferMetalCompatibilityKey as String: true
         ]
-        videoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: outputSettings)
-        playerItem.add(videoOutput!)
+        let output = AVPlayerItemVideoOutput(pixelBufferAttributes: outputSettings)
+        videoOutput = output
+        playerItem.add(output)
 
         // Setup looping player
-        queuePlayer = AVQueuePlayer()
-        queuePlayer?.automaticallyWaitsToMinimizeStalling = false
-        queuePlayer?.preventsDisplaySleepDuringVideoPlayback = false
-        queuePlayer?.isMuted = true
+        let queue = AVQueuePlayer()
+        queue.automaticallyWaitsToMinimizeStalling = false
+        queue.preventsDisplaySleepDuringVideoPlayback = false
+        queue.isMuted = true
+        queuePlayer = queue
 
-        playerLooper = AVPlayerLooper(player: queuePlayer!, templateItem: playerItem)
-        player = queuePlayer
+        playerLooper = AVPlayerLooper(player: queue, templateItem: playerItem)
+        player = queue
 
         logger.info("Player setup complete")
     }
