@@ -5,7 +5,11 @@ import SwiftUI
 class SupabaseClient {
     static let shared = SupabaseClient()
 
-    // Configure these with your Supabase project values
+    // Configure these with your Supabase project values.
+    // NOTE: `supabaseAnonKey` must be the *public anon* key only — it is
+    // designed to be shipped client-side and is protected by Row Level
+    // Security. Never store the `service_role` key here (it bypasses RLS and
+    // would be readable from the App Group container).
     @AppStorage("supabaseURL") private var supabaseURL: String = ""
     @AppStorage("supabaseAnonKey") private var supabaseAnonKey: String = ""
 

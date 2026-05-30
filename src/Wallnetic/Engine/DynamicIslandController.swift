@@ -94,25 +94,12 @@ class DynamicIslandController: ObservableObject {
                 .environmentObject(self)
         )
 
-        let panel = NSPanel(
-            contentRect: frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
-        )
-
-        // ARC owns the panel via islandWindows; close() must NOT also release it,
-        // otherwise an in-flight animator().setFrame animation (updateWindowFrames)
-        // over-releases the freed panel during the next CA transaction flush. [#206]
-        panel.isReleasedWhenClosed = false
+        // isReleasedWhenClosed=false (factory) is critical here: an in-flight
+        // animator().setFrame (updateWindowFrames) would otherwise over-release
+        // the freed panel on the next CA transaction flush. [#206]
+        let panel = OverlayWindowFactory.makeOverlayPanel(contentRect: frame)
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 2)
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.isMovableByWindowBackground = false
         panel.contentView = hostingView
-        panel.ignoresMouseEvents = false
 
         panel.orderFront(nil)
         return panel

@@ -32,6 +32,9 @@ class DeepLinkHandler {
         Log.deepLink.info("\(safe, privacy: .public) [+\(queryLen) query chars]")
 
         switch host {
+        case "open":
+            NotificationCenter.default.post(name: .openMainWindow, object: nil)
+
         case "playPause":
             WallpaperManager.shared.togglePlayback()
 

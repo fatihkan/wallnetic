@@ -39,19 +39,11 @@ final class AudioVisualizerOverlayController: ObservableObject {
             }
         }
 
-        let panel = NSPanel(
+        let panel = OverlayWindowFactory.makeOverlayPanel(
             contentRect: NSRect(origin: .zero, size: AudioVisualizerManager.shared.sizePreset.dimensions),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
+            clickThrough: true
         )
-        panel.isReleasedWhenClosed = false  // ARC owns `window`; avoid over-release on close() [#206]
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.ignoresMouseEvents = true  // click-through
 
         panel.contentView = NSHostingView(
             rootView: AudioVisualizerOverlayView()
