@@ -9,7 +9,7 @@
 [![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12)
 [![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.3.1-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/33a5664a-fc62-400f-9780-006884ff19df" width="800" autoplay loop muted playsinline>
@@ -260,10 +260,17 @@ open Wallnetic.xcodeproj
 - [x] Audio Visualizer customization &mdash; sensitivity slider, 3 styles (Bars/Waveform/Dots), 6 corner positions, S/M/L sizes (#159, #160, #161, #162)
 - [x] Photos slideshow generator &mdash; create wallpapers from your Apple Photos library with Ken Burns and crossfade transitions (#137)
 
+### v1.3.1 &mdash; Hardening (current)
+- [x] Unlock/wake crash fix (#206) &mdash; NSPanel/NSWindow over-release on close under ARC
+- [x] OverlayWindowFactory &mdash; centralized window creation, prevents the over-release bug class (#214)
+- [x] Deep-link consolidation &mdash; single `DeepLinkHandler` entry point, HTTPS-only gated import (#214)
+- [x] Security/privacy sweep &mdash; Spotify SSRF block, Content-Disposition fix, PII → Keychain (#207)
+- [x] Crash/hang & data-race fixes &mdash; AIService, Photos, DownloadManager, AudioVisualizer (#208, #210)
+- [x] Wake/power main-thread hardening (#211)
+
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
 - [ ] 3D perspective wallpaper carousel
-- [ ] Now Playing overlay on desktop (currently gated on code signing)
 - [ ] Wallpaper marketplace
 - [ ] Music reactive mode
 - [ ] iCloud library sync
@@ -275,9 +282,10 @@ open Wallnetic.xcodeproj
 Release notes live in [CHANGELOG.md](CHANGELOG.md), formatted to
 [Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
 
-Latest: **[1.3.0](CHANGELOG.md#130--2026-05-02)** — Photos slideshow generator,
-audio visualizer customization, battery prompt, ViewModel layer, sandbox
-enablement, centralized error surfacing.
+Latest: **[1.3.1](CHANGELOG.md#131--2026-05-30)** — hardening release: unlock/wake
+crash fix (#206), OverlayWindowFactory + deep-link consolidation, and a
+security/perf/correctness sweep on top of the 1.3.0 feature set (Photos slideshow,
+audio visualizer customization, battery prompt, sandbox).
 
 ---
 
