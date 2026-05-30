@@ -101,6 +101,10 @@ class DynamicIslandController: ObservableObject {
             defer: true
         )
 
+        // ARC owns the panel via islandWindows; close() must NOT also release it,
+        // otherwise an in-flight animator().setFrame animation (updateWindowFrames)
+        // over-releases the freed panel during the next CA transaction flush. [#206]
+        panel.isReleasedWhenClosed = false
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 2)
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
         panel.isOpaque = false

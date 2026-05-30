@@ -85,6 +85,8 @@ class LockScreenManager: ObservableObject {
             defer: false
         )
 
+        // ARC owns lockScreenWindow; close() must not also release it [#206]
+        window.isReleasedWhenClosed = false
         // Position above screen saver but below login window
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 1)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary]
