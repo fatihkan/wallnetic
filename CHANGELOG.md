@@ -75,6 +75,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dokunduğundan `runOnMain` ile main'e alındı (sleep/wake yolları zaten main →
   senkron, timing değişmedi). + 3 non-failable AV force-unwrap temizliği.
 
+### Refactor — Window Layer & Deep Links (PR #214)
+- **OverlayWindowFactory**: tüm programatik pencere/panel oluşturma tek bir
+  factory'ye taşındı (`makeOverlayPanel` / `makeBackgroundWindow`), `isReleasedWhenClosed
+  = false` merkezi olarak bake edildi. 6 controller migrate edildi (Desktop,
+  DynamicIsland, NowPlaying, DesktopOverlay, AudioVisualizer, LockScreen) → 0 ham
+  `NSPanel(`/`NSWindow(` constructor kaldı. #206 over-release bug-class'ı kökten önlenir.
+- **Deep-link konsolidasyonu**: `AppDelegate.application(open:)` artık tüm `wallnetic://`
+  URL'lerini tek giriş noktasından (`DeepLinkHandler`) geçiriyor (scheme doğrulama,
+  routing, HTTPS-only + onay diyaloglu `import`). Paralel `WallpaperManager.handleWidgetURL`
+  kaldırıldı; `open` host case eklendi.
+- **Perf**: `DesktopOverlayView` DateFormatter'ları `static let`'e taşındı (clock
+  render'ında yeniden tahsis yok).
+- **Secret hygiene**: `SupabaseClient` — `supabaseAnonKey` yalnızca public anon key
+  olmalı (asla `service_role`; App Group container okunabilir) notu eklendi.
+
+### Documentation (PR #213)
+- CHANGELOG `[1.3.1]` bölümü wake/unlock crash çalışmasını (#211/#212) kapsayacak
+  şekilde güncellendi.
+
 ### Removed
 - `com.apple.security.device.audio-input` entitlement
 - `NSMicrophoneUsageDescription`, `NSScreenCaptureUsageDescription` (Info.plist + project.yml)
@@ -90,6 +109,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ScreenCaptureKit availability (deployment target 13.0 zaten kapsıyor),
   ZIPReader.swift (hallüsinasyon, dosya yok).
 - 4 PR sequential: #207 → #208 → #209 → #210.
+- Post-review wake/unlock crash fix: #211 (power hardening) → #212 (#206 panel
+  over-release) → #213 (changelog) → #214 (OverlayWindowFactory + deep-link
+  consolidation, 5 review findings). 6 PR toplam, 86/86 test.
 - Post-review wake/unlock crash fix: #211 (power hardening) → #212 (#206 panel over-release).
 
 ## [1.3.0] — 2026-05-17
