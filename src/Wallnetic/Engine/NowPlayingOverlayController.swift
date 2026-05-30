@@ -49,19 +49,12 @@ final class NowPlayingOverlayController: ObservableObject {
             origin = NSPoint(x: 40, y: 40)
         }
 
-        let panel = NSPanel(
+        let panel = OverlayWindowFactory.makeOverlayPanel(
             contentRect: NSRect(origin: origin, size: size),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
+            hasShadow: true,
+            movableByBackground: true
         )
-        panel.isReleasedWhenClosed = false  // ARC owns `window`; avoid over-release on close() [#206]
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
-        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.isMovableByWindowBackground = true
 
         let view = NowPlayingOverlayView()
             .environmentObject(NowPlayingManager.shared)

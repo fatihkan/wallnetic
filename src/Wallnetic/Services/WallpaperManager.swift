@@ -613,22 +613,6 @@ class WallpaperManager: ObservableObject {
         widgetSync.syncAll(current: currentWallpaper, isPlaying: isPlaying, wallpapers: wallpapers)
     }
 
-    /// Handles URL scheme from widget
-    func handleWidgetURL(_ url: URL) {
-        guard let (action, wallpaperID) = SharedDataManager.parseWidgetURL(url) else { return }
-
-        switch action {
-        case .playPause:
-            togglePlayback()
-        case .setWallpaper:
-            if let id = wallpaperID,
-               let wallpaper = wallpapers.first(where: { $0.id == id }) {
-                setWallpaper(wallpaper)
-            }
-        case .nextWallpaper:
-            cycleToNextWallpaper()
-        }
-    }
 }
 
 // MARK: - Notification Names

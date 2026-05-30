@@ -172,14 +172,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - URL Handling
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        // Single entry point: every wallnetic:// URL (widget links AND external
+        // deep links) flows through DeepLinkHandler, which centralizes scheme
+        // validation, action routing, and the gated/HTTPS-only import path.
         for url in urls {
-            guard url.scheme == "wallnetic" else { continue }
-            let host = url.host ?? ""
-            if host == "open" {
-                showMainWindow()
-            } else if host == "playPause" || host == "nextWallpaper" || host == "setWallpaper" {
-                WallpaperManager.shared.handleWidgetURL(url)
-            }
+            DeepLinkHandler.shared.handle(url)
         }
     }
 

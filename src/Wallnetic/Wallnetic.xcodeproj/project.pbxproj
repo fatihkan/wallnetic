@@ -43,6 +43,7 @@
 		4D244E609DA6FBD637CD7D8F /* WallneticApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */; };
 		4DC3D57FC37765D6CEABF304 /* ColorCategoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F59C3C7AB56348DA1D9D45 /* ColorCategoryTests.swift */; };
 		4E139BC5AAC4545984E4B4D3 /* SmartTaggingSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76DFDCB44158B7225C519C63 /* SmartTaggingSettingsView.swift */; };
+		4F8CAD36CA47120561781593 /* OverlayWindowFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66849A711C2A493F21CD7DDB /* OverlayWindowFactory.swift */; };
 		502AEDE09B50668E7154DC6E /* CreateFromPhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC8F63EBF5F78663165C4697 /* CreateFromPhotosView.swift */; };
 		51355B920BE931D2A9A3BE58 /* WallpaperCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8562F59693CF276239AD0905 /* WallpaperCollection.swift */; };
 		53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */; };
@@ -231,6 +232,7 @@
 		6581C17705CF0F9650F91F07 /* DynamicAccent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicAccent.swift; sourceTree = "<group>"; };
 		658D24C439FCC30FFDEBC73C /* DisplaySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplaySettingsView.swift; sourceTree = "<group>"; };
 		65B960F4D2BFD36368F336A4 /* PexelsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PexelsService.swift; sourceTree = "<group>"; };
+		66849A711C2A493F21CD7DDB /* OverlayWindowFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayWindowFactory.swift; sourceTree = "<group>"; };
 		6730B13258B7FB98C75E2BD6 /* WallpaperTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperTimelineProvider.swift; sourceTree = "<group>"; };
 		689367BF56D29B65CDDB02F2 /* PixabayService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixabayService.swift; sourceTree = "<group>"; };
 		69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncManager.swift; sourceTree = "<group>"; };
@@ -339,6 +341,7 @@
 				8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */,
 				ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */,
 				22D4CC2AF93849AB8C429D52 /* NowPlayingOverlayController.swift */,
+				66849A711C2A493F21CD7DDB /* OverlayWindowFactory.swift */,
 				9E4C04ED28406292407FFBD0 /* PowerManager.swift */,
 				C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */,
 			);
@@ -824,6 +827,7 @@
 				8690167783A5141E8CA3EC71 /* OllamaTaggingService.swift in Sources */,
 				61B8431DE4EA724F4E55C7B2 /* OllamaVisionTagger.swift in Sources */,
 				BED9A1AD659C124D26D37355 /* OnboardingView.swift in Sources */,
+				4F8CAD36CA47120561781593 /* OverlayWindowFactory.swift in Sources */,
 				D729B636A0E78713E53C77FD /* PerformanceManager.swift in Sources */,
 				39C032EFB614D68ADAE9403B /* PexelsService.swift in Sources */,
 				1F756590D00246AFD943B61A /* PhotosLibraryService.swift in Sources */,

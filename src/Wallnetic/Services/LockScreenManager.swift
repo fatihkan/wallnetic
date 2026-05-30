@@ -78,21 +78,14 @@ class LockScreenManager: ObservableObject {
         // Create fullscreen window above lock screen level
         guard let screen = NSScreen.main else { return }
 
-        let window = NSWindow(
+        // isReleasedWhenClosed=false baked into the factory. [#206]
+        let window = OverlayWindowFactory.makeBackgroundWindow(
             contentRect: screen.frame,
-            styleMask: .borderless,
-            backing: .buffered,
-            defer: false
+            deferCreation: false
         )
-
-        // ARC owns lockScreenWindow; close() must not also release it [#206]
-        window.isReleasedWhenClosed = false
         // Position above screen saver but below login window
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 1)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        window.isOpaque = true
-        window.backgroundColor = .black
-        window.hasShadow = false
         window.ignoresMouseEvents = false
 
         // Create video renderer (must retain — ARC releases it otherwise, stopping playback)

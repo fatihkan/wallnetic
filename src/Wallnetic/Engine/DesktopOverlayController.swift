@@ -31,20 +31,11 @@ class DesktopOverlayController: ObservableObject {
 
         let hostingView = NSHostingView(rootView: content)
 
-        let window = NSPanel(
+        let window = OverlayWindowFactory.makeOverlayPanel(
             contentRect: NSRect(x: posX, y: posY, width: 320, height: 120),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
+            movableByBackground: true
         )
-
-        window.isReleasedWhenClosed = false  // ARC owns overlayWindow; avoid over-release on close() [#206]
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.isMovableByWindowBackground = true
         window.contentView = hostingView
 
         window.orderFront(nil)
@@ -132,13 +123,20 @@ struct DesktopOverlayView: View {
         .opacity(overlayController.overlayOpacity)
     }
 
+    // Static formatters — DateFormatter allocation is expensive; reusing them
+    // avoids rebuilding on every SwiftUI render of the clock.
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f
+    }()
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "d MMMM EEEE"; f.locale = Locale.current; return f
+    }()
+
     private var timeString: String {
-        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: Date())
+        Self.timeFormatter.string(from: Date())
     }
 
     private var dateString: String {
-        let f = DateFormatter(); f.dateFormat = "d MMMM EEEE"
-        f.locale = Locale.current
-        return f.string(from: Date())
+        Self.dateFormatter.string(from: Date())
     }
 }

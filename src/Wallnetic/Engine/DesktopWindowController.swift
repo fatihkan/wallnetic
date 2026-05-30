@@ -63,12 +63,9 @@ class DesktopWindowController {
 
     /// Creates a single desktop window for a specific screen
     private func createDesktopWindow(for screen: NSScreen) {
-        let window = NSWindow(
-            contentRect: screen.frame,
-            styleMask: .borderless,
-            backing: .buffered,
-            defer: true  // Defer creation for performance
-        )
+        // Defer creation for performance. isReleasedWhenClosed=false is baked
+        // into the factory so ARC alone owns the window. [#206]
+        let window = OverlayWindowFactory.makeBackgroundWindow(contentRect: screen.frame)
 
         // Position window at desktop level (behind icons, above actual desktop)
         let desktopIconLevel = Int(CGWindowLevelForKey(.desktopIconWindow))
@@ -82,13 +79,9 @@ class DesktopWindowController {
             .fullScreenNone          // Never go fullscreen
         ]
 
-        // Visual properties - optimized for performance
-        window.isOpaque = true  // Opaque is faster than transparent
-        window.backgroundColor = .black
-        window.hasShadow = false
+        // Visual properties - optimized for performance (opaque is faster)
         window.ignoresMouseEvents = true
         window.acceptsMouseMovedEvents = false
-        window.isReleasedWhenClosed = false
 
         // Disable window animations
         window.animationBehavior = .none
