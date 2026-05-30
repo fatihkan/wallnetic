@@ -45,6 +45,7 @@ final class AudioVisualizerOverlayController: ObservableObject {
             backing: .buffered,
             defer: true
         )
+        panel.isReleasedWhenClosed = false  // ARC owns `window`; avoid over-release on close() [#206]
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
         panel.isOpaque = false

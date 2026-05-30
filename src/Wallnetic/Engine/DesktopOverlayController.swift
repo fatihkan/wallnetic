@@ -38,6 +38,7 @@ class DesktopOverlayController: ObservableObject {
             defer: true
         )
 
+        window.isReleasedWhenClosed = false  // ARC owns overlayWindow; avoid over-release on close() [#206]
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
         window.isOpaque = false
