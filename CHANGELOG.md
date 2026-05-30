@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.3.1] — 2026-05-23
+## [1.3.1] — 2026-05-30
 
 > Hardening release. /code-review xhigh-effort tarama 15 bulgu yakaladı; 4 PR
 > (security/privacy → crash → functional → correctness) ile hepsi kapatıldı.
+> Ayrıca #206'da bildirilen wake/unlock crash'i kök nedeniyle düzeltildi
+> (NSPanel over-release) + wake/power path main-thread hardening.
 > Audio Visualizer entitlement'i tamamen kaldırıldı (UI zaten v1.3.0'da
 > soft-remove edilmişti). Build 8.
 
@@ -60,6 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OllamaTaggingService objectWillChange**: `@AppStorageKeyed` setter'ları
   `willSet { objectWillChange.send() }` ile SwiftUI re-render fire ediyor.
 
+### Bug Fixes — Wake / Unlock Stability (PR #212, #211)
+- **Unlock crash — EXC_BAD_ACCESS (#206)**: programatik NSPanel/NSWindow'lar
+  `isReleasedWhenClosed`'ı default `true` bırakmıştı; ARC strong ref + `close()`
+  çift-release demek. Bir panel `animator().setFrame` transform animasyonu uçarken
+  kapanınca (wake'te `screensChanged` paneli kapatıyordu) freed panel
+  `_NSWindowTransformAnimation` dealloc'ında over-release ediliyordu (CA flush,
+  main-thread). 5 controller'da `isReleasedWhenClosed = false` (DynamicIsland,
+  NowPlaying, DesktopOverlay, AudioVisualizer, LockScreen).
+- **Power-callback main-thread guard** (`PowerManager`): `NSProcessInfoPowerStateDidChange`
+  (Low Power Mode) main-thread garantili değil; playback callback'leri AppKit/AVKit'e
+  dokunduğundan `runOnMain` ile main'e alındı (sleep/wake yolları zaten main →
+  senkron, timing değişmedi). + 3 non-failable AV force-unwrap temizliği.
+
 ### Removed
 - `com.apple.security.device.audio-input` entitlement
 - `NSMicrophoneUsageDescription`, `NSScreenCaptureUsageDescription` (Info.plist + project.yml)
@@ -74,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 3 false positives refuted: MLWDecryptor matematik (zaten doğru),
   ScreenCaptureKit availability (deployment target 13.0 zaten kapsıyor),
   ZIPReader.swift (hallüsinasyon, dosya yok).
-- 4 PR sequential: #207 → #208 → #209 → #210 (this).
+- 4 PR sequential: #207 → #208 → #209 → #210.
+- Post-review wake/unlock crash fix: #211 (power hardening) → #212 (#206 panel over-release).
 
 ## [1.3.0] — 2026-05-17
 
