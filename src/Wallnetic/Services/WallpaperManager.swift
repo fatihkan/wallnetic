@@ -446,10 +446,17 @@ class WallpaperManager: ObservableObject {
                 var wp = wallpapers[i]
                 if wp.duration == nil {
                     await wp.loadMetadata()
+                    // Immutable copies — capturing the mutated `var wp` in the
+                    // @MainActor closure is a compile error under Release/WMO
+                    // (Xcode 15.2 Intel job: "reference to captured var 'wp'
+                    // in concurrently-executing code").
+                    let id = wp.id
+                    let duration = wp.duration
+                    let resolution = wp.resolution
                     await MainActor.run {
-                        if i < wallpapers.count && wallpapers[i].id == wp.id {
-                            wallpapers[i].duration = wp.duration
-                            wallpapers[i].resolution = wp.resolution
+                        if i < wallpapers.count && wallpapers[i].id == id {
+                            wallpapers[i].duration = duration
+                            wallpapers[i].resolution = resolution
                         }
                     }
                 }
@@ -478,8 +485,10 @@ class WallpaperManager: ObservableObject {
                     updatedColors[target.url.path] = hex
                 }
             }
+            // Immutable copy — same captured-var-in-concurrent-code fix as above.
+            let colors = updatedColors
             await MainActor.run {
-                metadata.savedColors = updatedColors
+                metadata.savedColors = colors
             }
         }
     }
