@@ -19,7 +19,13 @@
         "objectFit": "cover",
         "borderRadius": "22%"
       },
-      "category": ["macos", "graphics-design", "utilities", "photo-video", "entertainment"],
+      "category": [
+        "macos",
+        "graphics-design",
+        "utilities",
+        "photo-video",
+        "entertainment"
+      ],
       "platform": "macOS",
       "price": "Free",
       "github": "https://github.com/fatihkan/wallnetic",
@@ -51,10 +57,9 @@
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/3.png",
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/4.png",
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/5.png",
+        "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/6.png",
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/7.png",
-        "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/8.png",
-        "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/9.png",
-        "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/10.png"
+        "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/8.png"
       ]
     }
   ]
