@@ -12,15 +12,24 @@
 [![Version](https://img.shields.io/badge/Version-1.3.1-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/33a5664a-fc62-400f-9780-006884ff19df" width="800" autoplay loop muted playsinline>
+  <video src="https://github.com/user-attachments/assets/61182f15-1208-4cc5-b37a-d7827e871022" width="800" autoplay loop muted playsinline>
   </video>
 </p>
 
 ## What is Wallnetic?
 
-Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your workspace with dynamic, animated backgrounds that run efficiently in the background.
+Wallnetic brings **live video wallpapers** to your Mac desktop — turn any video you own into a living 4K desktop, or find free ones on community sites. Private by design: no accounts, no tracking.
 
 **Wallpaper Engine** has 40M+ users on Windows &mdash; now Mac users finally have a native alternative built with SwiftUI and Metal.
+
+<p align="center">
+  <img src="docs/assets/1.png" width="49%" alt="Your videos, alive on your desktop">
+  <img src="docs/assets/3.png" width="49%" alt="Every display, its own mood">
+</p>
+<p align="center">
+  <img src="docs/assets/4.png" width="49%" alt="Search free wallpaper sites">
+  <img src="docs/assets/6.png" width="49%" alt="Liquid Glass design">
+</p>
 
 <a href="https://buymeacoffee.com/fatihkan" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
@@ -57,6 +66,8 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 - Video wallpaper on lock screen with clock overlay
 - Uses current wallpaper or a specific selection
 - Auto-detects screen lock/unlock
+- > **Note:** not available in the Mac App Store build — macOS sandboxing
+  > prevents drawing over the system lock screen (`loginwindow`).
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
@@ -152,8 +163,8 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [Wallnetic_1.1.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS (Intel) | [Wallnetic_1.1.0_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Apple Silicon) | [Wallnetic_1.3.1_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Intel) | [Wallnetic_1.3.1_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
 
 > **"Wallnetic is damaged and can't be opened"** &mdash; This happens because the DMG is not notarized by Apple. Run this command in Terminal after dragging Wallnetic to Applications:
 > ```bash

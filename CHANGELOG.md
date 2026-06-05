@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- Store media refresh: 8× branded 2560×1600 ASO screenshots + framed
+  1920×1080 demo video; `apps.json` (wvw.dev) updated (#216).
+- README: new hero video, branded screenshot gallery, honest-messaging
+  intro (user-owned videos + free-site search — no bundled library claim),
+  App Store build note for Lock Screen Video (#217).
+- App Store metadata (ASO revision): title "Wallnetic: Live Wallpaper 4K",
+  new subtitle/keywords, Turkish localization, revised description.
+
+### Release
+- **v1.3.1 (build 8) submitted to App Store Review — 2026-06-05.**
+
 ## [1.3.1] — 2026-05-30
 
 > Hardening release. /code-review xhigh-effort tarama 15 bulgu yakaladı; 4 PR
