@@ -29,7 +29,7 @@
       "platform": "macOS",
       "price": "Free",
       "github": "https://github.com/fatihkan/wallnetic",
-      "homepage": "https://github.com/fatihkan/wallnetic",
+      "homepage": "https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12",
       "language": "Swift",
       "downloadUrl": "https://github.com/fatihkan/wallnetic/releases/latest",
       "requirements": "macOS 13.0 (Ventura) or later",
@@ -49,7 +49,11 @@
         "Dock icon hiding — menu bar-only mode",
         "Striking UI: glow cards, neon navigation, glass morphism",
         "Smart power management (pause on battery/fullscreen)",
-        "Notification Center widget with quick controls"
+        "Notification Center widget with quick controls",
+        "Photo slideshow generator — build live wallpapers from your Apple Photos library (Ken Burns + crossfade)",
+        "Liquid Glass 2026 design language with dynamic accent colors",
+        "Battery-aware playback with remember-my-choice prompt",
+        "Global hotkeys: next / previous / play-pause / random"
       ],
       "screenshots": [
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/1.png",
@@ -60,7 +64,8 @@
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/6.png",
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/7.png",
         "https://raw.githubusercontent.com/fatihkan/wallnetic/main/docs/assets/8.png"
-      ]
+      ],
+      "iconEmoji": "🌊"
     }
   ]
 }
