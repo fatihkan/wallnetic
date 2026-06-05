@@ -380,8 +380,13 @@ private struct PhotoThumbnail: View {
     }
 
     private func loadThumbnail() {
-        PhotosLibraryService.shared.requestThumbnail(for: asset, targetSize: CGSize(width: 220, height: 220)) { img in
-            image = img
+        // Hop onto the main actor explicitly — under Xcode 15.2 (Swift 5.9)
+        // this method is nonisolated, so a direct call to the @MainActor
+        // PhotosLibraryService is a Release-build compile error.
+        Task { @MainActor in
+            PhotosLibraryService.shared.requestThumbnail(for: asset, targetSize: CGSize(width: 220, height: 220)) { img in
+                image = img
+            }
         }
     }
 }

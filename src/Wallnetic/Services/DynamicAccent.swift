@@ -30,7 +30,10 @@ final class DynamicAccent: ObservableObject {
             queue: .main
         ) { [weak self] note in
             guard let wp = note.object as? Wallpaper else { return }
-            Task { @MainActor in
+            // Explicit capture list — Xcode 15.2 (Swift 5.9) rejects the
+            // implicit capture of the outer weak `self` inside the Task
+            // ("reference to captured var 'self'").
+            Task { @MainActor [weak self] in
                 self?.applyFrom(wallpaper: wp)
             }
         }
