@@ -163,8 +163,8 @@ Wallnetic brings **live video wallpapers** to your Mac desktop — turn any vide
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [Wallnetic_1.1.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS (Intel) | [Wallnetic_1.1.0_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Apple Silicon) | [Wallnetic_1.3.1_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Intel) | [Wallnetic_1.3.1_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
 
 > **"Wallnetic is damaged and can't be opened"** &mdash; This happens because the DMG is not notarized by Apple. Run this command in Terminal after dragging Wallnetic to Applications:
 > ```bash
