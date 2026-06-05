@@ -18,9 +18,18 @@
 
 ## What is Wallnetic?
 
-Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your workspace with dynamic, animated backgrounds that run efficiently in the background.
+Wallnetic brings **live video wallpapers** to your Mac desktop — turn any video you own into a living 4K desktop, or find free ones on community sites. Private by design: no accounts, no tracking.
 
 **Wallpaper Engine** has 40M+ users on Windows &mdash; now Mac users finally have a native alternative built with SwiftUI and Metal.
+
+<p align="center">
+  <img src="docs/assets/1.png" width="49%" alt="Your videos, alive on your desktop">
+  <img src="docs/assets/3.png" width="49%" alt="Every display, its own mood">
+</p>
+<p align="center">
+  <img src="docs/assets/4.png" width="49%" alt="Search free wallpaper sites">
+  <img src="docs/assets/6.png" width="49%" alt="Liquid Glass design">
+</p>
 
 <a href="https://buymeacoffee.com/fatihkan" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
@@ -57,6 +66,8 @@ Wallnetic brings **live video wallpapers** to your Mac desktop. Transform your w
 - Video wallpaper on lock screen with clock overlay
 - Uses current wallpaper or a specific selection
 - Auto-detects screen lock/unlock
+- > **Note:** not available in the Mac App Store build — macOS sandboxing
+  > prevents drawing over the system lock screen (`loginwindow`).
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
