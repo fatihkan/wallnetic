@@ -77,3 +77,6 @@ coverage/
 # Claude Code (local agent config, memory, logs)
 .claude/
 CLAUDE.md
+
+# Gunluk calisma notlari (kisisel, repo disi)
+daily-notes/
