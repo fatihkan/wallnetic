@@ -48,7 +48,13 @@ final class SystemAerialInjector: ObservableObject {
 
     /// UUID of the asset we injected (for restore/cleanup), or "".
     @AppStorage("aerial.injectedAssetID") private(set) var injectedAssetID: String = ""
+    /// Whether we also mirrored the asset into the root idleassetsd store
+    /// (login-screen support) — so Turn Off knows to clean it up (with admin).
+    @AppStorage("aerial.rootMirrored") private(set) var rootMirrored: Bool = false
     @Published var isBusy = false
+
+    /// Root idleassetsd store paths (login-window / pre-login context).
+    private let rootStore = "/Library/Application Support/com.apple.idleassetsd"
 
     private let fm = FileManager.default
 
@@ -131,6 +137,8 @@ final class SystemAerialInjector: ObservableObject {
     /// Restores the user's original wallpaper config and removes our video.
     func restore() throws {
         guard isSupported else { throw InjectorError.unsupported }
+        // Clean the root store first (admin prompt) if we mirrored there.
+        disableLoginScreen()
         let entriesBak = backupDir.appendingPathComponent("entries.json")
         let indexBak = backupDir.appendingPathComponent("Index.plist")
 
@@ -144,6 +152,90 @@ final class SystemAerialInjector: ObservableObject {
         injectedAssetID = ""
         reloadDaemons()
         Log.sysWallpaper.info("Restored original wallpaper, removed injected aerial")
+    }
+
+    // MARK: - Login Screen (root store, needs admin)
+
+    /// Mirrors the already-injected asset into the **root** idleassetsd
+    /// Customer store so the pre-login login window — which can't read the
+    /// user's home — can also play the video. Triggers the native macOS admin
+    /// password dialog once.
+    func enableOnLoginScreen() throws {
+        guard isSupported else { throw InjectorError.unsupported }
+        guard !injectedAssetID.isEmpty else {
+            throw InjectorError.writeFailed("Turn on the screen saver video first.")
+        }
+        let id = injectedAssetID
+        let userVideo = videosDir.appendingPathComponent("\(id).mov")
+        guard fm.fileExists(atPath: userVideo.path) else {
+            throw InjectorError.writeFailed("Injected video is missing — re-apply first.")
+        }
+
+        let fpsDir = "\(rootStore)/Customer/4KSDR240FPS"
+        let rootVideo = "\(fpsDir)/\(id).mov"
+        let rootEntries = "\(rootStore)/Customer/entries.json"
+
+        // entries.json the system daemon reads at the system level.
+        let asset: [String: Any] = [
+            "id": id, "accessibilityLabel": "Wallnetic", "shotID": "WN_\(id.prefix(8))",
+            "localizedNameKey": "", "preferredOrder": 0, "showInTopLevel": true,
+            "includeInShuffle": false, "pointsOfInterest": [:],
+            "categories": [], "subcategories": [],
+            "url-4K-SDR-240FPS": URL(fileURLWithPath: rootVideo).absoluteString
+        ]
+        let entriesData = try JSONSerialization.data(
+            withJSONObject: ["assets": [asset], "initialAssetCount": 1, "version": 1]
+        )
+        let tmpEntries = fm.temporaryDirectory.appendingPathComponent("wn-root-entries.json")
+        try entriesData.write(to: tmpEntries)
+
+        // Shell script run as root (paths quoted for spaces).
+        let script = """
+        #!/bin/sh
+        mkdir -p "\(fpsDir)" || exit 1
+        cp "\(userVideo.path)" "\(rootVideo)" || exit 1
+        cp "\(tmpEntries.path)" "\(rootEntries)" || exit 1
+        killall idleassetsd WallpaperAgent 2>/dev/null
+        exit 0
+        """
+        try runWithAdminPrivileges(script)
+        rootMirrored = true
+        Log.sysWallpaper.info("Mirrored aerial to root store for login screen: \(id, privacy: .public)")
+    }
+
+    /// Removes the root Customer store mirror (admin).
+    private func disableLoginScreen() {
+        guard rootMirrored else { return }
+        let script = """
+        #!/bin/sh
+        rm -f "\(rootStore)/Customer/entries.json"
+        rm -rf "\(rootStore)/Customer/4KSDR240FPS"
+        killall idleassetsd WallpaperAgent 2>/dev/null
+        exit 0
+        """
+        try? runWithAdminPrivileges(script)
+        rootMirrored = false
+    }
+
+    /// Runs a shell script as root via the native admin-authorization dialog.
+    private func runWithAdminPrivileges(_ shellScript: String) throws {
+        let scriptFile = fm.temporaryDirectory.appendingPathComponent("wn-root.sh")
+        try shellScript.write(to: scriptFile, atomically: true, encoding: .utf8)
+        let command = "/bin/sh '\(scriptFile.path)'"
+        let osa = "do shell script \"\(command.replacingOccurrences(of: "\"", with: "\\\""))\" with administrator privileges"
+
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", osa]
+        let errPipe = Pipe()
+        task.standardError = errPipe
+        task.standardOutput = FileHandle.nullDevice
+        try task.run()
+        task.waitUntilExit()
+        guard task.terminationStatus == 0 else {
+            let err = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            throw InjectorError.writeFailed(err.contains("-128") ? "Admin authorization cancelled." : "Login-screen step failed: \(err)")
+        }
     }
 
     /// Starts the screen saver immediately so the user can see the aerial

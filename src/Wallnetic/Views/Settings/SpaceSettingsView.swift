@@ -65,6 +65,16 @@ struct SpaceSettingsView: View {
                             Button("Screen Saver Settings…") { aerialInjector.openScreenSaverSettings() }
                                 .controlSize(.small)
                         }
+
+                        // Login-screen support needs the root store (admin).
+                        if aerialInjector.rootMirrored {
+                            Label("Also active on the login screen", systemImage: "lock.laptopcomputer")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Button("Also Enable on Login Screen (admin)…") { enableLoginScreen() }
+                                .controlSize(.small)
+                        }
                     } else {
                         Button {
                             setLockScreenVideo()
@@ -186,6 +196,15 @@ struct SpaceSettingsView: View {
         aerialError = nil
         do {
             try aerialInjector.restore()
+        } catch {
+            aerialError = error.localizedDescription
+        }
+    }
+
+    private func enableLoginScreen() {
+        aerialError = nil
+        do {
+            try aerialInjector.enableOnLoginScreen()
         } catch {
             aerialError = error.localizedDescription
         }
