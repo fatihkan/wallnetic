@@ -350,6 +350,22 @@ struct WallpaperContextMenu: View {
             }
         }
 
+        // Live screen-saver video (direct-download build only) — registers
+        // this wallpaper as a macOS aerial, then previews it so the user
+        // sees the result immediately.
+        if SystemAerialInjector.shared.isSupported {
+            Divider()
+
+            Button {
+                Task {
+                    try? await SystemAerialInjector.shared.setLockScreenVideo(wallpaper.url)
+                    SystemAerialInjector.shared.previewScreenSaver()
+                }
+            } label: {
+                Label("Set as Screen Saver Video", systemImage: "play.rectangle.fill")
+            }
+        }
+
         Divider()
 
         Button {

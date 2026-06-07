@@ -146,6 +146,27 @@ final class SystemAerialInjector: ObservableObject {
         Log.sysWallpaper.info("Restored original wallpaper, removed injected aerial")
     }
 
+    /// Starts the screen saver immediately so the user can see the aerial
+    /// without guessing the gesture (the instant lock screen is always a
+    /// still). Uses System Events — macOS may prompt for Automation access
+    /// the first time.
+    func previewScreenSaver() {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", "tell application \"System Events\" to start current screen saver"]
+        task.standardError = FileHandle.nullDevice
+        task.standardOutput = FileHandle.nullDevice
+        try? task.run()
+    }
+
+    /// Opens System Settings ▸ Screen Saver so the user can set how soon it
+    /// starts (and preview it there).
+    func openScreenSaverSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.ScreenSaver-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     // MARK: - Backup
 
     private func backupOriginalsIfNeeded() throws {

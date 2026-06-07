@@ -59,6 +59,12 @@ struct SpaceSettingsView: View {
                             Button("Turn Off") { turnOffLockScreenVideo() }
                                 .controlSize(.small)
                         }
+                        HStack(spacing: 8) {
+                            Button("Preview Now") { aerialInjector.previewScreenSaver() }
+                                .controlSize(.small)
+                            Button("Screen Saver Settings…") { aerialInjector.openScreenSaverSettings() }
+                                .controlSize(.small)
+                        }
                     } else {
                         Button {
                             setLockScreenVideo()
