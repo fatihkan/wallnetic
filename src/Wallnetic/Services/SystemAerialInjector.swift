@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import Foundation
 import SwiftUI
+import VideoToolbox
 
 /// Plays a real **video** on the macOS lock screen (and Mission Control /
 /// Space transitions) by registering the user's wallpaper as a custom
@@ -308,38 +309,85 @@ final class SystemAerialInjector: ObservableObject {
 
     // MARK: - Transcode
 
-    /// Writes an HEVC `.mov` to `destination`. Copies directly when the
-    /// source is already HEVC in a QuickTime container.
+    /// Writes a destination `.mov` that matches macOS aerial assets closely
+    /// enough to actually *play* (not just show a poster frame): HEVC `hvc1`,
+    /// 10-bit Main10, Rec.709 SDR, and crucially **no audio track**.
+    ///
+    /// `AVAssetExportSession`'s HEVC preset produces an 8-bit stream that
+    /// carries the source audio; the aerial player renders those as a single
+    /// static frame. Driving an `AVAssetReader`→`AVAssetWriter` pipeline lets
+    /// us drop audio and force the 10-bit profile Apple's own aerials use.
     nonisolated static func prepareHEVC(source: URL, destination: URL) async throws {
-        let fm = FileManager.default
-        try? fm.removeItem(at: destination)
+        try? FileManager.default.removeItem(at: destination)
 
-        if await isHEVCMov(source) {
-            try fm.copyItem(at: source, to: destination)
-            return
-        }
-
-        // The macOS aerial/video-wallpaper system is Sonoma+; the modern
-        // async export API is macOS 15+. The user-facing surface already
-        // gates on the wallpaper store existing, so requiring 15 here is safe.
-        guard #available(macOS 15.0, *) else {
-            throw InjectorError.transcodeFailed("Live lock-screen video requires macOS 15 or later")
-        }
         let asset = AVURLAsset(url: source)
-        guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHEVCHighestQuality) else {
-            throw InjectorError.transcodeFailed("HEVC export unavailable")
+        guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else {
+            throw InjectorError.transcodeFailed("source has no video track")
         }
-        try await export.export(to: destination, as: .mov)
-    }
+        let naturalSize = try await videoTrack.load(.naturalSize)
+        let transform = try await videoTrack.load(.preferredTransform)
+        // HEVC needs even dimensions.
+        let width = Int(abs(naturalSize.width).rounded(.down)) & ~1
+        let height = Int(abs(naturalSize.height).rounded(.down)) & ~1
+        guard width > 0, height > 0 else { throw InjectorError.transcodeFailed("bad video size") }
 
-    nonisolated static func isHEVCMov(_ url: URL) async -> Bool {
-        guard url.pathExtension.lowercased() == "mov" else { return false }
-        let asset = AVURLAsset(url: url)
-        guard let track = try? await asset.loadTracks(withMediaType: .video).first,
-              let formats = try? await track.load(.formatDescriptions) else { return false }
-        return formats.contains { fmt in
-            let subtype = CMFormatDescriptionGetMediaSubType(fmt)
-            return subtype == kCMVideoCodecType_HEVC
+        let reader = try AVAssetReader(asset: asset)
+        // Decode to 10-bit so the encoder can emit Main10 even from 8-bit input.
+        let readerOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange
+        ])
+        readerOutput.alwaysCopiesSampleData = false
+        guard reader.canAdd(readerOutput) else { throw InjectorError.transcodeFailed("cannot read video") }
+        reader.add(readerOutput)
+
+        let writer = try AVAssetWriter(outputURL: destination, fileType: .mov)
+        let settings: [String: Any] = [
+            AVVideoCodecKey: AVVideoCodecType.hevc,
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height,
+            AVVideoColorPropertiesKey: [
+                AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
+                AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
+                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2
+            ],
+            AVVideoCompressionPropertiesKey: [
+                AVVideoProfileLevelKey: kVTProfileLevel_HEVC_Main10_AutoLevel as String,
+                AVVideoAverageBitRateKey: 12_000_000
+            ]
+        ]
+        let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+        writerInput.expectsMediaDataInRealTime = false
+        writerInput.transform = transform   // keep orientation; no audio input → no audio track
+        guard writer.canAdd(writerInput) else { throw InjectorError.transcodeFailed("cannot configure HEVC writer") }
+        writer.add(writerInput)
+
+        guard reader.startReading() else {
+            throw InjectorError.transcodeFailed(reader.error?.localizedDescription ?? "reader start failed")
+        }
+        guard writer.startWriting() else {
+            throw InjectorError.transcodeFailed(writer.error?.localizedDescription ?? "writer start failed")
+        }
+        writer.startSession(atSourceTime: .zero)
+
+        // Pump samples in a plain async loop — avoids requestMediaDataWhenReady's
+        // @Sendable closure capturing the non-Sendable reader/writer (which the
+        // Xcode 15.2 CI rejects). copyNextSampleBuffer blocks per frame; we yield
+        // while the encoder drains.
+        while reader.status == .reading {
+            guard let sample = readerOutput.copyNextSampleBuffer() else { break }
+            while !writerInput.isReadyForMoreMediaData {
+                try? await Task.sleep(nanoseconds: 5_000_000)
+            }
+            writerInput.append(sample)
+        }
+        writerInput.markAsFinished()
+
+        await writer.finishWriting()
+        guard writer.status == .completed else {
+            throw InjectorError.transcodeFailed(writer.error?.localizedDescription ?? "writer status \(writer.status.rawValue)")
+        }
+        if reader.status == .failed {
+            throw InjectorError.transcodeFailed(reader.error?.localizedDescription ?? "reader failed")
         }
     }
 
