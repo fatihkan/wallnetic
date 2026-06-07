@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Real video on the lock screen (direct-download build only)**: registers
+  the current wallpaper as a custom *aerial* in macOS's own video-wallpaper
+  system (`~/Library/Application Support/com.apple.wallpaper/`), so the actual
+  video plays on the lock screen, in Mission Control, and during Space
+  transitions — handled natively by `WallpaperAgent`, not a drawn window.
+  Transcodes to HEVC, appends an asset to `entries.json`, points the Idle
+  slots at it via `Store/Index.plist`, and reloads `idleassetsd`. Originals
+  are backed up and restorable. Hidden on the sandboxed Mac App Store build
+  (it can't write outside its container). Settings ▸ Spaces & Lock Screen.
 - **System wallpaper sync — lock screen & Mission Control consistency**:
   macOS renders the *system* wallpaper (not Wallnetic's video window) on the
   lock screen, in Mission Control Space previews and during Space transitions,

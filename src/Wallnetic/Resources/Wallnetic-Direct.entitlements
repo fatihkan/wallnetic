@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for the DIRECT-DOWNLOAD (DMG) build only.
+
+  The Mac App Store build uses Wallnetic.entitlements (app-sandbox = true).
+  The direct build drops the sandbox so it can register a real video aerial
+  in macOS's own wallpaper system (~/Library/Application Support/
+  com.apple.wallpaper/) for live lock-screen playback — impossible inside the
+  sandbox container. The app group is kept so the widget keeps sharing data.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.wallnetic.shared</string>
+	</array>
+</dict>
+</plist>

@@ -4,9 +4,11 @@ import SwiftUI
 struct SpaceSettingsView: View {
     @ObservedObject private var spaceManager = SpaceWallpaperManager.shared
     @ObservedObject private var syncManager = SystemWallpaperSync.shared
+    @ObservedObject private var aerialInjector = SystemAerialInjector.shared
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var showingPicker = false
     @State private var pickerTargetSpace: Int = 0
+    @State private var aerialError: String?
 
     var body: some View {
         Form {
@@ -39,9 +41,48 @@ struct SpaceSettingsView: View {
                         }
                     }
 
-                Text("macOS shows the system wallpaper on the lock screen, in Mission Control previews, and during Space transitions. Wallnetic keeps it in sync with a still frame of your current video. macOS doesn't allow apps to play video on the lock screen itself.")
+                Text("macOS shows the system wallpaper on the lock screen, in Mission Control previews, and during Space transitions. Wallnetic keeps it in sync with a still frame of your current video.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                // Real video on the lock screen — registers the wallpaper as a
+                // custom macOS aerial. Writes outside the sandbox container, so
+                // it only appears in the direct-download build.
+                if aerialInjector.isSupported {
+                    Divider()
+
+                    if aerialInjector.isActive {
+                        HStack {
+                            Label("Live video active on lock screen", systemImage: "checkmark.seal.fill")
+                                .foregroundColor(.green)
+                            Spacer()
+                            Button("Turn Off") { turnOffLockScreenVideo() }
+                                .controlSize(.small)
+                        }
+                    } else {
+                        Button {
+                            setLockScreenVideo()
+                        } label: {
+                            Label("Use live video on lock screen", systemImage: "play.rectangle.fill")
+                        }
+                        .disabled(aerialInjector.isBusy || wallpaperManager.currentWallpaper == nil)
+                    }
+
+                    if aerialInjector.isBusy {
+                        HStack(spacing: 6) {
+                            ProgressView().scaleEffect(0.6)
+                            Text("Preparing video…").font(.caption).foregroundColor(.secondary)
+                        }
+                    }
+
+                    Text("Plays your current wallpaper as a real video on the lock screen using macOS's own aerial system. Direct-download build only.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    if let aerialError {
+                        Text(aerialError).font(.caption).foregroundColor(.red)
+                    }
+                }
             }
         }
         .formStyle(.grouped)
@@ -121,6 +162,28 @@ struct SpaceSettingsView: View {
         .padding(.vertical, 2)
     }
 
+    // MARK: - Live Lock Screen Video (direct-download build only)
+
+    private func setLockScreenVideo() {
+        guard let wallpaper = wallpaperManager.currentWallpaper else { return }
+        aerialError = nil
+        Task {
+            do {
+                try await aerialInjector.setLockScreenVideo(wallpaper.url)
+            } catch {
+                aerialError = error.localizedDescription
+            }
+        }
+    }
+
+    private func turnOffLockScreenVideo() {
+        aerialError = nil
+        do {
+            try aerialInjector.restore()
+        } catch {
+            aerialError = error.localizedDescription
+        }
+    }
 }
 
 // MARK: - Wallpaper Picker Popup
