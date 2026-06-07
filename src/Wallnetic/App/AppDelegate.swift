@@ -21,6 +21,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Wire up PlaybackDelegate — direct calls instead of notification relay (#170)
         WallpaperManager.shared.playbackDelegate = self
 
+        // System wallpaper sync (lock screen / Mission Control still frame).
+        // Registered before the delayed wallpaper restore so the restore
+        // itself triggers the first sync.
+        SystemWallpaperSync.shared.start()
+
         // Setup power manager with callbacks
         setupPowerManager()
 

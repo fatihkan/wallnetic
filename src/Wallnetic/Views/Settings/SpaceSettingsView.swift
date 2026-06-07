@@ -1,13 +1,12 @@
 import SwiftUI
 
-/// Settings for per-Space wallpaper and Lock Screen
+/// Settings for per-Space wallpaper and system wallpaper sync
 struct SpaceSettingsView: View {
     @ObservedObject private var spaceManager = SpaceWallpaperManager.shared
-    @ObservedObject private var lockManager = LockScreenManager.shared
+    @ObservedObject private var syncManager = SystemWallpaperSync.shared
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var showingPicker = false
     @State private var pickerTargetSpace: Int = 0
-    @State private var pickerForLockScreen = false
 
     var body: some View {
         Form {
@@ -29,57 +28,28 @@ struct SpaceSettingsView: View {
                 }
             }
 
-            // Lock Screen
-            Section("Lock Screen") {
-                Toggle("Show video wallpaper on lock screen", isOn: $lockManager.isEnabled)
-
-                if lockManager.isEnabled {
-                    Picker("Video Source", selection: $lockManager.useCurrentWallpaper) {
-                        Text("Use current wallpaper").tag(true)
-                        Text("Choose specific wallpaper").tag(false)
-                    }
-
-                    if !lockManager.useCurrentWallpaper {
-                        HStack {
-                            if let wp = selectedLockScreenWallpaper {
-                                AsyncThumbnailView(wallpaper: wp, size: CGSize(width: 64, height: 36))
-                                    .cornerRadius(6)
-                                Text(wp.name)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            } else {
-                                Text("No wallpaper selected")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            Button("Choose...") {
-                                pickerForLockScreen = true
-                                showingPicker = true
-                            }
-                            .controlSize(.small)
+            // Lock Screen & Mission Control
+            Section("Lock Screen & Mission Control") {
+                Toggle("Sync video frame to system wallpaper", isOn: $syncManager.isEnabled)
+                    .onChange(of: syncManager.isEnabled) { enabled in
+                        if enabled {
+                            syncManager.syncNow()
+                        } else {
+                            syncManager.restoreOriginals()
                         }
                     }
 
-                    Toggle("Show clock overlay", isOn: $lockManager.showClock)
-                }
+                Text("macOS shows the system wallpaper on the lock screen, in Mission Control previews, and during Space transitions. Wallnetic keeps it in sync with a still frame of your current video. macOS doesn't allow apps to play video on the lock screen itself.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
         .formStyle(.grouped)
         .sheet(isPresented: $showingPicker) {
             WallpaperPickerPopup(
-                title: pickerForLockScreen
-                    ? "Choose Lock Screen Wallpaper"
-                    : "Choose Wallpaper for Space \(pickerTargetSpace + 1)"
+                title: "Choose Wallpaper for Space \(pickerTargetSpace + 1)"
             ) { wallpaper in
-                if pickerForLockScreen {
-                    lockManager.setLockScreenWallpaper(wallpaper)
-                } else {
-                    spaceManager.setWallpaper(wallpaper, forSpace: pickerTargetSpace)
-                }
+                spaceManager.setWallpaper(wallpaper, forSpace: pickerTargetSpace)
                 showingPicker = false
             }
             .environmentObject(wallpaperManager)
@@ -133,7 +103,6 @@ struct SpaceSettingsView: View {
             // Choose button
             Button("Choose...") {
                 pickerTargetSpace = index
-                pickerForLockScreen = false
                 showingPicker = true
             }
             .controlSize(.small)
@@ -152,10 +121,6 @@ struct SpaceSettingsView: View {
         .padding(.vertical, 2)
     }
 
-    private var selectedLockScreenWallpaper: Wallpaper? {
-        guard !lockManager.wallpaperPath.isEmpty else { return nil }
-        return wallpaperManager.wallpapers.first { $0.url.path == lockManager.wallpaperPath }
-    }
 }
 
 // MARK: - Wallpaper Picker Popup
