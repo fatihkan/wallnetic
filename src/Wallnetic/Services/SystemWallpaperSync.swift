@@ -19,14 +19,15 @@ final class SystemWallpaperSync: ObservableObject {
     static let shared = SystemWallpaperSync()
 
     @AppStorage("systemsync.enabled") var isEnabled: Bool = true
-    /// First-seen system wallpaper per screen (localizedName → path) so
-    /// disabling the feature can restore what the user had before.
+    /// First-seen system wallpaper per display (stringified CGDirectDisplayID
+    /// → path) so disabling the feature can restore what the user had before.
     @AppStorage("systemsync.originalsJSON") private var originalsJSON: String = "{}"
 
     private var observers: [Any] = []
     private var workspaceObserver: Any?
-    /// Last frame applied per screen (localizedName → frame URL).
-    private var appliedFrames: [String: URL] = [:]
+    /// Last frame applied per display (CGDirectDisplayID → frame URL). Keyed
+    /// by display id, not localizedName, so identical monitors don't collide.
+    private var appliedFrames: [CGDirectDisplayID: URL] = [:]
     /// Video URLs with an extraction currently in flight (dedup guard for
     /// rapid changes — slideshow, per-Space switching).
     private var inFlight: Set<URL> = []
@@ -101,7 +102,8 @@ final class SystemWallpaperSync: ObservableObject {
     func restoreOriginals() {
         let originals = Self.decodeOriginals(originalsJSON)
         for screen in NSScreen.screens {
-            guard let path = originals[screen.localizedName],
+            guard let id = screen.displayID,
+                  let path = originals[String(id)],
                   FileManager.default.fileExists(atPath: path) else { continue }
             do {
                 try NSWorkspace.shared.setDesktopImageURL(
@@ -138,14 +140,16 @@ final class SystemWallpaperSync: ObservableObject {
             return px.width * px.height > acc.width * acc.height ? px : acc
         }
         // Only immutable Sendable values cross the await (Xcode 15.2 WMO).
-        let screenNames = screens.map(\.localizedName)
+        let targetIDs = screens.compactMap(\.displayID)
 
         Task { [weak self] in
             let extracted = await Self.extractFrame(videoURL: videoURL, maxSize: maxSize, to: frameURL)
             guard let self else { return }
             self.inFlight.remove(videoURL)
             guard extracted, self.isEnabled else { return }
-            let targets = NSScreen.screens.filter { screenNames.contains($0.localizedName) }
+            // Re-resolve screens at apply time — the set may have changed
+            // during extraction; match by stable display id.
+            let targets = NSScreen.screens.filter { ($0.displayID).map(targetIDs.contains) ?? false }
             self.apply(frameURL: frameURL, to: targets)
             Self.cleanupFrames(in: Self.framesDirectory(), keepingNewest: 8)
         }
@@ -159,9 +163,10 @@ final class SystemWallpaperSync: ObservableObject {
             .allowClipping: true
         ]
         for screen in screens {
+            guard let id = screen.displayID else { continue }
             do {
                 try NSWorkspace.shared.setDesktopImageURL(frameURL, for: screen, options: options)
-                appliedFrames[screen.localizedName] = frameURL
+                appliedFrames[id] = frameURL
             } catch {
                 Log.sysWallpaper.error("setDesktopImageURL failed: \(String(describing: error), privacy: .public)")
             }
@@ -173,7 +178,8 @@ final class SystemWallpaperSync: ObservableObject {
     private func reapplyIfNeeded() {
         guard isEnabled else { return }
         for screen in NSScreen.screens {
-            guard let frameURL = appliedFrames[screen.localizedName],
+            guard let id = screen.displayID,
+                  let frameURL = appliedFrames[id],
                   NSWorkspace.shared.desktopImageURL(for: screen) != frameURL else { continue }
             apply(frameURL: frameURL, to: [screen])
         }
@@ -184,7 +190,8 @@ final class SystemWallpaperSync: ObservableObject {
         var changed = false
         let framesDir = Self.framesDirectory().path
         for screen in screens {
-            let key = screen.localizedName
+            guard let id = screen.displayID else { continue }
+            let key = String(id)
             guard originals[key] == nil,
                   let current = NSWorkspace.shared.desktopImageURL(for: screen),
                   current.isFileURL,

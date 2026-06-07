@@ -23,17 +23,22 @@ extension MetalVideoRenderer: WallpaperRenderer {
 /// Controls the desktop-level window that displays live wallpapers behind desktop icons
 /// Optimized for minimal resource usage
 class DesktopWindowController {
-    private var desktopWindows: [NSScreen: NSWindow] = [:]
-    private var renderers: [NSScreen: WallpaperRenderer] = [:]
-    private var effectOverlays: [NSScreen: NSView] = [:]
+    // Keyed by CGDirectDisplayID, not the NSScreen object. NSScreen identity
+    // is recreated on display reconfiguration (sleep/wake, hot-plug,
+    // resolution change), which left stale object keys here and made
+    // per-screen lookups miss — the reported "main display doesn't update in
+    // different mode" bug. displayID is stable across those events.
+    private var desktopWindows: [CGDirectDisplayID: NSWindow] = [:]
+    private var renderers: [CGDirectDisplayID: WallpaperRenderer] = [:]
+    private var effectOverlays: [CGDirectDisplayID: NSView] = [:]
     private var isPlaying = false
     /// Last URL applied to *all* screens (uniform mode). Used to restore
     /// new screens on hot-plug and to skip redundant uniform reapplies.
     private var currentWallpaperURL: URL?
-    /// Per-screen URL state. Lets the per-screen path skip a redundant
-    /// reload on the same screen while still allowing two screens to share
+    /// Per-display URL state. Lets the per-screen path skip a redundant
+    /// reload on the same display while still allowing two displays to share
     /// the same source URL in "different per display" mode.
-    private var screenWallpaperURLs: [NSScreen: URL] = [:]
+    private var screenWallpaperURLs: [CGDirectDisplayID: URL] = [:]
     private var useMetalRenderer: Bool
 
     init() {
@@ -63,6 +68,13 @@ class DesktopWindowController {
 
     /// Creates a single desktop window for a specific screen
     private func createDesktopWindow(for screen: NSScreen) {
+        // A display with no NSScreenNumber can't be tracked stably; skipping
+        // it is safer than keying by an unstable fallback.
+        guard let displayID = screen.displayID else {
+            Log.window.error("Skipping desktop window: screen has no displayID (\(screen.localizedName, privacy: .public))")
+            return
+        }
+
         // Defer creation for performance. isReleasedWhenClosed=false is baked
         // into the factory so ARC alone owns the window. [#206]
         let window = OverlayWindowFactory.makeBackgroundWindow(contentRect: screen.frame)
@@ -108,11 +120,11 @@ class DesktopWindowController {
         effectOverlay.wantsLayer = true
         effectOverlay.layer?.zPosition = 100
         renderer.rendererView.addSubview(effectOverlay)
-        effectOverlays[screen] = effectOverlay
+        effectOverlays[displayID] = effectOverlay
 
         // Store references
-        desktopWindows[screen] = window
-        renderers[screen] = renderer
+        desktopWindows[displayID] = window
+        renderers[displayID] = renderer
 
         // Apply current effects
         applyEffectsToOverlay(effectOverlay)
@@ -128,29 +140,44 @@ class DesktopWindowController {
 
     /// Sets the wallpaper video with animated transition
     func setWallpaper(url: URL, for screen: NSScreen? = nil) {
+        // Resolve the optional target screen to a stable display id up front.
+        // A target screen with no displayID can't be addressed — bail rather
+        // than silently apply to the wrong display.
+        let targetID: CGDirectDisplayID?
+        if let screen {
+            guard let id = screen.displayID else {
+                Log.window.error("setWallpaper: target screen has no displayID")
+                return
+            }
+            targetID = id
+        } else {
+            targetID = nil
+        }
+
         // Guard per scope: uniform-mode (screen=nil) skips redundant
         // reapplies only when the URL hasn't changed at all; per-screen
-        // mode keys the skip check on the target screen so two screens
+        // mode keys the skip check on the target display so two displays
         // can share the same source URL without one being silently dropped.
-        if let screen {
-            guard screenWallpaperURLs[screen] != url else { return }
-            screenWallpaperURLs[screen] = url
+        if let targetID {
+            guard screenWallpaperURLs[targetID] != url else { return }
+            screenWallpaperURLs[targetID] = url
         } else {
             guard currentWallpaperURL != url else { return }
             currentWallpaperURL = url
-            // Uniform reapply: reset per-screen state so hot-plug and
+            // Uniform reapply: reset per-display state so hot-plug and
             // mode transitions see a consistent picture.
-            for s in desktopWindows.keys {
-                screenWallpaperURLs[s] = url
+            for id in desktopWindows.keys {
+                screenWallpaperURLs[id] = url
             }
         }
 
         let style = WallpaperManager.shared.transitionStyle
         let duration = WallpaperManager.shared.transitionDuration
-        let screens = screen.map { [$0] } ?? Array(desktopWindows.keys)
+        let displayIDs = targetID.map { [$0] } ?? Array(desktopWindows.keys)
 
-        for s in screens {
-            guard let window = desktopWindows[s],
+        for s in displayIDs {
+            // Window presence gates the apply; the renderer does the work.
+            guard desktopWindows[s] != nil,
                   let renderer = renderers[s] else { continue }
 
             // No transition — instant switch
@@ -227,36 +254,37 @@ class DesktopWindowController {
 
     /// Handles display configuration changes (connect/disconnect monitors)
     func handleDisplayChange() {
-        let currentScreens = Set(NSScreen.screens)
-        let knownScreens = Set(desktopWindows.keys)
+        let currentIDs = Set(NSScreen.screens.compactMap { $0.displayID })
+        let knownIDs = Set(desktopWindows.keys)
 
-        // Remove windows for disconnected screens
-        for screen in knownScreens.subtracting(currentScreens) {
-            renderers[screen]?.stop()
-            desktopWindows[screen]?.close()
-            desktopWindows.removeValue(forKey: screen)
-            renderers.removeValue(forKey: screen)
-            screenWallpaperURLs.removeValue(forKey: screen)
+        // Remove windows for disconnected displays
+        for id in knownIDs.subtracting(currentIDs) {
+            renderers[id]?.stop()
+            desktopWindows[id]?.close()
+            desktopWindows.removeValue(forKey: id)
+            renderers.removeValue(forKey: id)
+            effectOverlays.removeValue(forKey: id)
+            screenWallpaperURLs.removeValue(forKey: id)
         }
 
-        // Add windows for new screens
-        for screen in currentScreens.subtracting(knownScreens) {
+        // Add windows for newly connected displays
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID, !knownIDs.contains(id) else { continue }
             createDesktopWindow(for: screen)
 
-            // Load current wallpaper on new screen
+            // Load current wallpaper on the new display
             if let url = currentWallpaperURL {
-                renderers[screen]?.loadVideo(url: url)
+                renderers[id]?.loadVideo(url: url)
                 if isPlaying {
-                    renderers[screen]?.play()
+                    renderers[id]?.play()
                 }
             }
         }
 
-        // Update existing windows for resolution changes
-        for screen in currentScreens.intersection(knownScreens) {
-            if let window = desktopWindows[screen] {
-                window.setFrame(screen.frame, display: false)
-            }
+        // Update existing windows for resolution / arrangement changes
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID, let window = desktopWindows[id] else { continue }
+            window.setFrame(screen.frame, display: false)
         }
     }
 
@@ -264,10 +292,10 @@ class DesktopWindowController {
 
     /// Applies current effects to all screen overlays
     func applyEffects() {
-        for (screen, overlay) in effectOverlays {
+        for (displayID, overlay) in effectOverlays {
             applyEffectsToOverlay(overlay)
             // Apply blur to the renderer view's layer
-            if let renderer = renderers[screen] {
+            if let renderer = renderers[displayID] {
                 let effects = WallpaperEffectsManager.shared
                 let layer = renderer.rendererView.layer
 
