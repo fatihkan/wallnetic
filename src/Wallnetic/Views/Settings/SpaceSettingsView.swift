@@ -53,7 +53,7 @@ struct SpaceSettingsView: View {
 
                     if aerialInjector.isActive {
                         HStack {
-                            Label("Live video active on lock screen", systemImage: "checkmark.seal.fill")
+                            Label("Live video screen saver active", systemImage: "checkmark.seal.fill")
                                 .foregroundColor(.green)
                             Spacer()
                             Button("Turn Off") { turnOffLockScreenVideo() }
@@ -63,7 +63,7 @@ struct SpaceSettingsView: View {
                         Button {
                             setLockScreenVideo()
                         } label: {
-                            Label("Use live video on lock screen", systemImage: "play.rectangle.fill")
+                            Label("Play video as screen saver", systemImage: "play.rectangle.fill")
                         }
                         .disabled(aerialInjector.isBusy || wallpaperManager.currentWallpaper == nil)
                     }
@@ -75,7 +75,7 @@ struct SpaceSettingsView: View {
                         }
                     }
 
-                    Text("Plays your current wallpaper as a real video on the lock screen using macOS's own aerial system. Direct-download build only.")
+                    Text("Registers your wallpaper as a macOS aerial so the real video plays as the screen saver (when the Mac is idle) and on the login screen. The instant lock screen (⌃⌘Q) always shows a still frame — that's a macOS limitation, the same for Apple's own aerials. Direct-download build only.")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
