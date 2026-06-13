@@ -338,17 +338,10 @@ struct WallpaperContextMenu: View {
             }
         }
 
-        Divider()
-
-        // Lock screen option
-        Button {
-            LockScreenManager.shared.setLockScreenWallpaper(wallpaper)
-        } label: {
-            Label("Set as Lock Screen", systemImage: "lock.rectangle")
-        }
-
         // Space assignment - auto-detect current space
         if SpaceWallpaperManager.shared.isEnabled {
+            Divider()
+
             Button {
                 let currentSpace = SpaceWallpaperManager.shared.currentSpaceIndex
                 SpaceWallpaperManager.shared.setWallpaper(wallpaper, forSpace: currentSpace)

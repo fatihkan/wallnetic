@@ -93,6 +93,9 @@ targets:
         PRODUCT_NAME: WallneticTests
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/Wallnetic.app/Contents/MacOS/Wallnetic
         BUNDLE_LOADER: $(TEST_HOST)
+        # Test bundles ship no hand-written Info.plist — let Xcode generate
+        # one so CLI `xcodebuild test` can code-sign the bundle.
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: Wallnetic
 

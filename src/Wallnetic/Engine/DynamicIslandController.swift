@@ -216,13 +216,6 @@ class DynamicIslandController: ObservableObject {
     }
 }
 
-// MARK: - NSScreen.displayID
-
-extension NSScreen {
-    /// Stable identifier for the underlying display — survives most
-    /// topology changes (sleep/wake, resolution toggle). Returns nil
-    /// for the rare screen that has no NSScreenNumber device entry.
-    var displayID: CGDirectDisplayID? {
-        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
-    }
-}
+// NSScreen.displayID moved to Utils/NSScreen+DisplayID.swift (now shared
+// by DesktopWindowController and SystemWallpaperSync for stable per-display
+// keying).

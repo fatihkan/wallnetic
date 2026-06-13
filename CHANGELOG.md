@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **System wallpaper sync — lock screen & Mission Control consistency**:
+  macOS renders the *system* wallpaper (not Wallnetic's video window) on the
+  lock screen, in Mission Control Space previews and during Space transitions,
+  so those surfaces showed an unrelated default picture. Wallnetic now
+  extracts a still frame of the current video and applies it via
+  `NSWorkspace.setDesktopImageURL` per screen, re-applying on Space and
+  display changes. The user's original wallpaper is backed up and restored
+  when the toggle is turned off (Settings → Spaces & Lock Screen).
+
+### Removed
+- Non-functional "Show video wallpaper on lock screen" feature
+  (`LockScreenManager`): a `screenSaverWindow+1` level window can never
+  appear above the modern macOS lock screen (separate secure session), so
+  the toggle only burned CPU on an invisible renderer (#206 Bug B). The
+  honest replacement is the still-frame sync above — macOS does not allow
+  third-party apps to play video on the lock screen.
+
 ### Documentation
 - Store media refresh: 8× branded 2560×1600 ASO screenshots + framed
   1920×1080 demo video; `apps.json` (wvw.dev) updated (#216).
