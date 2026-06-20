@@ -42,16 +42,40 @@ class TimeOfDayManager: ObservableObject {
     }
 
     // MARK: - Settings
+    //
+    // Backed by @Published + UserDefaults (not @AppStorage): @AppStorage inside
+    // an ObservableObject does NOT fire objectWillChange, so the settings view
+    // never re-rendered and the toggle's `.onChange` never fired — start() was
+    // never called and time-of-day switching silently never ran. Same root
+    // cause/fix as PlaylistManager (#226).
 
-    @AppStorage("tod.enabled") var isEnabled: Bool = false
-    @AppStorage("tod.morningWallpaperPath") var morningWallpaperPath: String = ""
-    @AppStorage("tod.afternoonWallpaperPath") var afternoonWallpaperPath: String = ""
-    @AppStorage("tod.eveningWallpaperPath") var eveningWallpaperPath: String = ""
-    @AppStorage("tod.nightWallpaperPath") var nightWallpaperPath: String = ""
-    @AppStorage("tod.morningHour") var morningHour: Int = 6
-    @AppStorage("tod.afternoonHour") var afternoonHour: Int = 12
-    @AppStorage("tod.eveningHour") var eveningHour: Int = 17
-    @AppStorage("tod.nightHour") var nightHour: Int = 21
+    @Published var isEnabled: Bool = UserDefaults.standard.bool(forKey: "tod.enabled") {
+        didSet { UserDefaults.standard.set(isEnabled, forKey: "tod.enabled") }
+    }
+    @Published var morningWallpaperPath: String = UserDefaults.standard.string(forKey: "tod.morningWallpaperPath") ?? "" {
+        didSet { UserDefaults.standard.set(morningWallpaperPath, forKey: "tod.morningWallpaperPath") }
+    }
+    @Published var afternoonWallpaperPath: String = UserDefaults.standard.string(forKey: "tod.afternoonWallpaperPath") ?? "" {
+        didSet { UserDefaults.standard.set(afternoonWallpaperPath, forKey: "tod.afternoonWallpaperPath") }
+    }
+    @Published var eveningWallpaperPath: String = UserDefaults.standard.string(forKey: "tod.eveningWallpaperPath") ?? "" {
+        didSet { UserDefaults.standard.set(eveningWallpaperPath, forKey: "tod.eveningWallpaperPath") }
+    }
+    @Published var nightWallpaperPath: String = UserDefaults.standard.string(forKey: "tod.nightWallpaperPath") ?? "" {
+        didSet { UserDefaults.standard.set(nightWallpaperPath, forKey: "tod.nightWallpaperPath") }
+    }
+    @Published var morningHour: Int = (UserDefaults.standard.object(forKey: "tod.morningHour") as? Int) ?? 6 {
+        didSet { UserDefaults.standard.set(morningHour, forKey: "tod.morningHour") }
+    }
+    @Published var afternoonHour: Int = (UserDefaults.standard.object(forKey: "tod.afternoonHour") as? Int) ?? 12 {
+        didSet { UserDefaults.standard.set(afternoonHour, forKey: "tod.afternoonHour") }
+    }
+    @Published var eveningHour: Int = (UserDefaults.standard.object(forKey: "tod.eveningHour") as? Int) ?? 17 {
+        didSet { UserDefaults.standard.set(eveningHour, forKey: "tod.eveningHour") }
+    }
+    @Published var nightHour: Int = (UserDefaults.standard.object(forKey: "tod.nightHour") as? Int) ?? 21 {
+        didSet { UserDefaults.standard.set(nightHour, forKey: "tod.nightHour") }
+    }
 
     @Published var currentSlot: TimeSlot = .morning
     @Published var manualOverride = false
