@@ -63,6 +63,17 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("n", modifiers: .command)
 
+            // Playlist quick-toggle. The menu is rebuilt on open, so reading
+            // the flag directly reflects the current state without observation.
+            Button {
+                PlaylistManager.shared.toggle()
+            } label: {
+                Label(
+                    PlaylistManager.shared.isEnabled ? "Stop Shuffle" : "Shuffle Wallpapers",
+                    systemImage: PlaylistManager.shared.isEnabled ? "shuffle.circle.fill" : "shuffle"
+                )
+            }
+
             Divider()
 
             // Favorites quick-switch

@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NSWorkspace.setDesktopImageURL` per screen, re-applying on Space and
   display changes. The user's original wallpaper is backed up and restored
   when the toggle is turned off (Settings → Spaces & Lock Screen).
+- **Playlist / Shuffle**: auto-rotate the desktop wallpaper on an interval
+  (5 min – daily, default 30 min), shuffled or in order, from your whole
+  library, just favorites, or a chosen collection. New **Settings → Playlist**
+  panel and a **Shuffle Wallpapers** quick-toggle in the menu bar. Mutually
+  exclusive with time-of-day switching so the two schedulers never fight.
 
 ### Removed
 - Non-functional "Show video wallpaper on lock screen" feature
