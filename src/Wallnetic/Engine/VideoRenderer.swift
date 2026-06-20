@@ -198,6 +198,18 @@ class VideoRenderer: NSObject {
         return player?.currentTime()
     }
 
+    /// Playback clock in seconds for the watchdog. `nil` when no player is
+    /// loaded or the time is not yet numeric (item not ready).
+    var currentPlaybackTime: TimeInterval? {
+        guard let time = player?.currentTime(), time.isNumeric else { return nil }
+        return time.seconds
+    }
+
+    /// Force the player to resume immediately after a detected stall.
+    func recoverPlayback() {
+        player?.playImmediately(atRate: 1.0)
+    }
+
     var duration: CMTime? {
         return player?.currentItem?.duration
     }

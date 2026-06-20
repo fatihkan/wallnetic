@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   version, on top of Apple's own annual cap. Uses the modern
   `AppStore.requestReview(in:)` API. A manual "Rate Wallnetic" link was also
   added to Settings → About.
+- **Playback reliability watchdog**: addresses the category's #1 complaint
+  ("the wallpaper freezes and I have to reopen the app"). While playback is
+  intended and not deliberately paused, `DesktopWindowController` samples each
+  display's playback clock and, if it stops advancing, nudges the renderer
+  back to life (`playImmediately`). Release builds previously had no stall
+  detection at all — a wedged `AVPlayer` just looked frozen. Respects
+  `PowerManager` (never resumes a battery/fullscreen/sleep pause).
 
 ### Removed
 - Non-functional "Show video wallpaper on lock screen" feature
