@@ -58,13 +58,29 @@ class PlaylistManager: ObservableObject {
     }
 
     // MARK: - Settings (persisted)
+    //
+    // Backed by @Published + UserDefaults (not @AppStorage): @AppStorage inside
+    // an ObservableObject does NOT fire objectWillChange, so SwiftUI never
+    // re-renders the settings view — pickers wouldn't appear and `.onChange`
+    // wouldn't fire (the playlist silently never started). @Published fixes the
+    // reactivity; didSet persists.
 
-    @AppStorage("playlist.enabled") var isEnabled: Bool = false
-    @AppStorage("playlist.intervalSeconds") var intervalSeconds: Int = 1800
+    @Published var isEnabled: Bool = UserDefaults.standard.bool(forKey: "playlist.enabled") {
+        didSet { UserDefaults.standard.set(isEnabled, forKey: "playlist.enabled") }
+    }
+    @Published var intervalSeconds: Int = (UserDefaults.standard.object(forKey: "playlist.intervalSeconds") as? Int) ?? 1800 {
+        didSet { UserDefaults.standard.set(intervalSeconds, forKey: "playlist.intervalSeconds") }
+    }
     /// Raw storage bound directly by the Pickers; logic reads `order`/`source`.
-    @AppStorage("playlist.order") var orderRaw: String = Order.shuffle.rawValue
-    @AppStorage("playlist.source") var sourceRaw: String = Source.library.rawValue
-    @AppStorage("playlist.collectionID") var collectionIDString: String = ""
+    @Published var orderRaw: String = UserDefaults.standard.string(forKey: "playlist.order") ?? Order.shuffle.rawValue {
+        didSet { UserDefaults.standard.set(orderRaw, forKey: "playlist.order") }
+    }
+    @Published var sourceRaw: String = UserDefaults.standard.string(forKey: "playlist.source") ?? Source.library.rawValue {
+        didSet { UserDefaults.standard.set(sourceRaw, forKey: "playlist.source") }
+    }
+    @Published var collectionIDString: String = UserDefaults.standard.string(forKey: "playlist.collectionID") ?? "" {
+        didSet { UserDefaults.standard.set(collectionIDString, forKey: "playlist.collectionID") }
+    }
 
     var order: Order { Order(rawValue: orderRaw) ?? .shuffle }
     var source: Source { Source(rawValue: sourceRaw) ?? .library }
@@ -91,10 +107,12 @@ class PlaylistManager: ObservableObject {
     }
 
     /// User-initiated enable. Turns off time-of-day switching first so the two
-    /// schedulers never fight over the wallpaper.
+    /// schedulers never fight over the wallpaper, then shuffles immediately so
+    /// enabling feels responsive (and the next change follows after `interval`).
     func enableExclusively() {
         TimeOfDayManager.shared.stop()
         start()
+        advance()
     }
 
     func toggle() {
