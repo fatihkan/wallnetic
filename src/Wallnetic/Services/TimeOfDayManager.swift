@@ -156,7 +156,8 @@ class TimeOfDayManager: ObservableObject {
         if let wallpaper = WallpaperManager.shared.wallpapers.first(where: { $0.url.path == path }) {
             let slot = currentSlot.rawValue
             Log.timeOfDay.info("Switching to \(slot, privacy: .public) wallpaper: \(wallpaper.name, privacy: .public)")
-            WallpaperManager.shared.setWallpaper(wallpaper)
+            // Automatic switch — don't feed the rating prompt.
+            WallpaperManager.shared.setWallpaper(wallpaper, userInitiated: false)
         }
     }
 

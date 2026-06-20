@@ -193,6 +193,7 @@ struct SettingsView: View {
         case .playback:   PlaybackSettingsView()
         case .effects:    EffectsSettingsView()
         case .schedule:   TimeOfDaySettingsView()
+        case .playlist:   PlaylistSettingsView()
         case .spaces:     SpaceSettingsView()
         case .display:    DisplaySettingsView()
         case .notifications: NotificationSettingsView()
@@ -207,7 +208,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     // smartTags (Ollama Vision auto-tagging) gizlendi — App Store
     // submission disinda tutuluyor. View + service kodu intact;
     // case'i geri eklemek yeterli.
-    case general, appearance, playback, effects, schedule, spaces, display, notifications, about
+    case general, appearance, playback, effects, schedule, playlist, spaces, display, notifications, about
 
     var id: String { rawValue }
     var isFooter: Bool { self == .notifications || self == .about }
@@ -219,6 +220,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playback:      return "Playback"
         case .effects:       return "Effects"
         case .schedule:      return "Schedule"
+        case .playlist:      return "Playlist"
         case .spaces:        return "Spaces"
         case .display:       return "Display"
         case .notifications: return "Notifications"
@@ -233,6 +235,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playback:      return "Power, performance, and pause rules."
         case .effects:       return "Live wallpaper post-processing."
         case .schedule:      return "Time-of-day rotations."
+        case .playlist:      return "Auto-rotate on an interval."
         case .spaces:        return "Per-Space wallpaper assignments."
         case .display:       return "Per-monitor mode and tracking."
         case .notifications: return "Toggle alert categories."
@@ -247,6 +250,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playback:      return "play.fill"
         case .effects:       return "wand.and.stars"
         case .schedule:      return "clock.arrow.2.circlepath"
+        case .playlist:      return "shuffle"
         case .spaces:        return "square.stack.3d.up.fill"
         case .display:       return "display"
         case .notifications: return "bell.fill"
@@ -261,6 +265,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playback:      return Color(red: 0.40, green: 0.95, blue: 0.55)
         case .effects:       return Color(red: 0.85, green: 0.55, blue: 1.00)
         case .schedule:      return Color(red: 1.00, green: 0.75, blue: 0.35)
+        case .playlist:      return Color(red: 0.40, green: 0.85, blue: 0.85)
         case .spaces:        return Color(red: 0.55, green: 0.80, blue: 1.00)
         case .display:       return Color(red: 0.65, green: 0.85, blue: 0.50)
         case .notifications: return Color(red: 1.00, green: 0.60, blue: 0.45)

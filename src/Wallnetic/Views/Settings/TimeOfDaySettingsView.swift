@@ -10,7 +10,14 @@ struct TimeOfDaySettingsView: View {
             Section {
                 Toggle("Auto-switch wallpapers by time of day", isOn: $todManager.isEnabled)
                     .onChange(of: todManager.isEnabled) { enabled in
-                        if enabled { todManager.start() } else { todManager.stop() }
+                        if enabled {
+                            // Mutually exclusive with the playlist — only one
+                            // scheduler may drive the wallpaper at a time.
+                            PlaylistManager.shared.stop()
+                            todManager.start()
+                        } else {
+                            todManager.stop()
+                        }
                     }
 
                 if todManager.isEnabled {
