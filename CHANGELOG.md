@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NSWorkspace.setDesktopImageURL` per screen, re-applying on Space and
   display changes. The user's original wallpaper is backed up and restored
   when the toggle is turned off (Settings → Spaces & Lock Screen).
+- **Playback reliability watchdog**: addresses the category's #1 complaint
+  ("the wallpaper freezes and I have to reopen the app"). While playback is
+  intended and not deliberately paused, `DesktopWindowController` samples each
+  display's playback clock and, if it stops advancing, nudges the renderer
+  back to life (`playImmediately`). Release builds previously had no stall
+  detection at all — a wedged `AVPlayer` just looked frozen. Respects
+  `PowerManager` (never resumes a battery/fullscreen/sleep pause).
 
 ### Removed
 - Non-functional "Show video wallpaper on lock screen" feature

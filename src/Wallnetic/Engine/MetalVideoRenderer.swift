@@ -245,6 +245,23 @@ final class MetalVideoRenderer: NSObject {
         cleanup()
     }
 
+    // MARK: - Watchdog
+
+    /// Playback clock in seconds for the watchdog. `nil` when no player is
+    /// loaded or the time is not yet numeric (item not ready).
+    var currentPlaybackTime: TimeInterval? {
+        guard let time = player?.currentItem?.currentTime(), time.isNumeric else { return nil }
+        return time.seconds
+    }
+
+    /// Force playback to resume immediately after a detected stall, also
+    /// un-pausing the Metal view in case its draw loop was the thing wedged.
+    func recoverPlayback() {
+        isPlaying = true
+        metalView.isPaused = false
+        player?.playImmediately(atRate: 1.0)
+    }
+
     // MARK: - Cleanup
 
     private func cleanup() {
