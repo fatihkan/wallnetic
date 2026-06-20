@@ -499,7 +499,11 @@ class WallpaperManager: ObservableObject {
     /// PlaybackDelegate drives the renderer directly (#170); the broadcast
     /// notification fans out to observers like DynamicIslandController and
     /// ThemeManager that react to wallpaper changes.
-    func setWallpaper(_ wallpaper: Wallpaper) {
+    ///
+    /// `userInitiated` distinguishes a deliberate user choice from an automatic
+    /// switch (playlist / time-of-day). Only user-initiated applies feed the
+    /// rating prompt — passive rotation isn't a "ask for a review" moment.
+    func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool = true) {
         currentWallpaper = wallpaper
         lastWallpaperURL = wallpaper.url.path
         isPlaying = true
@@ -510,7 +514,9 @@ class WallpaperManager: ObservableObject {
         NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
         NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
 
-        RatingPromptManager.shared.recordWallpaperApplied()
+        if userInitiated {
+            RatingPromptManager.shared.recordWallpaperApplied()
+        }
 
         Task {
             await widgetSync.syncCurrentWallpaper(wallpaper)
@@ -519,7 +525,7 @@ class WallpaperManager: ObservableObject {
     }
 
     /// Sets wallpaper for a specific screen (different mode).
-    func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen) {
+    func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen, userInitiated: Bool = true) {
         let screenName = screen.localizedName
         screenWallpapers[screenName] = wallpaper.id
         saveScreenWallpapers()
@@ -537,7 +543,9 @@ class WallpaperManager: ObservableObject {
             currentWallpaper = wallpaper
             lastWallpaperURL = wallpaper.url.path
             NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
-            RatingPromptManager.shared.recordWallpaperApplied()
+            if userInitiated {
+                RatingPromptManager.shared.recordWallpaperApplied()
+            }
             Task {
                 await widgetSync.syncCurrentWallpaper(wallpaper)
                 widgetSync.syncPlaybackState(isPlaying: true)

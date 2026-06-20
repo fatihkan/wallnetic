@@ -140,7 +140,8 @@ class PlaylistManager: ObservableObject {
 
         guard let nextIndex, wallpapers.indices.contains(nextIndex) else { return }
         Log.app.info("Playlist advancing (\(self.order.rawValue, privacy: .public)) to \(wallpapers[nextIndex].name, privacy: .public)")
-        WallpaperManager.shared.setWallpaper(wallpapers[nextIndex])
+        // Automatic rotation — don't feed the rating prompt.
+        WallpaperManager.shared.setWallpaper(wallpapers[nextIndex], userInitiated: false)
     }
 
     private func currentSourceWallpapers() -> [Wallpaper] {

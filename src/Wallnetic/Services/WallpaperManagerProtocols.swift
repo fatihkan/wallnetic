@@ -23,8 +23,8 @@ protocol WallpaperReading: AnyObject {
 /// favorites, or removes wallpapers should declare a dependency on this
 /// protocol so it can be unit-tested without touching the real library.
 protocol WallpaperWriting: AnyObject {
-    func setWallpaper(_ wallpaper: Wallpaper)
-    func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen)
+    func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool)
+    func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen, userInitiated: Bool)
     func togglePlayback()
     func cycleToNextWallpaper()
     func importVideo(from sourceURL: URL) async throws -> Wallpaper
