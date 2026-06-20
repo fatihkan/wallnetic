@@ -55,6 +55,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             BatteryPromptService.shared.checkOnLaunch()
         }
 
+        // App-maturity counter feeding the App Store rating prompt (v1.4 Wave 1).
+        RatingPromptManager.shared.recordLaunch()
+
         logger.info("Wallnetic started successfully")
     }
 
