@@ -222,6 +222,7 @@ struct AboutSettingsView: View {
                 Link("Website", destination: URL(string: "https://wallnetic.app")!)
                 Link("GitHub", destination: URL(string: "https://github.com/fatihkan/wallnetic")!)
                 Link("Support", destination: URL(string: "mailto:support@wallnetic.app")!)
+                Link("Rate Wallnetic", destination: RatingPromptManager.writeReviewURL)
             }
             .font(.caption)
             Spacer()

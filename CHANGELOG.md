@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NSWorkspace.setDesktopImageURL` per screen, re-applying on Space and
   display changes. The user's original wallpaper is backed up and restored
   when the toggle is turned off (Settings → Spaces & Lock Screen).
+- **In-app App Store rating prompt**: Wallnetic now asks happy users for a
+  review at a genuinely positive moment — right after a deliberate wallpaper
+  change — gated by app maturity (at least 3 launches and 5 successful
+  applies), never on the automatic launch restore, and at most once per app
+  version, on top of Apple's own annual cap. Uses the modern
+  `AppStore.requestReview(in:)` API. A manual "Rate Wallnetic" link was also
+  added to Settings → About.
 - **Playback reliability watchdog**: addresses the category's #1 complaint
   ("the wallpaper freezes and I have to reopen the app"). While playback is
   intended and not deliberately paused, `DesktopWindowController` samples each

@@ -510,6 +510,8 @@ class WallpaperManager: ObservableObject {
         NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
         NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
 
+        RatingPromptManager.shared.recordWallpaperApplied()
+
         Task {
             await widgetSync.syncCurrentWallpaper(wallpaper)
             widgetSync.syncPlaybackState(isPlaying: true)
@@ -535,6 +537,7 @@ class WallpaperManager: ObservableObject {
             currentWallpaper = wallpaper
             lastWallpaperURL = wallpaper.url.path
             NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
+            RatingPromptManager.shared.recordWallpaperApplied()
             Task {
                 await widgetSync.syncCurrentWallpaper(wallpaper)
                 widgetSync.syncPlaybackState(isPlaying: true)
