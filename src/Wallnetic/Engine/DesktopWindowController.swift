@@ -8,6 +8,11 @@ protocol WallpaperRenderer {
     func play()
     func pause()
     func stop()
+    /// Current playback position in seconds, or `nil` when no player is loaded.
+    /// The watchdog samples this to detect a frozen player (time not advancing).
+    var currentPlaybackTime: TimeInterval? { get }
+    /// Force playback to resume immediately after a detected stall.
+    func recoverPlayback()
 }
 
 // Conform VideoRenderer to the protocol
@@ -213,6 +218,7 @@ class DesktopWindowController {
         for renderer in renderers.values {
             renderer.play()
         }
+        startWatchdog()
     }
 
     /// Pauses playback on all screens
@@ -223,6 +229,7 @@ class DesktopWindowController {
         for renderer in renderers.values {
             renderer.pause()
         }
+        stopWatchdog()
     }
 
     /// Pauses playback (used by power management)
@@ -250,6 +257,73 @@ class DesktopWindowController {
         return isPlaying
     }
 
+    // MARK: - Playback Watchdog (v1.4 Wave 1)
+
+    /// Samples each renderer's playback clock while playback is intended and,
+    /// when the clock stops advancing, nudges the renderer back to life — the
+    /// honest fix for the category's #1 complaint ("freezes, I have to reopen
+    /// it"). Lives here because this controller owns the renderers and the
+    /// recovery path; the stall decision is the pure ``PlaybackWatchdog``.
+    private var watchdogTimer: Timer?
+    private var lastPlaybackTimes: [CGDirectDisplayID: TimeInterval] = [:]
+    private var frozenSampleCounts: [CGDirectDisplayID: Int] = [:]
+
+    private func startWatchdog() {
+        guard watchdogTimer == nil else { return }
+        lastPlaybackTimes.removeAll()
+        frozenSampleCounts.removeAll()
+        let timer = Timer(timeInterval: PlaybackWatchdog.interval, repeats: true) { [weak self] _ in
+            self?.checkPlaybackHealth()
+        }
+        // .common keeps it firing while a tracking run-loop is active (menu
+        // open, live resize) rather than silently suspending.
+        RunLoop.main.add(timer, forMode: .common)
+        watchdogTimer = timer
+    }
+
+    private func stopWatchdog() {
+        watchdogTimer?.invalidate()
+        watchdogTimer = nil
+        lastPlaybackTimes.removeAll()
+        frozenSampleCounts.removeAll()
+    }
+
+    private func checkPlaybackHealth() {
+        // Don't fight an intentional pause (battery, fullscreen, sleep, screen
+        // saver). When PowerManager pauses us it calls pause(), which already
+        // stops the timer; this is belt-and-braces for an in-flight tick.
+        let shouldBePaused = PowerManager.shared.shouldBePaused
+
+        for (id, renderer) in renderers {
+            let current = renderer.currentPlaybackTime
+            let previous = lastPlaybackTimes[id]
+            lastPlaybackTimes[id] = current
+
+            let frozen = PlaybackWatchdog.isFrozen(
+                previous: previous,
+                current: current,
+                intendedToPlay: isPlaying,
+                shouldBePaused: shouldBePaused
+            )
+
+            guard frozen else {
+                frozenSampleCounts[id] = 0
+                continue
+            }
+
+            let count = (frozenSampleCounts[id] ?? 0) + 1
+            frozenSampleCounts[id] = count
+            if count >= PlaybackWatchdog.frozenSamplesBeforeRecovery {
+                Log.video.error("Playback stalled on display \(id, privacy: .public) — auto-recovering")
+                renderer.recoverPlayback()
+                // Reset the baseline so the post-recovery position isn't
+                // mistaken for a fresh stall on the next sample.
+                frozenSampleCounts[id] = 0
+                lastPlaybackTimes[id] = renderer.currentPlaybackTime
+            }
+        }
+    }
+
     // MARK: - Display Changes
 
     /// Handles display configuration changes (connect/disconnect monitors)
@@ -265,6 +339,8 @@ class DesktopWindowController {
             renderers.removeValue(forKey: id)
             effectOverlays.removeValue(forKey: id)
             screenWallpaperURLs.removeValue(forKey: id)
+            lastPlaybackTimes.removeValue(forKey: id)
+            frozenSampleCounts.removeValue(forKey: id)
         }
 
         // Add windows for newly connected displays
@@ -361,6 +437,8 @@ class DesktopWindowController {
     // MARK: - Cleanup
 
     func cleanup() {
+        stopWatchdog()
+
         for renderer in renderers.values {
             renderer.stop()
         }

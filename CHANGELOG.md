@@ -16,11 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `NSWorkspace.setDesktopImageURL` per screen, re-applying on Space and
   display changes. The user's original wallpaper is backed up and restored
   when the toggle is turned off (Settings → Spaces & Lock Screen).
+- **In-app App Store rating prompt**: Wallnetic now asks happy users for a
+  review at a genuinely positive moment — right after a deliberate wallpaper
+  change — gated by app maturity (at least 3 launches and 5 successful
+  applies), never on the automatic launch restore, and at most once per app
+  version, on top of Apple's own annual cap. Uses the modern
+  `AppStore.requestReview(in:)` API. A manual "Rate Wallnetic" link was also
+  added to Settings → About.
+- **Playback reliability watchdog**: addresses the category's #1 complaint
+  ("the wallpaper freezes and I have to reopen the app"). While playback is
+  intended and not deliberately paused, `DesktopWindowController` samples each
+  display's playback clock and, if it stops advancing, nudges the renderer
+  back to life (`playImmediately`). Release builds previously had no stall
+  detection at all — a wedged `AVPlayer` just looked frozen. Respects
+  `PowerManager` (never resumes a battery/fullscreen/sleep pause).
 - **Playlist / Shuffle**: auto-rotate the desktop wallpaper on an interval
   (5 min – daily, default 30 min), shuffled or in order, from your whole
   library, just favorites, or a chosen collection. New **Settings → Playlist**
   panel and a **Shuffle Wallpapers** quick-toggle in the menu bar. Mutually
   exclusive with time-of-day switching so the two schedulers never fight.
+  Automatic rotations don't count toward the rating prompt.
 
 ### Removed
 - Non-functional "Show video wallpaper on lock screen" feature
