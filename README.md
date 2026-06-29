@@ -9,7 +9,7 @@
 [![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12)
 [![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.3.1-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.4.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/61182f15-1208-4cc5-b37a-d7827e871022" width="800" autoplay loop muted playsinline>
