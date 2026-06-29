@@ -126,8 +126,12 @@ struct GeneralSettingsView: View {
                     .disabled(true)
                     .help("Menu bar icon is always shown")
                 Toggle("Hide Dock icon", isOn: $hideDockIcon)
-                    .onChange(of: hideDockIcon) { newValue in
-                        NSApp.setActivationPolicy(newValue ? .accessory : .regular)
+                    .onChange(of: hideDockIcon) { _ in
+                        // #228: defer hiding the Dock icon until no normal
+                        // window is open, so toggling this while Settings is
+                        // open doesn't strand the window (an accessory window
+                        // can't be key → invisible traffic lights on macOS 26).
+                        DockIconPolicy.reapply()
                     }
                     .help("Run only in menu bar without showing in the Dock")
                 Toggle("Dynamic Island", isOn: $islandEnabled)

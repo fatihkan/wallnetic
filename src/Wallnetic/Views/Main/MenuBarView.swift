@@ -107,19 +107,16 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("o", modifiers: .command)
 
-            if #available(macOS 14.0, *) {
-                SettingsLink {
-                    Label("Settings...", systemImage: "gear")
-                }
-                .keyboardShortcut(",", modifiers: .command)
-            } else {
-                Button {
-                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-                } label: {
-                    Label("Settings...", systemImage: "gear")
-                }
-                .keyboardShortcut(",", modifiers: .command)
+            // #228: Settings is a WindowGroup(id:"settings"), not a Settings{}
+            // scene — SettingsLink / showPreferencesWindow target the system
+            // mechanism that no longer exists, so open the window directly.
+            // Activation/dock-icon handling lives in SettingsView.onAppear.
+            Button {
+                openWindow(id: "settings")
+            } label: {
+                Label("Settings...", systemImage: "gear")
             }
+            .keyboardShortcut(",", modifiers: .command)
 
             Divider()
 

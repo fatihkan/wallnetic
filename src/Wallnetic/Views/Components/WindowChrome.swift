@@ -62,7 +62,8 @@ extension View {
     ///  - transparent titlebar so content extends underneath
     ///  - full-size content view (no reserved title-bar strip)
     ///  - forced dark appearance
-    ///  - clear NSWindow bg so the SwiftUI ambient stage shows through
+    ///  - opaque NSWindow backing so macOS can composite the traffic-light
+    ///    buttons (the opaque SwiftUI ambient stage paints over it; #228)
     ///
     /// **Apply at scene root only.** If the view is hosted in a
     /// non-`.titled` NSWindow (popover, sheet, panel, menu) the call
@@ -82,8 +83,24 @@ extension View {
             // WindowAwareView listens for .appAppearanceDidChange and
             // re-runs this closure when the user toggles.
             window.appearance = ThemeManager.shared.appearanceMode.nsAppearance
-            window.backgroundColor = .clear
-            window.isOpaque = false
+            // #228: macOS 26 (Tahoe) composites the traffic-light "glass"
+            // capsules against the window's backing material. A clear,
+            // non-opaque *titled* window removes that backing, so the standard
+            // close / minimize / zoom buttons render with ~zero contrast and
+            // read as missing until hovered. The cinematic look is painted by
+            // the opaque SwiftUI floor (ambientStage / Surface.windowFill), so
+            // keeping the window opaque is visually identical — it just gives
+            // the buttons a surface to draw against.
+            window.isOpaque = true
+            // Match the opaque cinematic floor (near-black) rather than the
+            // system gray, so the one-frame open flash / any live-resize edge
+            // never shows a light band on this dark app. (#228)
+            window.backgroundColor = NSColor(Surface.stageFloor)
+            // Insurance: these aren't hidden today, but a future refactor or OS
+            // quirk must never be able to strand the user with no way to close.
+            window.standardWindowButton(.closeButton)?.isHidden = false
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = false
+            window.standardWindowButton(.zoomButton)?.isHidden = false
             // Remove the hairline that macOS otherwise draws between the
             // title-bar zone and content — we have our own design.
             window.titlebarSeparatorStyle = .none
