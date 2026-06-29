@@ -54,9 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   users assumed the app had to stay open for the wallpaper to play. The window
   is now kept opaque (the opaque SwiftUI ambient floor already paints over it,
   so the look is unchanged) with the standard buttons explicitly visible.
-  Settings also gains an always-visible close (✕) button as a guaranteed
-  escape hatch, and the menu-bar **Settings…** item now opens the real
-  Settings window instead of the defunct system Settings scene. A one-time
+  The menu-bar **Settings…** item now opens the real Settings window instead
+  of the defunct system Settings scene. A one-time
   banner clarifies that closing the window does **not** stop the wallpaper
   (the desktop render is independent). "Hide Dock icon" no longer strands a
   visible window with inactive controls — the Dock icon is promoted while a
