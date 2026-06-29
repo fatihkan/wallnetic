@@ -13,8 +13,10 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var scrollOffset: CGFloat = 0
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasSeenDesktopHint") private var hasSeenDesktopHint = false
     @State private var showingOnboarding = false
     @State private var importError: String?
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         ZStack {
@@ -32,6 +34,20 @@ struct ContentView: View {
                 if !downloadManager.downloads.isEmpty {
                     DownloadProgressBar(downloads: downloadManager.downloads)
                         .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // #228: one-time reassurance that the wallpaper is independent
+                // of this window (the desktop render keeps playing when the
+                // window is closed). Shown once the user actually has wallpapers,
+                // which is when the misconception arises.
+                if hasCompletedOnboarding && !hasSeenDesktopHint && !wallpaperManager.wallpapers.isEmpty {
+                    DesktopKeepsPlayingHint(
+                        openSettings: { openWindow(id: "settings") },
+                        dismiss: {
+                            withAnimation(.easeOut(duration: Anim.medium)) { hasSeenDesktopHint = true }
+                        }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 switch selectedTab {
@@ -289,6 +305,65 @@ struct DownloadProgressBar: View {
                     }
                 }
             )
+        }
+    }
+}
+
+// MARK: - Desktop-Keeps-Playing Hint (#228)
+
+/// One-time inline banner clarifying that closing the window doesn't stop the
+/// wallpaper — the desktop render is owned by DesktopWindowController, not this
+/// SwiftUI window. Matches the DownloadProgressBar inline-strip pattern.
+struct DesktopKeepsPlayingHint: View {
+    let openSettings: () -> Void
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: "sparkles.tv.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.accentColor)
+                .neonGlow(.accentColor, isActive: true, radius: 6)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Your wallpaper plays on the desktop — closing this window won't stop it.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.primary.opacity(0.9))
+                Text("Want it fully out of the way? Turn on Hide Dock icon in Settings → General to run from the menu bar.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.primary.opacity(0.5))
+            }
+
+            Spacer(minLength: Space.sm)
+
+            Button("Open Settings", action: openSettings)
+                .buttonStyle(.plain)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.accentColor)
+
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.primary.opacity(0.55))
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.plain)
+            .suppressFocusRing()
+            .help("Dismiss")
+        }
+        .padding(.horizontal, Space.md)
+        .padding(.vertical, Space.xs + 2)
+        .background(
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Rectangle().fill(Surface.glassControl)
+                Rectangle().fill(LinearGradient(
+                    colors: [Color.accentColor.opacity(0.10), .clear],
+                    startPoint: .leading, endPoint: .trailing))
+            }
+        )
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Surface.hairline).frame(height: 0.5)
         }
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -37,6 +38,16 @@ struct SettingsView: View {
         }
         .frame(width: 820, height: 540)
         .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
+        .onAppear {
+            // #228: ensure the app is active/regular so this window can become
+            // key and its controls render — covers every open path (⌘,, the nav
+            // gear, the in-window banner, the menu-bar item), incl. accessory
+            // mode under "Hide Dock icon". DockIconPolicy re-hides on close.
+            if NSApp.activationPolicy() == .accessory {
+                NSApp.setActivationPolicy(.regular)
+            }
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     // MARK: - Sidebar
@@ -134,7 +145,8 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Title-bar stripe — matches sidebar wordmark row height so the
             // window top is one continuous horizontal band. Empty by design;
-            // gives the eye a clean rest above the section header.
+            // gives the eye a clean rest above the section header. Closing is
+            // the native traffic light (top-left), restored in #228.
             Color.clear.frame(height: 28)
 
             HStack(spacing: Space.sm) {

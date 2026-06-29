@@ -40,6 +40,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // #228: keep the "Hide Dock icon" preference consistent. The app is
+        // promoted to .regular whenever a window is shown (so its traffic
+        // lights stay active/visible on macOS 26); re-hide (.accessory) once
+        // the last normal window closes.
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: nil, queue: .main
+        ) { _ in
+            // Defer so the closing window has left NSApp.windows / isVisible.
+            DispatchQueue.main.async { DockIconPolicy.reapply() }
+        }
+
         // Setup global hotkeys
         setupGlobalHotkeys()
 
@@ -57,6 +68,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // App-maturity counter feeding the App Store rating prompt (v1.4 Wave 1).
         RatingPromptManager.shared.recordLaunch()
+
+        // #228: if a normal window auto-opened at launch while "Hide Dock icon"
+        // is on, promote back to .regular so its controls are usable; the
+        // willClose observer re-hides the icon once it's closed.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DockIconPolicy.reapply()
+        }
 
         logger.info("Wallnetic started successfully")
     }
@@ -170,11 +188,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            if UserDefaults.standard.bool(forKey: "hideDockIcon") {
-                NSApp.setActivationPolicy(.accessory)
-            }
-        }
+        // #228: re-hiding the Dock icon (.accessory) is handled centrally by the
+        // NSWindow.willCloseNotification observer once the last normal window
+        // closes — we must NOT demote while a window is on screen, or its
+        // traffic lights render invisible on macOS 26.
     }
 
     // MARK: - URL Handling
@@ -263,6 +280,31 @@ extension AppDelegate: PlaybackDelegate {
         }
         if !(powerManager?.shouldBePaused ?? false) {
             desktopWindowController?.play()
+        }
+    }
+}
+
+// MARK: - Dock Icon Policy (#228)
+
+/// Centralizes the "Hide Dock icon" activation-policy logic. Hiding the icon
+/// (.accessory) is deferred until no normal window is on screen: an accessory
+/// app can't make its window key, which on macOS 26 leaves the traffic-light
+/// buttons invisible and the window effectively un-closable.
+enum DockIconPolicy {
+    /// A normal, titled, visible window — excludes the borderless desktop
+    /// render, overlays, the Dynamic Island and the MenuBarExtra.
+    static var hasVisibleAppWindow: Bool {
+        NSApp.windows.contains {
+            $0.isVisible && $0.styleMask.contains(.titled) && $0.level == .normal
+        }
+    }
+
+    /// Re-applies the saved preference for the current window state.
+    static func reapply() {
+        let hide = UserDefaults.standard.bool(forKey: "hideDockIcon")
+        let target: NSApplication.ActivationPolicy = (hide && !hasVisibleAppWindow) ? .accessory : .regular
+        if NSApp.activationPolicy() != target {
+            NSApp.setActivationPolicy(target)
         }
     }
 }
