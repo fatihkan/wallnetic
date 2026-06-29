@@ -4,7 +4,6 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var selection: SettingsSection = .general
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
@@ -145,16 +144,10 @@ struct SettingsView: View {
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Title-bar stripe — matches sidebar wordmark row height so the
-            // window top is one continuous horizontal band. Hosts an always-
-            // visible close button (top-right, opposite the traffic lights):
-            // a guaranteed escape hatch since the native buttons can render
-            // invisible under our chrome on macOS 26 (#228).
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                SettingsCloseButton { dismiss() }
-                    .padding(.trailing, Space.md)
-            }
-            .frame(height: 28)
+            // window top is one continuous horizontal band. Empty by design;
+            // gives the eye a clean rest above the section header. Closing is
+            // the native traffic light (top-left), restored in #228.
+            Color.clear.frame(height: 28)
 
             HStack(spacing: Space.sm) {
                 Image(systemName: selection.icon)
@@ -218,41 +211,6 @@ struct SettingsView: View {
         case .notifications: NotificationSettingsView()
         case .about:      AboutSettingsView()
         }
-    }
-}
-
-// MARK: - Window Close Button
-//
-// Always-visible close affordance for the Settings window. Mirrors the
-// circular glass ActionChip in TopNavigationBar. Exists because the system
-// traffic lights can render invisible under our title-bar treatment on
-// macOS 26 (#228) — this never depends on them.
-private struct SettingsCloseButton: View {
-    let action: () -> Void
-    @State private var hover = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "xmark")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(hover ? .white : .primary.opacity(0.7))
-                .frame(width: 24, height: 24)
-                .background(
-                    ZStack {
-                        Circle().fill(hover ? Color.red.opacity(0.85) : Surface.glassControl)
-                        Circle().strokeBorder(LinearGradient(
-                            colors: [Surface.glassTopStroke, Surface.glassInnerHighlight, Surface.glassBottomStroke],
-                            startPoint: .top, endPoint: .bottom
-                        ), lineWidth: 0.75)
-                    }
-                )
-                .scaleEffect(hover ? 1.06 : 1.0)
-        }
-        .buttonStyle(.plain)
-        .help("Close Settings")
-        .suppressFocusRing()
-        .onHover { hover = $0 }
-        .animation(.easeOut(duration: Anim.normal), value: hover)
     }
 }
 
