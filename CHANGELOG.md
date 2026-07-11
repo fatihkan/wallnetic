@@ -72,9 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - App Store metadata (ASO revision): title "Wallnetic: Live Wallpaper 4K",
   new subtitle/keywords, Turkish localization, revised description.
 
-### Release
-- **v1.3.1 (build 8) submitted to App Store Review — 2026-06-05.**
-
 ## [1.3.1] — 2026-05-30
 
 > Hardening release. /code-review xhigh-effort tarama 15 bulgu yakaladı; 4 PR
@@ -83,6 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > (NSPanel over-release) + wake/power path main-thread hardening.
 > Audio Visualizer entitlement'i tamamen kaldırıldı (UI zaten v1.3.0'da
 > soft-remove edilmişti). Build 8.
+
+### Release
+- **v1.3.1 (build 8) submitted to App Store Review — 2026-06-05.**
 
 ### Security & Privacy (PR #207)
 - **Spotify SSRF blocked** (`NowPlayingManager`): `DistributedNotificationCenter`

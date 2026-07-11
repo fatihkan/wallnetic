@@ -163,8 +163,8 @@ Wallnetic brings **live video wallpapers** to your Mac desktop — turn any vide
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [Wallnetic_1.3.1_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS (Intel) | [Wallnetic_1.3.1_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Apple Silicon) | [Wallnetic_1.4.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Intel) | [Wallnetic_1.4.0_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
 
 > **"Wallnetic is damaged and can't be opened"** &mdash; This happens because the DMG is not notarized by Apple. Run this command in Terminal after dragging Wallnetic to Applications:
 > ```bash
@@ -237,7 +237,7 @@ open Wallnetic.xcodeproj
 - [x] Notification Center widget
 - [x] Menu bar controls
 
-### v1.1 &mdash; Current
+### v1.1
 - [x] Netflix-style UI redesign
 - [x] Discover wallpaper sources (Pixabay, Pexels, web browser)
 - [x] Per-Space wallpapers
@@ -256,7 +256,7 @@ open Wallnetic.xcodeproj
 - [x] Striking UI effects &mdash; glow cards, neon navigation, glass morphism, staggered animations
 - [x] Code review bug fixes &mdash; Equatable/Hashable contract, import file copy, force-unwrap safety
 
-### v1.3 &mdash; Current
+### v1.3
 - [x] Audio Visualizer overlay on desktop (#129) &mdash; 64-column FFT burst with color gradient
 - [x] Global hotkeys &mdash; `Cmd+Shift+←/→/P/R` for previous, next, play/pause, random
 - [x] Battery-mode prompt with "Always play on battery" Settings toggle (#172)
@@ -271,13 +271,20 @@ open Wallnetic.xcodeproj
 - [x] Audio Visualizer customization &mdash; sensitivity slider, 3 styles (Bars/Waveform/Dots), 6 corner positions, S/M/L sizes (#159, #160, #161, #162)
 - [x] Photos slideshow generator &mdash; create wallpapers from your Apple Photos library with Ken Burns and crossfade transitions (#137)
 
-### v1.3.1 &mdash; Hardening (current)
+### v1.3.1 &mdash; Hardening
 - [x] Unlock/wake crash fix (#206) &mdash; NSPanel/NSWindow over-release on close under ARC
 - [x] OverlayWindowFactory &mdash; centralized window creation, prevents the over-release bug class (#214)
 - [x] Deep-link consolidation &mdash; single `DeepLinkHandler` entry point, HTTPS-only gated import (#214)
 - [x] Security/privacy sweep &mdash; Spotify SSRF block, Content-Disposition fix, PII → Keychain (#207)
 - [x] Crash/hang & data-race fixes &mdash; AIService, Photos, DownloadManager, AudioVisualizer (#208, #210)
 - [x] Wake/power main-thread hardening (#211)
+
+### v1.4.0 &mdash; Reliability & Rotation (current)
+- [x] Playlist / Shuffle &mdash; auto-rotate wallpapers on an interval (library, favorites, or a collection)
+- [x] System wallpaper sync &mdash; lock screen & Mission Control show a still frame of your video
+- [x] Playback watchdog &mdash; detects and recovers frozen wallpapers automatically
+- [x] In-app App Store rating prompt
+- [x] macOS 26 Tahoe fix &mdash; invisible window close/minimize buttons (#228)
 
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
@@ -293,10 +300,10 @@ open Wallnetic.xcodeproj
 Release notes live in [CHANGELOG.md](CHANGELOG.md), formatted to
 [Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
 
-Latest: **[1.3.1](CHANGELOG.md#131--2026-05-30)** — hardening release: unlock/wake
-crash fix (#206), OverlayWindowFactory + deep-link consolidation, and a
-security/perf/correctness sweep on top of the 1.3.0 feature set (Photos slideshow,
-audio visualizer customization, battery prompt, sandbox).
+Latest: **[1.4.0](CHANGELOG.md#140--2026-06-29)** — playlist/shuffle auto-rotation,
+system wallpaper sync (lock screen & Mission Control), playback reliability
+watchdog, in-app rating prompt, and the macOS 26 Tahoe invisible
+window-buttons fix (#228).
 
 ---
 
