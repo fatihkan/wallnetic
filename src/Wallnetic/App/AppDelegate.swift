@@ -210,10 +210,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupPowerManager() {
         powerManager = PowerManager.shared
 
+        // Keep the widget in step with these pauses. It used to be harmless to
+        // skip — power pauses were rare — but screen-lock pausing makes this
+        // the common path, and a widget stuck on "playing" reads as a bug.
         powerManager?.onShouldPausePlayback = { [weak self] in
             self?.desktopWindowController?.pause()
             DispatchQueue.main.async {
                 WallpaperManager.shared.isPlaying = false
+                WidgetSyncService.shared.syncPlaybackState(isPlaying: WallpaperManager.shared.isPlaying)
             }
         }
 
@@ -221,6 +225,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.desktopWindowController?.play()
             DispatchQueue.main.async {
                 WallpaperManager.shared.isPlaying = true
+                WidgetSyncService.shared.syncPlaybackState(isPlaying: WallpaperManager.shared.isPlaying)
             }
         }
     }

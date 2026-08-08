@@ -323,7 +323,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.regularMaterial` blur, reducing stacked-material passes per window.
 - **Hero animation** (P2-10, ORTA-1): `withAnimation(repeatForever)` replaced
   with `TimelineView` driven from elapsed-since-appear (no wall-clock jump
-  on sleep/wake), and paused when the window is occluded (ORTA-2).
+  on sleep/wake).
 - **Search routing** (P3-11): libraries > 200 wallpapers route through the
   SQLite cache index instead of fuzzy in-memory scan.
 - **Bulk import** (P3-12, YUKSEK-1, KRITIK-2): `importVideos` now maintains
