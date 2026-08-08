@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-08-08
+
+Wallnetic decoded the wallpaper at full rate in three situations where nothing
+was visible to the user. All three now stop, and each pause was built so it can
+never strand the wallpaper in a frozen state.
+
+### Added
+- **Pause while the desktop is covered**: each display's wallpaper window now
+  watches its own occlusion state and suspends that display's decoder while it
+  is fully covered — a maximized browser, a fullscreen game, any full-screen
+  window. There was no occlusion handling anywhere in the app before this, so
+  this cost was paid continuously. Debounced by 500 ms because macOS delivers a
+  burst of alternating notifications across a single transition, and kept
+  separate from the play/pause state so the menu bar, widget and resume paths
+  still reflect what the user asked for.
+- **Pause on screen lock and fast user switching**: video previously decoded at
+  full rate behind the login window, and indefinitely while another user was
+  switched in — nothing else fires in that state, because the other user keeps
+  the display awake.
+
+### Fixed
+- **Screen-saver pausing never worked**: the observers were registered on the
+  local notification center for what are cross-process notification names, so
+  they could never fire and the screen-saver branch of the pause logic was
+  unreachable. Moved to `DistributedNotificationCenter` with immediate
+  delivery — the default coalescing behaviour would have dropped them anyway,
+  since the app is always inactive exactly when a screen saver starts.
+- **Watchdog no longer fights the new pauses**: a suspended renderer's clock is
+  frozen deliberately, which the playback watchdog would have read as a stall
+  and "recovered" by restarting the decode behind the cover permanently. The
+  watchdog now re-derives occlusion each tick and skips suspended displays —
+  which doubles as a resync, so a dropped notification can strand a display for
+  at most one tick.
+- **Lock/unlock can no longer freeze the wallpaper**: state is re-derived from
+  the window server on every wake, unlock and screen-saver-stop rather than
+  trusting notifications to arrive in pairs. A single missed unlock would
+  otherwise have left the wallpaper paused forever, since the watchdog stands
+  down while paused.
+- **Widget playback state** now stays in sync on the power pause/resume path.
+  This was skippable while power pauses were rare; screen-lock pausing makes it
+  the common case.
+- **Removed an inaccurate performance claim**: the hero banner's
+  "paused when the window is occluded" gate was unreachable — the flag only
+  clears during teardown. The code comment and the corresponding 1.3.1
+  changelog line have been corrected. Real gating needs the hosting window's
+  occlusion state plus a paused-duration offset, and is tracked for a future
+  release.
+
 ## [1.4.0] — 2026-06-29
 
 ### Added
