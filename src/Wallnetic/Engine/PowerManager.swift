@@ -18,6 +18,10 @@ class PowerManager {
     private(set) var isFullscreenAppActive = false
     private(set) var isScreenAsleep = false
     private(set) var isScreenSaverActive = false
+    /// True while the login window covers the session (screen locked) or another
+    /// user is switched in. Nothing the user can see is on screen, but without
+    /// this the decoder ran at full rate the whole time.
+    private(set) var isSessionInactive = false
 
     private var fullscreenCheckTimer: Timer?
     private var powerSourceRef: CFRunLoopSource?
@@ -54,6 +58,7 @@ class PowerManager {
         // Remove all notification observers
         NotificationCenter.default.removeObserver(self)
         NSWorkspace.shared.notificationCenter.removeObserver(self)
+        DistributedNotificationCenter.default().removeObserver(self)
 
         // Clear callbacks to break retain cycles
         onShouldPausePlayback = nil
@@ -104,18 +109,62 @@ class PowerManager {
             object: nil
         )
 
-        // Screen saver
-        nc.addObserver(
+        // Screen saver + screen lock. These are cross-process names posted by
+        // loginwindow/screensaver, so they only ever arrive on the *distributed*
+        // center — registering them on NotificationCenter.default (as this did
+        // until v1.4.1) meant they could never fire and the screen-saver branch
+        // of `shouldBePaused` was unreachable.
+        //
+        // `.deliverImmediately` is load-bearing: the convenience overload
+        // defaults to `.coalesce`, and AppKit suspends distributed delivery
+        // while the app is inactive — which it always is when the screen locks
+        // or the saver starts.
+        let dnc = DistributedNotificationCenter.default()
+        dnc.addObserver(
             self,
             selector: #selector(screenSaverDidStart),
             name: NSNotification.Name("com.apple.screensaver.didstart"),
-            object: nil
+            object: nil,
+            suspensionBehavior: .deliverImmediately
         )
 
-        nc.addObserver(
+        dnc.addObserver(
             self,
             selector: #selector(screenSaverDidStop),
             name: NSNotification.Name("com.apple.screensaver.didstop"),
+            object: nil,
+            suspensionBehavior: .deliverImmediately
+        )
+
+        dnc.addObserver(
+            self,
+            selector: #selector(screenDidLock),
+            name: NSNotification.Name("com.apple.screenIsLocked"),
+            object: nil,
+            suspensionBehavior: .deliverImmediately
+        )
+
+        dnc.addObserver(
+            self,
+            selector: #selector(screenDidUnlock),
+            name: NSNotification.Name("com.apple.screenIsUnlocked"),
+            object: nil,
+            suspensionBehavior: .deliverImmediately
+        )
+
+        // Fast user switching — the other user keeps the display awake, so no
+        // sleep or lock notification ever arrives to stop us.
+        wsnc.addObserver(
+            self,
+            selector: #selector(sessionDidResignActive),
+            name: NSWorkspace.sessionDidResignActiveNotification,
+            object: nil
+        )
+
+        wsnc.addObserver(
+            self,
+            selector: #selector(sessionDidBecomeActive),
+            name: NSWorkspace.sessionDidBecomeActiveNotification,
             object: nil
         )
 
@@ -331,7 +380,8 @@ class PowerManager {
     @objc private func screensDidWake() {
         Log.power.info("Screens did wake")
         isScreenAsleep = false
-        notifyResumeIfNeeded()
+        resyncSessionState()
+        notifyResumeIfNeeded(respectAutoResume: false)
     }
 
     @objc private func systemWillSleep() {
@@ -343,7 +393,9 @@ class PowerManager {
         Log.power.info("System did wake")
         // Small delay to let system stabilize
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.notifyResumeIfNeeded()
+            guard let self else { return }
+            self.resyncSessionState()
+            self.notifyResumeIfNeeded(respectAutoResume: false)
         }
     }
 
@@ -356,7 +408,54 @@ class PowerManager {
     @objc private func screenSaverDidStop() {
         Log.power.info("Screen saver stopped")
         isScreenSaverActive = false
-        notifyResumeIfNeeded()
+        resyncSessionState()
+        notifyResumeIfNeeded(respectAutoResume: false)
+    }
+
+    @objc private func screenDidLock() {
+        Log.power.info("Screen locked")
+        isSessionInactive = true
+        notifyPauseIfNeeded()
+    }
+
+    @objc private func screenDidUnlock() {
+        Log.power.info("Screen unlocked")
+        isSessionInactive = false
+        resyncSessionState()
+        notifyResumeIfNeeded(respectAutoResume: false)
+    }
+
+    @objc private func sessionDidResignActive() {
+        Log.power.info("Session switched away (fast user switching)")
+        isSessionInactive = true
+        notifyPauseIfNeeded()
+    }
+
+    @objc private func sessionDidBecomeActive() {
+        Log.power.info("Session became active")
+        isSessionInactive = false
+        resyncSessionState()
+        notifyResumeIfNeeded(respectAutoResume: false)
+    }
+
+    /// Re-derives lock / session state from the window server rather than
+    /// trusting a matched pair of notifications to always arrive.
+    ///
+    /// Without this a single missed unlock — screensaver into display sleep
+    /// waking to a lock screen, unlocking straight into a user switch, a
+    /// `distnoted` restart — would leave `shouldBePaused` true forever, and the
+    /// playback watchdog deliberately stands down while paused. The wallpaper
+    /// would simply never come back, which is precisely the "it froze, I had to
+    /// reopen it" complaint the watchdog exists to kill.
+    private func resyncSessionState() {
+        guard let session = CGSessionCopyCurrentDictionary() as? [String: Any] else { return }
+        let onConsole = session["kCGSSessionOnConsoleKey"] as? Bool ?? true
+        let locked = session["CGSSessionScreenIsLocked"] as? Bool ?? false
+        isSessionInactive = !onConsole || locked
+        // A saver that stopped without posting .didstop can't strand us either.
+        if !locked {
+            isScreenSaverActive = false
+        }
     }
 
     @objc private func activeSpaceDidChange() {
@@ -378,11 +477,15 @@ class PowerManager {
         runOnMain { callback?() }
     }
 
-    private func notifyResumeIfNeeded() {
+    /// - Parameter respectAutoResume: pass `false` for pauses the user never
+    ///   asked for (lock, user switch, screen saver, wake). "Don't auto-resume"
+    ///   is about battery and fullscreen pauses; applying it to a screen lock
+    ///   would leave the wallpaper dead after every unlock.
+    private func notifyResumeIfNeeded(respectAutoResume: Bool = true) {
         // Only resume if all conditions are clear
         guard !shouldBePaused else { return }
 
-        if WallpaperManager.shared.shouldAutoResume {
+        if !respectAutoResume || WallpaperManager.shared.shouldAutoResume {
             let callback = onShouldResumePlayback
             runOnMain { callback?() }
         }
@@ -403,7 +506,7 @@ class PowerManager {
 
     /// Returns true if playback should be paused based on current conditions
     var shouldBePaused: Bool {
-        if isScreenAsleep || isScreenSaverActive {
+        if isScreenAsleep || isScreenSaverActive || isSessionInactive {
             return true
         }
 

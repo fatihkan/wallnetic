@@ -270,8 +270,12 @@ struct HeroBannerCard: View {
         // P2-10 + ORTA-1: phase derived from elapsed-since-appear rather
         // than absolute wall-clock — Mac sleep/wake doesn't cause the
         // Ken Burns to teleport mid-cycle.
-        // ORTA-2: TimelineView paused when window is occluded so we
-        // don't tick the hero off-screen.
+        // The `paused:` gate only covers teardown — `isWindowVisible` goes
+        // false in onDisappear, by which point SwiftUI is already tearing the
+        // TimelineView down. Real occlusion gating needs the hosting NSWindow's
+        // occlusionState plumbed in, and must also carry a paused-duration
+        // offset or `elapsed` (derived from ctx.date) teleports the Ken Burns
+        // on resume. Tracked for v1.4.1.
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isWindowVisible)) { ctx in
             let elapsed = ctx.date.timeIntervalSince(startDate)
             let cycle: Double = 14

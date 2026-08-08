@@ -130,6 +130,7 @@ class DesktopWindowController {
         // Store references
         desktopWindows[displayID] = window
         renderers[displayID] = renderer
+        observeOcclusion(of: window, displayID: displayID)
 
         // Apply current effects
         applyEffectsToOverlay(effectOverlay)
@@ -218,6 +219,11 @@ class DesktopWindowController {
         for renderer in renderers.values {
             renderer.play()
         }
+        // A play() issued while a desktop is fully covered must not start a
+        // decode nobody can see.
+        for id in desktopWindows.keys {
+            applyOcclusion(for: id)
+        }
         startWatchdog()
     }
 
@@ -229,6 +235,7 @@ class DesktopWindowController {
         for renderer in renderers.values {
             renderer.pause()
         }
+        occlusionSuspended.removeAll()
         stopWatchdog()
     }
 
@@ -255,6 +262,74 @@ class DesktopWindowController {
 
     var isCurrentlyPlaying: Bool {
         return isPlaying
+    }
+
+    // MARK: - Occlusion
+
+    /// Displays whose renderer is paused purely because the desktop window is
+    /// fully covered. Deliberately separate from `isPlaying`, which must keep
+    /// meaning "the user intends the wallpaper to play" for the menu bar,
+    /// widget sync and the resume paths.
+    private var occlusionSuspended: Set<CGDirectDisplayID> = []
+    private var occlusionObservers: [CGDirectDisplayID: NSObjectProtocol] = [:]
+    private var occlusionDebounce: [CGDirectDisplayID: Timer] = [:]
+
+    /// macOS delivers a burst of alternating occlusion notifications across a
+    /// single cover/uncover transition (21 within 360 ms when measured here),
+    /// so state is applied only once it settles.
+    private static let occlusionDebounceInterval: TimeInterval = 0.5
+
+    private func observeOcclusion(of window: NSWindow, displayID: CGDirectDisplayID) {
+        // Scoped to this window: the process also owns overlay panels and two
+        // SwiftUI WindowGroups whose occlusion is none of our business.
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeOcclusionStateNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.scheduleOcclusionUpdate(for: displayID)
+        }
+        occlusionObservers[displayID] = observer
+    }
+
+    private func scheduleOcclusionUpdate(for displayID: CGDirectDisplayID) {
+        occlusionDebounce[displayID]?.invalidate()
+        occlusionDebounce[displayID] = Timer.scheduledTimer(
+            withTimeInterval: Self.occlusionDebounceInterval,
+            repeats: false
+        ) { [weak self] _ in
+            self?.occlusionDebounce[displayID] = nil
+            self?.applyOcclusion(for: displayID)
+        }
+    }
+
+    /// Suspends or resumes one display's decoder from *live* window state.
+    /// Reading the state rather than trusting a notification payload is what
+    /// makes a missed notification self-correcting.
+    private func applyOcclusion(for displayID: CGDirectDisplayID) {
+        guard let window = desktopWindows[displayID],
+              let renderer = renderers[displayID] else { return }
+
+        // `.visible` is all-or-nothing — cleared only when the window is
+        // *fully* covered — so partial overlap never pauses the wallpaper.
+        let visible = window.occlusionState.contains(.visible)
+
+        if !visible, isPlaying, !occlusionSuspended.contains(displayID) {
+            occlusionSuspended.insert(displayID)
+            renderer.pause()
+            Log.window.debug("Display \(displayID, privacy: .public) fully occluded — decode suspended")
+        } else if visible, occlusionSuspended.remove(displayID) != nil {
+            if isPlaying { renderer.play() }
+            Log.window.debug("Display \(displayID, privacy: .public) visible again — decode resumed")
+        }
+    }
+
+    private func removeOcclusionTracking(for displayID: CGDirectDisplayID) {
+        if let observer = occlusionObservers.removeValue(forKey: displayID) {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        occlusionDebounce.removeValue(forKey: displayID)?.invalidate()
+        occlusionSuspended.remove(displayID)
     }
 
     // MARK: - Playback Watchdog (v1.4 Wave 1)
@@ -295,6 +370,20 @@ class DesktopWindowController {
         let shouldBePaused = PowerManager.shared.shouldBePaused
 
         for (id, renderer) in renderers {
+            // Re-derive occlusion from live state first. This doubles as a
+            // resync: a dropped notification can strand a display suspended
+            // for at most one watchdog tick.
+            applyOcclusion(for: id)
+            if occlusionSuspended.contains(id) {
+                // A suspended renderer's clock is frozen *on purpose*. Letting
+                // the watchdog see that would restart the decode behind the
+                // cover permanently — the exact waste this pause exists to
+                // avoid — so reset the baseline instead.
+                frozenSampleCounts[id] = 0
+                lastPlaybackTimes[id] = renderer.currentPlaybackTime
+                continue
+            }
+
             let current = renderer.currentPlaybackTime
             let previous = lastPlaybackTimes[id]
             lastPlaybackTimes[id] = current
@@ -333,6 +422,7 @@ class DesktopWindowController {
 
         // Remove windows for disconnected displays
         for id in knownIDs.subtracting(currentIDs) {
+            removeOcclusionTracking(for: id)
             renderers[id]?.stop()
             desktopWindows[id]?.close()
             desktopWindows.removeValue(forKey: id)
@@ -438,6 +528,10 @@ class DesktopWindowController {
 
     func cleanup() {
         stopWatchdog()
+
+        for id in Array(occlusionObservers.keys) {
+            removeOcclusionTracking(for: id)
+        }
 
         for renderer in renderers.values {
             renderer.stop()
