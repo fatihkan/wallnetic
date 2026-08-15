@@ -45,7 +45,10 @@ actor ImportGate {
 protocol PlaybackDelegate: AnyObject {
     func playbackSetWallpaper(url: URL)
     func playbackSetWallpaper(url: URL, for screen: NSScreen)
-    func playbackPlay()
+    /// - Returns: whether playback actually started. A power condition (screen
+    ///   asleep, locked, on battery, fullscreen app) swallows the request, and
+    ///   callers must not report "Playing" over a desktop that isn't.
+    @discardableResult func playbackPlay() -> Bool
     func playbackPause()
     func playbackApplyScreenWallpapers()
 }
@@ -197,12 +200,17 @@ class WallpaperManager: ObservableObject {
         guard !lastWallpaperURL.isEmpty else { return }
         let url = URL(fileURLWithPath: lastWallpaperURL)
         if let wallpaper = wallpapers.first(where: { $0.url.path == url.path }) {
-            setWallpaper(wallpaper)
+            // Launch restore is not a deliberate apply — it must not count
+            // toward the rating prompt.
+            setWallpaper(wallpaper, userInitiated: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.isPlaying = true
-                self?.playbackDelegate?.playbackPlay()
+                // Launch restore: if the Mac wakes into a locked screen or the
+                // saver, the play is swallowed — say so rather than restoring
+                // to a "Playing" menu bar over a still desktop.
+                let started = self?.playbackDelegate?.playbackPlay() ?? false
+                self?.isPlaying = started
                 // Keep notification for broadcast consumers (widget, etc.)
-                NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
+                NotificationCenter.default.post(name: .playbackStateDidChange, object: started)
             }
         }
     }
@@ -506,13 +514,14 @@ class WallpaperManager: ObservableObject {
     func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool = true) {
         currentWallpaper = wallpaper
         lastWallpaperURL = wallpaper.url.path
-        isPlaying = true
 
         playbackDelegate?.playbackSetWallpaper(url: wallpaper.url)
-        playbackDelegate?.playbackPlay()
+        // A power condition can swallow this; don't claim it played.
+        isPlaying = playbackDelegate?.playbackPlay() ?? false
+        let started = isPlaying
 
         NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
-        NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: started)
 
         if userInitiated {
             RatingPromptManager.shared.recordWallpaperApplied()
@@ -520,7 +529,7 @@ class WallpaperManager: ObservableObject {
 
         Task {
             await widgetSync.syncCurrentWallpaper(wallpaper)
-            widgetSync.syncPlaybackState(isPlaying: true)
+            widgetSync.syncPlaybackState(isPlaying: started)
         }
     }
 
@@ -529,10 +538,10 @@ class WallpaperManager: ObservableObject {
         let screenName = screen.localizedName
         screenWallpapers[screenName] = wallpaper.id
         saveScreenWallpapers()
-        isPlaying = true
 
         playbackDelegate?.playbackSetWallpaper(url: wallpaper.url, for: screen)
-        playbackDelegate?.playbackPlay()
+        // A power condition can swallow this; don't claim it played.
+        isPlaying = playbackDelegate?.playbackPlay() ?? false
 
         // The active screen's wallpaper is what DynamicAccent, DynamicIsland,
         // ThemeManager, and the widget should reflect. Without updating
@@ -580,18 +589,23 @@ class WallpaperManager: ObservableObject {
     }
 
     func togglePlayback() {
-        isPlaying.toggle()
+        let wantsToPlay = !isPlaying
 
         // The user is taking control: a later unlock or wake must not undo it.
         PowerManager.shared.userDidTogglePlayback()
 
-        if isPlaying {
-            playbackDelegate?.playbackPlay()
+        // Report what actually happened, not what was asked for. A power
+        // condition can swallow the play request, and a menu bar reading
+        // "Playing" over a still desktop is a far more damaging bug report
+        // than one that honestly says "Paused".
+        if wantsToPlay {
+            isPlaying = playbackDelegate?.playbackPlay() ?? false
         } else {
             playbackDelegate?.playbackPause()
+            isPlaying = false
         }
-        NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
 
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
         widgetSync.syncPlaybackState(isPlaying: isPlaying)
     }
 

@@ -156,8 +156,11 @@ final class BatteryPromptService {
         guard choice == "continue" else { return }
         sessionContinueOnBattery = true
 
-        WallpaperManager.shared.isPlaying = true
-        WallpaperManager.shared.playbackDelegate?.playbackPlay()
-        NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
+        // The user just chose "keep playing", so hand playback ownership back
+        // to them before asking — otherwise the power pause still owns it.
+        PowerManager.shared.userDidTogglePlayback()
+        let started = WallpaperManager.shared.playbackDelegate?.playbackPlay() ?? false
+        WallpaperManager.shared.isPlaying = started
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: started)
     }
 }

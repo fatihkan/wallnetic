@@ -51,6 +51,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { DockIconPolicy.reapply() }
         }
 
+        // Drain a review request that had no window to present from. In a
+        // menu-bar app that is the usual case, so the ask used to be dropped
+        // outright.
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
+        ) { note in
+            guard let window = note.object as? NSWindow else { return }
+            MainActor.assumeIsolated {
+                RatingPromptManager.shared.windowDidBecomeKey(window)
+            }
+        }
+
         // Setup global hotkeys
         setupGlobalHotkeys()
 
@@ -266,10 +278,14 @@ extension AppDelegate: PlaybackDelegate {
         }
     }
 
-    func playbackPlay() {
-        if !(powerManager?.shouldBePaused ?? false) {
-            desktopWindowController?.play()
+    @discardableResult
+    func playbackPlay() -> Bool {
+        guard !(powerManager?.shouldBePaused ?? false) else {
+            Log.app.info("Play request swallowed — a power condition is active")
+            return false
         }
+        desktopWindowController?.play()
+        return true
     }
 
     func playbackPause() {

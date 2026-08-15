@@ -149,7 +149,18 @@ struct MenuBarView: View {
 
             Divider()
 
-            // About & Quit
+            // Rate, About & Quit.
+            //
+            // The automatic StoreKit prompt needs a presentable window, which a
+            // menu-bar-only user never has, so without this entry they have no
+            // route to the App Store at all — the likeliest reason the app sits
+            // at zero ratings.
+            Button {
+                NSWorkspace.shared.open(RatingPromptManager.writeReviewURL)
+            } label: {
+                Label("Rate Wallnetic", systemImage: "star")
+            }
+
             Button {
                 NSApp.orderFrontStandardAboutPanel()
             } label: {

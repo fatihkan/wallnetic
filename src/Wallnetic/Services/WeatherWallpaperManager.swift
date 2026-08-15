@@ -135,7 +135,8 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
 
         if let wallpaper = WallpaperManager.shared.wallpapers.first(where: { $0.url.path == path }) {
             Log.weather.info("Condition: \(condition.rawValue, privacy: .public) -> wallpaper: \(wallpaper.name, privacy: .public)")
-            WallpaperManager.shared.setWallpaper(wallpaper)
+            // Automatic weather rotation is not a "ask for a review" moment.
+            WallpaperManager.shared.setWallpaper(wallpaper, userInitiated: false)
         }
     }
 

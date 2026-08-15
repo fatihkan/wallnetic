@@ -1,9 +1,19 @@
 name: CI
 
+# Until v1.4.2 this only ran on `v*` tags, so no pull request was ever checked
+# and the job — despite its name — never ran a single test. A user-facing
+# regression shipped in v1.4.1 partly because of that gap (#234).
 on:
+  pull_request:
+    branches: [main, dev]
   push:
+    branches: [main, dev]
     tags:
       - 'v*'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   SCHEME: Wallnetic
@@ -16,24 +26,57 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: '15.2'
 
-      - name: Build
+      # project.yml is the XcodeGen source of truth and README tells
+      # contributors to run `xcodegen generate`. When the two drift, that
+      # command silently rewrites the version — in August 2026 project.yml
+      # still said 1.4.0/9 while the shipped build was 1.4.1/10, so
+      # regenerating would have pushed the version *below* the live release.
+      - name: Verify project.yml matches the committed project
         run: |
-          xcodebuild -project ${{ env.PROJECT_PATH }} \
-            -scheme ${{ env.SCHEME }} \
+          set -euo pipefail
+          yml_mv=$(grep -m1 'MARKETING_VERSION:' src/Wallnetic/project.yml | tr -d ' "' | cut -d: -f2)
+          yml_cv=$(grep -m1 'CURRENT_PROJECT_VERSION:' src/Wallnetic/project.yml | tr -d ' "' | cut -d: -f2)
+          pbx_mv=$(grep -m1 -o 'MARKETING_VERSION = [^;]*' "$PROJECT_PATH/project.pbxproj" | awk '{print $3}')
+          pbx_cv=$(grep -m1 -o 'CURRENT_PROJECT_VERSION = [^;]*' "$PROJECT_PATH/project.pbxproj" | awk '{print $3}')
+          echo "project.yml : $yml_mv ($yml_cv)"
+          echo "pbxproj     : $pbx_mv ($pbx_cv)"
+          if [ "$yml_mv" != "$pbx_mv" ] || [ "$yml_cv" != "$pbx_cv" ]; then
+            echo "::error::project.yml and project.pbxproj disagree on the version. Run 'xcodegen generate' in src/Wallnetic and commit the result."
+            exit 1
+          fi
+
+      # The team ID must never be committed; a pre-commit hook enforces this
+      # locally, but nothing enforced it for anything that bypassed the hook.
+      - name: Verify no signing team leaked into the project
+        run: |
+          if grep -q 'DEVELOPMENT_TEAM = [A-Z0-9]\{10\}' "$PROJECT_PATH/project.pbxproj"; then
+            echo "::error::A DEVELOPMENT_TEAM value is committed in project.pbxproj. It must stay empty."
+            exit 1
+          fi
+
+      # Entitlements are cleared and the sandbox disabled because the app-group
+      # entitlement cannot be ad-hoc signed on a runner. This mirrors the
+      # documented local recipe so CI and local runs agree.
+      - name: Build & test
+        run: |
+          xcodebuild test \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
             -configuration Debug \
-            -arch arm64 \
+            -destination 'platform=macOS,arch=arm64' \
             -derivedDataPath build \
-            clean build \
             CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_ENTITLEMENTS="" \
+            ENABLE_APP_SANDBOX=NO \
+            DEBUG_INFORMATION_FORMAT=dwarf
 
       - name: Build Summary
         if: always()
