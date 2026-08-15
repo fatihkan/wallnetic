@@ -472,7 +472,23 @@ class PowerManager {
 
     // MARK: - Notifications
 
+    /// True only while playback is paused *by this manager*. See
+    /// ``PowerPauseOwnership`` for why this exists.
+    private var pausedByPower = false
+
+    /// Hands playback ownership back to the user. Called when they explicitly
+    /// press Play or Pause, after which no power event may override them until
+    /// we pause again ourselves.
+    func userDidTogglePlayback() {
+        pausedByPower = false
+    }
+
     private func notifyPauseIfNeeded() {
+        if PowerPauseOwnership.shouldClaimPause(
+            wallpaperIsPlaying: WallpaperManager.shared.isPlaying
+        ) {
+            pausedByPower = true
+        }
         let callback = onShouldPausePlayback
         runOnMain { callback?() }
     }
@@ -482,13 +498,16 @@ class PowerManager {
     ///   is about battery and fullscreen pauses; applying it to a screen lock
     ///   would leave the wallpaper dead after every unlock.
     private func notifyResumeIfNeeded(respectAutoResume: Bool = true) {
-        // Only resume if all conditions are clear
-        guard !shouldBePaused else { return }
+        guard PowerPauseOwnership.shouldResume(
+            pausedByPower: pausedByPower,
+            shouldBePaused: shouldBePaused,
+            respectAutoResume: respectAutoResume,
+            autoResumeEnabled: WallpaperManager.shared.shouldAutoResume
+        ) else { return }
 
-        if !respectAutoResume || WallpaperManager.shared.shouldAutoResume {
-            let callback = onShouldResumePlayback
-            runOnMain { callback?() }
-        }
+        pausedByPower = false
+        let callback = onShouldResumePlayback
+        runOnMain { callback?() }
     }
 
     /// Routes playback callbacks to the main thread before they touch

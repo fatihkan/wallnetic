@@ -6,10 +6,10 @@
 [![Swift](https://img.shields.io/badge/Swift-5.9+-F05138.svg?style=flat&logo=swift&logoColor=white)](https://swift.org/)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-blue.svg?style=flat&logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![Metal](https://img.shields.io/badge/Metal-GPU-8E8E93.svg?style=flat&logo=apple)](https://developer.apple.com/metal/)
-[![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12)
+[![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/app/id6760347328?mt=12)
 [![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.4.1-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/61182f15-1208-4cc5-b37a-d7827e871022" width="800" autoplay loop muted playsinline>
@@ -137,7 +137,8 @@ Wallnetic brings **live video wallpapers** to your Mac desktop — turn any vide
 ### Performance
 - **Metal GPU acceleration** for smooth playback
 - 3 performance modes: Quality, Balanced, Battery Saver
-- Minimal CPU usage (~2-5%)
+- Stops decoding entirely when the desktop is covered, the Mac is locked, the
+  screen saver is running or the display is asleep
 - Async image caching
 
 ---
@@ -155,7 +156,7 @@ Wallnetic brings **live video wallpapers** to your Mac desktop — turn any vide
 
 ### Mac App Store
 
-<a href="https://apps.apple.com/tr/app/wallnetic/id6760347328?mt=12">
+<a href="https://apps.apple.com/app/id6760347328?mt=12">
   <img src="https://developer.apple.com/assets/elements/badges/download-on-the-mac-app-store.svg" alt="Download on the Mac App Store" height="50">
 </a>
 
@@ -163,8 +164,8 @@ Wallnetic brings **live video wallpapers** to your Mac desktop — turn any vide
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [Wallnetic_1.4.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS (Intel) | [Wallnetic_1.4.0_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Apple Silicon) | [Wallnetic_1.4.1_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Intel) | [Wallnetic_1.4.1_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
 
 > **"Wallnetic is damaged and can't be opened"** &mdash; This happens because the DMG is not notarized by Apple. Run this command in Terminal after dragging Wallnetic to Applications:
 > ```bash
@@ -279,12 +280,18 @@ open Wallnetic.xcodeproj
 - [x] Crash/hang & data-race fixes &mdash; AIService, Photos, DownloadManager, AudioVisualizer (#208, #210)
 - [x] Wake/power main-thread hardening (#211)
 
-### v1.4.0 &mdash; Reliability & Rotation (current)
+### v1.4.0 &mdash; Reliability & Rotation
 - [x] Playlist / Shuffle &mdash; auto-rotate wallpapers on an interval (library, favorites, or a collection)
 - [x] System wallpaper sync &mdash; lock screen & Mission Control show a still frame of your video
 - [x] Playback watchdog &mdash; detects and recovers frozen wallpapers automatically
 - [x] In-app App Store rating prompt
 - [x] macOS 26 Tahoe fix &mdash; invisible window close/minimize buttons (#228)
+
+### v1.4.1 &mdash; Power (current)
+- [x] Pauses decoding while the desktop is fully covered, per display
+- [x] Pauses on screen lock and fast user switching
+- [x] Screen-saver pausing fixed &mdash; the observers could never fire before
+- [x] Watchdog no longer restarts a deliberately suspended renderer
 
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
@@ -300,10 +307,9 @@ open Wallnetic.xcodeproj
 Release notes live in [CHANGELOG.md](CHANGELOG.md), formatted to
 [Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
 
-Latest: **[1.4.0](CHANGELOG.md#140--2026-06-29)** — playlist/shuffle auto-rotation,
-system wallpaper sync (lock screen & Mission Control), playback reliability
-watchdog, in-app rating prompt, and the macOS 26 Tahoe invisible
-window-buttons fix (#228).
+Latest: **[1.4.1](CHANGELOG.md#141--2026-08-08)** — stops decoding video nobody
+can see: per-display occlusion pause, screen lock and fast-user-switch pausing,
+and a screen-saver pause that could never fire before.
 
 ---
 

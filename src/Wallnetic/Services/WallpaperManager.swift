@@ -582,6 +582,9 @@ class WallpaperManager: ObservableObject {
     func togglePlayback() {
         isPlaying.toggle()
 
+        // The user is taking control: a later unlock or wake must not undo it.
+        PowerManager.shared.userDidTogglePlayback()
+
         if isPlaying {
             playbackDelegate?.playbackPlay()
         } else {
