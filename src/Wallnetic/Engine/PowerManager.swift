@@ -35,6 +35,10 @@ class PowerManager {
     private init() {
         setupObservers()
         checkInitialPowerState()
+        // Seed lock/session state up front, so launching into a locked screen
+        // (login items do exactly this) doesn't decode at full rate until the
+        // first notification happens to arrive.
+        resyncSessionState()
         isInitialized = true
         startFullscreenMonitoring()
     }
@@ -238,8 +242,24 @@ class PowerManager {
     private func startFullscreenMonitoring() {
         // Check periodically for fullscreen apps (more reliable than notifications alone)
         fullscreenCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.recoverIfStrandedAsleep()
             self?.checkFullscreenApps()
         }
+    }
+
+    /// Notification-independent backstop for ``isScreenAsleep``.
+    ///
+    /// Every `resyncSessionState()` call site is a resume handler, so it only
+    /// runs once the notification it exists to back up has already arrived —
+    /// useless for the case where `screensDidWake` is the notification that
+    /// went missing. This rides the existing 2 s poll rather than adding a
+    /// timer, so it costs no extra wakeups in a release whose whole point was
+    /// power, and it acts only on a true -> false edge.
+    private func recoverIfStrandedAsleep() {
+        guard isScreenAsleep, CGDisplayIsAsleep(CGMainDisplayID()) == 0 else { return }
+        Log.power.info("Display is awake but isScreenAsleep was still set — recovering")
+        isScreenAsleep = false
+        notifyResumeIfNeeded(respectAutoResume: false)
     }
 
     private func stopFullscreenMonitoring() {
@@ -455,6 +475,19 @@ class PowerManager {
         // A saver that stopped without posting .didstop can't strand us either.
         if !locked {
             isScreenSaverActive = false
+        }
+        // `isScreenAsleep` was the one `shouldBePaused` input with no
+        // independent re-derivation — battery has the IOPS source, low power
+        // has a notification, fullscreen has the 2 s poll — so a single lost
+        // `screensDidWake` pinned the wallpaper paused for the rest of the
+        // session, and the watchdog stands down while paused.
+        //
+        // Clear-only on purpose. This also runs *from* screensDidWake, where
+        // CGDisplayIsAsleep can still read asleep for an instant; an
+        // unconditional assignment would re-pin the flag on every normal wake.
+        // Failing open (playing) is the right direction for this one.
+        if CGDisplayIsAsleep(CGMainDisplayID()) == 0 {
+            isScreenAsleep = false
         }
     }
 
