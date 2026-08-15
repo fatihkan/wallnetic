@@ -43,7 +43,7 @@ The Problem:
 Wallpaper Engine has 40M+ users on Windows.
 Mac users? We've been stuck with static images.
 
-I wanted dynamic, animated backgrounds without killing my battery or CPU.
+I wanted dynamic, animated backgrounds that stop working when I'm not looking at them.
 
 So I built it myself.
 
@@ -64,7 +64,7 @@ Key features:
 ✅ Multi-monitor support
 ✅ Auto-pause on battery
 ✅ Menu bar app
-✅ ~2-5% CPU usage
+✅ Stops decoding when nothing is visible
 
 3/4
 ```
@@ -123,7 +123,7 @@ Not with Wallnetic:
 - Metal GPU acceleration
 - Auto-pause on battery
 - Pause when fullscreen apps are active
-- ~2-5% CPU usage
+- Stops decoding when nothing is visible
 
 Mac users can finally have nice things.
 
@@ -152,7 +152,7 @@ Wallnetic is built from the ground up for macOS using:
 Key Features:
 ✅ Play any video file as your desktop background
 ✅ Multi-monitor support with per-display wallpapers
-✅ Minimal resource usage (~2-5% CPU)
+✅ Stops decoding when the desktop is covered or the Mac is locked
 ✅ Menu bar app for quick access
 
 The entire project is open source on GitHub. I'd love feedback from fellow developers!
@@ -175,7 +175,7 @@ Some interesting challenges I solved:
 Creating windows that sit behind all other content required diving into CGWindowLevel and careful NSWindow configuration.
 
 2️⃣ Video Performance
-Using AVFoundation with Metal rendering to maintain <5% CPU usage while playing 4K video loops.
+Using AVFoundation with Metal rendering, and pausing decode entirely whenever the desktop is covered, the Mac is locked or the display is asleep.
 
 3️⃣ Smart Pause Detection
 Detecting fullscreen apps to auto-pause wallpapers without false positives from Finder, Dock, or Control Center.
@@ -243,7 +243,7 @@ Wallnetic, macOS için sıfırdan şu teknolojilerle geliştirildi:
 Temel Özellikler:
 ✅ Herhangi bir video dosyasını masaüstü arka planı olarak oynat
 ✅ Ekran başına farklı duvar kağıdı ile çoklu monitör desteği
-✅ Minimum kaynak kullanımı (~%2-5 CPU)
+✅ Masaüstü kapalı ya da Mac kilitliyken video çözme tamamen durur
 ✅ Hızlı erişim için menü çubuğu uygulaması
 
 Proje tamamen açık kaynak! Geliştirici arkadaşlardan geri bildirim almak isterim.
@@ -266,7 +266,7 @@ Native bir macOS video duvar kağıdı motoru geliştirmek, düşük seviye macO
 Tüm içeriğin arkasında kalan pencereler oluşturmak, CGWindowLevel'a dalmayı ve dikkatli NSWindow yapılandırması gerektirdi.
 
 2️⃣ Video Performansı
-4K video döngüleri oynatırken <%5 CPU kullanımı sağlamak için AVFoundation ve Metal rendering kullandım.
+AVFoundation ve Metal rendering kullandım; masaüstü kapalı, Mac kilitli ya da ekran uykudayken video çözme tamamen duruyor.
 
 3️⃣ Akıllı Duraklatma Algılama
 Finder, Dock veya Kontrol Merkezi'nden yanlış pozitifler almadan tam ekran uygulamaları algılayıp duvar kağıtlarını otomatik duraklatma.
@@ -337,7 +337,7 @@ For maximum engagement, include visuals:
 2. **Before/After** - Static vs animated desktop
 3. **Multi-Monitor Setup** - Different wallpapers on each display
 4. **Menu Bar** - Quick access controls
-5. **Performance Stats** - Activity Monitor showing low CPU usage
+5. **Performance** - the wallpaper pausing itself the moment a window covers the desktop
 
 ---
 

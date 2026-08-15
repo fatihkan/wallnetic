@@ -8,8 +8,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "1.4.0"
-    CURRENT_PROJECT_VERSION: "9"
+    MARKETING_VERSION: "1.4.1"
+    CURRENT_PROJECT_VERSION: "10"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.9"
