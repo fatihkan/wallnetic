@@ -58,7 +58,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
         ) { note in
             guard let window = note.object as? NSWindow else { return }
-            MainActor.assumeIsolated {
+            // Not MainActor.assumeIsolated — that needs macOS 14 and this app
+            // targets 13.0. The observer already runs on .main; the hop just
+            // gives the compiler the isolation it wants.
+            Task { @MainActor in
                 RatingPromptManager.shared.windowDidBecomeKey(window)
             }
         }
