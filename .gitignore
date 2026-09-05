@@ -80,3 +80,6 @@ CLAUDE.md
 
 # Gunluk calisma notlari (kisisel, repo disi)
 daily-notes/
+
+# Agent session scratch — contains raw prompt text, never publish
+.qwen/

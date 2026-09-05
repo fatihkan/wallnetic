@@ -27,14 +27,16 @@ enum OverlayWindowFactory {
         transparent: Bool = true,
         hasShadow: Bool = false,
         clickThrough: Bool = false,
-        movableByBackground: Bool = false
+        movableByBackground: Bool = false,
+        canBecomeKey: Bool = false
     ) -> NSPanel {
-        let panel = NSPanel(
-            contentRect: contentRect,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
-        )
+        let style: NSWindow.StyleMask = [.borderless, .nonactivatingPanel]
+        // A borderless panel refuses key status by default, which means no
+        // text field inside it can ever take focus. Overlays that host an
+        // editable field (the island's inline rename) opt in.
+        let panel: NSPanel = canBecomeKey
+            ? KeyableOverlayPanel(contentRect: contentRect, styleMask: style, backing: .buffered, defer: true)
+            : NSPanel(contentRect: contentRect, styleMask: style, backing: .buffered, defer: true)
         // ARC owns the panel via its controller; close() must NOT also
         // release it, or an in-flight animation over-releases freed memory. [#206]
         panel.isReleasedWhenClosed = false
@@ -68,4 +70,11 @@ enum OverlayWindowFactory {
         window.hasShadow = false
         return window
     }
+}
+
+/// Borderless, non-activating panel that may become key so an inline text
+/// field can take focus — without activating the app or stealing focus on
+/// ordinary clicks (`becomesKeyOnlyIfNeeded` is set by the caller).
+final class KeyableOverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }

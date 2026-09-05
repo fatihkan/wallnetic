@@ -520,7 +520,10 @@ class WallpaperManager: ObservableObject {
         isPlaying = playbackDelegate?.playbackPlay() ?? false
         let started = isPlaying
 
-        NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
+        NotificationCenter.default.post(
+            name: .wallpaperDidChange, object: wallpaper,
+            userInfo: ["userInitiated": userInitiated]
+        )
         NotificationCenter.default.post(name: .playbackStateDidChange, object: started)
 
         if userInitiated {
@@ -551,7 +554,10 @@ class WallpaperManager: ObservableObject {
         if screen == activeScreen {
             currentWallpaper = wallpaper
             lastWallpaperURL = wallpaper.url.path
-            NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
+            NotificationCenter.default.post(
+                name: .wallpaperDidChange, object: wallpaper,
+                userInfo: ["userInitiated": userInitiated]
+            )
             if userInitiated {
                 RatingPromptManager.shared.recordWallpaperApplied()
             }
@@ -581,7 +587,11 @@ class WallpaperManager: ObservableObject {
 
         if mode == .same, let wallpaper = currentWallpaper {
             playbackDelegate?.playbackSetWallpaper(url: wallpaper.url)
-            NotificationCenter.default.post(name: .wallpaperDidChange, object: wallpaper)
+            // A mode switch is something the user just did.
+            NotificationCenter.default.post(
+                name: .wallpaperDidChange, object: wallpaper,
+                userInfo: ["userInitiated": true]
+            )
         } else if mode == .different {
             playbackDelegate?.playbackApplyScreenWallpapers()
             NotificationCenter.default.post(name: .applyScreenWallpapers, object: nil)

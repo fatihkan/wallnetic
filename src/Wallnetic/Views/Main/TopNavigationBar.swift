@@ -33,7 +33,14 @@ struct TopNavigationBar: View {
     @FocusState private var searchFocused: Bool
     @Namespace private var tabUnderlineNS
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var isScrolled: Bool = false
+
+    private var tabAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: Anim.fast)
+            : .spring(response: 0.5, dampingFraction: 0.72, blendDuration: 0.2)
+    }
 
     var body: some View {
         ZStack {
@@ -84,6 +91,7 @@ struct TopNavigationBar: View {
                 .menuIndicator(.hidden)
                 .frame(width: 30, height: 30)
                 .suppressFocusRing()
+                .accessibilityLabel("Add wallpaper")
 
                 Button {
                     openWindow(id: "settings")
@@ -93,12 +101,26 @@ struct TopNavigationBar: View {
                 .buttonStyle(.plain)
                 .keyboardShortcut(",", modifiers: .command)
                 .suppressFocusRing()
+                .accessibilityLabel("Settings")
             }
         }
         .padding(.leading, 84)        // reserve traffic-light real estate
         .padding(.trailing, Space.md)
         .padding(.vertical, Space.xs + 2)
         .background(navBackground)
+        // The field looks global but only Explore consumes `searchText`, so
+        // typing on Home, Popular or Discover used to do nothing visible.
+        // Searching now takes you to Explore, where the results are.
+        .onChange(of: isSearching) { searching in
+            if searching, selectedTab != .explore {
+                withAnimation(tabAnimation) { selectedTab = .explore }
+            }
+        }
+        .onChange(of: searchText) { text in
+            if !text.isEmpty, selectedTab != .explore {
+                withAnimation(tabAnimation) { selectedTab = .explore }
+            }
+        }
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(LinearGradient(
@@ -130,7 +152,7 @@ struct TopNavigationBar: View {
         let isHovered = hoveredTab == tab
 
         Button {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.72, blendDuration: 0.2)) {
+            withAnimation(tabAnimation) {
                 selectedTab = tab
             }
         } label: {
@@ -155,9 +177,13 @@ struct TopNavigationBar: View {
                             .matchedGeometryEffect(id: "tabPill", in: tabUnderlineNS)
                         Capsule(style: .continuous)
                             .strokeBorder(LinearGradient(
-                                colors: [Surface.glassTopStroke, Surface.glassInnerHighlight],
+                                stops: [
+                                    .init(color: Surface.glassTopStroke, location: 0),
+                                    .init(color: Surface.glassInnerHighlight, location: 0.55),
+                                    .init(color: Surface.glassBottomStroke, location: 1)
+                                ],
                                 startPoint: .top, endPoint: .bottom
-                            ), lineWidth: 0.5)
+                            ), lineWidth: 0.6)
                             .matchedGeometryEffect(id: "tabPillStroke", in: tabUnderlineNS)
                     } else if isHovered {
                         Capsule(style: .continuous)
@@ -168,6 +194,8 @@ struct TopNavigationBar: View {
         }
         .buttonStyle(.plain)
         .suppressFocusRing()
+        .accessibilityLabel(tab.rawValue)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .onHover { h in
             withAnimation(.easeOut(duration: Anim.micro)) { hoveredTab = h ? tab : nil }
         }
@@ -192,6 +220,13 @@ struct TopNavigationBar: View {
                 .foregroundColor(.primary)
                 .focused($searchFocused)
                 .frame(width: 170)
+                .onExitCommand {
+                    withAnimation(.easeOut(duration: Anim.fast)) {
+                        isSearching = false
+                        searchText = ""
+                    }
+                }
+                .accessibilityLabel("Search wallpapers")
 
                 Button {
                     withAnimation(.easeOut(duration: Anim.fast)) {
@@ -205,6 +240,7 @@ struct TopNavigationBar: View {
                 }
                 .buttonStyle(.plain)
                 .suppressFocusRing()
+                .accessibilityLabel("Clear search")
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -247,6 +283,7 @@ struct TopNavigationBar: View {
             .buttonStyle(.plain)
             .keyboardShortcut("f", modifiers: .command)
             .suppressFocusRing()
+            .accessibilityLabel("Search wallpapers")
         }
     }
 }
@@ -289,7 +326,6 @@ private struct ActionChip: View {
                 color: accent && hover ? Color.accentColor.opacity(0.55) : .clear,
                 radius: 12, y: 4
             )
-            .scaleEffect(hover ? 1.04 : 1.0)
             .onHover { hover = $0 }
             .animation(.easeOut(duration: Anim.normal), value: hover)
     }
