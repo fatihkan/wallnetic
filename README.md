@@ -1,6 +1,6 @@
 # Wallnetic
 
-> **Live Video Wallpaper Engine for macOS**
+> **Free, open-source live video wallpapers for macOS** — bring your own video, no library, no subscription.
 
 [![macOS](https://img.shields.io/badge/macOS-13.0+-black.svg?style=flat&logo=apple)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-F05138.svg?style=flat&logo=swift&logoColor=white)](https://swift.org/)
@@ -18,9 +18,71 @@
 
 ## What is Wallnetic?
 
-Wallnetic brings **live video wallpapers** to your Mac desktop — turn any video you own into a living 4K desktop, or find free ones on community sites. Private by design: no accounts, no tracking.
+**Wallnetic is a free, open-source live wallpaper app for macOS.** It plays video as your desktop
+background — any file you own, or anything you find on the wallpaper sites it can browse in-app.
+It requires no account, has no subscription and no paid tier, collects no analytics, and is
+released under the MIT license. Requires macOS 13 or later; universal binary for Apple Silicon
+and Intel.
 
-**Wallpaper Engine** has 40M+ users on Windows &mdash; now Mac users finally have a native alternative built with SwiftUI and Metal.
+Unlike most apps in this category, Wallnetic ships **no wallpaper library of its own**. You supply
+the content: drag in a local file, or browse eight sources from inside the app. That means the
+library is as good as you want it to be, and the app carries none of the content liability that
+comes with hosting a catalogue.
+
+*Last updated: September 2026 · Current version: 1.4.1*
+
+### Is there a Wallpaper Engine for Mac?
+
+No — Valve has permanently declined a macOS port of Wallpaper Engine, so Workshop `.scene` files
+cannot run natively on a Mac. **Wallnetic does not render Wallpaper Engine scenes.** What it does
+is play standard video files (MP4, MOV, M4V, WebM, GIF) as your wallpaper, which covers the large
+share of Workshop items that are plain video, once you have the file locally.
+
+## Wallnetic vs other macOS live wallpaper apps
+
+| | **Wallnetic** | Backdrop | Wallper | Wallspace | Vivid Walls |
+|---|---|---|---|---|---|
+| **Price** | **Free** | $1.99/mo · $29.99 lifetime | $14.99 one-time | Free · $12.99 Pro | Free · $9.99 |
+| **Open source** | **Yes (MIT)** | No | No | No | No |
+| **Account required** | **No** | No | No | No | No |
+| **Bring your own video** | Yes | Yes | Yes | Yes | Yes |
+| **Built-in library** | **None — by design** | Yes | 4,000+ | Yes | Via Wallpaper Engine |
+| **In-app source browsing** | **8 sources** | Community library | Own library | Own library | — |
+| **Per-display wallpaper** | Yes | Yes | Yes | Yes | Yes |
+| **Per-Space wallpaper** | **Yes** | — | — | — | — |
+| **Pauses when covered** | **Yes, per display** | — | — | — | — |
+| **Photo slideshow generator** | **Yes** | — | — | — | — |
+| **Renders WE `.scene` files** | No | No | No | No | **Yes** |
+| **Distribution** | Mac App Store | Direct | Direct | Direct · Homebrew | Direct |
+
+*Competitor pricing and features as published on their own sites, September 2026. Corrections
+welcome via issue or PR.*
+
+## Frequently asked questions
+
+**Is Wallnetic really free?**
+Yes. There is no paid tier, no subscription and no in-app purchase. The source is MIT-licensed, so
+the current version cannot be taken away from you regardless of what happens later.
+
+**Does it slow my Mac down?**
+Wallnetic suspends video decoding per display whenever that display's wallpaper is fully covered by
+a window, and when the Mac is locked, the screen saver is running, the display is asleep, or
+another user is switched in. We deliberately publish no single CPU percentage, because the figure
+varies widely with clip resolution, frame rate and state — measure it yourself in Activity Monitor.
+
+**Where do the wallpapers come from?**
+From you. Drag in any video you own, or use the in-app browser to search Pexels, Pixabay,
+Wallhaven, MyLiveWallpapers, DesktopHut, MoeWalls and MotionBGs.
+
+**Can it play video on the lock screen?**
+Not in the Mac App Store build — macOS does not permit a sandboxed app to draw over `loginwindow`.
+Instead, Wallnetic extracts a still frame from your current video and applies it as the system
+wallpaper, so the lock screen and Mission Control match your desktop rather than showing an
+unrelated default picture.
+
+**Does it work on Intel Macs?**
+Yes. Wallnetic ships a universal binary supporting both Apple Silicon and Intel, on macOS 13 or
+later.
 
 <p align="center">
   <img src="docs/assets/1.png" width="49%" alt="Your videos, alive on your desktop">
@@ -46,7 +108,7 @@ Wallnetic brings **live video wallpapers** to your Mac desktop — turn any vide
 - Dark theme optimized for media browsing
 
 ### Discover Wallpaper Sources
-- Browse 6 wallpaper sources: Pixabay, Pexels, MyLiveWallpapers, DesktopHut, MoeWalls, MotionBGs
+- Browse 7 wallpaper sources: Pixabay, Pexels, Wallhaven, MyLiveWallpapers, DesktopHut, MoeWalls, MotionBGs
 - In-app browser with automatic video download detection
 - Scan any page to find and download all videos
 - Progress tracking with auto-import to library
