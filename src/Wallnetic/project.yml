@@ -51,6 +51,7 @@ targets:
         CFBundleExecutable: $(EXECUTABLE_NAME)
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         LSUIElement: false
+        NSAppSleepDisabled: true
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.utilities

@@ -31,11 +31,24 @@ final class MetalVideoRenderer: NSObject {
     let metalView: MTKView
     private var currentTexture: MTLTexture?
     private var vertexBuffer: MTLBuffer?
+    private var videoSize: CGSize = .zero
+    private var lastPresentedSeconds: Double = -1
+    private var loopObserver: NSObjectProtocol?
 
     // MARK: - State
 
-    private var isPlaying = false
+    /// User/controller wants playback. Distinct from "the player exists" —
+    /// `play()` used to set this true while `player` was still nil, then
+    /// `setupPlayer` never started it (`guard !isPlaying`), leaving a black
+    /// MTKView forever.
+    private var wantsToPlay = false
     private let renderLock = NSLock()
+    private var loadGeneration: UInt64 = 0
+    private var currentItemObserver: NSKeyValueObservation?
+
+    var hasPresentedFrame = false
+    var onBecameReady: (() -> Void)?
+    var filterLayer: CALayer? { metalView.layer }
 
     // MARK: - Vertex Data
 
@@ -71,6 +84,8 @@ final class MetalVideoRenderer: NSObject {
         metalView.isPaused = true
         metalView.enableSetNeedsDisplay = false
         metalView.preferredFramesPerSecond = 60
+        metalView.clearColor = MTLClearColorMake(0, 0, 0, 1)
+        metalView.layer?.isOpaque = true
 
         // Create texture cache
         var cache: CVMetalTextureCache?
@@ -152,12 +167,23 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - Setup
 
     private func setupVertexBuffer() {
-        // Fullscreen quad vertices (position + texCoord)
+        let viewSize: CGSize = {
+            let drawable = metalView.drawableSize
+            if drawable.width > 0, drawable.height > 0 { return drawable }
+            return metalView.bounds.size
+        }()
+        let source = (videoSize.width > 0 && videoSize.height > 0) ? videoSize : viewSize
+        let crop = WallpaperAspectFill.textureRect(videoSize: source, viewSize: viewSize)
+        let u0 = Float(crop.minX)
+        let u1 = Float(crop.maxX)
+        let v0 = Float(crop.minY)
+        let v1 = Float(crop.maxY)
+        // NDC y=-1 is the bottom of the screen; CV textures have v=0 at the top.
         let vertices: [Vertex] = [
-            Vertex(position: SIMD4<Float>(-1, -1, 0, 1), texCoord: SIMD2<Float>(0, 1)),
-            Vertex(position: SIMD4<Float>( 1, -1, 0, 1), texCoord: SIMD2<Float>(1, 1)),
-            Vertex(position: SIMD4<Float>(-1,  1, 0, 1), texCoord: SIMD2<Float>(0, 0)),
-            Vertex(position: SIMD4<Float>( 1,  1, 0, 1), texCoord: SIMD2<Float>(1, 0)),
+            Vertex(position: SIMD4<Float>(-1, -1, 0, 1), texCoord: SIMD2<Float>(u0, v1)),
+            Vertex(position: SIMD4<Float>( 1, -1, 0, 1), texCoord: SIMD2<Float>(u1, v1)),
+            Vertex(position: SIMD4<Float>(-1,  1, 0, 1), texCoord: SIMD2<Float>(u0, v0)),
+            Vertex(position: SIMD4<Float>( 1,  1, 0, 1), texCoord: SIMD2<Float>(u1, v0)),
         ]
 
         vertexBuffer = device.makeBuffer(
@@ -175,7 +201,8 @@ final class MetalVideoRenderer: NSObject {
             return
         }
 
-        cleanup()
+        loadGeneration += 1
+        let generation = loadGeneration
 
         let asset = AVURLAsset(url: url, options: [
             AVURLAssetPreferPreciseDurationAndTimingKey: false
@@ -188,37 +215,77 @@ final class MetalVideoRenderer: NSObject {
                     logger.error("Asset is not playable")
                     return
                 }
-                setupPlayer(with: asset)
+                guard generation == self.loadGeneration else { return }
+
+                if let track = try await asset.loadTracks(withMediaType: .video).first {
+                    let natural = try await track.load(.naturalSize)
+                    let transform = try await track.load(.preferredTransform)
+                    let displayed = CGRect(origin: .zero, size: natural).applying(transform)
+                    self.videoSize = CGSize(width: abs(displayed.width), height: abs(displayed.height))
+                    self.setupVertexBuffer()
+                }
+
+                self.setupPlayer(with: asset, generation: generation)
             } catch {
                 logger.error("Failed to load asset: \(error.localizedDescription)")
             }
         }
     }
 
-    private func setupPlayer(with asset: AVURLAsset) {
+    private func setupPlayer(with asset: AVURLAsset, generation: UInt64) {
+        guard generation == loadGeneration else { return }
+
         let playerItem = AVPlayerItem(asset: asset)
-        playerItem.preferredForwardBufferDuration = 2.0
+        playerItem.preferredForwardBufferDuration = 4.0
 
-        // Audio disabled via player.isMuted + volume=0
-
-        // Setup video output for Metal texture generation
+        // Single player + end-time seek. AVPlayerLooper copies the template
+        // without the video output and, under CPU pressure, jumps a few
+        // frames backward.
         let outputSettings: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferMetalCompatibilityKey as String: true
         ]
         let output = AVPlayerItemVideoOutput(pixelBufferAttributes: outputSettings)
-        videoOutput = output
         playerItem.add(output)
 
-        // Setup looping player
-        let queue = AVQueuePlayer()
-        queue.automaticallyWaitsToMinimizeStalling = false
-        queue.preventsDisplaySleepDuringVideoPlayback = false
-        queue.isMuted = true
-        queuePlayer = queue
+        let newPlayer = AVPlayer(playerItem: playerItem)
+        newPlayer.automaticallyWaitsToMinimizeStalling = false
+        newPlayer.preventsDisplaySleepDuringVideoPlayback = false
+        newPlayer.isMuted = true
+        newPlayer.actionAtItemEnd = .none
 
-        playerLooper = AVPlayerLooper(player: queue, templateItem: playerItem)
-        player = queue
+        let previousPlayer = player
+        videoOutput = output
+        player = newPlayer
+        queuePlayer = nil
+        playerLooper?.disableLooping()
+        playerLooper = nil
+        lastPresentedSeconds = -1
+
+        if let loopObserver {
+            NotificationCenter.default.removeObserver(loopObserver)
+        }
+        loopObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self, generation == self.loadGeneration else { return }
+            self.lastPresentedSeconds = -1
+            self.player?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+                if self?.wantsToPlay == true {
+                    self?.player?.play()
+                }
+            }
+        }
+
+        previousPlayer?.pause()
+        previousPlayer?.replaceCurrentItem(with: nil)
+
+        if wantsToPlay {
+            pinOrStart()
+            metalView.isPaused = false
+        }
 
         logger.info("Player setup complete")
     }
@@ -226,17 +293,22 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - Playback Control
 
     func play() {
-        guard !isPlaying else { return }
-        isPlaying = true
-        player?.play()
-        metalView.isPaused = false
+        wantsToPlay = true
+        pinOrStart()
+        if metalView.isPaused {
+            metalView.isPaused = false
+        }
         logger.debug("Playback started")
     }
 
     func pause() {
-        guard isPlaying else { return }
-        isPlaying = false
+        wantsToPlay = false
         player?.pause()
+        // Draw the last texture once more so a pause cannot clear to black,
+        // then stop the draw loop.
+        if currentTexture != nil {
+            metalView.draw()
+        }
         metalView.isPaused = true
         logger.debug("Playback paused")
     }
@@ -254,20 +326,39 @@ final class MetalVideoRenderer: NSObject {
         return time.seconds
     }
 
-    /// Force playback to resume immediately after a detected stall, also
-    /// un-pausing the Metal view in case its draw loop was the thing wedged.
+    var currentPlaybackRate: Float {
+        player?.rate ?? 0
+    }
+
     func recoverPlayback() {
-        isPlaying = true
+        wantsToPlay = true
         metalView.isPaused = false
-        player?.playImmediately(atRate: 1.0)
+        pinOrStart()
+    }
+
+    private func pinOrStart() {
+        guard let player else { return }
+        if WallpaperPlaybackPolicy.shouldIssuePlay(currentRate: player.rate) {
+            player.play()
+        } else if WallpaperPlaybackPolicy.shouldCorrectRate(
+            currentRate: player.rate, intendedToPlay: wantsToPlay
+        ) {
+            player.rate = 1
+        }
     }
 
     // MARK: - Cleanup
 
     private func cleanup() {
-        isPlaying = false
+        wantsToPlay = false
         metalView.isPaused = true
 
+        currentItemObserver = nil
+        if let loopObserver {
+            NotificationCenter.default.removeObserver(loopObserver)
+            self.loopObserver = nil
+        }
+        lastPresentedSeconds = -1
         player?.pause()
         player?.replaceCurrentItem(with: nil)
         playerLooper?.disableLooping()
@@ -277,6 +368,7 @@ final class MetalVideoRenderer: NSObject {
         queuePlayer = nil
         player = nil
         currentTexture = nil
+        hasPresentedFrame = false
 
         if let cache = textureCache {
             CVMetalTextureCacheFlush(cache, 0)
@@ -292,14 +384,22 @@ final class MetalVideoRenderer: NSObject {
         }
 
         let currentTime = currentItem.currentTime()
+        guard currentTime.isNumeric else { return currentTexture }
+        let seconds = currentTime.seconds
+        if WallpaperAspectFill.shouldDiscardRewoundFrame(
+            previousSeconds: lastPresentedSeconds, newSeconds: seconds
+        ) {
+            return currentTexture
+        }
         guard videoOutput.hasNewPixelBuffer(forItemTime: currentTime) else {
-            return currentTexture // Return cached texture if no new frame
+            return currentTexture
         }
 
         guard let pixelBuffer = videoOutput.copyPixelBuffer(forItemTime: currentTime, itemTimeForDisplay: nil) else {
             return currentTexture
         }
 
+        lastPresentedSeconds = seconds
         return createTexture(from: pixelBuffer)
     }
 
@@ -334,14 +434,21 @@ final class MetalVideoRenderer: NSObject {
 
 extension MetalVideoRenderer: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        // Handle size changes if needed
+        setupVertexBuffer()
     }
 
     func draw(in view: MTKView) {
         renderLock.lock()
         defer { renderLock.unlock() }
 
-        guard isPlaying,
+        if wantsToPlay, let texture = extractCurrentFrame() {
+            currentTexture = texture
+        }
+
+        // Never present an empty drawable — that is a black frame covering
+        // the real wallpaper. Keep the last texture on screen across pause
+        // and across a reload until the next frame arrives.
+        guard let texture = currentTexture,
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -349,16 +456,11 @@ extension MetalVideoRenderer: MTKViewDelegate {
             return
         }
 
-        // Get current video frame texture
-        if let texture = extractCurrentFrame() {
-            currentTexture = texture
-        }
-
-        guard let texture = currentTexture else {
-            renderEncoder.endEncoding()
-            commandBuffer.present(drawable)
-            commandBuffer.commit()
-            return
+        if !hasPresentedFrame {
+            hasPresentedFrame = true
+            DispatchQueue.main.async { [weak self] in
+                self?.onBecameReady?()
+            }
         }
 
         // Render fullscreen quad with video texture
