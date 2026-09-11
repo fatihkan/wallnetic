@@ -90,21 +90,14 @@ class DesktopWindowController {
         ) { [weak self] _ in
             self?.scheduleReassert()
         })
-        let keepPlaying: (Notification) -> Void = { [weak self] _ in
+        // Only resign-active — not every app-switch. didActivateApplication
+        // fires while the user works in a windowed app; poking the renderer
+        // then (and the old 4 Hz pulse) paused/unpaused Metal in a loop.
+        reassertObservers.append(NotificationCenter.default.addObserver(
+            forName: NSApplication.willResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
             self?.maintainPlayback()
-        }
-        reassertObservers.append(NotificationCenter.default.addObserver(
-            forName: NSApplication.willResignActiveNotification, object: nil, queue: .main, using: keepPlaying
-        ))
-        reassertObservers.append(NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main, using: keepPlaying
-        ))
-        reassertObservers.append(NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didDeactivateApplicationNotification, object: nil, queue: .main, using: keepPlaying
-        ))
-        reassertObservers.append(NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main, using: keepPlaying
-        ))
+        })
     }
 
     // MARK: - Window Setup
@@ -325,7 +318,6 @@ class DesktopWindowController {
             renderer.play()
         }
         startWatchdog()
-        startPresentationPulse()
     }
 
     /// Pauses playback on all screens
@@ -338,12 +330,11 @@ class DesktopWindowController {
         }
         occlusionSuspended.removeAll()
         stopWatchdog()
-        stopPresentationPulse()
         endPlaybackActivity()
     }
 
-    /// Called when the app resigns active or a windowed app leaves the
-    /// foreground. Do not `orderFront` or `play()` here — that hitches.
+    /// Keep decode running when we resign active. Do not `orderFront` or
+    /// re-`play()` — and do not pulse this while a windowed app stays in front.
     func maintainPlayback() {
         guard isPlaying,
               WallpaperPlaybackPolicy.shouldKeepPresentingWhileInactive(intendedToPlay: true)
@@ -351,22 +342,6 @@ class DesktopWindowController {
         for renderer in renderers.values {
             renderer.maintainPlayback()
         }
-    }
-
-    private var presentationPulse: Timer?
-
-    private func startPresentationPulse() {
-        guard presentationPulse == nil else { return }
-        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
-            self?.maintainPlayback()
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        presentationPulse = timer
-    }
-
-    private func stopPresentationPulse() {
-        presentationPulse?.invalidate()
-        presentationPulse = nil
     }
 
     private func beginPlaybackActivity() {
@@ -721,7 +696,6 @@ class DesktopWindowController {
 
     func cleanup() {
         stopWatchdog()
-        stopPresentationPulse()
         endPlaybackActivity()
         reassertDebounce?.invalidate()
         reassertDebounce = nil

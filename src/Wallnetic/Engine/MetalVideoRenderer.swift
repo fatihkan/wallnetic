@@ -34,6 +34,7 @@ final class MetalVideoRenderer: NSObject {
     private var videoSize: CGSize = .zero
     private var lastPresentedSeconds: Double = -1
     private var loopObserver: NSObjectProtocol?
+    private var drawScheduled = false
 
     // MARK: - State
 
@@ -285,7 +286,8 @@ final class MetalVideoRenderer: NSObject {
 
         if wantsToPlay {
             pinOrStart()
-            metalView.isPaused = false
+            metalView.isPaused = true
+            startDisplayLink()
         }
 
         logger.info("Player setup complete")
@@ -296,17 +298,17 @@ final class MetalVideoRenderer: NSObject {
     func play() {
         wantsToPlay = true
         pinOrStart()
-        if metalView.isPaused {
-            metalView.isPaused = false
-        }
+        // Never use MTKView's internal timer: it auto-pauses when a windowed
+        // app occludes the desktop overlay, and toggling it back on is a hitch.
+        metalView.isPaused = true
+        startDisplayLink()
         logger.debug("Playback started")
     }
 
     func pause() {
         wantsToPlay = false
+        stopDisplayLink()
         player?.pause()
-        // Draw the last texture once more so a pause cannot clear to black,
-        // then stop the draw loop.
         if currentTexture != nil {
             metalView.draw()
         }
@@ -333,19 +335,52 @@ final class MetalVideoRenderer: NSObject {
 
     func recoverPlayback() {
         wantsToPlay = true
-        metalView.isPaused = false
         pinOrStart()
+        metalView.isPaused = true
+        startDisplayLink()
     }
 
     func maintainPlayback() {
         guard wantsToPlay else { return }
-        // MTKView auto-pauses when the app resigns active or the desktop
-        // window is occluded. Leave the decoder hot so uncovering a
-        // windowed app does not hitch.
-        if metalView.isPaused {
-            metalView.isPaused = false
-        }
         pinOrStart()
+        metalView.isPaused = true
+        startDisplayLink()
+    }
+
+    private func startDisplayLink() {
+        guard displayLink == nil else { return }
+        var link: CVDisplayLink?
+        CVDisplayLinkCreateWithActiveCGDisplays(&link)
+        guard let link else { return }
+        let ctx = Unmanaged.passUnretained(self).toOpaque()
+        CVDisplayLinkSetOutputCallback(link, { _, _, _, _, _, context in
+            guard let context else { return kCVReturnSuccess }
+            Unmanaged<MetalVideoRenderer>.fromOpaque(context).takeUnretainedValue()
+                .scheduleDisplayLinkDraw()
+            return kCVReturnSuccess
+        }, ctx)
+        CVDisplayLinkStart(link)
+        displayLink = link
+    }
+
+    private func stopDisplayLink() {
+        if let displayLink {
+            CVDisplayLinkStop(displayLink)
+            self.displayLink = nil
+        }
+        drawScheduled = false
+    }
+
+    private func scheduleDisplayLinkDraw() {
+        guard wantsToPlay else { return }
+        if drawScheduled { return }
+        drawScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.drawScheduled = false
+            guard self.wantsToPlay else { return }
+            self.metalView.draw()
+        }
     }
 
     private func pinOrStart() {
@@ -363,6 +398,7 @@ final class MetalVideoRenderer: NSObject {
 
     private func cleanup() {
         wantsToPlay = false
+        stopDisplayLink()
         metalView.isPaused = true
 
         currentItemObserver = nil

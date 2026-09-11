@@ -298,10 +298,10 @@ private final class PlayerHostView: NSView {
 
     override func layout() {
         super.layout()
+        guard playerLayer.frame != bounds else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         playerLayer.frame = bounds
-        playerLayer.videoGravity = .resizeAspectFill
         CATransaction.commit()
     }
 }
