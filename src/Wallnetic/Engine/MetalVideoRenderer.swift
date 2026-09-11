@@ -251,6 +251,7 @@ final class MetalVideoRenderer: NSObject {
         let newPlayer = AVPlayer(playerItem: playerItem)
         newPlayer.automaticallyWaitsToMinimizeStalling = false
         newPlayer.preventsDisplaySleepDuringVideoPlayback = false
+        newPlayer.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
         newPlayer.isMuted = true
         newPlayer.actionAtItemEnd = .none
 
@@ -333,6 +334,17 @@ final class MetalVideoRenderer: NSObject {
     func recoverPlayback() {
         wantsToPlay = true
         metalView.isPaused = false
+        pinOrStart()
+    }
+
+    func maintainPlayback() {
+        guard wantsToPlay else { return }
+        // MTKView auto-pauses when the app resigns active or the desktop
+        // window is occluded. Leave the decoder hot so uncovering a
+        // windowed app does not hitch.
+        if metalView.isPaused {
+            metalView.isPaused = false
+        }
         pinOrStart()
     }
 

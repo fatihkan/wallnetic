@@ -178,4 +178,14 @@ final class WallpaperVisibilityPolicyTests: XCTestCase {
             currentRate: 0.7, intendedToPlay: false
         ))
     }
+
+    /// Closing or backgrounding a windowed app must not stop the wallpaper.
+    func testKeepPresentingWhenAppResignsActive() {
+        XCTAssertTrue(WallpaperPlaybackPolicy.shouldKeepPresentingWhileInactive(
+            intendedToPlay: true
+        ))
+        XCTAssertFalse(WallpaperPlaybackPolicy.shouldKeepPresentingWhileInactive(
+            intendedToPlay: false
+        ))
+    }
 }

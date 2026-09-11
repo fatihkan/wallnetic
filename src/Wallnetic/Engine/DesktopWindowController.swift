@@ -25,6 +25,10 @@ protocol WallpaperRenderer: AnyObject {
     /// Layer that actually shows video pixels — CIFilter effects must land
     /// here, not on a container that AppKit uses for layout.
     var filterLayer: CALayer? { get }
+    /// Keep decode/present running while the app is inactive or the desktop
+    /// window is occluded by a windowed (non-fullscreen) app. A restart when
+    /// that app leaves the foreground is the remaining hitch.
+    func maintainPlayback()
 }
 
 // Conform VideoRenderer to the protocol
@@ -86,6 +90,21 @@ class DesktopWindowController {
         ) { [weak self] _ in
             self?.scheduleReassert()
         })
+        let keepPlaying: (Notification) -> Void = { [weak self] _ in
+            self?.maintainPlayback()
+        }
+        reassertObservers.append(NotificationCenter.default.addObserver(
+            forName: NSApplication.willResignActiveNotification, object: nil, queue: .main, using: keepPlaying
+        ))
+        reassertObservers.append(NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main, using: keepPlaying
+        ))
+        reassertObservers.append(NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didDeactivateApplicationNotification, object: nil, queue: .main, using: keepPlaying
+        ))
+        reassertObservers.append(NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main, using: keepPlaying
+        ))
     }
 
     // MARK: - Window Setup
@@ -166,7 +185,6 @@ class DesktopWindowController {
         // Store references
         desktopWindows[displayID] = window
         renderers[displayID] = renderer
-        observeOcclusion(of: window, displayID: displayID)
 
         // Apply current effects
         applyEffectsToOverlay(effectOverlay)
@@ -244,9 +262,7 @@ class DesktopWindowController {
         }
 
         if isPlaying {
-            for (id, renderer) in renderers where !occlusionSuspended.contains(id) {
-                renderer.play()
-            }
+            maintainPlayback()
         }
     }
 
@@ -308,13 +324,8 @@ class DesktopWindowController {
         for renderer in renderers.values {
             renderer.play()
         }
-        // A play() issued while a desktop is fully covered must not start a
-        // decode nobody can see. Windowed apps must not pause us — only a
-        // fullscreen cover is allowed to.
-        for id in desktopWindows.keys {
-            applyOcclusion(for: id)
-        }
         startWatchdog()
+        startPresentationPulse()
     }
 
     /// Pauses playback on all screens
@@ -327,7 +338,35 @@ class DesktopWindowController {
         }
         occlusionSuspended.removeAll()
         stopWatchdog()
+        stopPresentationPulse()
         endPlaybackActivity()
+    }
+
+    /// Called when the app resigns active or a windowed app leaves the
+    /// foreground. Do not `orderFront` or `play()` here — that hitches.
+    func maintainPlayback() {
+        guard isPlaying,
+              WallpaperPlaybackPolicy.shouldKeepPresentingWhileInactive(intendedToPlay: true)
+        else { return }
+        for renderer in renderers.values {
+            renderer.maintainPlayback()
+        }
+    }
+
+    private var presentationPulse: Timer?
+
+    private func startPresentationPulse() {
+        guard presentationPulse == nil else { return }
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+            self?.maintainPlayback()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        presentationPulse = timer
+    }
+
+    private func stopPresentationPulse() {
+        presentationPulse?.invalidate()
+        presentationPulse = nil
     }
 
     private func beginPlaybackActivity() {
@@ -516,10 +555,6 @@ class DesktopWindowController {
         let shouldBePaused = PowerManager.shared.shouldBePaused
 
         for (id, renderer) in renderers {
-            // Re-derive occlusion from live state first. This doubles as a
-            // resync: a dropped notification can strand a display suspended
-            // for at most one watchdog tick.
-            applyOcclusion(for: id)
             if occlusionSuspended.contains(id) {
                 // A suspended renderer's clock is frozen *on purpose*. Letting
                 // the watchdog see that would restart the decode behind the
@@ -686,6 +721,7 @@ class DesktopWindowController {
 
     func cleanup() {
         stopWatchdog()
+        stopPresentationPulse()
         endPlaybackActivity()
         reassertDebounce?.invalidate()
         reassertDebounce = nil

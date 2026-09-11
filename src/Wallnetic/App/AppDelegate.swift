@@ -174,6 +174,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    func applicationWillResignActive(_ notification: Notification) {
+        desktopWindowController?.maintainPlayback()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        desktopWindowController?.maintainPlayback()
+    }
+
     // MARK: - Open Main Window
 
     @objc private func handleOpenMainWindow() {

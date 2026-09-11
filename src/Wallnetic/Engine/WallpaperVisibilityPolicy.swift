@@ -95,4 +95,12 @@ enum WallpaperPlaybackPolicy {
         guard intendedToPlay else { return false }
         return currentRate > 0 && abs(currentRate - 1) > 0.02
     }
+
+    /// Resigning active (windowed app in front, or our own window closing)
+    /// must not stop presenting. macOS pauses `MTKView` / throttles inactive
+    /// windows; a cold restart when the wallpaper is uncovered is the hitch
+    /// on "foreground windowed → no longer in front".
+    static func shouldKeepPresentingWhileInactive(intendedToPlay: Bool) -> Bool {
+        intendedToPlay
+    }
 }

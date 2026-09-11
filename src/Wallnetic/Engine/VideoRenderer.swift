@@ -92,6 +92,7 @@ class VideoRenderer: NSObject {
         // to a previous keyframe (a few-frame rewind).
         newPlayer.automaticallyWaitsToMinimizeStalling = false
         newPlayer.preventsDisplaySleepDuringVideoPlayback = false
+        newPlayer.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
         newPlayer.isMuted = true
         newPlayer.volume = 0
         newPlayer.actionAtItemEnd = .none
@@ -241,6 +242,11 @@ class VideoRenderer: NSObject {
 
     func recoverPlayback() {
         shouldPlayWhenReady = true
+        pinOrStart()
+    }
+
+    func maintainPlayback() {
+        guard shouldPlayWhenReady else { return }
         pinOrStart()
     }
 
