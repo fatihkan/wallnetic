@@ -72,4 +72,4 @@ Galeri derinlik hesabı tek kaydırma ölçümüne alındı; katman sırası do�
 
 Doğrulama: **168 test geçti, 0 hata**; bu turda **7 yeni test** eklendi. Dikey, kare ve yatay H.264 test videoları çalışma sırasında oluşturulup gerçek AVFoundation küçük resim hattından geçirildi. Ana sayfa/tema ayarları açık-koyu görünümde, galeri ise gerçek pencere görüntüleriyle kontrol edildi. Görsel kontrol verileri `/tmp` altındaki ayrı uygulama alanında tutuldu.
 
-Gerçek oturum açma kaydı değiştirilmedi; sistem onayı gerektiren akış imzalı dağıtım üzerinde uçtan uca denenmedi. Bu tur için GitHub CI çalıştırılmadı.
+Gerçek oturum açma kaydı değiştirilmedi; sistem onayı gerektiren akış imzalı dağıtım üzerinde uçtan uca denenmedi. [PR #240](https://github.com/fatihkan/wallnetic/pull/240) için GitHub Build & Test, macOS 14 / Xcode 15.2 üzerinde [başarıyla tamamlandı](https://github.com/fatihkan/wallnetic/actions/runs/35881069828).
