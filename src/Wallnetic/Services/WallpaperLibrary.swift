@@ -7,10 +7,11 @@ final class WallpaperLibrary {
     static let shared = WallpaperLibrary()
 
     private let fileManager = FileManager.default
+    private let directory: URL?
 
     /// Resolved once — avoids FileManager I/O on every call.
     lazy var libraryURL: URL = {
-        let dir = applicationSupportURL().appendingPathComponent("Wallnetic/Library", isDirectory: true)
+        let dir = directory ?? applicationSupportURL().appendingPathComponent("Wallnetic/Library", isDirectory: true)
         if !fileManager.fileExists(atPath: dir.path) {
             try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
         }
@@ -19,7 +20,9 @@ final class WallpaperLibrary {
 
     private var fileWatcher: DispatchSourceFileSystemObject?
 
-    private init() {}
+    init(directory: URL? = nil) {
+        self.directory = directory
+    }
 
     // MARK: - Load
 
@@ -41,6 +44,13 @@ final class WallpaperLibrary {
 
     /// Imports a video file into the library. Returns the new library-local URL.
     func importFile(from sourceURL: URL, existingWallpapers: [Wallpaper]) async throws -> URL {
+        guard sourceURL.isFileURL,
+              VideoFormatConverter.allSupportedFormats.contains(sourceURL.pathExtension.lowercased()) else {
+            throw WallpaperImportError.unsupportedFile
+        }
+        let values = try sourceURL.resourceValues(forKeys: [.isRegularFileKey])
+        guard values.isRegularFile == true else { throw WallpaperImportError.unsupportedFile }
+
         // Duplicate detection by exact file path component + byte size. Name
         // matching uses the on-disk filename (not the display name, which can
         // be customized by the user) to avoid false positives.
@@ -58,9 +68,14 @@ final class WallpaperLibrary {
         if VideoFormatConverter.shared.needsConversion(sourceURL) {
             importURL = try await VideoFormatConverter.shared.convertToMP4(source: sourceURL)
         }
+        defer {
+            if importURL != sourceURL {
+                try? fileManager.removeItem(at: importURL)
+            }
+        }
 
         let originalName = sourceURL.deletingPathExtension().lastPathComponent
-        let fileName = originalName + ".mp4"
+        let fileName = originalName + "." + importURL.pathExtension.lowercased()
         let destURL = libraryURL.appendingPathComponent(fileName)
 
         if fileManager.fileExists(atPath: destURL.path) {
