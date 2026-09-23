@@ -3,7 +3,7 @@ import SwiftUI
 /// Explore tab with glass filter chips and glow cards
 struct ExploreView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
-    let searchText: String
+    @Binding var searchText: String
 
     @State private var selectedCategory: String = "All"
     @State private var hoveredCategory: String?
@@ -12,6 +12,14 @@ struct ExploreView: View {
 
     enum ViewMode: String {
         case grid, list, carousel3D
+
+        var label: String {
+            switch self {
+            case .grid: return "Grid view"
+            case .list: return "List view"
+            case .carousel3D: return "Gallery view"
+            }
+        }
     }
 
     private let categories = ["All", "Favorites", "Recent", "Long", "Short", "HD", "4K"]
@@ -21,7 +29,8 @@ struct ExploreView: View {
     ]
 
     var filteredWallpapers: [Wallpaper] {
-        var result = wallpaperManager.wallpapers
+        // Keep the search service's relevance ordering when applying filters.
+        var result = wallpaperManager.searchWallpapers(query: searchText)
 
         switch selectedCategory {
         case "Favorites":
@@ -32,7 +41,7 @@ struct ExploreView: View {
         case "Long":
             result = result.filter { ($0.duration ?? 0) > 10 }
         case "Short":
-            result = result.filter { ($0.duration ?? 0) <= 10 }
+            result = result.filter { $0.duration.map { $0 >= 0 && $0 <= 10 } ?? false }
         case "HD":
             result = result.filter { ($0.resolution?.width ?? 0) >= 1920 && ($0.resolution?.width ?? 0) < 3840 }
         case "4K":
@@ -46,17 +55,31 @@ struct ExploreView: View {
             result = result.filter { $0.colorCategory == colorFilter }
         }
 
-        if !searchText.isEmpty {
-            let fuzzyResults = wallpaperManager.searchWallpapers(query: searchText)
-            let fuzzyIDs = Set(fuzzyResults.map { $0.id })
-            result = result.filter { fuzzyIDs.contains($0.id) }
-        }
-
         return result
     }
 
     var body: some View {
+        let results = filteredWallpapers
         VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: Space.xxs) {
+                    Text(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Your library" : "Search results")
+                        .font(Typo.title1)
+                        .tracking(Typo.title1Tracking)
+                    Text("Find a wallpaper for your next desktop.")
+                        .font(Typo.body)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if selectedCategory != "All" || selectedColor != nil || !searchText.isEmpty {
+                    Button("Reset filters", action: resetFilters)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            }
+            .padding(.horizontal, Space.lg)
+            .padding(.top, Space.lg)
+
             // Glass filter bar
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
@@ -71,6 +94,10 @@ struct ExploreView: View {
             // Color swatches
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
+                    Text("Color")
+                        .font(Typo.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.trailing, Space.xxs)
                     // Clear filter
                     Button {
                         withAnimation(Anim.snappy) { selectedColor = nil }
@@ -85,6 +112,8 @@ struct ExploreView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("All colors")
+                    .accessibilityAddTraits(selectedColor == nil ? [.isSelected] : [])
 
                     ForEach(ColorCategory.allCases) { cat in
                         Button {
@@ -99,8 +128,13 @@ struct ExploreView: View {
                                     Circle().stroke(Color.primary.opacity(selectedColor == cat ? 0.8 : 0.2), lineWidth: selectedColor == cat ? 2 : 0.5)
                                 )
                                 .scaleEffect(selectedColor == cat ? 1.2 : 1.0)
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .help(cat.rawValue.capitalized)
+                        .accessibilityLabel("\(cat.rawValue.capitalized) wallpapers")
+                        .accessibilityAddTraits(selectedColor == cat ? [.isSelected] : [])
                     }
                 }
                 .padding(.horizontal, 20)
@@ -119,11 +153,11 @@ struct ExploreView: View {
 
             // Results count + view mode toggle
             HStack {
-                Text("\(filteredWallpapers.count)")
+                Text("\(results.count)")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundColor(.accentColor)
                 +
-                Text(" wallpapers")
+                Text(results.count == 1 ? " wallpaper" : " wallpapers")
                     .font(.system(size: 12))
                     .foregroundColor(.primary.opacity(0.55))
 
@@ -140,50 +174,78 @@ struct ExploreView: View {
             .padding(.vertical, 8)
 
             // Content — grid, list, or 3D carousel
-            switch viewMode {
-            case .grid:
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 14) {
-                        ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                            ExploreCard(wallpaper: wallpaper, index: index)
+            if results.isEmpty {
+                noResults
+            } else {
+                switch viewMode {
+                case .grid:
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 14) {
+                            ForEach(Array(results.enumerated()), id: \.element.id) { index, wallpaper in
+                                ExploreCard(wallpaper: wallpaper, index: index)
+                            }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                        .padding(.bottom, 20)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
-                    .padding(.bottom, 20)
-                }
-            case .list:
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(Array(filteredWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                            ExploreListRow(wallpaper: wallpaper)
-                                .staggered(index: index)
+                case .list:
+                    ScrollView {
+                        LazyVStack(spacing: 8) {
+                            ForEach(Array(results.enumerated()), id: \.element.id) { index, wallpaper in
+                                ExploreListRow(wallpaper: wallpaper)
+                                    .staggered(index: index)
+                            }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                        .padding(.bottom, 20)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
-                    .padding(.bottom, 20)
+                case .carousel3D:
+                    Carousel3DGallery(wallpapers: results) { wallpaper in
+                        wallpaperManager.setWallpaper(wallpaper)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 20)
+                    Spacer()
                 }
-            case .carousel3D:
-                Carousel3DGallery(wallpapers: filteredWallpapers) { wallpaper in
-                    wallpaperManager.setWallpaper(wallpaper)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 20)
-                Spacer()
             }
         }
         .background(Color.clear)
         .modifier(KeyPressModifier(
-            onLeft: {
-                let wallpapers = filteredWallpapers
-                guard !wallpapers.isEmpty else { return }
-                wallpaperManager.cycleToNextWallpaper()
-            },
-            onRight: {
-                wallpaperManager.cycleToNextWallpaper()
-            }
+            onLeft: { navigate(in: results, backwards: true) },
+            onRight: { navigate(in: results, backwards: false) }
         ))
+    }
+
+    private func navigate(in results: [Wallpaper], backwards: Bool) {
+        guard let wallpaper = WallpaperBrowsing.adjacent(in: results, currentID: wallpaperManager.currentWallpaper?.id, backwards: backwards) else { return }
+        wallpaperManager.setWallpaper(wallpaper)
+    }
+
+    private func resetFilters() {
+        selectedCategory = "All"
+        selectedColor = nil
+        searchText = ""
+    }
+
+    private var noResults: some View {
+        VStack(spacing: Space.md) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 32, weight: .light))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text("No matching wallpapers")
+                .font(Typo.title2)
+            Text("Try a different search, or clear the filters to see your library.")
+                .font(Typo.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Show all wallpapers", action: resetFilters)
+                .buttonStyle(.bordered)
+        }
+        .padding(Space.xxl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - View Mode Button
@@ -195,13 +257,16 @@ struct ExploreView: View {
             Image(systemName: icon)
                 .font(.system(size: 11))
                 .foregroundColor(viewMode == mode ? .primary : .primary.opacity(0.45))
-                .frame(width: 24, height: 24)
+                .frame(width: 30, height: 30)
                 .background(
                     RoundedRectangle(cornerRadius: 5)
                         .fill(viewMode == mode ? Surface.glassControl.opacity(2.0) : .clear)
                 )
         }
         .buttonStyle(.plain)
+        .help(mode.label)
+        .accessibilityLabel(mode.label)
+        .accessibilityAddTraits(viewMode == mode ? [.isSelected] : [])
     }
 
     // MARK: - Filter Chip
@@ -237,6 +302,7 @@ struct ExploreView: View {
                 .neonGlow(.accentColor, isActive: isSelected, radius: 6)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .onHover { h in
             withAnimation(.easeOut(duration: Anim.micro)) { hoveredCategory = h ? category : nil }
         }
@@ -250,77 +316,88 @@ struct ExploreCard: View {
     let index: Int
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var thumbnail: NSImage?
+    @State private var isLoadingThumbnail = true
     @State private var isHovering = false
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ZStack {
-                // Fixed 16:9 container - image fills and clips
-                Color.clear
-                    .aspectRatio(16/9, contentMode: .fit)
-                    .overlay(
-                        Group {
-                            if let thumbnail = thumbnail {
-                                Image(nsImage: thumbnail)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } else {
-                                Rectangle()
-                                    .fill(Surface.glassControl)
-                                    .overlay { ProgressView().scaleEffect(0.6) }
+            Button {
+                wallpaperManager.setWallpaper(wallpaper)
+            } label: {
+                ZStack {
+                    // Fixed 16:9 container - image fills and clips
+                    Color.clear
+                        .aspectRatio(16/9, contentMode: .fit)
+                        .overlay(
+                            Group {
+                                if let thumbnail = thumbnail {
+                                    Image(nsImage: thumbnail)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } else {
+                                    Rectangle()
+                                        .fill(Surface.glassControl)
+                                        .overlay {
+                                            if isLoadingThumbnail {
+                                                ProgressView().controlSize(.small)
+                                            } else {
+                                                Image(systemName: "film").foregroundStyle(.secondary)
+                                            }
+                                        }
+                                }
                             }
-                        }
-                    )
-                    .clipped()
+                        )
+                        .clipped()
 
-                // Badges
-                VStack {
-                    HStack {
-                        if wallpaper.isFavorite {
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 10))
+                    // Badges
+                    VStack {
+                        HStack {
+                            if wallpaper.isFavorite {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.white)
+                                    .padding(5)
+                                    .background(
+                                        Circle()
+                                            .fill(.pink.opacity(0.8))
+                                    )
+                                    .neonGlow(.pink, isActive: true, radius: 4)
+                                    .padding(6)
+                            }
+                            Spacer()
+                        }
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Text(wallpaper.formattedDuration)
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
                                 .foregroundColor(.white)
-                                .padding(5)
-                                .background(
-                                    Circle()
-                                        .fill(.pink.opacity(0.8))
-                                )
-                                .neonGlow(.pink, isActive: true, radius: 4)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(.black.opacity(0.6)))
                                 .padding(6)
                         }
-                        Spacer()
                     }
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text(wallpaper.formattedDuration)
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(.black.opacity(0.6)))
-                            .padding(6)
-                    }
-                }
 
-                // Hover overlay - centered
-                if isHovering {
-                    ZStack {
-                        Color.black.opacity(0.25)
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.9))
+                    // Hover overlay - centered
+                    if isHovering {
+                        ZStack {
+                            Color.black.opacity(0.25)
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                        .transition(.opacity)
                     }
-                    .transition(.opacity)
                 }
+                .glowCard(isHovering: isHovering, cornerRadius: 10)
+                .scaleEffect(isHovering ? 1.03 : 1.0)
             }
-            .glowCard(isHovering: isHovering, cornerRadius: 10)
-            .scaleEffect(isHovering ? 1.03 : 1.0)
-            .onTapGesture(count: 2) {
-                wallpaperManager.setWallpaper(wallpaper)
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Set \(wallpaper.displayName) as wallpaper")
+            .help("Set as wallpaper")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(wallpaper.displayName)
@@ -349,7 +426,10 @@ struct ExploreCard: View {
                 renamingWallpaper = nil
             }, onCancel: { renamingWallpaper = nil })
         }
-        .task { thumbnail = await wallpaper.generateThumbnail() }
+        .task {
+            thumbnail = await wallpaper.generateThumbnail()
+            isLoadingThumbnail = false
+        }
     }
 }
 
@@ -359,6 +439,7 @@ struct ExploreListRow: View {
     let wallpaper: Wallpaper
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var thumbnail: NSImage?
+    @State private var isLoadingThumbnail = true
     @State private var isHovering = false
 
     var body: some View {
@@ -374,7 +455,13 @@ struct ExploreListRow: View {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Surface.glassControl)
                     .frame(width: 80, height: 45)
-                    .overlay { ProgressView().scaleEffect(0.5) }
+                    .overlay {
+                        if isLoadingThumbnail {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "film").foregroundStyle(.secondary)
+                        }
+                    }
             }
 
             // Info
@@ -402,8 +489,8 @@ struct ExploreListRow: View {
                     .foregroundColor(.pink)
             }
 
-            // Apply button on hover
-            if isHovering {
+            // Keep the action available to keyboard and VoiceOver users.
+            Group {
                 Button {
                     wallpaperManager.setWallpaper(wallpaper)
                 } label: {
@@ -414,6 +501,8 @@ struct ExploreListRow: View {
                         .background(Circle().fill(Surface.glassControl.opacity(1.5)))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Set \(wallpaper.displayName) as wallpaper")
+                .help("Set as wallpaper")
             }
         }
         .padding(.horizontal, 12)
@@ -427,6 +516,9 @@ struct ExploreListRow: View {
         .contextMenu {
             WallpaperContextMenu(wallpaper: wallpaper)
         }
-        .task { thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90)) }
+        .task {
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90))
+            isLoadingThumbnail = false
+        }
     }
 }
