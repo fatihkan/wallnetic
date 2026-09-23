@@ -21,6 +21,7 @@ class VideoRenderer: NSObject {
     private var currentItemObserver: NSKeyValueObservation?
     private var readyObserver: NSKeyValueObservation?
     private var loadGeneration: UInt64 = 0
+    private var loadTask: Task<Void, Never>?
 
     private let preferredBufferDuration: TimeInterval = 4.0
     private var shouldPlayWhenReady = false
@@ -45,37 +46,31 @@ class VideoRenderer: NSObject {
     /// Loads a video file. The currently displayed player is kept until the
     /// new item is ready, so a switch cannot flash black.
     func loadVideo(url: URL) {
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else {
             Log.video.error("File does not exist: \(url.path, privacy: .public)")
             return
         }
 
-        loadGeneration += 1
+        loadTask?.cancel()
+        loadGeneration &+= 1
         let generation = loadGeneration
 
         let asset = AVURLAsset(url: url, options: [
             AVURLAssetPreferPreciseDurationAndTimingKey: false
         ])
 
-        Task { [weak self] in
-            await self?.loadAssetAsync(asset: asset, generation: generation)
-        }
-    }
-
-    private func loadAssetAsync(asset: AVURLAsset, generation: UInt64) async {
-        do {
-            let isPlayable = try await asset.load(.isPlayable)
-            guard isPlayable else {
-                Log.video.error("Asset is not playable")
-                return
-            }
-
-            await MainActor.run { [weak self] in
-                guard let self, generation == self.loadGeneration else { return }
+        loadTask = Task { @MainActor [weak self] in
+            do {
+                let isPlayable = try await asset.load(.isPlayable)
+                guard isPlayable else {
+                    Log.video.error("Asset is not playable")
+                    return
+                }
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
                 self.setupPlayer(with: asset, generation: generation)
+            } catch {
+                Log.video.error("Failed to load asset: \(error.localizedDescription, privacy: .public)")
             }
-        } catch {
-            Log.video.error("Failed to load asset: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -134,11 +129,13 @@ class VideoRenderer: NSObject {
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,
             queue: .main
-        ) { [weak self] _ in
-            guard let self, generation == self.loadGeneration else { return }
-            self.player?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-                if self?.shouldPlayWhenReady == true {
-                    self?.player?.play()
+        ) { [weak self, weak newPlayer] _ in
+            guard let self, let newPlayer, self.player === newPlayer else { return }
+            newPlayer.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak newPlayer] finished in
+                DispatchQueue.main.async {
+                    guard finished, let self, let newPlayer,
+                          self.player === newPlayer, self.shouldPlayWhenReady else { return }
+                    newPlayer.play()
                 }
             }
         }
@@ -191,6 +188,9 @@ class VideoRenderer: NSObject {
     }
 
     private func cleanup() {
+        loadGeneration &+= 1
+        loadTask?.cancel()
+        loadTask = nil
         shouldPlayWhenReady = false
         itemStatusObserver = nil
         currentItemObserver = nil

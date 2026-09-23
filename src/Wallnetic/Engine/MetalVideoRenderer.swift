@@ -7,6 +7,45 @@ import os.log
 
 private let logger = Logger(subsystem: "com.wallnetic.app", category: "MetalVideoRenderer")
 
+/// The display-link thread only touches this locked gate. Renderer and AppKit
+/// state are accessed by the handler on the main queue, never by Core Video.
+final class DisplayLinkFrameScheduler: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isActive = true
+    private var isPending = false
+    private let draw: () -> Void
+
+    init(draw: @escaping () -> Void) {
+        self.draw = draw
+    }
+
+    func requestFrame() {
+        lock.lock()
+        guard isActive, !isPending else {
+            lock.unlock()
+            return
+        }
+        isPending = true
+        lock.unlock()
+
+        DispatchQueue.main.async { [self] in
+            lock.lock()
+            isPending = false
+            let shouldDraw = isActive
+            lock.unlock()
+            if shouldDraw { draw() }
+        }
+    }
+
+    /// Called on main before stopping the display link. Already queued work
+    /// from this playback session must not draw after a pause or restart.
+    func invalidate() {
+        lock.lock()
+        isActive = false
+        lock.unlock()
+    }
+}
+
 /// Metal-based video renderer for optimal GPU performance
 /// Uses Metal directly for video frame rendering, bypassing AppKit overhead
 final class MetalVideoRenderer: NSObject {
@@ -25,6 +64,7 @@ final class MetalVideoRenderer: NSObject {
     private var queuePlayer: AVQueuePlayer?
     private var videoOutput: AVPlayerItemVideoOutput?
     private var displayLink: CVDisplayLink?
+    private var frameScheduler: DisplayLinkFrameScheduler?
 
     // MARK: - View
 
@@ -34,7 +74,6 @@ final class MetalVideoRenderer: NSObject {
     private var videoSize: CGSize = .zero
     private var lastPresentedSeconds: Double = -1
     private var loopObserver: NSObjectProtocol?
-    private var drawScheduled = false
 
     // MARK: - State
 
@@ -45,6 +84,7 @@ final class MetalVideoRenderer: NSObject {
     private var wantsToPlay = false
     private let renderLock = NSLock()
     private var loadGeneration: UInt64 = 0
+    private var loadTask: Task<Void, Never>?
     private var currentItemObserver: NSKeyValueObservation?
 
     var hasPresentedFrame = false
@@ -197,35 +237,37 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - Video Loading
 
     func loadVideo(url: URL) {
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else {
             logger.error("Video file does not exist: \(url.path)")
             return
         }
 
-        loadGeneration += 1
+        loadTask?.cancel()
+        loadGeneration &+= 1
         let generation = loadGeneration
 
         let asset = AVURLAsset(url: url, options: [
             AVURLAssetPreferPreciseDurationAndTimingKey: false
         ])
 
-        Task { @MainActor in
+        loadTask = Task { @MainActor [weak self] in
             do {
                 let isPlayable = try await asset.load(.isPlayable)
                 guard isPlayable else {
                     logger.error("Asset is not playable")
                     return
                 }
-                guard generation == self.loadGeneration else { return }
-
+                var videoSize = CGSize.zero
                 if let track = try await asset.loadTracks(withMediaType: .video).first {
                     let natural = try await track.load(.naturalSize)
                     let transform = try await track.load(.preferredTransform)
                     let displayed = CGRect(origin: .zero, size: natural).applying(transform)
-                    self.videoSize = CGSize(width: abs(displayed.width), height: abs(displayed.height))
-                    self.setupVertexBuffer()
+                    videoSize = CGSize(width: abs(displayed.width), height: abs(displayed.height))
                 }
 
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
+                self.videoSize = videoSize
+                self.setupVertexBuffer()
                 self.setupPlayer(with: asset, generation: generation)
             } catch {
                 logger.error("Failed to load asset: \(error.localizedDescription)")
@@ -271,12 +313,14 @@ final class MetalVideoRenderer: NSObject {
             forName: .AVPlayerItemDidPlayToEndTime,
             object: playerItem,
             queue: .main
-        ) { [weak self] _ in
-            guard let self, generation == self.loadGeneration else { return }
+        ) { [weak self, weak newPlayer] _ in
+            guard let self, let newPlayer, self.player === newPlayer else { return }
             self.lastPresentedSeconds = -1
-            self.player?.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-                if self?.wantsToPlay == true {
-                    self?.player?.play()
+            newPlayer.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak newPlayer] finished in
+                DispatchQueue.main.async {
+                    guard finished, let self, let newPlayer,
+                          self.player === newPlayer, self.wantsToPlay else { return }
+                    newPlayer.play()
                 }
             }
         }
@@ -350,37 +394,33 @@ final class MetalVideoRenderer: NSObject {
     private func startDisplayLink() {
         guard displayLink == nil else { return }
         var link: CVDisplayLink?
-        CVDisplayLinkCreateWithActiveCGDisplays(&link)
-        guard let link else { return }
-        let ctx = Unmanaged.passUnretained(self).toOpaque()
-        CVDisplayLinkSetOutputCallback(link, { _, _, _, _, _, context in
-            guard let context else { return kCVReturnSuccess }
-            Unmanaged<MetalVideoRenderer>.fromOpaque(context).takeUnretainedValue()
-                .scheduleDisplayLinkDraw()
+        guard CVDisplayLinkCreateWithActiveCGDisplays(&link) == kCVReturnSuccess,
+              let link else { return }
+        let scheduler = DisplayLinkFrameScheduler { [weak self] in
+            guard let self, self.wantsToPlay else { return }
+            self.metalView.draw()
+        }
+        // The retained block owns only the gate, not an unretained renderer
+        // pointer. A callback racing with teardown cannot access freed state.
+        guard CVDisplayLinkSetOutputHandler(link, { _, _, _, _, _ in
+            scheduler.requestFrame()
             return kCVReturnSuccess
-        }, ctx)
-        CVDisplayLinkStart(link)
+        }) == kCVReturnSuccess else { return }
+        guard CVDisplayLinkStart(link) == kCVReturnSuccess else {
+            scheduler.invalidate()
+            return
+        }
+        frameScheduler = scheduler
         displayLink = link
     }
 
     private func stopDisplayLink() {
+        frameScheduler?.invalidate()
         if let displayLink {
             CVDisplayLinkStop(displayLink)
             self.displayLink = nil
         }
-        drawScheduled = false
-    }
-
-    private func scheduleDisplayLinkDraw() {
-        guard wantsToPlay else { return }
-        if drawScheduled { return }
-        drawScheduled = true
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.drawScheduled = false
-            guard self.wantsToPlay else { return }
-            self.metalView.draw()
-        }
+        frameScheduler = nil
     }
 
     private func pinOrStart() {
@@ -397,6 +437,9 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - Cleanup
 
     private func cleanup() {
+        loadGeneration &+= 1
+        loadTask?.cancel()
+        loadTask = nil
         wantsToPlay = false
         stopDisplayLink()
         metalView.isPaused = true
@@ -522,4 +565,3 @@ extension MetalVideoRenderer: MTKViewDelegate {
         commandBuffer.commit()
     }
 }
-
