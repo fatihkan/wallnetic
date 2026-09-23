@@ -128,7 +128,7 @@ class WallpaperManager: ObservableObject {
     @AppStorage("shouldAutoResume") var shouldAutoResume: Bool = true
     @AppStorage("wallpaperModeRaw") private var wallpaperModeRaw: String = "same"
     @AppStorage("screenWallpapersData") private var screenWallpapersData: Data = Data()
-    @AppStorage("useMetalRenderer") var useMetalRenderer: Bool = false
+    @AppStorage("useMetalRenderer") var useMetalRenderer: Bool = true
     @AppStorage("transitionStyle") var transitionStyle: String = "crossfade"
     @AppStorage("transitionDuration") var transitionDuration: Double = 0.5
     @AppStorage("lastWallpaperURL") private var lastWallpaperURL: String = ""
@@ -690,6 +690,10 @@ extension Notification.Name {
     static let screenWallpaperDidChange = Notification.Name("screenWallpaperDidChange")
     static let applyScreenWallpapers = Notification.Name("applyScreenWallpapers")
     static let openMainWindow = Notification.Name("openMainWindow")
+    /// Posted after `NSApp.setActivationPolicy` (and similar events) so the
+    /// desktop overlay can re-pin itself. Policy flips tear down window
+    /// backing stores and otherwise leave a black desktop.
+    static let desktopWindowsNeedReassert = Notification.Name("desktopWindowsNeedReassert")
 }
 
 // MARK: - Screen Wallpaper Info
