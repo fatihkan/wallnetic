@@ -85,7 +85,9 @@ final class ThumbnailCache {
 
         do {
             let (cgImage, _) = try await imageGenerator.image(at: .zero)
-            return NSImage(cgImage: cgImage, size: size)
+            // maximumSize is a bounding box, not the resulting image size.
+            // Assigning that box to NSImage stretches portrait/square videos.
+            return NSImage(cgImage: cgImage, size: CGSize(width: cgImage.width, height: cgImage.height))
         } catch {
             return nil
         }

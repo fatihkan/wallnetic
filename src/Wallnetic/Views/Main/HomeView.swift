@@ -17,14 +17,30 @@ private var homeHorizontalInset: CGFloat { HomeView.horizontalInset }
 /// Striking home with cinematic hero and glass carousel cards
 struct HomeView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
-    @State private var heroIndex = 0
-    @State private var heroTimer: Timer?
+    @State private var selectedHeroID: UUID?
+    @State private var isHeroHovered = false
+    @State private var isAutoAdvancing = true
     @State private var heroScrollY: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var featuredWallpapers: [Wallpaper] {
+        Array(wallpaperManager.wallpapers.prefix(5))
+    }
+
+    private var selectedHero: Wallpaper? {
+        WallpaperBrowsing.selected(in: featuredWallpapers, currentID: selectedHeroID)
+    }
+
+    private var shouldAutoAdvance: Bool {
+        isAutoAdvancing && !reduceMotion && !isHeroHovered && scenePhase == .active && featuredWallpapers.count > 1
+    }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
                 heroBanner
+                    .onHover { isHeroHovered = $0 }
                     .padding(.top, -46)
                     // P0-2: replaces the recursive DispatchQueue.async +
                     // @State write antipattern. PreferenceKey reports
@@ -76,11 +92,19 @@ struct HomeView: View {
             heroScrollY = value
         }
         .background(Color.clear)
-        .onAppear { startHeroTimer() }
-        .onDisappear { heroTimer?.invalidate() }
+        .task(id: shouldAutoAdvance) {
+            guard shouldAutoAdvance else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 7_000_000_000) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                advanceHero(backwards: false)
+            }
+        }
         .modifier(KeyPressModifier(
             onSpace: {
-                if let wp = wallpaperManager.wallpapers[safe: heroIndex] {
+                if let wp = selectedHero {
+                    isAutoAdvancing = false
                     wallpaperManager.setWallpaper(wp)
                 }
             },
@@ -92,11 +116,11 @@ struct HomeView: View {
     // MARK: - Cinematic Hero Banner
 
     private var heroBanner: some View {
-        let wallpapers = Array(wallpaperManager.wallpapers.prefix(5))
-        let currentWallpaper = heroIndex < wallpapers.count ? wallpapers[heroIndex] : nil
+        let wallpapers = featuredWallpapers
+        let currentWallpaper = selectedHero
 
         // Scroll-driven parallax: scale up + push down as user scrolls
-        let parallax = max(-200, min(200, heroScrollY))
+        let parallax = reduceMotion ? 0 : max(-200, min(200, heroScrollY))
         let scale = 1.0 + max(0, parallax) * 0.0008
         let yOffset = parallax * 0.45
 
@@ -104,11 +128,11 @@ struct HomeView: View {
             ZStack {
                 if let wp = currentWallpaper {
                     HeroBannerCard(wallpaper: wp)
-                        .id(heroIndex)
+                        .id(wp.id)
                         .scaleEffect(scale)
                         .offset(y: yOffset * 0.3)
                         .transition(.opacity)
-                        .animation(.easeInOut(duration: Anim.hero), value: heroIndex)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: Anim.hero), value: wp.id)
                 }
 
                 // Cinematic gradient overlay (fades hero into window backdrop)
@@ -141,7 +165,6 @@ struct HomeView: View {
             }
             .frame(height: 400)
             .clipped()
-            .shimmer()
 
             // Info section
             if let wp = currentWallpaper {
@@ -153,7 +176,7 @@ struct HomeView: View {
     @ViewBuilder
     private func heroInfo(_ wp: Wallpaper, wallpapers: [Wallpaper]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(wp.name)
+            Text(wp.displayName)
                 .font(Typo.display)
                 .tracking(Typo.displayTracking)
                 .foregroundColor(.primary)
@@ -163,34 +186,38 @@ struct HomeView: View {
 
             // Metadata pills
             HStack(spacing: 8) {
-                metadataPill(wp.formattedResolution, color: .green)
+                metadataPill(wp.formattedResolution, color: .primary.opacity(0.7))
                 metadataPill(wp.formattedDuration, color: .primary.opacity(0.7))
                 metadataPill(wp.formattedFileSize, color: .primary.opacity(0.7))
 
                 if wp.id == wallpaperManager.currentWallpaper?.id {
                     HStack(spacing: 4) {
-                        Circle()
-                            .fill(.green)
-                            .frame(width: 6, height: 6)
-                            .neonGlow(.green, isActive: true, radius: 4)
-                        Text("Active")
-                            .foregroundColor(.green)
+                        Image(systemName: wallpaperManager.isPlaying ? "play.fill" : "pause.fill")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text(wallpaperManager.isPlaying ? "Playing" : "Paused")
                     }
+                    .foregroundStyle(.primary)
                     .font(.system(size: 11, weight: .semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.green.opacity(0.12)))
+                    .background(Capsule().fill(Surface.glassControl))
                 }
             }
 
             // Action buttons
             HStack(spacing: Space.xs + 2) {
-                WallneticButton.primary("Use", icon: "play.fill", accent: .white) {
+                Button {
+                    isAutoAdvancing = false
                     wallpaperManager.setWallpaper(wp)
+                } label: {
+                    Label("Set wallpaper", systemImage: "play.fill")
+                        .font(Typo.button)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
 
                 WallneticButton.ghost(
-                    "My List",
+                    wp.isFavorite ? "In My List" : "Add to My List",
                     icon: wp.isFavorite ? "checkmark" : "plus"
                 ) {
                     withAnimation(.spring(response: Anim.medium, dampingFraction: 0.5)) {
@@ -200,15 +227,45 @@ struct HomeView: View {
 
                 Spacer()
 
-                // Page indicators with glow
-                HStack(spacing: 5) {
-                    ForEach(0..<min(wallpapers.count, 5), id: \.self) { i in
-                        Capsule()
-                            .fill(i == heroIndex ? Color.accentColor : Color.primary.opacity(0.25))
-                            .frame(width: i == heroIndex ? 22 : 10, height: 3)
-                            .neonGlow(.accentColor, isActive: i == heroIndex, radius: 4)
-                            .animation(.spring(response: Anim.medium, dampingFraction: 0.7), value: heroIndex)
+                if wallpapers.count > 1 {
+                    HStack(spacing: Space.xxs) {
+                        Button(action: heroPrev) {
+                            Image(systemName: "chevron.left").frame(width: 28, height: 28)
+                        }
+                        .help("Previous featured wallpaper")
+                        .accessibilityLabel("Previous featured wallpaper")
+
+                        ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
+                            Button {
+                                isAutoAdvancing = false
+                                withAnimation(reduceMotion ? nil : Anim.transition) { selectedHeroID = wallpaper.id }
+                            } label: {
+                                Capsule()
+                                    .fill(wallpaper.id == wp.id ? Color.accentColor : Color.primary.opacity(0.25))
+                                    .frame(width: wallpaper.id == wp.id ? 20 : 8, height: 4)
+                                    .frame(width: 24, height: 28)
+                                    .contentShape(Rectangle())
+                            }
+                            .accessibilityLabel("Featured wallpaper \(index + 1): \(wallpaper.displayName)")
+                            .accessibilityAddTraits(wallpaper.id == wp.id ? [.isSelected] : [])
+                        }
+
+                        Button(action: heroNext) {
+                            Image(systemName: "chevron.right").frame(width: 28, height: 28)
+                        }
+                        .help("Next featured wallpaper")
+                        .accessibilityLabel("Next featured wallpaper")
+
+                        if !reduceMotion {
+                            Button { isAutoAdvancing.toggle() } label: {
+                                Image(systemName: isAutoAdvancing ? "pause.fill" : "play.fill")
+                                    .frame(width: 28, height: 28)
+                            }
+                            .help(isAutoAdvancing ? "Pause slideshow" : "Resume slideshow")
+                            .accessibilityLabel(isAutoAdvancing ? "Pause slideshow" : "Resume slideshow")
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -237,24 +294,19 @@ struct HomeView: View {
             .sorted { $0.dateAdded > $1.dateAdded }
     }
 
-    private func startHeroTimer() {
-        heroTimer = Timer.scheduledTimer(withTimeInterval: 7, repeats: true) { _ in
-            let count = min(wallpaperManager.wallpapers.count, 5)
-            guard count > 1 else { return }
-            withAnimation { heroIndex = (heroIndex + 1) % count }
-        }
+    private func advanceHero(backwards: Bool) {
+        let next = WallpaperBrowsing.adjacent(in: featuredWallpapers, currentID: selectedHero?.id, backwards: backwards)
+        withAnimation(reduceMotion ? nil : Anim.transition) { selectedHeroID = next?.id }
     }
 
     private func heroNext() {
-        let count = min(wallpaperManager.wallpapers.count, 5)
-        guard count > 1 else { return }
-        withAnimation { heroIndex = (heroIndex + 1) % count }
+        isAutoAdvancing = false
+        advanceHero(backwards: false)
     }
 
     private func heroPrev() {
-        let count = min(wallpaperManager.wallpapers.count, 5)
-        guard count > 1 else { return }
-        withAnimation { heroIndex = (heroIndex - 1 + count) % count }
+        isAutoAdvancing = false
+        advanceHero(backwards: true)
     }
 }
 
@@ -265,18 +317,14 @@ struct HeroBannerCard: View {
     @State private var thumbnail: NSImage?
     @State private var startDate: Date = Date()
     @State private var isWindowVisible: Bool = true
+    @State private var isLoadingThumbnail = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        // P2-10 + ORTA-1: phase derived from elapsed-since-appear rather
-        // than absolute wall-clock — Mac sleep/wake doesn't cause the
-        // Ken Burns to teleport mid-cycle.
-        // The `paused:` gate only covers teardown — `isWindowVisible` goes
-        // false in onDisappear, by which point SwiftUI is already tearing the
-        // TimelineView down. Real occlusion gating needs the hosting NSWindow's
-        // occlusionState plumbed in, and must also carry a paused-duration
-        // offset or `elapsed` (derived from ctx.date) teleports the Ken Burns
-        // on resume. Tracked for v1.4.1.
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isWindowVisible)) { ctx in
+        // Stop decorative frame updates while inactive or when Reduce Motion
+        // is enabled. Scene activity does not imply per-window visibility.
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isWindowVisible || reduceMotion || scenePhase != .active)) { ctx in
             let elapsed = ctx.date.timeIntervalSince(startDate)
             let cycle: Double = 14
             let raw = (elapsed.truncatingRemainder(dividingBy: cycle)) / cycle
@@ -287,18 +335,32 @@ struct HeroBannerCard: View {
                     Image(nsImage: thumbnail)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .scaleEffect(1.06 + phase * 0.06)
+                        .scaleEffect(reduceMotion ? 1 : 1.06 + phase * 0.06)
                         .offset(
-                            x: (phase - 0.5) * 36,
-                            y: (phase - 0.5) * 22
+                            x: reduceMotion ? 0 : (phase - 0.5) * 36,
+                            y: reduceMotion ? 0 : (phase - 0.5) * 22
                         )
                 } else {
                     Surface.deepFade
+                        .overlay {
+                            if isLoadingThumbnail {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Label("Preview unavailable", systemImage: "film")
+                                    .font(Typo.body)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                 }
             }
         }
-        .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
+        .task(id: wallpaper.id) {
+            thumbnail = nil
+            isLoadingThumbnail = true
+            let image = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
+            guard !Task.isCancelled else { return }
+            thumbnail = image
+            isLoadingThumbnail = false
         }
         .onAppear {
             startDate = Date()
@@ -352,12 +414,15 @@ struct CarouselSection: View {
 
 struct CarouselCard: View {
     let wallpaper: Wallpaper
+    var onApply: ((Wallpaper) -> Void)? = nil
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: NSImage?
+    @State private var isLoadingThumbnail = true
     @State private var isHovering = false
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText = ""
-    @State private var pointer: CGPoint = .zero  // 0..1 within card
+    @State private var pointer = CGPoint(x: 0.5, y: 0.5)
     @State private var lastPointerWrite: TimeInterval = 0
     private static let pointerThrottle: TimeInterval = 1.0 / 30.0  // P1-7
 
@@ -368,132 +433,147 @@ struct CarouselCard: View {
     /// rotation around the y/x axes plus a 2-3px translation. Falls back
     /// to flat when not hovering.
     private var tiltX: Double {
-        guard isHovering else { return 0 }
+        guard isHovering && !reduceMotion else { return 0 }
         return Double(0.5 - pointer.y) * 8  // top → tilt forward
     }
 
     private var tiltY: Double {
-        guard isHovering else { return 0 }
+        guard isHovering && !reduceMotion else { return 0 }
         return Double(pointer.x - 0.5) * 8  // right → tilt right
     }
 
     private var glareOffset: CGFloat {
-        guard isHovering else { return -1 }
-        return pointer.x  // 0..1 follows pointer
+        min(1, max(0, pointer.x))
     }
 
     /// Specular intensity scales with tilt magnitude — like a real lens
     /// reflecting more light when angled.
     private var specularIntensity: Double {
-        guard isHovering else { return 0 }
+        guard isHovering && !reduceMotion else { return 0 }
         let mag = sqrt(tiltX * tiltX + tiltY * tiltY)
         return min(0.22, 0.06 + mag / 60)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .bottom) {
-                // Thumbnail
-                Group {
-                    if let thumbnail = thumbnail {
-                        Image(nsImage: thumbnail)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Rectangle()
-                            .fill(Surface.glassControl)
-                            .overlay { ProgressView().scaleEffect(0.6) }
+            Button {
+                if let onApply { onApply(wallpaper) }
+                else { wallpaperManager.setWallpaper(wallpaper) }
+            } label: {
+                ZStack(alignment: .bottom) {
+                    // Thumbnail
+                    Group {
+                        if let thumbnail = thumbnail {
+                            Image(nsImage: thumbnail)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } else {
+                            Rectangle()
+                                .fill(Surface.glassControl)
+                                .overlay {
+                                    if isLoadingThumbnail {
+                                        ProgressView().controlSize(.small)
+                                    } else {
+                                        Image(systemName: "film").foregroundStyle(.secondary)
+                                    }
+                                }
+                        }
+                    }
+                    .frame(width: cardWidth, height: cardHeight)
+                    .clipped()
+
+                    // Hover overlay — image content always dark, so keep
+                    // contrast overlay dark (not theme-aware) for legibility
+                    // of the play icon over thumbnails.
+                    if isHovering {
+                        Color.black.opacity(0.35)
+
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.white.opacity(0.95))
+                            .neonGlow(.white, isActive: true, radius: 8)
+
+                        VStack {
+                            Spacer()
+                            LinearGradient(colors: [.clear, .black.opacity(0.8)],
+                                           startPoint: .top, endPoint: .bottom)
+                                .frame(height: 50)
+                        }
+                    }
+
+                    // Duration badge — over thumbnail image, stays dark for contrast
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Text(wallpaper.formattedDuration)
+                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule().fill(Color.black.opacity(0.6))
+                                )
+                                .padding(6)
+                        }
+                        Spacer()
+                    }
+
+                    // Active indicator
+                    if wallpaper.id == wallpaperManager.currentWallpaper?.id {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.accentColor, lineWidth: 2)
+                            .neonGlow(.accentColor, isActive: true, radius: 6)
                     }
                 }
                 .frame(width: cardWidth, height: cardHeight)
-                .clipped()
-
-                // Hover overlay — image content always dark, so keep
-                // contrast overlay dark (not theme-aware) for legibility
-                // of the play icon over thumbnails.
-                if isHovering {
-                    Color.black.opacity(0.35)
-
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(.white.opacity(0.95))
-                        .neonGlow(.white, isActive: true, radius: 8)
-
-                    VStack {
-                        Spacer()
-                        LinearGradient(colors: [.clear, .black.opacity(0.8)],
-                                       startPoint: .top, endPoint: .bottom)
-                            .frame(height: 50)
-                    }
-                }
-
-                // Duration badge — over thumbnail image, stays dark for contrast
-                VStack {
-                    HStack {
-                        Spacer()
-                        Text(wallpaper.formattedDuration)
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule().fill(Color.black.opacity(0.6))
-                            )
-                            .padding(6)
-                    }
-                    Spacer()
-                }
-
-                // Active indicator
-                if wallpaper.id == wallpaperManager.currentWallpaper?.id {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.accentColor, lineWidth: 2)
-                        .neonGlow(.accentColor, isActive: true, radius: 6)
-                }
-            }
-            .frame(width: cardWidth, height: cardHeight)
-            .overlay(
-                // Specular highlight — follows pointer, intensifies with
-                // tilt magnitude. The gradient angle subtly tracks the
-                // y-axis rotation so it looks like a real light source
-                // staying overhead as the card tilts.
-                LinearGradient(
-                    stops: [
-                        .init(color: .white.opacity(0), location: max(0, glareOffset - 0.28)),
-                        .init(color: .white.opacity(specularIntensity), location: glareOffset),
-                        .init(color: .white.opacity(0), location: min(1, glareOffset + 0.28))
-                    ],
-                    startPoint: UnitPoint(x: 0.5 - tiltY / 50, y: 0),
-                    endPoint: UnitPoint(x: 0.5 + tiltY / 50, y: 1)
+                .overlay(
+                    // Specular highlight — follows pointer, intensifies with
+                    // tilt magnitude. The gradient angle subtly tracks the
+                    // y-axis rotation so it looks like a real light source
+                    // staying overhead as the card tilts.
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white.opacity(0), location: max(0, glareOffset - 0.28)),
+                            .init(color: .white.opacity(specularIntensity), location: glareOffset),
+                            .init(color: .white.opacity(0), location: min(1, glareOffset + 0.28))
+                        ],
+                        startPoint: UnitPoint(x: 0.5 - tiltY / 50, y: 0),
+                        endPoint: UnitPoint(x: 0.5 + tiltY / 50, y: 1)
+                    )
+                    .blendMode(.plusLighter)
+                    .allowsHitTesting(false)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 )
-                .blendMode(.plusLighter)
-                .allowsHitTesting(false)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            )
-            .glowCard(isHovering: isHovering, cornerRadius: 8)
-            .rotation3DEffect(.degrees(tiltX), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
-            .rotation3DEffect(.degrees(tiltY), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
-            .scaleEffect(isHovering ? 1.04 : 1.0)
-            .background(
-                // Trackpad/mouse position tracker (overlay placed in front of the card for hit testing)
-                GeometryReader { proxy in
-                    Color.clear.contentShape(Rectangle())
-                        .onContinuousHover { phase in
-                            switch phase {
-                            case .active(let loc):
-                                let now = CACurrentMediaTime()
-                                guard now - lastPointerWrite >= Self.pointerThrottle else { return }
-                                lastPointerWrite = now
-                                pointer = CGPoint(
-                                    x: min(max(loc.x / proxy.size.width, 0), 1),
-                                    y: min(max(loc.y / proxy.size.height, 0), 1)
-                                )
-                            case .ended:
-                                pointer = CGPoint(x: 0.5, y: 0.5)
+                .glowCard(isHovering: isHovering, cornerRadius: 8)
+                .rotation3DEffect(.degrees(tiltX), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+                .rotation3DEffect(.degrees(tiltY), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
+                .scaleEffect(isHovering && !reduceMotion ? 1.04 : 1.0)
+                .background(
+                    // Trackpad/mouse position tracker (overlay placed in front of the card for hit testing)
+                    GeometryReader { proxy in
+                        Color.clear.contentShape(Rectangle())
+                            .onContinuousHover { phase in
+                                switch phase {
+                                case .active(let loc):
+                                    guard !reduceMotion, proxy.size.width > 0, proxy.size.height > 0 else { return }
+                                    let now = CACurrentMediaTime()
+                                    guard now - lastPointerWrite >= Self.pointerThrottle else { return }
+                                    lastPointerWrite = now
+                                    pointer = CGPoint(
+                                        x: min(max(loc.x / proxy.size.width, 0), 1),
+                                        y: min(max(loc.y / proxy.size.height, 0), 1)
+                                    )
+                                case .ended:
+                                    pointer = CGPoint(x: 0.5, y: 0.5)
+                                }
                             }
-                        }
-                }
-            )
+                    }
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Set \(wallpaper.displayName) as wallpaper")
+            .accessibilityAddTraits(wallpaper.id == wallpaperManager.currentWallpaper?.id ? [.isSelected] : [])
+            .help("Set as wallpaper")
 
             Text(wallpaper.displayName)
                 .font(.system(size: 11, weight: .medium))
@@ -502,11 +582,8 @@ struct CarouselCard: View {
                 .truncationMode(.tail)
                 .frame(width: cardWidth, alignment: .leading)
         }
-        .animation(.spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
+        .animation(reduceMotion ? nil : .spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
         .onHover { h in isHovering = h }
-        .onTapGesture(count: 2) {
-            wallpaperManager.setWallpaper(wallpaper)
-        }
         .contextMenu {
             WallpaperContextMenu(wallpaper: wallpaper, onRename: {
                 renameText = wallpaper.displayName
@@ -519,8 +596,13 @@ struct CarouselCard: View {
                 renamingWallpaper = nil
             }, onCancel: { renamingWallpaper = nil })
         }
-        .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))
+        .task(id: wallpaper.id) {
+            thumbnail = nil
+            isLoadingThumbnail = true
+            let image = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))
+            guard !Task.isCancelled else { return }
+            thumbnail = image
+            isLoadingThumbnail = false
         }
     }
 }

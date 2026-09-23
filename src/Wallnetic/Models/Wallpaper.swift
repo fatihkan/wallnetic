@@ -141,6 +141,12 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
 
 /// Shared ordering behavior for filtered and sorted library views.
 enum WallpaperBrowsing {
+    /// Keep the visible selection stable when the library is reordered or
+    /// edited, and immediately recover when the selected item is removed.
+    static func selected(in wallpapers: [Wallpaper], currentID: UUID?) -> Wallpaper? {
+        wallpapers.first(where: { $0.id == currentID }) ?? wallpapers.first
+    }
+
     static func adjacent(in wallpapers: [Wallpaper], currentID: UUID?, backwards: Bool) -> Wallpaper? {
         guard !wallpapers.isEmpty else { return nil }
         guard let index = wallpapers.firstIndex(where: { $0.id == currentID }) else {
