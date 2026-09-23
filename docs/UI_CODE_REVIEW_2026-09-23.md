@@ -51,3 +51,25 @@ Yerel testte CI ile aynı imzalama/sandbox ayarları kullanıldı. İmzalı App 
 - `VideoTrimmer.swift:47` ve `WallpaperMetadataCache.swift:275`: Sendable olmayan değerlerin eşzamanlı closure'larda yakalanması için derleyici uyarıları var. Bunlar ayrı bir actor izolasyonu incelemesi gerektiriyor; bu çalışmada çalışma zamanı yarışı kanıtlanmadı.
 - XcodeGen'in ortak widget model klasörünü birden fazla gruba koymasına ilişkin proje uyarısı devam ediyor. Derleme ve testleri engellemiyor.
 - Kullanıcının mevcut `docs/SOCIAL_MEDIA.md` ve `scripts/` değişikliklerine müdahale edilmedi.
+
+## İkinci tur — ana sayfa, galeri ve ayarlar
+
+İlk turun PR #239 ile `dev` içine alınmasının ardından, `fix/home-gallery-review` branch'inde devam edildi.
+
+| Bulgu | Düzeltme |
+| --- | --- |
+| Ana sayfa seçiminde dizi indeksi kullanılıyordu. Silme veya sıralama değişikliği, başka başlıkla eski görselin eşleşmesine ya da ana görselin boş kalmasına yol açabiliyordu. | Seçim UUID üzerinden çözülüyor; seçilen öğe artık yoksa ilk geçerli öğeye dönülüyor. Görsel görevleri de duvar kâğıdı kimliğine bağlı. |
+| Ana başlık, kullanıcının verdiği özel ad yerine orijinal dosya adını gösteriyordu. | `displayName` kullanılıyor; favori ve oynatma/duraklatma durumları da açıkça gösteriliyor. |
+| Otomatik ana görsel geçişi durdurulamıyor ve Hareketi Azalt tercihini dikkate almıyordu. | Önceki/sonraki, doğrudan seçim ve duraklatma kontrolleri eklendi. Kullanıcı gezinmesi otomatik geçişi durduruyor; hover, pasif uygulama ve Hareketi Azalt durumunda geçiş yapılmıyor. Görünüme bağlı iptal edilebilir görev, eski Timer'ın yerini aldı. |
+| Ana sayfa kartları çift tıklama, 3D galeri dış katmanı tek tıklama bekliyordu. | Tek, erişilebilir düğme eylemi kullanılıyor; galeri callback'i aynı düğmeden çağrılıyor. |
+| Kart parlamasında hover yokken negatif ve sırasız gradient durakları oluşuyordu. | Parlama merkezi 0…1 aralığında tutuluyor. Hover dönüşleri ve galeri perspektifi Hareketi Azalt tercihinde devre dışı. |
+| Küçük resimlerin NSImage boyutu, çözümlenen karenin ölçüsü yerine istenen sınırlayıcı kutuya atanıyordu; dikey/kare videolar geriliyordu. | Görüntünün gerçek piksel ölçüsü korunuyor. Yerleşim kırpmasını SwiftUI yapıyor. |
+| Ana sayfa kartları başarısız küçük resim üretiminde süresiz yükleniyor görünüyordu. | Yükleme ve başarısız önizleme durumları ayrıldı. |
+| Tema seçenekleri yalnızca tap gesture ile çalışıyordu; ayarların seçili simgeleri açık temada beyaz kalıyordu. | Tema satırları erişilebilir düğmelere çevrildi; ayar simgeleri temaya uyumlu ve klavye odak göstergeleri etkin. |
+| Oturum açınca başlat anahtarı hatada yanlış durumda kalıyordu. Ayarlar açılırken durum okumak da gereksiz kayıt işlemi tetikleyebiliyordu. | Sistem durumu ile kullanıcı eylemi ayrıldı. Hata gösteriliyor, anahtar gerçek durumla eşitleniyor; sistem onayı gerektiğinde Login Items bağlantısı sunuluyor. |
+
+Galeri derinlik hesabı tek kaydırma ölçümüne alındı; katman sırası doğrudan kardeş kartlara uygulanıyor. Görsel inceleme sırasında AppKit bitmap yakalamasında görülen 3D kart yığılması, gerçek pencere ekran görüntüsüyle karşılaştırılarak yakalama aracına ait bir sorun olarak ayrıştırıldı.
+
+Doğrulama: **168 test geçti, 0 hata**; bu turda **7 yeni test** eklendi. Dikey, kare ve yatay H.264 test videoları çalışma sırasında oluşturulup gerçek AVFoundation küçük resim hattından geçirildi. Ana sayfa/tema ayarları açık-koyu görünümde, galeri ise gerçek pencere görüntüleriyle kontrol edildi. Görsel kontrol verileri `/tmp` altındaki ayrı uygulama alanında tutuldu.
+
+Gerçek oturum açma kaydı değiştirilmedi; sistem onayı gerektiren akış imzalı dağıtım üzerinde uçtan uca denenmedi. Bu tur için GitHub CI çalıştırılmadı.

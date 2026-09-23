@@ -72,24 +72,31 @@ struct AppearanceSettingsView: View {
                     .help("UI accent color adapts to the current wallpaper's dominant color")
 
                 ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                    HStack {
-                        Image(systemName: mode.icon)
-                            .foregroundColor(mode == .dark ? .purple : (mode == .light ? .orange : .accentColor))
-                            .frame(width: 24)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(mode.rawValue)
-                            Text(descriptionFor(mode))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    Button {
+                        themeManager.appearanceMode = mode
+                    } label: {
+                        HStack {
+                            Image(systemName: mode.icon)
+                                .foregroundColor(mode == .dark ? .purple : (mode == .light ? .orange : .accentColor))
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(mode.rawValue)
+                                Text(descriptionFor(mode))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if themeManager.appearanceMode == mode {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.accentColor)
+                            }
                         }
-                        Spacer()
-                        if themeManager.appearanceMode == mode {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.accentColor)
-                        }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture { themeManager.appearanceMode = mode }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(mode.rawValue)
+                    .accessibilityValue(descriptionFor(mode))
+                    .accessibilityAddTraits(themeManager.appearanceMode == mode ? [.isSelected] : [])
                 }
             }
         }
@@ -110,6 +117,8 @@ struct AppearanceSettingsView: View {
 struct GeneralSettingsView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var launchAtLoginEnabled = false
+    @State private var loginItemNeedsApproval = false
+    @State private var loginItemError: String?
     @AppStorage("hideDockIcon") private var hideDockIcon = false
     @AppStorage("island.enabled") private var islandEnabled = false
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = false
@@ -118,10 +127,20 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Launch at login", isOn: $launchAtLoginEnabled)
-                    .onChange(of: launchAtLoginEnabled) { newValue in
-                        setLaunchAtLogin(enabled: newValue)
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLoginEnabled },
+                    set: { setLaunchAtLogin(enabled: $0) }
+                ))
+                if loginItemNeedsApproval {
+                    HStack {
+                        Text("Allow Wallnetic in Login Items to finish enabling launch at login.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
+                            .controlSize(.small)
                     }
+                }
                 Toggle("Show in menu bar", isOn: .constant(true))
                     .disabled(true)
                     .help("Menu bar icon is always shown")
@@ -159,7 +178,24 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .onAppear { launchAtLoginEnabled = SMAppService.mainApp.status == .enabled }
+        .onAppear { refreshLoginItemStatus() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshLoginItemStatus()
+        }
+        .alert("Launch at login could not be updated", isPresented: Binding(
+            get: { loginItemError != nil },
+            set: { if !$0 { loginItemError = nil } }
+        )) {
+            Button("OK") { loginItemError = nil }
+        } message: {
+            Text(loginItemError ?? "")
+        }
+    }
+
+    private func refreshLoginItemStatus() {
+        let status = SMAppService.mainApp.status
+        launchAtLoginEnabled = status == .enabled || status == .requiresApproval
+        loginItemNeedsApproval = status == .requiresApproval
     }
 
     private func setLaunchAtLogin(enabled: Bool) {
@@ -168,7 +204,9 @@ struct GeneralSettingsView: View {
             else { try SMAppService.mainApp.unregister() }
         } catch {
             Log.app.error("Failed to set launch at login: \(error.localizedDescription, privacy: .public)")
+            loginItemError = error.localizedDescription
         }
+        refreshLoginItemStatus()
     }
 }
 

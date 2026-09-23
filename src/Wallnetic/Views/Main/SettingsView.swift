@@ -281,7 +281,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .spaces:        return Color(red: 0.55, green: 0.80, blue: 1.00)
         case .display:       return Color(red: 0.65, green: 0.85, blue: 0.50)
         case .notifications: return Color(red: 1.00, green: 0.60, blue: 0.45)
-        case .about:         return Color.white.opacity(0.85)
+        case .about:         return Color.primary.opacity(0.85)
         }
     }
 }
@@ -308,7 +308,7 @@ private struct SidebarRow: View {
                     }
                     Image(systemName: section.icon)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isSelected ? .white : .primary.opacity(hover ? 0.75 : 0.55))
+                        .foregroundColor(isSelected ? .primary : .primary.opacity(hover ? 0.75 : 0.55))
                 }
                 .frame(width: 22, height: 22)
 
@@ -347,7 +347,8 @@ private struct SidebarRow: View {
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
-        .suppressFocusRing()
+        .accessibilityLabel(section.title)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .onHover { hover = $0 }
         .animation(.easeOut(duration: 0.12), value: hover)
         .animation(.easeOut(duration: 0.18), value: isSelected)
