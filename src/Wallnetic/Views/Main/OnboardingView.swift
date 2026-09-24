@@ -264,16 +264,20 @@ struct OnboardingView: View {
     }
 }
 
-/// macOS 15+ uses a platform-selected presentation size by default. Request
-/// the content's fixed ideal size explicitly; older systems use fixedSize.
+/// New SDKs support explicit fitted presentation sizing. Keep fixedSize as
+/// the fallback for older systems and the project's Xcode 15.2 toolchain.
 private struct OnboardingSheetSizing: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
+        #if compiler(>=6.0)
         if #available(macOS 15.0, *) {
             content.presentationSizing(.fitted)
         } else {
             content
         }
+        #else
+        content
+        #endif
     }
 }
 
