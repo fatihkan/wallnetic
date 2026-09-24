@@ -349,7 +349,6 @@ class DesktopWindowController {
         playbackActivity = ProcessInfo.processInfo.beginActivity(
             options: [
                 .userInitiatedAllowingIdleSystemSleep,
-                .idleSystemSleepDisabled,
                 .suddenTerminationDisabled,
                 .automaticTerminationDisabled
             ],
