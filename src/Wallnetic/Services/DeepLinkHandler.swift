@@ -19,11 +19,17 @@ class DeepLinkHandler {
 
         let host = url.host ?? ""
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        let params = Dictionary(uniqueKeysWithValues:
-            (components?.queryItems ?? []).compactMap { item in
-                item.value.map { (item.name, $0) }
+        var params: [String: String] = [:]
+        var names = Set<String>()
+        for item in components?.queryItems ?? [] {
+            // Query names are already percent-decoded. Reject ambiguous input
+            // before routing any action; uniqueKeysWithValues traps on repeats.
+            guard names.insert(item.name).inserted else {
+                Log.deepLink.error("Rejected duplicate query parameter")
+                return
             }
-        )
+            if let value = item.value { params[item.name] = value }
+        }
 
         // Log only host + path. Query string can contain tokens / credentials
         // from external referrers and should not be public-level diagnostic.

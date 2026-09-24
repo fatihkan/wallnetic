@@ -29,6 +29,7 @@ enum MLWDecryptor {
         case invalidBlockID(UInt32)
         case decryptionFailed
         case fileTooSmall
+        case invalidBlockSize
         case noMLWInArchive
 
         var errorDescription: String? {
@@ -38,6 +39,7 @@ enum MLWDecryptor {
             case .invalidBlockID(let id): return "Unexpected block ID: \(String(format: "0x%08X", id))"
             case .decryptionFailed: return "AES-GCM decryption failed"
             case .fileTooSmall: return "MLW file is too small"
+            case .invalidBlockSize: return "MLW block extends beyond the file or has an invalid size"
             case .noMLWInArchive: return "No .mlw file found in ZIP archive"
             }
         }
@@ -47,6 +49,8 @@ enum MLWDecryptor {
 
     /// Decrypt an MLW file to MP4 data
     static func decrypt(data: Data) throws -> Data {
+        // Data slices may have a nonzero startIndex; parsing uses zero offsets.
+        let data = Data(data)
         guard data.count > 80 else { throw MLWError.fileTooSmall }
 
         var pos = 0
@@ -75,17 +79,22 @@ enum MLWDecryptor {
         pos += 4
         guard metaBlockID == 0x01010101 else { throw MLWError.invalidBlockID(metaBlockID) }
 
-        let metaBlockSize = Int(data.uint64BE(at: pos))
+        let metaBlockSize = data.uint64BE(at: pos)
         pos += 8
-        pos += metaBlockSize // skip metadata content
+        guard metaBlockSize <= UInt64(data.count - pos) else { throw MLWError.invalidBlockSize }
+        pos += Int(metaBlockSize)
+        guard data.count - pos >= 12 else { throw MLWError.invalidBlockSize }
 
         // 4. Read encrypted data block (block ID 0x02020202)
         let dataBlockID = data.uint32BE(at: pos)
         pos += 4
         guard dataBlockID == 0x02020202 else { throw MLWError.invalidBlockID(dataBlockID) }
 
-        let dataBlockSize = Int(data.uint64BE(at: pos))
+        let rawDataBlockSize = data.uint64BE(at: pos)
         pos += 8
+        guard rawDataBlockSize >= 32,
+              rawDataBlockSize <= UInt64(data.count - pos) else { throw MLWError.invalidBlockSize }
+        let dataBlockSize = Int(rawDataBlockSize)
 
         // Block data: [16-byte IV] [encrypted payload] [16-byte GCM tag]
         let ivData = data[pos..<pos + 12]          // Only first 12 bytes used as GCM nonce
@@ -148,9 +157,13 @@ enum MLWDecryptor {
 enum ZIPReader {
 
     private static let localFileHeaderSig: UInt32 = 0x04034b50
+    // This reader extracts into memory. Never allocate an untrusted header's
+    // declared size without a limit (the ZIP field can request nearly 4 GiB).
+    static let maximumExtractedSize = 512 * 1024 * 1024
 
     /// Extract the first file whose name ends with the given suffix
     static func extractFirst(matching suffix: String, from data: Data) -> Data? {
+        let data = Data(data)
         var offset = 0
 
         while offset + 30 <= data.count {
@@ -173,9 +186,12 @@ enum ZIPReader {
             guard dataStart + compressedSize <= data.count else { break }
 
             if fileName.lowercased().hasSuffix(suffix.lowercased()) {
+                guard uncompressedSize > 0, uncompressedSize <= maximumExtractedSize,
+                      compressedSize > 0, compressedSize <= maximumExtractedSize else { return nil }
                 let fileData = data[dataStart..<dataStart + compressedSize]
 
                 if compressionMethod == 0 {
+                    guard compressedSize == uncompressedSize else { return nil }
                     // Stored (no compression)
                     return Data(fileData)
                 } else if compressionMethod == 8 {
@@ -202,6 +218,7 @@ enum ZIPReader {
 
     /// Inflate (decompress) deflate-compressed data using raw deflate (no zlib header)
     private static func inflate(_ data: Data, expectedSize: Int) -> Data? {
+        guard !data.isEmpty, expectedSize > 0, expectedSize <= maximumExtractedSize else { return nil }
         // Use NSData's built-in decompression isn't available, use compression framework
         var decompressed = Data(count: expectedSize)
         let result = decompressed.withUnsafeMutableBytes { destPtr in
@@ -216,7 +233,7 @@ enum ZIPReader {
                 )
             }
         }
-        guard result > 0 else { return nil }
+        guard result == expectedSize else { return nil }
         decompressed.count = result
         return decompressed
     }
