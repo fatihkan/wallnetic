@@ -24,7 +24,7 @@ struct WallneticApp: App {
                     }
                 }
         }
-        .windowStyle(.hiddenTitleBar)
+        .windowStyle(.titleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
         .commands {
@@ -38,15 +38,14 @@ struct WallneticApp: App {
         }
         .handlesExternalEvents(matching: [])
 
-        // Settings Window — own WindowGroup so .windowStyle(.hiddenTitleBar)
-        // actually applies (`Settings {}` scene resists it). We wire ⌘,
-        // manually so the keyboard shortcut and menu item still work.
+        // Keep native window controls in their own title bar on both scenes.
+        // We wire ⌘, manually to this settings WindowGroup.
         WindowGroup(id: "settings") {
             SettingsView()
                 .environmentObject(wallpaperManager)
                 .cinematicWindowChrome()
         }
-        .windowStyle(.hiddenTitleBar)
+        .windowStyle(.titleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
         .handlesExternalEvents(matching: [])

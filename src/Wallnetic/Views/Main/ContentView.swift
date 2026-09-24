@@ -135,7 +135,9 @@ struct ContentView: View {
             )
         }
         .sheet(isPresented: $showingOnboarding) {
-            OnboardingView(isPresented: $showingOnboarding)
+            OnboardingView(isPresented: $showingOnboarding) {
+                hasCompletedOnboarding = true
+            }
         }
         .sheet(isPresented: $showingPhotosImport) {
             CreateFromPhotosView()
@@ -145,7 +147,6 @@ struct ContentView: View {
         .onAppear {
             if !hasCompletedOnboarding {
                 showingOnboarding = true
-                hasCompletedOnboarding = true
             }
             dynamicAccent.applyFrom(wallpaper: wallpaperManager.currentWallpaper)
         }
