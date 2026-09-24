@@ -4,6 +4,7 @@ import SwiftUI
 /// orb, staggered typography reveal, custom progress capsule.
 struct OnboardingView: View {
     @Binding var isPresented: Bool
+    var onComplete: () -> Void = {}
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var currentStep = 0
     @State private var orbPhase: Double = 0
@@ -74,6 +75,9 @@ struct OnboardingView: View {
             }
         }
         .frame(width: 640, height: 520)
+        .fixedSize()
+        .clipped()
+        .modifier(OnboardingSheetSizing())
         .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
         .onAppear {
             withAnimation(.linear(duration: 16).repeatForever(autoreverses: true)) {
@@ -210,6 +214,11 @@ struct OnboardingView: View {
         .animation(.spring(response: 0.55, dampingFraction: 0.82), value: currentStep)
     }
 
+    private func finish() {
+        onComplete()
+        withAnimation { isPresented = false }
+    }
+
     // MARK: - Controls (progress + buttons)
 
     private var controls: some View {
@@ -235,7 +244,7 @@ struct OnboardingView: View {
                     }
                 } else {
                     WallneticButton.cancel("Skip") {
-                        withAnimation { isPresented = false }
+                        finish()
                     }
                 }
 
@@ -247,10 +256,23 @@ struct OnboardingView: View {
                     }
                 } else {
                     WallneticButton.primary("Enter Wallnetic", icon: "sparkles", accent: step.accent) {
-                        withAnimation { isPresented = false }
+                        finish()
                     }
                 }
             }
+        }
+    }
+}
+
+/// macOS 15+ uses a platform-selected presentation size by default. Request
+/// the content's fixed ideal size explicitly; older systems use fixedSize.
+private struct OnboardingSheetSizing: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.presentationSizing(.fitted)
+        } else {
+            content
         }
     }
 }

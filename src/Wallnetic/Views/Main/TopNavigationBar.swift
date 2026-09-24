@@ -95,7 +95,7 @@ struct TopNavigationBar: View {
                 .accessibilityLabel("Settings")
             }
         }
-        .padding(.leading, 84)        // reserve traffic-light real estate
+        .padding(.leading, Space.md)
         .padding(.trailing, Space.md)
         .padding(.vertical, Space.xs + 2)
         .background(navBackground)
@@ -122,8 +122,7 @@ struct TopNavigationBar: View {
         }
     }
 
-    /// In-window toolbar background. Traffic lights overlay this strip;
-    /// content scrolls beneath it. Glass intensifies as user scrolls.
+    /// In-window toolbar below the native title bar. Glass intensifies on scroll.
     private var navBackground: some View {
         ZStack {
             Rectangle()
