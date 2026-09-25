@@ -19,10 +19,7 @@ enum NavigationTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// Striking glass navigation bar with neon-glow tabs.
-/// Phase C revision: gradient-underline active tab, frosted material
-/// background, full search bar (not just an icon), uniform action button
-/// chrome shared by Import + Settings.
+/// Non-overlapping navigation, library search, and window actions.
 struct TopNavigationBar: View {
     @Binding var selectedTab: NavigationTab
     @Binding var searchText: String
@@ -43,16 +40,13 @@ struct TopNavigationBar: View {
     }
 
     var body: some View {
-        ZStack {
-            // LEFT: search
-            HStack {
-                searchControl
-                    .frame(maxWidth: 240, alignment: .leading)
-                Spacer()
-            }
+        HStack(spacing: Space.md) {
+            searchControl
+                .frame(width: 220, alignment: .leading)
 
-            // CENTER: logo + tabs
-            HStack(spacing: 18) {
+            Spacer(minLength: 0)
+
+            HStack(spacing: Space.sm) {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -67,10 +61,9 @@ struct TopNavigationBar: View {
                 }
             }
 
-            // RIGHT: import + settings
-            HStack(spacing: 10) {
-                Spacer()
+            Spacer(minLength: 0)
 
+            HStack(spacing: Space.xs) {
                 Menu {
                     Button {
                         isImporting = true
@@ -90,7 +83,6 @@ struct TopNavigationBar: View {
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .frame(width: 30, height: 30)
-                .suppressFocusRing()
                 .accessibilityLabel("Add wallpaper")
 
                 Button {
@@ -100,11 +92,10 @@ struct TopNavigationBar: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(",", modifiers: .command)
-                .suppressFocusRing()
                 .accessibilityLabel("Settings")
             }
         }
-        .padding(.leading, 84)        // reserve traffic-light real estate
+        .padding(.leading, Space.md)
         .padding(.trailing, Space.md)
         .padding(.vertical, Space.xs + 2)
         .background(navBackground)
@@ -131,8 +122,7 @@ struct TopNavigationBar: View {
         }
     }
 
-    /// In-window toolbar background. Traffic lights overlay this strip;
-    /// content scrolls beneath it. Glass intensifies as user scrolls.
+    /// In-window toolbar below the native title bar. Glass intensifies on scroll.
     private var navBackground: some View {
         ZStack {
             Rectangle()
@@ -193,11 +183,18 @@ struct TopNavigationBar: View {
             )
         }
         .buttonStyle(.plain)
-        .suppressFocusRing()
         .accessibilityLabel(tab.rawValue)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .onHover { h in
             withAnimation(.easeOut(duration: Anim.micro)) { hoveredTab = h ? tab : nil }
+        }
+    }
+
+    private func closeSearch() {
+        withAnimation(.easeOut(duration: Anim.fast)) {
+            searchFocused = false
+            isSearching = false
+            searchText = ""
         }
     }
 
@@ -219,28 +216,20 @@ struct TopNavigationBar: View {
                 .font(.system(size: 12))
                 .foregroundColor(.primary)
                 .focused($searchFocused)
-                .frame(width: 170)
-                .onExitCommand {
-                    withAnimation(.easeOut(duration: Anim.fast)) {
-                        isSearching = false
-                        searchText = ""
-                    }
-                }
+                .frame(minWidth: 100, maxWidth: .infinity)
+                .onExitCommand { closeSearch() }
                 .accessibilityLabel("Search wallpapers")
 
                 Button {
-                    withAnimation(.easeOut(duration: Anim.fast)) {
-                        isSearching = false
-                        searchText = ""
-                    }
+                    closeSearch()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 11))
                         .foregroundColor(.primary.opacity(0.45))
                 }
                 .buttonStyle(.plain)
-                .suppressFocusRing()
-                .accessibilityLabel("Clear search")
+                .accessibilityLabel("Close search and clear query")
+                .help("Close search (Esc)")
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -253,6 +242,12 @@ struct TopNavigationBar: View {
             .shadow(color: .accentColor.opacity(0.25), radius: 6)
             .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
             .onAppear { searchFocused = true }
+            .background {
+                Button("Focus search") { searchFocused = true }
+                    .keyboardShortcut("f", modifiers: .command)
+                    .hidden()
+                    .accessibilityHidden(true)
+            }
         } else {
             Button {
                 withAnimation(.easeOut(duration: Anim.normal)) { isSearching = true }
@@ -272,7 +267,7 @@ struct TopNavigationBar: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .frame(width: 180)
+                .frame(maxWidth: .infinity)
                 .background(
                     ZStack {
                         Capsule().fill(Surface.glassControl)
@@ -282,7 +277,6 @@ struct TopNavigationBar: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut("f", modifiers: .command)
-            .suppressFocusRing()
             .accessibilityLabel("Search wallpapers")
         }
     }

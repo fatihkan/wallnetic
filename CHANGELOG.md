@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-09-24
+
+### Fixed
+- More reliable wallpaper loading, switching and looping, with aspect-fill
+  playback that preserves video proportions. Ordinary foreground windows no
+  longer repeatedly pause and restart the wallpaper decoder.
+- Playback callbacks and pending loads now respect pause, stop and replacement;
+  Metal frames retain their Core Video backing until GPU work completes.
+- User-requested pauses remain paused across power and session events, while
+  active playback no longer blocks normal idle system sleep.
+- Main and Settings use native title bars to address missing window controls
+  reported on macOS 26.6.2. Reporter confirmation remains pending in #237.
+- First-launch onboarding uses fixed content sizing and saves completion only
+  after Skip or Enter Wallnetic, rather than immediately on presentation.
+- Library imports, gallery previews, search/navigation and Settings interactions
+  include the reliability and accessibility fixes from #236, #239 and #240.
+- Duplicate deep-link query names and invalid MLW block lengths are rejected
+  without terminating the app. ZIP extraction rejects entries declaring more
+  than 512 MiB of expanded data before allocating their output buffer.
+
+### Changed
+- Wallpaper changes are currently instant; inactive transition controls have
+  been replaced with an explanation of the supported behavior.
+
 ## [1.4.1] — 2026-08-08
 
 Wallnetic decoded the wallpaper at full rate in three situations where nothing

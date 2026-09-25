@@ -16,6 +16,8 @@ struct ContentView: View {
     @AppStorage("hasSeenDesktopHint") private var hasSeenDesktopHint = false
     @State private var showingOnboarding = false
     @State private var importError: String?
+    @State private var isDropTargeted = false
+    @State private var pendingImports = 0
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -56,13 +58,17 @@ struct ContentView: View {
                 default:
                     if wallpaperManager.wallpapers.isEmpty && selectedTab != .discover {
                         Color.clear
-                            .overlay { EmptyLibraryView(isImporting: $isImporting) }
+                            .overlay {
+                                EmptyLibraryView(isImporting: $isImporting) {
+                                    selectedTab = .discover
+                                }
+                            }
                     } else {
                         switch selectedTab {
                         case .home:
                             HomeView()
                         case .explore:
-                            ExploreView(searchText: searchText)
+                            ExploreView(searchText: $searchText)
                         case .popular:
                             PopularView()
                         default:
@@ -76,14 +82,41 @@ struct ContentView: View {
         .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
         .fileImporter(
             isPresented: $isImporting,
-            allowedContentTypes: [.movie, .mpeg4Movie, .quickTimeMovie],
+            allowedContentTypes: [.movie] + WallpaperManager.supportedImportExtensions.compactMap { UTType(filenameExtension: $0) },
             allowsMultipleSelection: true
         ) { result in
             handleImport(result)
         }
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
             handleDrop(providers)
-            return true
+        }
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: Radius.panel)
+                    .fill(Surface.windowFill.opacity(0.95))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Radius.panel)
+                            .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8]))
+                    }
+                    .overlay {
+                        Label("Drop videos to add to your library", systemImage: "square.and.arrow.down")
+                            .font(Typo.title2)
+                    }
+                    .padding(Space.md)
+                    .allowsHitTesting(false)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if pendingImports > 0 {
+                HStack(spacing: Space.sm) {
+                    ProgressView().controlSize(.small)
+                    Text("Importing \(pendingImports) file(s)…")
+                        .font(Typo.body)
+                }
+                .padding(Space.md)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.control))
+                .padding(Space.lg)
+            }
         }
         .frame(minWidth: 900, minHeight: 600)
         .alert("Import Error", isPresented: Binding(
@@ -102,7 +135,9 @@ struct ContentView: View {
             )
         }
         .sheet(isPresented: $showingOnboarding) {
-            OnboardingView(isPresented: $showingOnboarding)
+            OnboardingView(isPresented: $showingOnboarding) {
+                hasCompletedOnboarding = true
+            }
         }
         .sheet(isPresented: $showingPhotosImport) {
             CreateFromPhotosView()
@@ -112,7 +147,6 @@ struct ContentView: View {
         .onAppear {
             if !hasCompletedOnboarding {
                 showingOnboarding = true
-                hasCompletedOnboarding = true
             }
             dynamicAccent.applyFrom(wallpaper: wallpaperManager.currentWallpaper)
         }
@@ -126,36 +160,48 @@ struct ContentView: View {
     private func handleImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            Task {
-                for url in urls {
-                    if url.startAccessingSecurityScopedResource() {
-                        defer { url.stopAccessingSecurityScopedResource() }
-                        do {
-                            _ = try await wallpaperManager.importVideo(from: url)
-                        } catch {
-                            await MainActor.run { importError = error.localizedDescription }
-                        }
-                    }
-                }
-            }
+            Task { await importFiles(urls) }
         case .failure(let error):
             Log.ui.error("File picker error: \(error.localizedDescription, privacy: .public)")
+            importError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func importFiles(_ urls: [URL]) async {
+        pendingImports += urls.count
+        for url in urls {
+            let hasAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if hasAccess { url.stopAccessingSecurityScopedResource() }
+                pendingImports -= 1
+            }
+            do {
+                _ = try await wallpaperManager.importVideo(from: url)
+            } catch {
+                let message = "\(url.lastPathComponent): \(error.localizedDescription)"
+                importError = [importError, message].compactMap { $0 }.joined(separator: "\n")
+            }
         }
     }
 
     // MARK: - Drop
 
-    private func handleDrop(_ providers: [NSItemProvider]) {
-        for provider in providers {
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        let fileProviders = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }
+        for provider in fileProviders {
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
-                guard let data = item as? Data,
-                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                Task {
-                    do { _ = try await wallpaperManager.importVideo(from: url) }
-                    catch { await MainActor.run { importError = error.localizedDescription } }
+                Task { @MainActor in
+                    let url = (item as? URL) ?? (item as? Data).flatMap { URL(dataRepresentation: $0, relativeTo: nil) }
+                    guard let url else {
+                        importError = error?.localizedDescription ?? "The dropped file could not be read. Try importing it with the file picker."
+                        return
+                    }
+                    await importFiles([url])
                 }
             }
         }
+        return !fileProviders.isEmpty
     }
 }
 
@@ -163,89 +209,58 @@ struct ContentView: View {
 
 struct EmptyLibraryView: View {
     @Binding var isImporting: Bool
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var isHovering = false
+    var onDiscover: () -> Void = {}
 
     var body: some View {
-        VStack(spacing: 28) {
-            Spacer()
+        VStack(spacing: Space.xl) {
+            Image(systemName: "play.rectangle.on.rectangle")
+                .font(.system(size: 44, weight: .light))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 104, height: 104)
+                .background(Surface.glassControl, in: RoundedRectangle(cornerRadius: Radius.panel))
+                .accessibilityHidden(true)
 
-            ZStack {
-                // Outer glow rings
-                ForEach(0..<3, id: \.self) { i in
-                    Circle()
-                        .stroke(Color.accentColor.opacity(0.08 - Double(i) * 0.02), lineWidth: 1)
-                        .frame(width: 160 + CGFloat(i) * 40, height: 160 + CGFloat(i) * 40)
-                        .scaleEffect(pulseScale + CGFloat(i) * 0.02)
+            VStack(spacing: Space.sm) {
+                Text("Make your desktop your own")
+                    .font(Typo.display)
+                    .tracking(Typo.displayTracking)
+                    .foregroundStyle(.primary)
+
+                Text("Start with a video you love. Add it to your library, then set it as your live wallpaper.")
+                    .font(Typo.body)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 360)
+            }
+            .multilineTextAlignment(.center)
+
+            HStack(spacing: Space.sm) {
+                Button {
+                    isImporting = true
+                } label: {
+                    Label("Import videos", systemImage: "plus")
+                        .font(Typo.button)
+                        .padding(.horizontal, Space.xs)
+                        .padding(.vertical, Space.xxs)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
 
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [.accentColor.opacity(0.15), .clear],
-                            center: .center, startRadius: 20, endRadius: 80
-                        )
-                    )
-                    .frame(width: 160, height: 160)
-                    .scaleEffect(pulseScale)
-
-                Image(systemName: "play.rectangle.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.accentColor, .accentColor.opacity(0.6)],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
-                    .neonGlow(.accentColor, isActive: true, radius: 12)
-            }
-            .onAppear {
-                withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
-                    pulseScale = 1.05
-                }
+                Button("Browse sources", action: onDiscover)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
             }
 
-            VStack(spacing: 8) {
-                Text("Welcome to Wallnetic")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-
-                Text("Import video files to set as your live desktop wallpaper")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.5))
+            VStack(spacing: Space.xxs) {
+                Text("You can also drag files into this window")
+                    .font(Typo.caption)
+                Text("MP4 · MOV · M4V · HEVC · GIF · WebM · WebP")
+                    .font(Typo.data)
             }
-
-            Button {
-                isImporting = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("Import Videos")
-                        .font(.system(size: 14, weight: .semibold))
-                }
-                .padding(.horizontal, 28)
-                .padding(.vertical, 12)
-                .background(
-                    ZStack {
-                        Capsule().fill(Color.accentColor)
-                        Capsule().fill(Color.white.opacity(isHovering ? 0.15 : 0))
-                    }
-                )
-                .foregroundColor(.white)
-            }
-            .buttonStyle(.plain)
-            .scaleEffect(isHovering ? 1.05 : 1.0)
-            .neonGlow(.accentColor, isActive: isHovering, radius: 16)
-            .animation(.spring(response: Anim.enter, dampingFraction: 0.7), value: isHovering)
-            .onHover { h in isHovering = h }
-
-            Text("Drag and drop MP4, MOV, or M4V files")
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.3))
-
-            Spacer()
+            .foregroundStyle(.secondary)
         }
+        .padding(Space.xxl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -275,7 +290,7 @@ struct DownloadProgressBar: View {
                 if let current = activeDownloads.first {
                     Text(current.name)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(.primary.opacity(0.8))
                         .lineLimit(1)
                 }
 
@@ -289,7 +304,7 @@ struct DownloadProgressBar: View {
                 if activeDownloads.count > 1 {
                     Text("\(activeDownloads.count) files")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal, 16)
@@ -297,7 +312,7 @@ struct DownloadProgressBar: View {
             .background(
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Rectangle().fill(Color.white.opacity(0.03))
+                        Rectangle().fill(Surface.glassControl)
                         Rectangle()
                             .fill(Color.accentColor.opacity(0.15))
                             .frame(width: geo.size.width * totalProgress)

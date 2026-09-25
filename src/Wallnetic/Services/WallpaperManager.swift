@@ -10,11 +10,14 @@ import WidgetKit
 /// Import errors
 enum WallpaperImportError: LocalizedError {
     case duplicate(String)
+    case unsupportedFile
 
     var errorDescription: String? {
         switch self {
         case .duplicate(let name):
             return "'\(name)' is already in your library"
+        case .unsupportedFile:
+            return "Choose a video or animated image in MP4, MOV, M4V, HEVC, GIF, WebM, or WebP format."
         }
     }
 }
@@ -32,12 +35,27 @@ enum WallpaperMode: String, CaseIterable {
     }
 }
 
-/// Serial gate for the import critical section (KRITIK-2). An actor's
-/// reentrancy semantics guarantee that only one call runs through the
-/// closure at a time across all concurrent importers.
+/// Holds an explicit permit across suspension points: actor isolation alone
+/// allows another import to enter whenever the current import awaits conversion.
 actor ImportGate {
-    func run<T: Sendable>(_ block: @Sendable () async throws -> T) async rethrows -> T {
-        try await block()
+    private var isRunning = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func run<T: Sendable>(_ block: @Sendable () async throws -> T) async throws -> T {
+        if isRunning {
+            await withCheckedContinuation { waiters.append($0) }
+        } else {
+            isRunning = true
+        }
+        defer {
+            if waiters.isEmpty {
+                isRunning = false
+            } else {
+                waiters.removeFirst().resume()
+            }
+        }
+        try Task.checkCancellation()
+        return try await block()
     }
 }
 
@@ -110,7 +128,7 @@ class WallpaperManager: ObservableObject {
     @AppStorage("shouldAutoResume") var shouldAutoResume: Bool = true
     @AppStorage("wallpaperModeRaw") private var wallpaperModeRaw: String = "same"
     @AppStorage("screenWallpapersData") private var screenWallpapersData: Data = Data()
-    @AppStorage("useMetalRenderer") var useMetalRenderer: Bool = false
+    @AppStorage("useMetalRenderer") var useMetalRenderer: Bool = true
     @AppStorage("transitionStyle") var transitionStyle: String = "crossfade"
     @AppStorage("transitionDuration") var transitionDuration: Double = 0.5
     @AppStorage("lastWallpaperURL") private var lastWallpaperURL: String = ""
@@ -257,9 +275,10 @@ class WallpaperManager: ObservableObject {
         // the gate releases so thumbnails/color extraction stay parallel.
         let wallpaper = try await importGate.run { [weak self] in
             guard let self else { throw CancellationError() }
+            let existingWallpapers = await MainActor.run { self.wallpapers }
             let destURL = try await self.library.importFile(
                 from: sourceURL,
-                existingWallpapers: self.wallpapers
+                existingWallpapers: existingWallpapers
             )
             let wp = Wallpaper(url: destURL)
             await MainActor.run {
@@ -277,7 +296,8 @@ class WallpaperManager: ObservableObject {
     /// serializes the actual duplicate-check + file-move + append step
     /// inside each `importVideo` call, so this concurrency is safe.
     func importVideos(from sourceURLs: [URL], maxInflight: Int = 4) async -> [Result<Wallpaper, Error>] {
-        await withTaskGroup(of: (Int, Result<Wallpaper, Error>).self, returning: [Result<Wallpaper, Error>].self) { group in
+        let concurrencyLimit = max(1, maxInflight)
+        return await withTaskGroup(of: (Int, Result<Wallpaper, Error>).self, returning: [Result<Wallpaper, Error>].self) { group in
             var nextIndex = 0
             var inflight = 0
             var collected: [(Int, Result<Wallpaper, Error>)] = []
@@ -297,7 +317,7 @@ class WallpaperManager: ObservableObject {
             }
 
             // Prime — fill the in-flight window.
-            while nextIndex < sourceURLs.count && inflight < maxInflight {
+            while nextIndex < sourceURLs.count && inflight < concurrencyLimit {
                 dispatch(nextIndex)
             }
 
@@ -670,6 +690,10 @@ extension Notification.Name {
     static let screenWallpaperDidChange = Notification.Name("screenWallpaperDidChange")
     static let applyScreenWallpapers = Notification.Name("applyScreenWallpapers")
     static let openMainWindow = Notification.Name("openMainWindow")
+    /// Posted after `NSApp.setActivationPolicy` (and similar events) so the
+    /// desktop overlay can re-pin itself. Policy flips tear down window
+    /// backing stores and otherwise leave a black desktop.
+    static let desktopWindowsNeedReassert = Notification.Name("desktopWindowsNeedReassert")
 }
 
 // MARK: - Screen Wallpaper Info

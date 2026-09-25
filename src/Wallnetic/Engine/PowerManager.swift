@@ -273,7 +273,13 @@ class PowerManager {
         // Capture values that are safe to read on main thread.
         let frontApp = NSWorkspace.shared.frontmostApplication
         let wasFullscreen = isFullscreenAppActive
-        let screens = NSScreen.screens.map { $0.frame }
+        // CGWindow bounds are global top-left. NSScreen.frame is bottom-left,
+        // so comparing Y against it false-positives "fullscreen" on some
+        // layouts and pauses the wallpaper around a merely large window.
+        let screens = NSScreen.screens.compactMap { screen -> CGRect? in
+            guard let id = screen.displayID else { return nil }
+            return CGDisplayBounds(id)
+        }
 
         // Run the expensive CGWindowListCopyWindowInfo off the main thread.
         fullscreenQueue.async { [weak self] in

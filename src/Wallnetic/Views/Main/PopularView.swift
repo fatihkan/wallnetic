@@ -23,14 +23,15 @@ struct PopularView: View {
         switch sortOption {
         case .newest: return wallpaperManager.wallpapers.sorted { $0.dateAdded > $1.dateAdded }
         case .oldest: return wallpaperManager.wallpapers.sorted { $0.dateAdded < $1.dateAdded }
-        case .nameAZ: return wallpaperManager.wallpapers.sorted { $0.name < $1.name }
-        case .nameZA: return wallpaperManager.wallpapers.sorted { $0.name > $1.name }
+        case .nameAZ: return wallpaperManager.wallpapers.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        case .nameZA: return wallpaperManager.wallpapers.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedDescending }
         case .largest: return wallpaperManager.wallpapers.sorted { $0.fileSize > $1.fileSize }
         case .longest: return wallpaperManager.wallpapers.sorted { ($0.duration ?? 0) > ($1.duration ?? 0) }
         }
     }
 
     var body: some View {
+        let results = sortedWallpapers
         VStack(spacing: 0) {
             // Header bar
             HStack {
@@ -55,9 +56,10 @@ struct PopularView: View {
                         }
                     }
                     .frame(width: 100)
+                    .accessibilityLabel("Sort wallpapers")
                 }
 
-                Text("\(sortedWallpapers.count)")
+                Text("\(results.count)")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundColor(.accentColor)
                 +
@@ -80,7 +82,7 @@ struct PopularView: View {
             // Grid
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(Array(sortedWallpapers.enumerated()), id: \.element.id) { index, wallpaper in
+                    ForEach(Array(results.enumerated()), id: \.element.id) { index, wallpaper in
                         PopularCard(wallpaper: wallpaper, rank: index + 1)
                             .staggered(index: index)
                     }
@@ -92,9 +94,14 @@ struct PopularView: View {
         }
         .background(Color.clear)
         .modifier(KeyPressModifier(
-            onLeft: { wallpaperManager.cycleToNextWallpaper() },
-            onRight: { wallpaperManager.cycleToNextWallpaper() }
+            onLeft: { navigate(in: results, backwards: true) },
+            onRight: { navigate(in: results, backwards: false) }
         ))
+    }
+
+    private func navigate(in results: [Wallpaper], backwards: Bool) {
+        guard let wallpaper = WallpaperBrowsing.adjacent(in: results, currentID: wallpaperManager.currentWallpaper?.id, backwards: backwards) else { return }
+        wallpaperManager.setWallpaper(wallpaper)
     }
 }
 
@@ -120,53 +127,57 @@ struct PopularCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ZStack(alignment: .topLeading) {
-                // Fixed 16:9 container - image fills and clips
-                Color.clear
-                    .aspectRatio(16/9, contentMode: .fit)
-                    .overlay(
-                        Group {
-                            if let thumbnail = thumbnail {
-                                Image(nsImage: thumbnail)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } else {
-                                Rectangle()
-                                    .fill(Surface.glassControl)
-                                    .overlay { ProgressView().scaleEffect(0.6) }
-                            }
-                        }
-                    )
-                    .clipped()
-
-                // Rank badge with glow
-                Text("#\(rank)")
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundColor(rank <= 3 ? .black : .white)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule().fill(rankColor)
-                    )
-                    .neonGlow(rankColor, isActive: rank <= 3, radius: 6)
-                    .padding(8)
-
-                // Hover overlay - centered
-                if isHovering {
-                    ZStack {
-                        Color.black.opacity(0.25)
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    .transition(.opacity)
-                }
-            }
-            .glowCard(isHovering: isHovering, cornerRadius: 10, glowColor: rank <= 3 ? rankColor : .accentColor)
-            .scaleEffect(isHovering ? 1.02 : 1.0)
-            .onTapGesture(count: 2) {
+            Button {
                 wallpaperManager.setWallpaper(wallpaper)
+            } label: {
+                ZStack(alignment: .topLeading) {
+                    // Fixed 16:9 container - image fills and clips
+                    Color.clear
+                        .aspectRatio(16/9, contentMode: .fit)
+                        .overlay(
+                            Group {
+                                if let thumbnail = thumbnail {
+                                    Image(nsImage: thumbnail)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } else {
+                                    Rectangle()
+                                        .fill(Surface.glassControl)
+                                        .overlay { ProgressView().scaleEffect(0.6) }
+                                }
+                            }
+                        )
+                        .clipped()
+
+                    // Rank badge with glow
+                    Text("#\(rank)")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundColor(rank <= 3 ? .black : .white)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule().fill(rankColor)
+                        )
+                        .neonGlow(rankColor, isActive: rank <= 3, radius: 6)
+                        .padding(8)
+
+                    // Hover overlay - centered
+                    if isHovering {
+                        ZStack {
+                            Color.black.opacity(0.25)
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                        .transition(.opacity)
+                    }
+                }
+                .glowCard(isHovering: isHovering, cornerRadius: 10, glowColor: rank <= 3 ? rankColor : .accentColor)
+                .scaleEffect(isHovering ? 1.02 : 1.0)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Set \(wallpaper.displayName) as wallpaper")
+            .help("Set as wallpaper")
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {

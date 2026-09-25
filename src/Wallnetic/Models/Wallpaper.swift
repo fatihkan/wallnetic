@@ -47,7 +47,7 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
         let asset = AVURLAsset(url: url)
         do {
             let duration = try await asset.load(.duration)
-            self.duration = duration.seconds.isNaN ? nil : duration.seconds
+            self.duration = duration.seconds.isFinite && duration.seconds >= 0 ? duration.seconds : nil
 
             let tracks = try await asset.loadTracks(withMediaType: .video)
             if let track = tracks.first {
@@ -74,14 +74,18 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     }
 
     var formattedDuration: String {
-        guard let duration = duration else { return "--:--" }
+        guard let duration = duration, duration.isFinite,
+              duration >= 0, duration < Double(Int.max) else { return "--:--" }
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
 
     var formattedResolution: String {
-        guard let resolution = resolution else { return "Unknown" }
+        guard let resolution = resolution,
+              resolution.width.isFinite, resolution.height.isFinite,
+              resolution.width > 0, resolution.height > 0,
+              resolution.width < CGFloat(Int.max), resolution.height < CGFloat(Int.max) else { return "Unknown" }
         return "\(Int(resolution.width))×\(Int(resolution.height))"
     }
 
@@ -132,6 +136,24 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
         hasher.combine(id)
         hasher.combine(customTitle)
         hasher.combine(isFavorite)
+    }
+}
+
+/// Shared ordering behavior for filtered and sorted library views.
+enum WallpaperBrowsing {
+    /// Keep the visible selection stable when the library is reordered or
+    /// edited, and immediately recover when the selected item is removed.
+    static func selected(in wallpapers: [Wallpaper], currentID: UUID?) -> Wallpaper? {
+        wallpapers.first(where: { $0.id == currentID }) ?? wallpapers.first
+    }
+
+    static func adjacent(in wallpapers: [Wallpaper], currentID: UUID?, backwards: Bool) -> Wallpaper? {
+        guard !wallpapers.isEmpty else { return nil }
+        guard let index = wallpapers.firstIndex(where: { $0.id == currentID }) else {
+            return backwards ? wallpapers.last : wallpapers.first
+        }
+        let offset = backwards ? -1 : 1
+        return wallpapers[(index + offset + wallpapers.count) % wallpapers.count]
     }
 }
 

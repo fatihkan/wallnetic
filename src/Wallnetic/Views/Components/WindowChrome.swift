@@ -2,8 +2,8 @@ import SwiftUI
 import AppKit
 
 /// Surfaces the underlying `NSWindow` so we can apply title-bar treatments
-/// SwiftUI doesn't expose declaratively. Used by Settings and the main
-/// window to extend the dark cinematic surface under the traffic lights.
+/// SwiftUI doesn't expose declaratively. Main and Settings keep a native
+/// title bar so their content never composites over the traffic lights.
 struct WindowChrome: NSViewRepresentable {
     var configure: (NSWindow) -> Void
 
@@ -17,6 +17,27 @@ struct WindowChrome: NSViewRepresentable {
             aware.onWindow = configure
             if let w = nsView.window { configure(w) }
         }
+    }
+
+    static func configureAppWindow(_ window: NSWindow) {
+        guard window.styleMask.contains(.titled),
+              !(window is NSPanel), !window.isSheet else { return }
+
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = false
+        // #237: use AppKit's reserved title-bar area, not a transparent strip
+        // under opaque SwiftUI content. Leave fullscreen's style to AppKit.
+        if !window.styleMask.contains(.fullScreen) {
+            window.styleMask.remove(.fullSizeContentView)
+        }
+        window.appearance = ThemeManager.shared.appearanceMode.nsAppearance
+        window.isOpaque = true
+        window.backgroundColor = NSColor(Surface.stageFloor)
+        for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            window.standardWindowButton(type)?.isHidden = false
+        }
+        window.titlebarSeparatorStyle = .none
+        window.isMovableByWindowBackground = false
     }
 }
 
@@ -51,60 +72,22 @@ private final class WindowAwareView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if let w = window {
+            // Promote on attachment, before initial title-bar composition.
+            // Do not do this in updateNSView: hidden windows still receive
+            // SwiftUI updates and must not undo Hide Dock icon on every update.
+            if w.styleMask.contains(.titled), !(w is NSPanel), !w.isSheet,
+               NSApp.activationPolicy() == .accessory {
+                NSApp.setActivationPolicy(.regular)
+            }
             onWindow(w)
         }
     }
 }
 
 extension View {
-    /// Applies Wallnetic's cinematic-dark title-bar treatment:
-    ///  - hidden title text
-    ///  - transparent titlebar so content extends underneath
-    ///  - full-size content view (no reserved title-bar strip)
-    ///  - forced dark appearance
-    ///  - opaque NSWindow backing so macOS can composite the traffic-light
-    ///    buttons (the opaque SwiftUI ambient stage paints over it; #228)
-    ///
-    /// **Apply at scene root only.** If the view is hosted in a
-    /// non-`.titled` NSWindow (popover, sheet, panel, menu) the call
-    /// short-circuits to avoid corrupting unrelated chrome. M3 guard.
+    /// Theme-aware native title bar. Apply only at the main/settings scene root;
+    /// sheets, panels and borderless wallpaper windows keep their own chrome.
     func cinematicWindowChrome() -> some View {
-        background(WindowChrome { window in
-            // M3: skip popovers/sheets/panels — they have their own chrome
-            // and don't carry traffic lights, so applying these flags
-            // would either be a no-op or break their layout.
-            guard window.styleMask.contains(.titled) else { return }
-
-            window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = true
-            window.styleMask.insert(.fullSizeContentView)
-            // Theme-aware: nil means "follow NSApp.appearance / system",
-            // so System/Light/Dark from Settings actually takes effect.
-            // WindowAwareView listens for .appAppearanceDidChange and
-            // re-runs this closure when the user toggles.
-            window.appearance = ThemeManager.shared.appearanceMode.nsAppearance
-            // #228: macOS 26 (Tahoe) composites the traffic-light "glass"
-            // capsules against the window's backing material. A clear,
-            // non-opaque *titled* window removes that backing, so the standard
-            // close / minimize / zoom buttons render with ~zero contrast and
-            // read as missing until hovered. The cinematic look is painted by
-            // the opaque SwiftUI floor (ambientStage / Surface.windowFill), so
-            // keeping the window opaque is visually identical — it just gives
-            // the buttons a surface to draw against.
-            window.isOpaque = true
-            // Match the opaque cinematic floor (near-black) rather than the
-            // system gray, so the one-frame open flash / any live-resize edge
-            // never shows a light band on this dark app. (#228)
-            window.backgroundColor = NSColor(Surface.stageFloor)
-            // Insurance: these aren't hidden today, but a future refactor or OS
-            // quirk must never be able to strand the user with no way to close.
-            window.standardWindowButton(.closeButton)?.isHidden = false
-            window.standardWindowButton(.miniaturizeButton)?.isHidden = false
-            window.standardWindowButton(.zoomButton)?.isHidden = false
-            // Remove the hairline that macOS otherwise draws between the
-            // title-bar zone and content — we have our own design.
-            window.titlebarSeparatorStyle = .none
-            window.isMovableByWindowBackground = false
-        })
+        background(WindowChrome(configure: WindowChrome.configureAppWindow))
     }
 }
