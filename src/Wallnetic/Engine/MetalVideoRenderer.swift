@@ -69,7 +69,13 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - View
 
     let metalView: MTKView
-    private var currentTexture: MTLTexture?
+    // Retain Core Video's wrapper, not just its borrowed Metal texture. The
+    // wrapper prevents pixel-buffer recycling while a frame remains in use.
+    private struct VideoFrame {
+        let texture: MTLTexture
+        let backing: CVMetalTexture
+    }
+    private var currentFrame: VideoFrame?
     private var vertexBuffer: MTLBuffer?
     private var videoSize: CGSize = .zero
     private var lastPresentedSeconds: Double = -1
@@ -353,7 +359,7 @@ final class MetalVideoRenderer: NSObject {
         wantsToPlay = false
         stopDisplayLink()
         player?.pause()
-        if currentTexture != nil {
+        if currentFrame != nil {
             metalView.draw()
         }
         metalView.isPaused = true
@@ -458,7 +464,7 @@ final class MetalVideoRenderer: NSObject {
         playerLooper = nil
         queuePlayer = nil
         player = nil
-        currentTexture = nil
+        currentFrame = nil
         hasPresentedFrame = false
 
         if let cache = textureCache {
@@ -468,33 +474,33 @@ final class MetalVideoRenderer: NSObject {
 
     // MARK: - Frame Extraction
 
-    private func extractCurrentFrame() -> MTLTexture? {
+    private func extractCurrentFrame() -> VideoFrame? {
         guard let videoOutput = videoOutput,
               let currentItem = player?.currentItem else {
             return nil
         }
 
         let currentTime = currentItem.currentTime()
-        guard currentTime.isNumeric else { return currentTexture }
+        guard currentTime.isNumeric else { return currentFrame }
         let seconds = currentTime.seconds
         if WallpaperAspectFill.shouldDiscardRewoundFrame(
             previousSeconds: lastPresentedSeconds, newSeconds: seconds
         ) {
-            return currentTexture
+            return currentFrame
         }
         guard videoOutput.hasNewPixelBuffer(forItemTime: currentTime) else {
-            return currentTexture
+            return currentFrame
         }
 
         guard let pixelBuffer = videoOutput.copyPixelBuffer(forItemTime: currentTime, itemTimeForDisplay: nil) else {
-            return currentTexture
+            return currentFrame
         }
 
         lastPresentedSeconds = seconds
         return createTexture(from: pixelBuffer)
     }
 
-    private func createTexture(from pixelBuffer: CVPixelBuffer) -> MTLTexture? {
+    private func createTexture(from pixelBuffer: CVPixelBuffer) -> VideoFrame? {
         guard let textureCache = textureCache else { return nil }
 
         let width = CVPixelBufferGetWidth(pixelBuffer)
@@ -517,7 +523,8 @@ final class MetalVideoRenderer: NSObject {
             return nil
         }
 
-        return CVMetalTextureGetTexture(cvTexture)
+        guard let texture = CVMetalTextureGetTexture(cvTexture) else { return nil }
+        return VideoFrame(texture: texture, backing: cvTexture)
     }
 }
 
@@ -532,14 +539,14 @@ extension MetalVideoRenderer: MTKViewDelegate {
         renderLock.lock()
         defer { renderLock.unlock() }
 
-        if wantsToPlay, let texture = extractCurrentFrame() {
-            currentTexture = texture
+        if wantsToPlay, let frame = extractCurrentFrame() {
+            currentFrame = frame
         }
 
         // Never present an empty drawable — that is a black frame covering
         // the real wallpaper. Keep the last texture on screen across pause
         // and across a reload until the next frame arrives.
-        guard let texture = currentTexture,
+        guard let frame = currentFrame,
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -557,10 +564,15 @@ extension MetalVideoRenderer: MTKViewDelegate {
         // Render fullscreen quad with video texture
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        renderEncoder.setFragmentTexture(texture, index: 0)
+        renderEncoder.setFragmentTexture(frame.texture, index: 0)
         renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
 
         renderEncoder.endEncoding()
+        // A replacement/stop can release currentFrame before the GPU finishes.
+        // Each submitted command buffer must own the backing for its own frame.
+        commandBuffer.addCompletedHandler { [frame] _ in
+            withExtendedLifetime(frame) {}
+        }
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }

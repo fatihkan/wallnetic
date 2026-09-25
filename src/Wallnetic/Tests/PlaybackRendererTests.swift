@@ -1,8 +1,39 @@
 import XCTest
 import AVFoundation
+import AppKit
 @testable import Wallnetic
 
 final class PlaybackRendererTests: XCTestCase {
+    @MainActor
+    func testMetalPresentsFramesAndCanStopAfterSubmittingDraws() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        let renderer = MetalVideoRenderer()
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("gpu-\(UUID().uuidString).mov")
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video)
+        window.contentView = renderer.metalView
+        window.orderFront(nil)
+        renderer.loadVideo(url: video)
+        renderer.play()
+        let deadline = Date().addingTimeInterval(5)
+        while !renderer.hasPresentedFrame, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        for _ in 0..<10 { renderer.metalView.draw() }
+        renderer.stop()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertFalse(renderer.hasPresentedFrame)
+        XCTAssertNil(renderer.currentPlaybackTime)
+    }
+
     @MainActor
     func testConcurrentFrameRequestsCoalesceOnMain() async {
         var frames = 0
