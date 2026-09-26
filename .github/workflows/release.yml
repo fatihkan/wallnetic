@@ -1,6 +1,12 @@
 name: Build and Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing stable release tag to package
+        required: true
+        type: string
   push:
     tags:
       - 'v*'
@@ -12,6 +18,7 @@ env:
   APP_NAME: Wallnetic
   SCHEME: Wallnetic
   PROJECT_PATH: src/Wallnetic/Wallnetic.xcodeproj
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
 
 jobs:
   build:
@@ -30,6 +37,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -43,7 +51,7 @@ jobs:
           import os, re
           from pathlib import Path
 
-          tag = os.environ['GITHUB_REF_NAME']
+          tag = os.environ['RELEASE_TAG']
           if not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
               raise SystemExit('Expected a stable vX.Y.Z release tag')
           version = tag[1:]
@@ -66,7 +74,6 @@ jobs:
             -scheme ${{ env.SCHEME }} \
             -configuration Release \
             -arch ${{ matrix.arch }} \
-            -destination 'generic/platform=macOS' \
             -derivedDataPath build \
             clean build \
             ONLY_ACTIVE_ARCH=NO \
@@ -147,6 +154,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -155,7 +163,7 @@ jobs:
 
       - name: Get version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Generate Release Notes
         run: |
@@ -163,7 +171,7 @@ jobs:
           import os
           from pathlib import Path
 
-          version = os.environ['GITHUB_REF_NAME'].removeprefix('v')
+          version = os.environ['RELEASE_TAG'].removeprefix('v')
           record = Path(f'docs/releases/{version}.md').read_text()
           changes = record.split("## What's New — English\n", 1)[1].split('\n## ', 1)[0].strip()
           notes = f"""## Wallnetic {version}
@@ -198,6 +206,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           name: "${{ env.APP_NAME }} v${{ steps.version.outputs.VERSION }}"
           body_path: release_notes.md
           draft: true
