@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+
 env:
   APP_NAME: Wallnetic
   SCHEME: Wallnetic
@@ -33,15 +36,29 @@ jobs:
         with:
           xcode-version: '15.2'
 
-      - name: Get version from tag
+      - name: Verify tag and committed version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Update version in project
         run: |
-          cd src/Wallnetic
-          agvtool new-marketing-version ${{ steps.version.outputs.VERSION }}
-          agvtool new-version -all ${{ github.run_number }}
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+
+          tag = os.environ['GITHUB_REF_NAME']
+          if not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
+              raise SystemExit('Expected a stable vX.Y.Z release tag')
+          version = tag[1:]
+          project = Path('src/Wallnetic/project.yml').read_text()
+          marketing = re.search(r'MARKETING_VERSION: "([^"]+)"', project).group(1)
+          build = re.search(r'CURRENT_PROJECT_VERSION: "(\d+)"', project).group(1)
+          pbx = Path(os.environ['PROJECT_PATH'], 'project.pbxproj').read_text()
+          if (marketing != version
+              or set(re.findall(r'MARKETING_VERSION = ([^;]+);', pbx)) != {version}
+              or set(re.findall(r'CURRENT_PROJECT_VERSION = ([^;]+);', pbx)) != {build}):
+              raise SystemExit('Tag, project.yml and Xcode project versions must match')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'VERSION={version}\nBUILD={build}\n')
+          print(f'Packaging committed version {version} ({build})')
+          PY
 
       - name: Build for ${{ matrix.arch_name }}
         run: |
@@ -49,23 +66,49 @@ jobs:
             -scheme ${{ env.SCHEME }} \
             -configuration Release \
             -arch ${{ matrix.arch }} \
+            -destination 'generic/platform=macOS' \
             -derivedDataPath build \
             clean build \
+            ONLY_ACTIVE_ARCH=NO \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Create DMG
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.VERSION }}
+          RELEASE_BUILD: ${{ steps.version.outputs.BUILD }}
+          RELEASE_ARCH: ${{ matrix.arch }}
         run: |
+          set -euo pipefail
           APP_PATH="build/Build/Products/Release/${{ env.APP_NAME }}.app"
-          DMG_NAME="${{ env.APP_NAME }}_${{ steps.version.outputs.VERSION }}_${{ matrix.arch }}.dmg"
+          DMG_NAME="${APP_NAME}_${RELEASE_VERSION}_${RELEASE_ARCH}.dmg"
+
+          python3 - <<'PY'
+          import os, plistlib, subprocess
+          from pathlib import Path
+
+          app = Path('build/Build/Products/Release', os.environ['APP_NAME'] + '.app')
+          for bundle in (app, app / 'Contents/PlugIns/WallneticWidget.appex'):
+              info = plistlib.loads((bundle / 'Contents/Info.plist').read_bytes())
+              actual = (info['CFBundleShortVersionString'], info['CFBundleVersion'])
+              expected = (os.environ['RELEASE_VERSION'], os.environ['RELEASE_BUILD'])
+              if actual != expected:
+                  raise SystemExit(f'{bundle.name}: {actual} does not match {expected}')
+              executable = bundle / 'Contents/MacOS' / info['CFBundleExecutable']
+              arch = subprocess.check_output(['lipo', '-archs', str(executable)], text=True).strip()
+              if arch != os.environ['RELEASE_ARCH']:
+                  raise SystemExit(f'{bundle.name}: unexpected architecture {arch}')
+              print(f'{bundle.name}: {actual[0]} ({actual[1]}), {arch}')
+          PY
 
           # Remove quarantine and extended attributes to prevent
           # "app is damaged" error on user machines
           xattr -cr "$APP_PATH"
 
-          # Ad-hoc sign the app so macOS doesn't flag it as damaged
+          # Direct downloads use ad-hoc signing; this is not Apple notarization.
           codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict "$APP_PATH"
 
           # Create temporary directory for DMG contents
           mkdir -p dmg_contents
@@ -80,6 +123,8 @@ jobs:
             -ov -format UDZO \
             "$DMG_NAME"
 
+          hdiutil verify "$DMG_NAME"
+
           echo "DMG_PATH=$DMG_NAME" >> $GITHUB_ENV
 
       - name: Upload artifact
@@ -87,7 +132,8 @@ jobs:
         with:
           name: ${{ env.APP_NAME }}_${{ matrix.arch }}
           path: "*.dmg"
-          retention-days: 1
+          retention-days: 7
+          if-no-files-found: error
 
   release:
     name: Create Release
@@ -112,54 +158,53 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Generate Release Notes
-        id: release_notes
         run: |
-          # Get previous tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          python3 - <<'PYNOTES'
+          import os
+          from pathlib import Path
 
-          if [ -z "$PREV_TAG" ]; then
-            # First release - get all commits
-            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
-          else
-            # Get commits since last tag
-            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges)
-          fi
+          version = os.environ['GITHUB_REF_NAME'].removeprefix('v')
+          record = Path(f'docs/releases/{version}.md').read_text()
+          changes = record.split("## What's New — English\n", 1)[1].split('\n## ', 1)[0].strip()
+          notes = f"""## Wallnetic {version}
 
-          # Create release notes
-          cat << EOF > release_notes.md
-          ## What's New in v${{ steps.version.outputs.VERSION }}
+          {changes}
 
-          ### Changes
-          $COMMITS
+          ## Downloads
 
-          ---
+          - Apple Silicon: `Wallnetic_{version}_arm64.dmg`
+          - Intel: `Wallnetic_{version}_x86_64.dmg`
+          - Requires macOS 13 or later.
 
-          ## Installation
+          Open the DMG and drag Wallnetic to Applications.
+          These direct downloads are ad-hoc signed and are not notarized by Apple.
+          For installation through Apple, use the [Mac App Store](https://apps.apple.com/app/id6760347328?mt=12).
 
-          1. Download the DMG file for your Mac:
-             - **Apple Silicon** (M1/M2/M3): \`Wallnetic_${{ steps.version.outputs.VERSION }}_arm64.dmg\`
-             - **Intel**: \`Wallnetic_${{ steps.version.outputs.VERSION }}_x86_64.dmg\`
+          `SHA256SUMS.txt` contains checksums for both DMGs. From the download directory,
+          run `shasum -a 256 -c SHA256SUMS.txt` after downloading both packages.
+          """
+          Path('release_notes.md').write_text(notes)
+          PYNOTES
 
-          2. Open the DMG and drag Wallnetic to Applications
-
-          3. First launch: Right-click → Open → Open
-
-          ---
-
-          ## Requirements
-          - macOS 13.0 (Ventura) or later
-          - Apple Silicon or Intel Mac
-          EOF
+      - name: Generate DMG checksums
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          cp artifacts/Wallnetic_*/*.dmg release-assets/
+          cd release-assets
+          test "$(find . -maxdepth 1 -name '*.dmg' | wc -l)" -eq 2
+          sha256sum *.dmg > SHA256SUMS.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           name: "${{ env.APP_NAME }} v${{ steps.version.outputs.VERSION }}"
           body_path: release_notes.md
-          draft: false
+          draft: true
           prerelease: false
           files: |
-            artifacts/**/*.dmg
+            release-assets/*.dmg
+            release-assets/SHA256SUMS.txt
             docs/assets/demo-video.mp4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

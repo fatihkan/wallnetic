@@ -82,10 +82,20 @@ Releases are automated via GitHub Actions:
    git push origin v1.x.x
    ```
 5. **GitHub Actions** automatically:
+   - Verifies the tag matches the committed version and preserves the build number
    - Builds for Apple Silicon and Intel
-   - Creates DMG files
+   - Verifies app/widget versions, architectures and signatures, then creates DMG files
+   - Adds SHA-256 checksums
    - Generates release notes
-   - Publishes the release
+   - Creates a draft release
+6. **Verify and publish** the draft after CI succeeds: download both DMGs,
+   check their checksums, mount them and confirm the app/widget versions and
+   architectures. Direct downloads use ad-hoc signing and are not Apple-notarized;
+   the App Store package uses a separate Apple distribution signature.
+
+Add the release notes to `docs/releases/<version>.md` under
+`## What's New — English` before tagging. The workflow uses this section for
+the public GitHub release notes.
 
 ## Development Setup
 
