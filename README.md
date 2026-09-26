@@ -9,7 +9,7 @@
 [![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/app/id6760347328?mt=12)
 [![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.1-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.4.2-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/61182f15-1208-4cc5-b37a-d7827e871022" width="800" autoplay loop muted playsinline>
@@ -29,7 +29,7 @@ the content: drag in a local file, or browse eight sources from inside the app. 
 library is as good as you want it to be, and the app carries none of the content liability that
 comes with hosting a catalogue.
 
-*Last updated: September 2026 · Current version: 1.4.1*
+*Last updated: September 2026 · Current version: 1.4.2*
 
 ### Is there a Wallpaper Engine for Mac?
 
@@ -226,8 +226,11 @@ later.
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [Wallnetic_1.4.1_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
-| macOS (Intel) | [Wallnetic_1.4.1_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/latest) |
+| macOS (Apple Silicon) | [Wallnetic_1.4.2_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/download/v1.4.2/Wallnetic_1.4.2_arm64.dmg) |
+| macOS (Intel) | [Wallnetic_1.4.2_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/download/v1.4.2/Wallnetic_1.4.2_x86_64.dmg) |
+
+The DMGs use the same application source and version **1.4.2 (11)** as the App Store release.
+They are ad-hoc signed and not notarized. [SHA-256 checksums](https://github.com/fatihkan/wallnetic/releases/download/v1.4.2/SHA256SUMS.txt) are included with the release.
 
 > **"Wallnetic is damaged and can't be opened"** &mdash; This happens because the DMG is not notarized by Apple. Run this command in Terminal after dragging Wallnetic to Applications:
 > ```bash
