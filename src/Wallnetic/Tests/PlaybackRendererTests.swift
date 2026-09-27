@@ -1,6 +1,7 @@
 import XCTest
 import AVFoundation
 import AppKit
+import Combine
 @testable import Wallnetic
 
 final class PlaybackRendererTests: XCTestCase {
@@ -41,10 +42,10 @@ final class PlaybackRendererTests: XCTestCase {
             XCTAssertTrue(Thread.isMainThread)
             frames += 1
         }
-        DispatchQueue.concurrentPerform(iterations: 500) { _ in scheduler.requestFrame() }
+        DispatchQueue.concurrentPerform(iterations: 500) { _ in scheduler.requestFrame(at: 0) }
         await drainMainQueue()
         XCTAssertEqual(frames, 1)
-        scheduler.requestFrame()
+        scheduler.requestFrame(at: 1.0 / 60)
         await drainMainQueue()
         XCTAssertEqual(frames, 2)
         scheduler.invalidate()
@@ -155,7 +156,7 @@ final class PlaybackRendererTests: XCTestCase {
         XCTAssertFalse(renderer.hasPresentedFrame)
     }
 
-    private func writeShortVideo(to url: URL) async throws {
+    private func writeShortVideo(to url: URL, frames: Int = 3, fps: Int32 = 10) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
             AVVideoCodecKey: AVVideoCodecType.h264,
@@ -178,7 +179,7 @@ final class PlaybackRendererTests: XCTestCase {
             memset(base, 128, CVPixelBufferGetBytesPerRow(buffer) * 64)
         }
         CVPixelBufferUnlockBaseAddress(buffer, [])
-        for frame in 0..<3 {
+        for frame in 0..<frames {
             let deadline = Date().addingTimeInterval(5)
             while !input.isReadyForMoreMediaData {
                 guard writer.status == .writing, Date() < deadline else {
@@ -187,16 +188,182 @@ final class PlaybackRendererTests: XCTestCase {
                 }
                 try await Task.sleep(nanoseconds: 10_000_000)
             }
-            guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: 10)) else {
+            guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: fps)) else {
                 writer.cancelWriting()
                 throw writer.error ?? FixtureError.encodingFailed
             }
         }
-        writer.endSession(atSourceTime: CMTime(value: 3, timescale: 10))
+        writer.endSession(atSourceTime: CMTime(value: Int64(frames), timescale: fps))
         input.markAsFinished()
         await writer.finishWriting()
         guard writer.status == .completed else { throw writer.error ?? FixtureError.encodingFailed }
     }
 
     private enum FixtureError: Error { case encodingFailed }
+
+    @MainActor
+    func testProfilesThrottleDisplayLinkAtDifferentRefreshRates() async {
+        for refreshRate in [59.94, 60, 120, 144] {
+            for mode in PerformanceManager.PerformanceMode.allCases {
+                var frames = 0
+                let scheduler = DisplayLinkFrameScheduler(maximumFramesPerSecond: mode.maxFPS) { frames += 1 }
+                for tick in 0..<Int(ceil(refreshRate * 2)) {
+                    scheduler.requestFrame(at: Double(tick) / refreshRate)
+                    await drainMainQueue()
+                }
+                XCTAssertEqual(Double(frames), Double(mode.maxFPS * 2), accuracy: 1,
+                               "\(mode) at \(refreshRate) Hz")
+                scheduler.invalidate()
+            }
+        }
+    }
+
+    @MainActor
+    func testProfileChangeAndStallDoNotQueueCatchUpFramesOrReviveInvalidatedSession() async {
+        var frames = 0
+        let scheduler = DisplayLinkFrameScheduler(maximumFramesPerSecond: 60) { frames += 1 }
+        scheduler.requestFrame(at: 0)
+        scheduler.setMaximumFramesPerSecond(15)
+        for tick in 1...500 { scheduler.requestFrame(at: Double(tick)) }
+        await drainMainQueue()
+        XCTAssertEqual(frames, 1, "A blocked main queue must coalesce pending work")
+        scheduler.requestFrame(at: 600)
+        await drainMainQueue()
+        scheduler.requestFrame(at: 600.001)
+        await drainMainQueue()
+        XCTAssertEqual(frames, 2, "No burst after a stall")
+        scheduler.requestFrame(at: 601)
+        scheduler.invalidate()
+        scheduler.setMaximumFramesPerSecond(60)
+        await drainMainQueue()
+        scheduler.requestFrame(at: 602)
+        await drainMainQueue()
+        XCTAssertEqual(frames, 2)
+    }
+
+    func testPerformancePreferenceSurvivesRelaunchAndAcceptsLegacyValues() throws {
+        let suite = "PerformanceTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertEqual(PerformanceManager(defaults: defaults).mode, .balanced)
+        for mode in PerformanceManager.PerformanceMode.allCases {
+            PerformanceManager(defaults: defaults).mode = mode
+            XCTAssertEqual(PerformanceManager(defaults: defaults).mode, mode)
+        }
+        defaults.set("balanced", forKey: "performance.mode")
+        XCTAssertEqual(PerformanceManager(defaults: defaults).mode, .balanced)
+        defaults.set("unknown", forKey: "performance.mode")
+        XCTAssertEqual(PerformanceManager(defaults: defaults).mode, .balanced)
+    }
+
+    @MainActor
+    func testProfileBindingUpdatesExistingAndNewDisplaysWithoutChangingPlayback() throws {
+        let suite = "PerformanceBindingTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let manager = PerformanceManager(defaults: defaults)
+        let first = ProfileRendererSpy()
+        let second = ProfileRendererSpy()
+        let firstBinding = manager.bind(to: first)
+        let secondBinding = manager.bind(to: second)
+        manager.mode = .battery
+        let connectedLater = ProfileRendererSpy()
+        let thirdBinding = manager.bind(to: connectedLater)
+        XCTAssertEqual(first.modes, [.balanced, .battery])
+        XCTAssertEqual(second.modes, [.balanced, .battery])
+        XCTAssertEqual(connectedLater.modes, [.battery])
+        firstBinding.cancel()
+        manager.mode = .quality
+        manager.mode = .quality
+        XCTAssertEqual(first.modes, [.balanced, .battery], "Disconnected display must unsubscribe")
+        XCTAssertEqual(second.modes, [.balanced, .battery, .quality])
+        XCTAssertEqual(connectedLater.modes, [.battery, .quality])
+        XCTAssertEqual(first.playbackMutations + second.playbackMutations + connectedLater.playbackMutations, 0)
+        withExtendedLifetime([secondBinding, thirdBinding]) {}
+    }
+
+    @MainActor
+    func testAVFoundationProfileChangesKeepNormalSpeedAndPreservePause() async throws {
+        try await assertProfileChangesPreservePlayback(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalProfileChangesKeepNormalSpeedAndPreservePause() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertProfileChangesPreservePlayback(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertProfileChangesPreservePlayback(_ renderer: WallpaperRenderer) async throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("profiles-\(UUID().uuidString).mov")
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 300, fps: 60)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        renderer.loadVideo(url: video)
+        renderer.play()
+        renderer.applyPerformanceMode(.battery) // Change during asynchronous load.
+        let deadline = Date().addingTimeInterval(5)
+        while (!renderer.hasPresentedFrame || (renderer.currentPlaybackTime ?? 0) < 0.1), Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        let layer = renderer.filterLayer as? AVPlayerLayer
+        let originalItem = layer?.player?.currentItem
+        if let originalItem {
+            XCTAssertNil(originalItem.videoComposition, "AVPlayer fallback must keep native timing")
+        }
+        for mode in [PerformanceManager.PerformanceMode.quality, .battery, .balanced] {
+            let start = try XCTUnwrap(renderer.currentPlaybackTime)
+            renderer.applyPerformanceMode(mode)
+            if let originalItem {
+                XCTAssertTrue(layer?.player?.currentItem === originalItem, "A profile must not reload the player")
+                XCTAssertNil(originalItem.videoComposition)
+            }
+            for _ in 0..<10 {
+                try await Task.sleep(nanoseconds: 20_000_000)
+                XCTAssertEqual(renderer.currentPlaybackRate, 1)
+                XCTAssertTrue(renderer.hasPresentedFrame)
+                if let layer {
+                    XCTAssertTrue(layer.isReadyForDisplay, "Profile switching must retain displayed video")
+                }
+            }
+            let elapsed = try XCTUnwrap(renderer.currentPlaybackTime) - start
+            XCTAssertGreaterThan(elapsed, 0.15, "Lower frame rate must not slow the video timeline")
+            renderer.pause()
+            let pausedTime = try XCTUnwrap(renderer.currentPlaybackTime)
+            renderer.applyPerformanceMode(.quality)
+            try await Task.sleep(nanoseconds: 100_000_000)
+            XCTAssertEqual(renderer.currentPlaybackRate, 0)
+            XCTAssertEqual(renderer.currentPlaybackTime ?? -1, pausedTime, accuracy: 0.02)
+            XCTAssertTrue(renderer.hasPresentedFrame)
+            if let layer { XCTAssertNotNil(layer.displayedPixelBuffer(), "Paused frame must remain available") }
+            renderer.play()
+        }
+    }
+}
+
+private final class ProfileRendererSpy: WallpaperRenderer {
+    let rendererView = NSView()
+    var modes: [PerformanceManager.PerformanceMode] = []
+    var playbackMutations = 0
+    let currentPlaybackTime: TimeInterval? = nil
+    let currentPlaybackRate: Float = 0
+    let hasPresentedFrame = false
+    var onBecameReady: (() -> Void)?
+    var filterLayer: CALayer? { nil }
+    func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode) { modes.append(mode) }
+    func loadVideo(url: URL) { playbackMutations += 1 }
+    func play() { playbackMutations += 1 }
+    func pause() { playbackMutations += 1 }
+    func stop() { playbackMutations += 1 }
+    func recoverPlayback() { playbackMutations += 1 }
+    func maintainPlayback() { playbackMutations += 1 }
 }

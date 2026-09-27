@@ -13,17 +13,40 @@ final class DisplayLinkFrameScheduler: @unchecked Sendable {
     private let lock = NSLock()
     private var isActive = true
     private var isPending = false
+    private var frameInterval: TimeInterval
+    private var nextFrameTime: TimeInterval?
     private let draw: () -> Void
 
-    init(draw: @escaping () -> Void) {
+    init(maximumFramesPerSecond: Int = 60, draw: @escaping () -> Void) {
+        frameInterval = 1 / Double(max(1, maximumFramesPerSecond))
         self.draw = draw
     }
 
-    func requestFrame() {
+    func setMaximumFramesPerSecond(_ fps: Int) {
         lock.lock()
-        guard isActive, !isPending else {
+        defer { lock.unlock() }
+        let interval = 1 / Double(max(1, fps))
+        guard interval != frameInterval else { return }
+        frameInterval = interval
+        nextFrameTime = nil
+    }
+
+    func requestFrame(at time: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        lock.lock()
+        guard isActive, !isPending, time.isFinite else {
             lock.unlock()
             return
+        }
+        if let nextFrameTime, time + 0.000_001 < nextFrameTime {
+            lock.unlock()
+            return
+        }
+        // Preserve cadence across fractional refresh rates without queuing
+        // catch-up frames after the display or main thread stalls.
+        if let nextFrameTime, time - nextFrameTime < frameInterval {
+            self.nextFrameTime = nextFrameTime + frameInterval
+        } else {
+            nextFrameTime = time + frameInterval
         }
         isPending = true
         lock.unlock()
@@ -88,6 +111,7 @@ final class MetalVideoRenderer: NSObject {
     /// `setupPlayer` never started it (`guard !isPlaying`), leaving a black
     /// MTKView forever.
     private var wantsToPlay = false
+    private var performanceMode: PerformanceManager.PerformanceMode = .balanced
     private let renderLock = NSLock()
     private var loadGeneration: UInt64 = 0
     private var loadTask: Task<Void, Never>?
@@ -345,6 +369,14 @@ final class MetalVideoRenderer: NSObject {
 
     // MARK: - Playback Control
 
+    func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode) {
+        performanceMode = mode
+        // Manual draw() calls bypass MTKView's preferredFramesPerSecond.
+        // Throttle before dispatching display-link work to the main queue.
+        metalView.preferredFramesPerSecond = mode.maxFPS
+        frameScheduler?.setMaximumFramesPerSecond(mode.maxFPS)
+    }
+
     func play() {
         wantsToPlay = true
         pinOrStart()
@@ -402,7 +434,7 @@ final class MetalVideoRenderer: NSObject {
         var link: CVDisplayLink?
         guard CVDisplayLinkCreateWithActiveCGDisplays(&link) == kCVReturnSuccess,
               let link else { return }
-        let scheduler = DisplayLinkFrameScheduler { [weak self] in
+        let scheduler = DisplayLinkFrameScheduler(maximumFramesPerSecond: performanceMode.maxFPS) { [weak self] in
             guard let self, self.wantsToPlay else { return }
             self.metalView.draw()
         }

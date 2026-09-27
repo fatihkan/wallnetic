@@ -1,8 +1,9 @@
 import Foundation
 import SwiftUI
+import Combine
 
 /// Performance mode settings for resource management
-class PerformanceManager: ObservableObject {
+final class PerformanceManager: ObservableObject {
     static let shared = PerformanceManager()
 
     enum PerformanceMode: String, CaseIterable {
@@ -20,9 +21,9 @@ class PerformanceManager: ObservableObject {
 
         var description: String {
             switch self {
-            case .quality: return "Maximum quality, higher resource usage"
-            case .balanced: return "Good balance of quality and performance"
-            case .battery: return "Minimal resource usage, reduced quality"
+            case .quality: return "Metal: up to 60 frames per second for smoother motion."
+            case .balanced: return "Metal: up to 30 frames per second for everyday playback."
+            case .battery: return "Metal: up to 15 frames per second with less fluid motion."
             }
         }
 
@@ -43,14 +44,27 @@ class PerformanceManager: ObservableObject {
         }
     }
 
-    @AppStorage("performance.mode") private var modeRaw: String = "balanced"
+    private let defaults: UserDefaults
+    @Published var mode: PerformanceMode {
+        didSet { defaults.set(mode.rawValue, forKey: "performance.mode") }
+    }
     @AppStorage("performance.reducedAnimations") var reducedAnimations: Bool = false
     @AppStorage("performance.maxMemoryMB") var maxMemoryMB: Int = 512
 
-    var mode: PerformanceMode {
-        get { PerformanceMode(rawValue: modeRaw) ?? .balanced }
-        set { modeRaw = newValue.rawValue; objectWillChange.send() }
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        let saved = defaults.string(forKey: "performance.mode")
+        // Preserve the original display-name values and the old lowercase default.
+        mode = PerformanceMode.allCases.first {
+            $0.rawValue.caseInsensitiveCompare(saved ?? "") == .orderedSame
+        } ?? .balanced
     }
 
-    private init() {}
+    /// The controller owns one binding per display. New displays immediately
+    /// receive the saved mode; updates never call play/pause or replace a player.
+    func bind(to renderer: WallpaperRenderer) -> AnyCancellable {
+        $mode.removeDuplicates().sink { [weak renderer] mode in
+            renderer?.applyPerformanceMode(mode)
+        }
+    }
 }
