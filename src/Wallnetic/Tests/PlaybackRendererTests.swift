@@ -198,5 +198,59 @@ final class PlaybackRendererTests: XCTestCase {
         guard writer.status == .completed else { throw writer.error ?? FixtureError.encodingFailed }
     }
 
+    @MainActor
+    func testDurationPauseHoldsAVPlayerFrameUntilExplicitResume() async throws {
+        try await assertDurationPause(VideoRenderer())
+    }
+
+    @MainActor
+    func testDurationPauseHoldsMetalFrameUntilExplicitResume() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertDurationPause(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertDurationPause(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("duration-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init(defaultSeconds: 15))
+        playback.play()
+        let deadline = Date().addingTimeInterval(5)
+        while !renderer.hasPresentedFrame, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        playback.tick()
+        time = 15
+        playback.tick()
+        renderer.maintainPlayback() // App activation must not revive motion.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let frozenTime = renderer.currentPlaybackTime
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertEqual(renderer.currentPlaybackTime ?? -1, frozenTime ?? -1, accuracy: 0.02)
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        XCTAssertTrue(playback.isPausedAfterDuration)
+        if let layer = renderer.filterLayer as? AVPlayerLayer {
+            XCTAssertNotNil(layer.displayedPixelBuffer())
+        }
+        playback.play(explicit: true)
+        XCTAssertEqual(renderer.currentPlaybackRate, 1)
+        XCTAssertFalse(playback.isPausedAfterDuration)
+    }
+
     private enum FixtureError: Error { case encodingFailed }
 }

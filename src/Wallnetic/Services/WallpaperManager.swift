@@ -61,6 +61,7 @@ actor ImportGate {
 
 /// Receives playback commands directly instead of through NotificationCenter.
 protocol PlaybackDelegate: AnyObject {
+    var playbackIsPlaying: Bool { get }
     func playbackSetWallpaper(url: URL)
     func playbackSetWallpaper(url: URL, for screen: NSScreen)
     /// - Returns: whether playback actually started. A power condition (screen
@@ -96,6 +97,7 @@ class WallpaperManager: ObservableObject {
     }
     @Published var currentWallpaper: Wallpaper?
     @Published var isPlaying: Bool = false
+    @Published var isPausedAfterDuration: Bool = false
     @Published var wallpaperMode: WallpaperMode = .same
 
     /// Maps wallpaper.id → index in `wallpapers`. Rebuilt on every
@@ -221,15 +223,6 @@ class WallpaperManager: ObservableObject {
             // Launch restore is not a deliberate apply — it must not count
             // toward the rating prompt.
             setWallpaper(wallpaper, userInitiated: false)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                // Launch restore: if the Mac wakes into a locked screen or the
-                // saver, the play is swallowed — say so rather than restoring
-                // to a "Playing" menu bar over a still desktop.
-                let started = self?.playbackDelegate?.playbackPlay() ?? false
-                self?.isPlaying = started
-                // Keep notification for broadcast consumers (widget, etc.)
-                NotificationCenter.default.post(name: .playbackStateDidChange, object: started)
-            }
         }
     }
 
@@ -537,7 +530,7 @@ class WallpaperManager: ObservableObject {
 
         playbackDelegate?.playbackSetWallpaper(url: wallpaper.url)
         // A power condition can swallow this; don't claim it played.
-        isPlaying = playbackDelegate?.playbackPlay() ?? false
+        isPlaying = playbackDelegate?.playbackIsPlaying ?? false
         let started = isPlaying
 
         NotificationCenter.default.post(
@@ -552,7 +545,7 @@ class WallpaperManager: ObservableObject {
 
         Task {
             await widgetSync.syncCurrentWallpaper(wallpaper)
-            widgetSync.syncPlaybackState(isPlaying: started)
+            await MainActor.run { widgetSync.syncPlaybackState(isPlaying: isPlaying) }
         }
     }
 
@@ -564,7 +557,7 @@ class WallpaperManager: ObservableObject {
 
         playbackDelegate?.playbackSetWallpaper(url: wallpaper.url, for: screen)
         // A power condition can swallow this; don't claim it played.
-        isPlaying = playbackDelegate?.playbackPlay() ?? false
+        isPlaying = playbackDelegate?.playbackIsPlaying ?? false
 
         // The active screen's wallpaper is what DynamicAccent, DynamicIsland,
         // ThemeManager, and the widget should reflect. Without updating
@@ -583,7 +576,7 @@ class WallpaperManager: ObservableObject {
             }
             Task {
                 await widgetSync.syncCurrentWallpaper(wallpaper)
-                widgetSync.syncPlaybackState(isPlaying: true)
+                await MainActor.run { widgetSync.syncPlaybackState(isPlaying: isPlaying) }
             }
         }
 
@@ -591,7 +584,7 @@ class WallpaperManager: ObservableObject {
             name: .screenWallpaperDidChange,
             object: ScreenWallpaperInfo(wallpaper: wallpaper, screen: screen)
         )
-        NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
     }
 
     func wallpaper(for screen: NSScreen) -> Wallpaper? {

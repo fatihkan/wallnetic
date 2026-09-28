@@ -232,6 +232,7 @@ struct PlaybackSettingsView: View {
                 }
                 .help("Clears saved battery-mode choice so the prompt appears again.")
             }
+            PauseAfterSettingsView()
             Section("Performance") {
                 Toggle("Use Metal Renderer", isOn: $wallpaperManager.useMetalRenderer)
                     .help("Metal provides better GPU acceleration. Restart app after changing.")

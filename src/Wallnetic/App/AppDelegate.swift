@@ -20,6 +20,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Wire up PlaybackDelegate — direct calls instead of notification relay (#170)
         WallpaperManager.shared.playbackDelegate = self
+        desktopWindowController?.onPlaybackStateChanged = { playing, heldByDuration in
+            WallpaperManager.shared.isPlaying = playing
+            WallpaperManager.shared.isPausedAfterDuration = heldByDuration
+            NotificationCenter.default.post(name: .playbackStateDidChange, object: playing)
+            WidgetSyncService.shared.syncPlaybackState(isPlaying: playing)
+        }
 
         // System wallpaper sync (lock screen / Mission Control still frame).
         // Registered before the delayed wallpaper restore so the restore
@@ -234,18 +240,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // the common path, and a widget stuck on "playing" reads as a bug.
         powerManager?.onShouldPausePlayback = { [weak self] in
             self?.desktopWindowController?.pause()
-            DispatchQueue.main.async {
-                WallpaperManager.shared.isPlaying = false
-                WidgetSyncService.shared.syncPlaybackState(isPlaying: WallpaperManager.shared.isPlaying)
-            }
         }
 
         powerManager?.onShouldResumePlayback = { [weak self] in
             self?.desktopWindowController?.play()
-            DispatchQueue.main.async {
-                WallpaperManager.shared.isPlaying = true
-                WidgetSyncService.shared.syncPlaybackState(isPlaying: WallpaperManager.shared.isPlaying)
-            }
         }
     }
 
@@ -269,6 +267,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - PlaybackDelegate (#170)
 
 extension AppDelegate: PlaybackDelegate {
+    var playbackIsPlaying: Bool { desktopWindowController?.isCurrentlyPlaying ?? false }
     func playbackSetWallpaper(url: URL) {
         Log.app.debug("PlaybackDelegate: setWallpaper \(url.lastPathComponent, privacy: .public)")
         desktopWindowController?.setWallpaper(url: url)
@@ -291,12 +290,12 @@ extension AppDelegate: PlaybackDelegate {
             Log.app.info("Play request swallowed — a power condition is active")
             return false
         }
-        desktopWindowController?.play()
-        return true
+        desktopWindowController?.play(explicit: true)
+        return playbackIsPlaying
     }
 
     func playbackPause() {
-        desktopWindowController?.pause()
+        desktopWindowController?.pause(manual: true)
     }
 
     func playbackApplyScreenWallpapers() {

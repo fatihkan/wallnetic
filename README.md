@@ -184,6 +184,8 @@ later.
 - Configurable sensitivity and placement
 
 ### Smart Power Management
+- Optional [Pause After](docs/PAUSE_AFTER.md): global or per-wallpaper intervals,
+  a retained still frame after expiry, and optional desktop-clear replay
 - Auto-pause on battery power with opt-in prompt
 - "Always play on battery" toggle in Settings for users who prefer live playback
 - "Bir daha sorma" / remember-choice checkbox in the prompt

@@ -46,6 +46,13 @@ struct MenuBarView: View {
             }
 
             // Playback controls
+            if wallpaperManager.isPausedAfterDuration {
+                Text("Paused after duration — Play starts a new interval")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+            }
             Button {
                 wallpaperManager.togglePlayback()
             } label: {
