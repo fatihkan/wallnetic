@@ -627,11 +627,11 @@ class DesktopWindowController {
             desktopWindows[id]?.close()
             desktopWindows.removeValue(forKey: id)
             renderers.removeValue(forKey: id)
-            durationPlayback.remove(id)
             effectOverlays.removeValue(forKey: id)
             screenWallpaperURLs.removeValue(forKey: id)
             lastPlaybackTimes.removeValue(forKey: id)
             frozenSampleCounts.removeValue(forKey: id)
+            durationPlayback.remove(id)
         }
 
         // Add windows for newly connected displays
