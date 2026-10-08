@@ -294,6 +294,8 @@ class DesktopWindowController {
 
     // MARK: - Playback Control
 
+    func wallpaperURL(on displayID: UInt32) -> URL? { screenWallpaperURLs[displayID] }
+
     /// Sets the wallpaper video with animated transition
     func setWallpaper(url: URL, for screen: NSScreen? = nil, forceReload: Bool = false) {
         // Resolve the optional target screen to a stable display id up front.
@@ -318,7 +320,8 @@ class DesktopWindowController {
             guard forceReload || screenWallpaperURLs[targetID] != url else { return }
             screenWallpaperURLs[targetID] = url
         } else {
-            guard forceReload || currentWallpaperURL != url else { return }
+            guard forceReload || currentWallpaperURL != url ||
+                    renderers.keys.contains(where: { screenWallpaperURLs[$0] != url }) else { return }
             currentWallpaperURL = url
             // Uniform reapply: reset per-display state so hot-plug and
             // mode transitions see a consistent picture.
@@ -413,6 +416,17 @@ class DesktopWindowController {
         setWallpaper(url: url, for: screen, forceReload: true)
         // setWallpaper resumes only an already requested session. Retry must
         // also preserve a power pause whose automatic resume was disabled.
+    }
+
+    func clearWallpaper(url: URL) {
+        for id in Array(screenWallpaperURLs.keys) where screenWallpaperURLs[id] == url {
+            renderers[id]?.stop()
+            screenWallpaperURLs.removeValue(forKey: id)
+            desktopWindows[id]?.alphaValue = 0
+            durationPlayback.remove(id)
+        }
+        if currentWallpaperURL == url { currentWallpaperURL = nil }
+        refreshPlaybackStatuses()
     }
 
     /// Keep decode running when we resign active. Do not `orderFront` or

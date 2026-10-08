@@ -169,7 +169,7 @@ struct ScreenWallpaperPickerView: View {
                         ForEach(wallpaperManager.wallpapers) { wallpaper in
                             WallpaperPickerCard(
                                 wallpaper: wallpaper,
-                                isSelected: wallpaperManager.screenWallpapers[screen.localizedName] == wallpaper.id
+                                isSelected: wallpaperManager.wallpaper(for: screen)?.url == wallpaper.url
                             )
                             .onTapGesture {
                                 wallpaperManager.setWallpaper(wallpaper, for: screen)
