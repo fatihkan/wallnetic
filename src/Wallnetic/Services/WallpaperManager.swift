@@ -70,6 +70,7 @@ protocol PlaybackDelegate: AnyObject {
     @discardableResult func playbackPlay() -> Bool
     func playbackPause()
     func playbackRetry(on displayID: UInt32)
+    func playbackClearWallpaper(url: URL)
     func playbackApplyScreenWallpapers()
 }
 
@@ -127,6 +128,7 @@ class WallpaperManager: ObservableObject {
 
     /// Per-screen wallpaper assignments (screenName -> wallpaperID)
     @Published var screenWallpapers: [String: UUID] = [:]
+    private let displayAssignments = DisplayWallpaperAssignments()
 
     // MARK: - Settings
 
@@ -215,7 +217,7 @@ class WallpaperManager: ObservableObject {
             }
         }
 
-        if !lastWallpaperURL.isEmpty {
+        if !lastWallpaperURL.isEmpty || displayAssignments.hasAssignments {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.restoreLastWallpaper()
             }
@@ -223,6 +225,14 @@ class WallpaperManager: ObservableObject {
     }
 
     private func restoreLastWallpaper() {
+        if wallpaperMode == .different, displayAssignments.hasAssignments {
+            for screen in NSScreen.screens {
+                if let wallpaper = wallpaper(for: screen) {
+                    setWallpaper(wallpaper, for: screen, userInitiated: false)
+                }
+            }
+            return
+        }
         guard !lastWallpaperURL.isEmpty else { return }
         let url = URL(fileURLWithPath: lastWallpaperURL)
         if let wallpaper = wallpapers.first(where: { $0.url.path == url.path }) {
@@ -355,9 +365,12 @@ class WallpaperManager: ObservableObject {
     }
 
     func removeWallpaper(_ wallpaper: Wallpaper) {
+        playbackDelegate?.playbackClearWallpaper(url: wallpaper.url)
+        displayAssignments.remove(wallpaper.url)
+        if lastWallpaperURL == wallpaper.url.path { lastWallpaperURL = "" }
         library.removeFile(at: wallpaper.url)
         wallpapers.removeAll { $0.id == wallpaper.id }
-        if currentWallpaper?.id == wallpaper.id {
+        if currentWallpaper?.url == wallpaper.url {
             currentWallpaper = nil
         }
         scheduleFavoritesWrite()
@@ -558,6 +571,7 @@ class WallpaperManager: ObservableObject {
     /// Sets wallpaper for a specific screen (different mode).
     func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen, userInitiated: Bool = true) {
         let screenName = screen.localizedName
+        displayAssignments.set(wallpaper.url, for: screen.wallpaperAssignmentKey)
         screenWallpapers[screenName] = wallpaper.id
         saveScreenWallpapers()
 
@@ -594,6 +608,12 @@ class WallpaperManager: ObservableObject {
     }
 
     func wallpaper(for screen: NSScreen) -> Wallpaper? {
+        if wallpaperMode == .same { return currentWallpaper }
+        switch displayAssignments.selection(for: screen.wallpaperAssignmentKey) {
+        case .empty: return nil
+        case .file(let url): return wallpapers.first { $0.url.standardizedFileURL == url }
+        case .inherit: break
+        }
         guard let wallpaperID = screenWallpapers[screen.localizedName] else {
             return currentWallpaper
         }
@@ -614,6 +634,27 @@ class WallpaperManager: ObservableObject {
         } else if mode == .different {
             playbackDelegate?.playbackApplyScreenWallpapers()
             NotificationCenter.default.post(name: .applyScreenWallpapers, object: nil)
+        }
+    }
+
+    /// A targeted first playback preserves other displays, including displays
+    /// with no wallpaper. Store paths before changing currentWallpaper.
+    func applyOnboardingWallpaper(_ wallpaper: Wallpaper, to displayID: UInt32?) throws {
+        if let displayID {
+            guard let target = NSScreen.screens.first(where: { $0.displayID == displayID }) else {
+                throw OnboardingDemoError.displayDisconnected
+            }
+            let previous = NSScreen.screens.map { ($0, self.wallpaper(for: $0)?.url) }
+            for (screen, url) in previous {
+                displayAssignments.set(url, for: screen.wallpaperAssignmentKey)
+            }
+            wallpaperMode = .different
+            wallpaperModeRaw = WallpaperMode.different.rawValue
+            setWallpaper(wallpaper, for: target)
+        } else {
+            wallpaperMode = .same
+            wallpaperModeRaw = WallpaperMode.same.rawValue
+            setWallpaper(wallpaper)
         }
     }
 

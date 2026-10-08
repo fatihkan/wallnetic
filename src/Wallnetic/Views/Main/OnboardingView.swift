@@ -62,16 +62,22 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
                 orb
-                    .frame(height: 220)
+                    .frame(height: currentStep == 0 ? 100 : 220)
+                    .scaleEffect(currentStep == 0 ? 0.48 : 1)
 
                 stepCopy
-                    .padding(.top, 32)
+                    .padding(.top, currentStep == 0 ? 8 : 32)
+
+                if currentStep == 0 {
+                    OnboardingQuickStartView()
+                        .padding(.top, 14)
+                }
 
                 Spacer(minLength: 0)
 
                 controls
                     .padding(.horizontal, 40)
-                    .padding(.bottom, 36)
+                    .padding(.bottom, currentStep == 0 ? 20 : 36)
             }
         }
         .frame(width: 640, height: 520)

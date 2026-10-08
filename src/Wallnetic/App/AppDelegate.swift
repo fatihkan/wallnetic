@@ -271,6 +271,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - PlaybackDelegate (#170)
 
 extension AppDelegate: PlaybackDelegate {
+    func playbackClearWallpaper(url: URL) {
+        desktopWindowController?.clearWallpaper(url: url)
+    }
     func playbackRetry(on displayID: UInt32) {
         desktopWindowController?.retryWallpaper(on: displayID)
     }

@@ -119,6 +119,7 @@ struct GeneralSettingsView: View {
     @State private var launchAtLoginEnabled = false
     @State private var loginItemNeedsApproval = false
     @State private var loginItemError: String?
+    @State private var showingOnboarding = false
     @AppStorage("hideDockIcon") private var hideDockIcon = false
     @AppStorage("island.enabled") private var islandEnabled = false
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = false
@@ -162,6 +163,11 @@ struct GeneralSettingsView: View {
                 Toggle("Global Hotkeys", isOn: $globalHotkeysEnabled)
                     .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
             }
+            Section("Getting Started") {
+                Button("Show welcome tour and sample") { showingOnboarding = true }
+                Text("Try the included wallpaper or import a video. No account required.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Library") {
                 LabeledContent("Location") {
                     Text("~/Library/Application Support/Wallnetic")
@@ -178,6 +184,9 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showingOnboarding) {
+            OnboardingView(isPresented: $showingOnboarding)
+        }
         .onAppear { refreshLoginItemStatus() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshLoginItemStatus()
