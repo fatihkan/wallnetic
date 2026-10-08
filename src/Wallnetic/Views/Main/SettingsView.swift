@@ -197,6 +197,7 @@ struct SettingsView: View {
     private var content: some View {
         switch selection {
         case .general:    GeneralSettingsView()
+        case .storage:    StorageSettingsView()
         case .appearance: AppearanceSettingsView()
         case .playback:   PlaybackSettingsView()
         case .effects:    EffectsSettingsView()
@@ -216,7 +217,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     // smartTags (Ollama Vision auto-tagging) gizlendi — App Store
     // submission disinda tutuluyor. View + service kodu intact;
     // case'i geri eklemek yeterli.
-    case general, appearance, playback, effects, schedule, playlist, spaces, display, notifications, about
+    case general, storage, appearance, playback, effects, schedule, playlist, spaces, display, notifications, about
 
     var id: String { rawValue }
     var isFooter: Bool { self == .notifications || self == .about }
@@ -224,6 +225,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general:       return "General"
+        case .storage:       return "Storage"
         case .appearance:    return "Appearance"
         case .playback:      return "Playback"
         case .effects:       return "Effects"
@@ -239,6 +241,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     var tagline: String {
         switch self {
         case .general:       return "App-wide behavior and library location."
+        case .storage:       return "Library sizes and safe cleanup."
         case .appearance:    return "Theme, accent, and dynamic colors."
         case .playback:      return "Power, performance, and pause rules."
         case .effects:       return "Live wallpaper post-processing."
@@ -254,6 +257,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general:       return "gear"
+        case .storage:       return "externaldrive"
         case .appearance:    return "paintbrush.fill"
         case .playback:      return "play.fill"
         case .effects:       return "wand.and.stars"
@@ -268,6 +272,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
     var accent: Color {
         switch self {
+        case .storage:       return .teal
         case .general:       return Color(red: 0.42, green: 0.71, blue: 1.00)
         case .appearance:    return Color(red: 1.00, green: 0.45, blue: 0.72)
         case .playback:      return Color(red: 0.40, green: 0.95, blue: 0.55)

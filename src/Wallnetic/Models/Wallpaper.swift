@@ -24,8 +24,8 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     }
 
     /// Lightweight init — no I/O, no AVFoundation. Safe to call on main thread.
-    init(url: URL, isFavorite: Bool = false) {
-        self.id = UUID()
+    init(url: URL, isFavorite: Bool = false, id: UUID = UUID()) {
+        self.id = id
         self.url = url
         self.name = url.deletingPathExtension().lastPathComponent
         self.customTitle = nil

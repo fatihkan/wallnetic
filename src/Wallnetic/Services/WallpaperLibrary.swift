@@ -27,7 +27,7 @@ final class WallpaperLibrary {
     // MARK: - Load
 
     /// Scans the library directory and returns raw wallpaper objects.
-    func loadAll(favoritePaths: Set<String>) -> [Wallpaper] {
+    func loadAll(favoritePaths: Set<String>, existingIDs: [String: UUID] = [:]) -> [Wallpaper] {
         guard let contents = try? fileManager.contentsOfDirectory(
             at: libraryURL,
             includingPropertiesForKeys: [.contentTypeKey],
@@ -36,7 +36,7 @@ final class WallpaperLibrary {
 
         return contents.compactMap { url in
             guard isVideoFile(url) else { return nil }
-            return Wallpaper(url: url, isFavorite: favoritePaths.contains(url.path))
+            return Wallpaper(url: url, isFavorite: favoritePaths.contains(url.path), id: existingIDs[url.path] ?? UUID())
         }
     }
 
@@ -87,12 +87,6 @@ final class WallpaperLibrary {
             try fileManager.copyItem(at: importURL, to: destURL)
             return destURL
         }
-    }
-
-    // MARK: - Remove
-
-    func removeFile(at url: URL) {
-        try? fileManager.removeItem(at: url)
     }
 
     // MARK: - File Watching

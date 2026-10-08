@@ -152,6 +152,13 @@ class WallpaperManager: ObservableObject {
     private let metadata = WallpaperMetadataStore.shared
     private let widgetSync = WidgetSyncService.shared
     private let cache = WallpaperMetadataCache.shared
+    private var isRemovingStorage = false
+
+    private lazy var storage = LibraryStorage(
+        libraryURL: library.libraryURL,
+        framesURL: SystemWallpaperSync.framesDirectory(),
+        thumbnailsURL: SharedDataManager.shared.thumbnailsDirectory,
+        metadataURL: applicationSupportURL().appendingPathComponent("Wallnetic/metadata.sqlite"))
 
     // P1-6: persistence debouncers. Toggling favorites rapidly used to
     // re-encode the entire favorites JSON per click. We now coalesce
@@ -253,8 +260,10 @@ class WallpaperManager: ObservableObject {
     // MARK: - Library Management
 
     func loadWallpapers() {
+        guard !isRemovingStorage else { return }
         let favPaths = metadata.favoritePaths
-        wallpapers = library.loadAll(favoritePaths: favPaths)
+        let ids = Dictionary(wallpapers.map { ($0.url.path, $0.id) }, uniquingKeysWith: { first, _ in first })
+        wallpapers = library.loadAll(favoritePaths: favPaths, existingIDs: ids)
 
         metadata.applyCustomTitles(to: &wallpapers)
         metadata.applySavedColors(to: &wallpapers)
@@ -365,17 +374,136 @@ class WallpaperManager: ObservableObject {
     }
 
     func removeWallpaper(_ wallpaper: Wallpaper) {
-        playbackDelegate?.playbackClearWallpaper(url: wallpaper.url)
-        displayAssignments.remove(wallpaper.url)
-        if lastWallpaperURL == wallpaper.url.path { lastWallpaperURL = "" }
-        library.removeFile(at: wallpaper.url)
-        wallpapers.removeAll { $0.id == wallpaper.id }
-        if currentWallpaper?.url == wallpaper.url {
-            currentWallpaper = nil
+        Task { @MainActor in
+            do {
+                let scan = try await scanStorage()
+                guard let item = scan.items.first(where: { $0.url.path == wallpaper.url.path && $0.canRemove }) else {
+                    throw StorageError.unsafeFile
+                }
+                let alert = NSAlert()
+                alert.messageText = "Remove this library copy?"
+                alert.informativeText = "\(wallpaper.displayName) (\(ByteCountFormatter.string(fromByteCount: item.bytes, countStyle: .file))). This permanently removes the app-managed copy and its assignments. Your original source file is kept."
+                alert.addButton(withTitle: "Remove")
+                alert.addButton(withTitle: "Cancel")
+                alert.buttons.first?.hasDestructiveAction = true
+                guard alert.runModal() == .alertFirstButtonReturn else { return }
+                let result = await removeStorageItems([item])
+                if !result.failures.isEmpty {
+                    let failure = NSAlert()
+                    failure.messageText = "Could not remove the copy"
+                    failure.informativeText = result.failures.joined(separator: "\n")
+                    failure.runModal()
+                }
+            } catch {
+                let alert = NSAlert(error: error)
+                alert.runModal()
+            }
         }
-        scheduleFavoritesWrite()
-        cache.delete(id: wallpaper.id)
-        Task { await widgetSync.syncFavorites(wallpapers.filter { $0.isFavorite }) }
+    }
+
+    @MainActor
+    private var protectedThumbnailNames: Set<String> {
+        Set(wallpapers.map { $0.id.uuidString + ".jpg" })
+    }
+
+    private static func storedThumbnailNames() throws -> Set<String> {
+        let shared = try SharedDataManager.shared.readSharedDataForStorage()
+        var names = Set<String>()
+        names.formUnion(shared.favorites.compactMap(\.thumbnailPath))
+        if let current = shared.currentThumbnailPath { names.insert(current) }
+        return names
+    }
+
+    @MainActor
+    func scanStorage() async throws -> StorageScan {
+        let service = storage
+        let protected = protectedThumbnailNames
+        let task = Task.detached(priority: .utility) {
+            var names = protected
+            var failure: String?
+            if service.thumbnailsURL != nil {
+                do { names.formUnion(try Self.storedThumbnailNames()) }
+                catch { failure = "Widget references could not be read; cache cleanup is unavailable. \(error.localizedDescription)" }
+            }
+            var scan = try service.scan(protectedThumbnailNames: names)
+            if let failure {
+                scan.failures.append(failure)
+                for index in scan.items.indices where scan.items[index].category == .caches {
+                    scan.items[index].canRemove = false
+                }
+            }
+            return scan
+        }
+        return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
+    @MainActor
+    func removeStorageItems(_ items: [StorageItem]) async -> StorageRemovalResult {
+        do {
+            return try await importGate.run { [self] in
+                let (service, protected) = await MainActor.run {
+                    self.isRemovingStorage = true
+                    return (self.storage, self.protectedThumbnailNames)
+                }
+                let result = await Task.detached(priority: .utility) {
+                    var names = protected
+                    if items.contains(where: { $0.category == .caches }) {
+                        do { names.formUnion(try Self.storedThumbnailNames()) }
+                        catch {
+                            var result = service.remove(items.filter { $0.category == .videos })
+                            result.failures.append("Cache cleanup skipped: widget references could not be read. \(error.localizedDescription)")
+                            return result
+                        }
+                    }
+                    return service.remove(items, protectedThumbnailNames: names)
+                }.value
+                await MainActor.run {
+                    self.finishStorageRemoval(result)
+                    self.isRemovingStorage = false
+                    self.loadWallpapers()
+                }
+                return result
+            }
+        } catch {
+            return StorageRemovalResult(failures: [error.localizedDescription])
+        }
+    }
+
+    @MainActor
+    private func finishStorageRemoval(_ result: StorageRemovalResult) {
+        let update = LibraryRemovalState(result: result, wallpapers: wallpapers, current: currentWallpaper,
+                                         screenAssignments: screenWallpapers)
+        let urls = update.urls
+        guard !urls.isEmpty else { return }
+        let paths = update.paths
+        for url in urls {
+            playbackDelegate?.playbackClearWallpaper(url: url)
+            displayAssignments.remove(url)
+        }
+        screenWallpapers = update.screenAssignments
+        saveScreenWallpapers()
+        if paths.contains(lastWallpaperURL) { lastWallpaperURL = "" }
+        currentWallpaper = update.current
+        wallpapers = update.wallpapers
+        isPlaying = playbackDelegate?.playbackIsPlaying ?? false
+
+        // Playlist sources read this array or collections dynamically. Time-of-day,
+        // weather and Spaces persist paths, so prune them in the same main-actor turn.
+        CollectionManager.shared.removeWallpaperIDs(update.ids)
+        TimeOfDayManager.shared.removeWallpaperPaths(paths)
+        WeatherWallpaperManager.shared.removeWallpaperPaths(paths)
+        SpaceWallpaperManager.shared.removeWallpaperPaths(paths)
+        pendingFavoritesWrite?.cancel()
+        pendingTitlesWrite?.cancel()
+        pendingTagsWrite?.cancel()
+        metadata.favoritePaths.subtract(paths)
+        metadata.customTitles = metadata.customTitles.filter { !paths.contains($0.key) }
+        metadata.savedTags = metadata.savedTags.filter { !paths.contains($0.key) }
+        metadata.savedColors = metadata.savedColors.filter { !paths.contains($0.key) }
+        cache.replaceAll(with: wallpapers)
+        ThumbnailCache.shared.clearCache()
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
+        widgetSync.syncAll(current: currentWallpaper, isPlaying: isPlaying, wallpapers: wallpapers)
     }
 
     func renameWallpaper(_ wallpaper: Wallpaper, to newTitle: String) {
@@ -481,9 +609,9 @@ class WallpaperManager: ObservableObject {
     // MARK: - Async Metadata
 
     private func loadMetadataInBackground() {
-        Task {
-            for i in wallpapers.indices {
-                var wp = wallpapers[i]
+        Task { @MainActor in
+            let targets = wallpapers
+            for var wp in targets {
                 if wp.duration == nil {
                     await wp.loadMetadata()
                     // Immutable copies — capturing the mutated `var wp` in the
@@ -494,7 +622,7 @@ class WallpaperManager: ObservableObject {
                     let duration = wp.duration
                     let resolution = wp.resolution
                     await MainActor.run {
-                        if i < wallpapers.count && wallpapers[i].id == id {
+                        if let i = index(of: id) {
                             wallpapers[i].duration = duration
                             wallpapers[i].resolution = resolution
                         }
@@ -505,7 +633,7 @@ class WallpaperManager: ObservableObject {
     }
 
     func extractMissingColors() {
-        Task {
+        Task { @MainActor in
             // Snapshot the wallpapers needing color extraction by their id;
             // after each suspension we re-resolve the index via id so the
             // write goes to the right wallpaper (or no-op if it was deleted
@@ -528,7 +656,8 @@ class WallpaperManager: ObservableObject {
             // Immutable copy — same captured-var-in-concurrent-code fix as above.
             let colors = updatedColors
             await MainActor.run {
-                metadata.savedColors = colors
+                let existingPaths = Set(wallpapers.map { $0.url.path })
+                metadata.savedColors = colors.filter { existingPaths.contains($0.key) }
             }
         }
     }
@@ -562,7 +691,8 @@ class WallpaperManager: ObservableObject {
             RatingPromptManager.shared.recordWallpaperApplied()
         }
 
-        Task {
+        Task { @MainActor in
+            guard currentWallpaper?.url == wallpaper.url else { return }
             await widgetSync.syncCurrentWallpaper(wallpaper)
             await MainActor.run { widgetSync.syncPlaybackState(isPlaying: isPlaying) }
         }
@@ -594,7 +724,8 @@ class WallpaperManager: ObservableObject {
             if userInitiated {
                 RatingPromptManager.shared.recordWallpaperApplied()
             }
-            Task {
+            Task { @MainActor in
+                guard currentWallpaper?.url == wallpaper.url else { return }
                 await widgetSync.syncCurrentWallpaper(wallpaper)
                 await MainActor.run { widgetSync.syncPlaybackState(isPlaying: isPlaying) }
             }

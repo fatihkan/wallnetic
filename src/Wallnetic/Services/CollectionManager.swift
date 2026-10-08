@@ -94,6 +94,13 @@ class CollectionManager: ObservableObject {
 
     // MARK: - Persistence
 
+    func removeWallpaperIDs(_ ids: Set<UUID>) {
+        for index in collections.indices {
+            collections[index].wallpaperIds.removeAll { ids.contains($0) }
+        }
+        saveCollections()
+    }
+
     private func loadCollections() {
         guard let data = defaults.data(forKey: collectionsKey) else { return }
         do {
