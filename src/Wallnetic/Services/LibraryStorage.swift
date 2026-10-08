@@ -225,10 +225,12 @@ struct LibraryStorage: Sendable {
         let currentPath = String(cString: resolved)
         free(resolved)
         guard currentPath == anchor.path else { throw StorageError.changedFile }
-        var fd = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+        // Ancestors are used only for relative lookup, never enumeration. Asking
+        // to read their contents is unnecessary outside the app's sandbox scope.
+        var fd = open("/", O_EVTONLY | O_DIRECTORY | O_CLOEXEC)
         guard fd >= 0 else { throw posixError() }
         for component in anchor.pathComponents.dropFirst() {
-            let next = openat(fd, component, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+            let next = openat(fd, component, O_EVTONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
             let failure = errno
             close(fd)
             guard next >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(failure)) }
