@@ -198,7 +198,10 @@ later.
 
 ### Performance
 - **Metal GPU acceleration** for smooth playback
-- 3 performance modes: Quality, Balanced, Battery Saver
+- 3 performance modes: Quality (up to 60 FPS), Balanced (30 FPS), Battery Saver (15 FPS)
+- Frame-rate limits apply to Metal presentation at normal video speed; AVPlayer
+  retains the video's original frame rate. See [playback profiles](docs/PLAYBACK_PROFILES.md)
+  for engine policies and validation limits.
 - Stops decoding entirely when the desktop is covered, the Mac is locked, the
   screen saver is running or the display is asleep
 - Async image caching

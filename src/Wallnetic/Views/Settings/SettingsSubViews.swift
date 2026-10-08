@@ -214,6 +214,7 @@ struct GeneralSettingsView: View {
 
 struct PlaybackSettingsView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @ObservedObject private var performance = PerformanceManager.shared
     @AppStorage(BatteryPromptService.alwaysPlayKey) private var alwaysPlayOnBattery: Bool = false
 
     var body: some View {
@@ -233,6 +234,20 @@ struct PlaybackSettingsView: View {
                 .help("Clears saved battery-mode choice so the prompt appears again.")
             }
             Section("Performance") {
+                Picker("Playback profile", selection: $performance.mode) {
+                    ForEach(PerformanceManager.PerformanceMode.allCases, id: \.self) { mode in
+                        Label(mode.rawValue, systemImage: mode.icon).tag(mode)
+                    }
+                }
+                Text(performance.mode.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Applies immediately to all Metal displays at normal video speed. Resolution stays unchanged. Energy savings depend on the video and your Mac; decoding may continue at the source frame rate.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("AVPlayer keeps the video's original frame rate in every profile. Use Metal to apply frame-rate limits.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 Toggle("Use Metal Renderer", isOn: $wallpaperManager.useMetalRenderer)
                     .help("Metal provides better GPU acceleration. Restart app after changing.")
                 Text("Metal renderer uses GPU for video playback (recommended)")

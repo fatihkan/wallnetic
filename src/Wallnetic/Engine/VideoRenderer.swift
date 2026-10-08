@@ -173,6 +173,14 @@ class VideoRenderer: NSObject {
 
     // MARK: - Playback Control
 
+    func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode) {
+        // AVPlayerLayer has no direct frame-rate cap for local video. Network
+        // bitrate/resolution preferences do not limit local decoding. Changing
+        // videoComposition during playback can move the clock backwards, so
+        // keep native timing rather than change rate or rebuild the player.
+        Log.video.debug("Profile \(mode.rawValue, privacy: .public): AVPlayer keeps source frame timing")
+    }
+
     func play() {
         shouldPlayWhenReady = true
         pinOrStart()

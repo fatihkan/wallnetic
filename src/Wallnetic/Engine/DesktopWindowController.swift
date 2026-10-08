@@ -1,6 +1,7 @@
 import Cocoa
 import AVFoundation
 import QuartzCore
+import Combine
 
 /// Protocol for video renderers (supports both AVFoundation and Metal-based renderers)
 protocol WallpaperRenderer: AnyObject {
@@ -9,6 +10,7 @@ protocol WallpaperRenderer: AnyObject {
     func play()
     func pause()
     func stop()
+    func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode)
     /// Current playback position in seconds, or `nil` when no player is loaded.
     /// The watchdog samples this to detect a frozen player (time not advancing).
     var currentPlaybackTime: TimeInterval? { get }
@@ -51,6 +53,7 @@ class DesktopWindowController {
     // different mode" bug. displayID is stable across those events.
     private var desktopWindows: [CGDirectDisplayID: NSWindow] = [:]
     private var renderers: [CGDirectDisplayID: WallpaperRenderer] = [:]
+    private var performanceBindings: [CGDirectDisplayID: AnyCancellable] = [:]
     private var effectOverlays: [CGDirectDisplayID: NSView] = [:]
     private var isPlaying = false
     /// Last URL applied to *all* screens (uniform mode). Used to restore
@@ -178,6 +181,7 @@ class DesktopWindowController {
         // Store references
         desktopWindows[displayID] = window
         renderers[displayID] = renderer
+        performanceBindings[displayID] = PerformanceManager.shared.bind(to: renderer)
 
         // Apply current effects
         applyEffectsToOverlay(effectOverlay)
@@ -589,6 +593,7 @@ class DesktopWindowController {
             desktopWindows[id]?.close()
             desktopWindows.removeValue(forKey: id)
             renderers.removeValue(forKey: id)
+            performanceBindings.removeValue(forKey: id)
             effectOverlays.removeValue(forKey: id)
             screenWallpaperURLs.removeValue(forKey: id)
             lastPlaybackTimes.removeValue(forKey: id)
@@ -718,5 +723,6 @@ class DesktopWindowController {
 
         desktopWindows.removeAll()
         renderers.removeAll()
+        performanceBindings.removeAll()
     }
 }
