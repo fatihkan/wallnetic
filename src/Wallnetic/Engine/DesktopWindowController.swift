@@ -420,12 +420,19 @@ class DesktopWindowController {
 
     func clearWallpaper(url: URL) {
         for id in Array(screenWallpaperURLs.keys) where screenWallpaperURLs[id] == url {
-            renderers[id]?.stop()
-            screenWallpaperURLs.removeValue(forKey: id)
-            desktopWindows[id]?.alphaValue = 0
-            durationPlayback.remove(id)
+            clearWallpaper(on: id)
         }
         if currentWallpaperURL == url { currentWallpaperURL = nil }
+        refreshPlaybackStatuses()
+    }
+
+    func clearWallpaper(on displayID: UInt32) {
+        guard screenWallpaperURLs[displayID] != nil else { return }
+        renderers[displayID]?.stop()
+        screenWallpaperURLs.removeValue(forKey: displayID)
+        desktopWindows[displayID]?.alphaValue = 0
+        durationPlayback.remove(displayID)
+        if screenWallpaperURLs.isEmpty { currentWallpaperURL = nil }
         refreshPlaybackStatuses()
     }
 

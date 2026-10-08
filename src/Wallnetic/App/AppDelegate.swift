@@ -313,6 +313,8 @@ extension AppDelegate: PlaybackDelegate {
         for screen in NSScreen.screens {
             if let wallpaper = WallpaperManager.shared.wallpaper(for: screen) {
                 desktopWindowController?.setWallpaper(url: wallpaper.url, for: screen)
+            } else if let id = screen.displayID {
+                desktopWindowController?.clearWallpaper(on: id)
             }
         }
         if !(powerManager?.shouldBePaused ?? false) {
