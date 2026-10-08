@@ -171,6 +171,14 @@ final class OnboardingDemoTests: XCTestCase {
             let screenID = try XCTUnwrap(screen.displayID)
             XCTAssertEqual(controller.wallpaperURL(on: screenID), first)
         }
+        controller.clearWallpaper(on: id)
+        XCTAssertNil(controller.wallpaperURL(on: id))
+        for other in NSScreen.screens where other.displayID != id {
+            XCTAssertEqual(controller.wallpaperURL(on: try XCTUnwrap(other.displayID)), first,
+                           "Restoring an empty display must not clear another display")
+        }
+        controller.setWallpaper(url: first)
+        XCTAssertEqual(controller.wallpaperURL(on: id), first)
         controller.clearWallpaper(url: first)
         XCTAssertNil(controller.wallpaperURL(on: id))
         XCTAssertFalse(statuses.isEmpty)
