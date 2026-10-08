@@ -11,7 +11,11 @@ import AppKit
 class DeepLinkHandler {
     static let shared = DeepLinkHandler()
 
-    private init() {}
+    private let togglePlayback: () -> Void
+
+    init(togglePlayback: @escaping () -> Void = { WallpaperManager.shared.togglePlayback() }) {
+        self.togglePlayback = togglePlayback
+    }
 
     /// Process incoming URL
     func handle(_ url: URL) {
@@ -42,7 +46,7 @@ class DeepLinkHandler {
             NotificationCenter.default.post(name: .openMainWindow, object: nil)
 
         case "playPause":
-            WallpaperManager.shared.togglePlayback()
+            togglePlayback()
 
         case "nextWallpaper":
             WallpaperManager.shared.cycleToNextWallpaper()
