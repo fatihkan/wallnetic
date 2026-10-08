@@ -3,6 +3,7 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Environment(\.openWindow) var openWindow
+    @ObservedObject private var performance = PerformanceManager.shared
 
     private func openMainWindow() {
         // Check if main window already exists
@@ -46,13 +47,24 @@ struct MenuBarView: View {
             }
 
             // Playback controls
-            if wallpaperManager.isPausedAfterDuration {
-                Text("Paused after duration — Play starts a new interval")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
+            ForEach(wallpaperManager.displayPlaybackStatuses) { status in
+                Menu {
+                    Text(status.title)
+                    if !status.detail.isEmpty { Text(status.detail) }
+                    if status.canRetry {
+                        Button("Retry wallpaper") { wallpaperManager.retryWallpaper(on: status.id) }
+                            .accessibilityLabel("Retry wallpaper on \(status.displayName)")
+                    }
+                } label: {
+                    Label("\(status.displayName): \(status.title)", systemImage: status.symbol)
+                }
+                .accessibilityLabel("\(status.displayName): \(status.title)")
             }
+            Text("Playback profile: \(performance.mode.rawValue)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
             Button {
                 wallpaperManager.togglePlayback()
             } label: {
@@ -62,6 +74,8 @@ struct MenuBarView: View {
                 )
             }
             .keyboardShortcut("p", modifiers: .command)
+            .disabled(!wallpaperManager.isPlaying &&
+                wallpaperManager.displayPlaybackStatuses.contains(where: \.blocksResume))
 
             Button {
                 wallpaperManager.cycleToNextWallpaper()

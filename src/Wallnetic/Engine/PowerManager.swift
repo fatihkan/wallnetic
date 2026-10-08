@@ -13,15 +13,47 @@ class PowerManager {
     private let fullscreenQueue = DispatchQueue(label: "com.wallnetic.power.fullscreen", qos: .utility)
 
     // State tracking
-    private(set) var isOnBattery = false
-    private(set) var isLowPowerMode = false
-    private(set) var isFullscreenAppActive = false
-    private(set) var isScreenAsleep = false
-    private(set) var isScreenSaverActive = false
+    private(set) var isOnBattery = false {
+        didSet { if oldValue != isOnBattery { publishRestrictionsChange() } }
+    }
+    private(set) var isLowPowerMode = false {
+        didSet { if oldValue != isLowPowerMode { publishRestrictionsChange() } }
+    }
+    private(set) var isFullscreenAppActive = false {
+        didSet { if oldValue != isFullscreenAppActive { publishRestrictionsChange() } }
+    }
+    private(set) var isScreenAsleep = false {
+        didSet { if oldValue != isScreenAsleep { publishRestrictionsChange() } }
+    }
+    private(set) var isScreenSaverActive = false {
+        didSet { if oldValue != isScreenSaverActive { publishRestrictionsChange() } }
+    }
     /// True while the login window covers the session (screen locked) or another
     /// user is switched in. Nothing the user can see is on screen, but without
     /// this the decoder ran at full rate the whole time.
-    private(set) var isSessionInactive = false
+    private(set) var isSessionInactive = false {
+        didSet { if oldValue != isSessionInactive { publishRestrictionsChange() } }
+    }
+
+    /// Status observes the same effective restrictions used by shouldBePaused.
+    var pauseReasons: [PlaybackPauseReason] {
+        var reasons: [PlaybackPauseReason] = []
+        if isSessionInactive { reasons.append(.sessionInactive) }
+        if isScreenAsleep { reasons.append(.sleeping) }
+        if isScreenSaverActive { reasons.append(.screenSaver) }
+        if isLowPowerMode { reasons.append(.lowPower) }
+        if isOnBattery && BatteryPromptService.shared.effectivePauseOnBattery { reasons.append(.battery) }
+        if isFullscreenAppActive && WallpaperManager.shared.pauseOnFullscreen { reasons.append(.fullscreen) }
+        return reasons
+    }
+
+    private func publishRestrictionsChange() {
+        // Defer until the existing pause/resume handler has finished. This also
+        // marshals the low-power notification, which can arrive off-main.
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .playbackRestrictionsDidChange, object: nil)
+        }
+    }
 
     private var fullscreenCheckTimer: Timer?
     private var powerSourceRef: CFRunLoopSource?

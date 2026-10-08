@@ -26,6 +26,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.post(name: .playbackStateDidChange, object: playing)
             WidgetSyncService.shared.syncPlaybackState(isPlaying: playing)
         }
+        desktopWindowController?.onDisplayStatusesChanged = { statuses in
+            WallpaperManager.shared.displayPlaybackStatuses = statuses
+        }
+        desktopWindowController?.refreshPlaybackStatuses()
 
         // System wallpaper sync (lock screen / Mission Control still frame).
         // Registered before the delayed wallpaper restore so the restore
@@ -267,6 +271,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - PlaybackDelegate (#170)
 
 extension AppDelegate: PlaybackDelegate {
+    func playbackRetry(on displayID: UInt32) {
+        desktopWindowController?.retryWallpaper(on: displayID)
+    }
     var playbackIsPlaying: Bool { desktopWindowController?.isCurrentlyPlaying ?? false }
     func playbackSetWallpaper(url: URL) {
         Log.app.debug("PlaybackDelegate: setWallpaper \(url.lastPathComponent, privacy: .public)")

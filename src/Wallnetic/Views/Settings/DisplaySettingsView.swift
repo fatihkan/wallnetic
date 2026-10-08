@@ -16,7 +16,11 @@ struct DisplaySettingsView: View {
                         screen: screen,
                         wallpaper: wallpaperManager.wallpaper(for: screen),
                         isSelected: selectedScreen == screen,
-                        showDifferentMode: wallpaperManager.wallpaperMode == .different
+                        showDifferentMode: wallpaperManager.wallpaperMode == .different,
+                        playbackStatus: wallpaperManager.displayPlaybackStatuses.first { $0.id == screen.displayID },
+                        retry: {
+                            if let id = screen.displayID { wallpaperManager.retryWallpaper(on: id) }
+                        }
                     )
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -65,6 +69,8 @@ struct ScreenRow: View {
     let wallpaper: Wallpaper?
     let isSelected: Bool
     let showDifferentMode: Bool
+    var playbackStatus: DisplayPlaybackStatus?
+    var retry: () -> Void = {}
 
     var body: some View {
         HStack {
@@ -88,6 +94,9 @@ struct ScreenRow: View {
                 Text("\(Int(screen.frame.width))×\(Int(screen.frame.height))")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                if let playbackStatus {
+                    PlaybackStatusView(status: playbackStatus, retry: retry)
+                }
             }
 
             Spacer()
