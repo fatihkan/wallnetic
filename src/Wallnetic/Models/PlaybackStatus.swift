@@ -18,6 +18,20 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
     }
 
     var blocksResume: Bool { self != .manual && self != .timer }
+
+    var condition: String {
+        switch self {
+        case .manual: return "manual pause"
+        case .sessionInactive: return "inactive session"
+        case .sleeping: return "sleeping display"
+        case .screenSaver: return "screen saver"
+        case .lowPower: return "Low Power Mode"
+        case .battery: return "battery policy"
+        case .fullscreen: return "fullscreen app"
+        case .covered: return "covered desktop"
+        case .timer: return "finished playback timer"
+        }
+    }
 }
 
 enum RendererPlaybackFailure: Equatable {
@@ -62,6 +76,9 @@ struct DisplayPlaybackStatus: Equatable, Identifiable {
         self.reasons = PlaybackPauseReason.allCases.filter { reasons.contains($0) }
         if !hasWallpaper { state = .notSet }
         else if case .failed(let failure) = renderer { state = .unavailable(failure) }
+        // A newly enabled policy can precede the actual pause callback. Do
+        // not report a stopped player while the observed player is advancing.
+        else if renderer == .playing { state = .playing }
         else if !self.reasons.isEmpty { state = .paused }
         else {
             switch renderer {
@@ -94,7 +111,8 @@ struct DisplayPlaybackStatus: Equatable, Identifiable {
             return ([failure.recovery, "A previous wallpaper may remain visible."] + reasons.map(\.title)).joined(separator: " ")
         case .loading: guidance = "Waiting for the first video frame."
         case .waiting: guidance = "The player is waiting for video data."
-        case .playing: guidance = ""
+        case .playing:
+            return reasons.isEmpty ? "" : "Active pause conditions: \(reasons.map(\.condition).joined(separator: ", "))."
         case .paused:
             guidance = reasons.contains(where: \.blocksResume)
                 ? "Playback can resume after the active restrictions clear."

@@ -21,7 +21,7 @@ final class PlaybackStatusTests: XCTestCase {
     func testEveryRestrictionHasStablePriorityAndCannotBeBypassed() {
         for first in PlaybackPauseReason.allCases {
             for second in PlaybackPauseReason.allCases {
-                let a = status(.playing, reasons: [first, second, first])
+                let a = status(.paused, reasons: [first, second, first])
                 let b = status(.paused, reasons: [second, first])
                 XCTAssertEqual(a, b)
                 XCTAssertEqual(a.state, .paused)
@@ -30,6 +30,17 @@ final class PlaybackStatusTests: XCTestCase {
                 if first != second { XCTAssertFalse(a.detail.isEmpty) }
             }
         }
+    }
+
+    func testPendingPolicyDoesNotMisreportAnAdvancingPlayerAsPaused() {
+        let value = status(.playing, reasons: [.battery, .lowPower])
+        XCTAssertEqual(value.state, .playing)
+        XCTAssertEqual(value.title, "Playing")
+        XCTAssertTrue(value.blocksResume)
+        XCTAssertTrue(value.detail.contains("battery policy"))
+        XCTAssertTrue(value.detail.contains("Low Power Mode"))
+        XCTAssertEqual(status(.paused, reasons: [.battery, .lowPower]).title,
+                       PlaybackPauseReason.lowPower.title)
     }
 
     func testUnavailableKeepsRecoveryAndAllPauseReasons() {

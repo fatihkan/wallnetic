@@ -10,6 +10,9 @@ and an unavailable selection. Playing requires a presented frame and the
 player's playing state. Merely requesting Play does not satisfy that condition.
 The existing global Play/Pause control still governs playback intent, including
 pending loads; these display snapshots do not change power-pause ownership.
+If a pause condition arrives before the player actually stops, the observed
+Playing state remains visible with those conditions in its detail. A policy
+change alone is not evidence that the renderer has stopped.
 
 ## Pause explanations
 
@@ -53,7 +56,7 @@ the menu; they are not available only through pointer hover.
 
 ## Validation
 
-The local suite passes 209 tests, including every pair of pause reasons, distinct
+The local suite passes 210 tests, including every pair of pause reasons, distinct
 display snapshots, loading/waiting/playing states, recovery guidance, deduplicated
 events, stale callback rejection, and real AVPlayer/Metal failure-to-retry flows.
 Renderer tests also retain coverage for failed replacement loops, duration pauses,
