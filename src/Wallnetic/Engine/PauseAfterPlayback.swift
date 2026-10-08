@@ -33,6 +33,8 @@ final class PauseAfterPlayback {
         isRequested && entries[display].map { !$0.expired } == true
     }
 
+    func isExpired(on display: UInt32) -> Bool { entries[display]?.expired == true }
+
     func setWallpaper(_ url: URL, renderer: WallpaperRenderer, on display: UInt32,
                       preferences: PauseAfterSettings.Preferences) {
         entries[display] = Entry(renderer: renderer, url: url, duration: preferences.duration(for: url))

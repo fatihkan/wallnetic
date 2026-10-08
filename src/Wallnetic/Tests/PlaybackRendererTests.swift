@@ -130,6 +130,7 @@ final class PlaybackRendererTests: XCTestCase {
             }
         }
         XCTAssertGreaterThanOrEqual(wraps, 2, "A failed replacement must not disable the active player's loop")
+        XCTAssertTrue(renderer.playbackMonitor.state.isFailed, "The previous video must not mask the failed selection")
         renderer.pause()
         try await Task.sleep(nanoseconds: 100_000_000)
         let pausedTime = renderer.currentPlaybackTime
@@ -251,6 +252,70 @@ final class PlaybackRendererTests: XCTestCase {
         playback.play(explicit: true)
         XCTAssertEqual(renderer.currentPlaybackRate, 1)
         XCTAssertFalse(playback.isPausedAfterDuration)
+    }
+
+    @MainActor
+    func testAVFoundationReportsLoadFailureRetryAndManualPause() async throws {
+        try await assertStatusLifecycle(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalReportsLoadFailureRetryAndManualPause() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertStatusLifecycle(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertStatusLifecycle(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("status-\(UUID().uuidString).mov")
+        let missing = video.appendingPathExtension("missing")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 30)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        renderer.loadVideo(url: video)
+        XCTAssertEqual(renderer.playbackMonitor.state, .loading)
+        // A later missing selection invalidates even a pending valid load.
+        renderer.loadVideo(url: missing)
+        XCTAssertEqual(renderer.playbackMonitor.state, .failed(.missingFile))
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(renderer.playbackMonitor.state, .failed(.missingFile))
+        XCTAssertNil(renderer.currentPlaybackTime)
+
+        var allowed = true
+        let playback = PauseAfterPlayback(canPlay: { allowed })
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init())
+        playback.pause(manual: true)
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init())
+        playback.play() // The retry path must not revoke manual Pause.
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertNotEqual(renderer.playbackMonitor.state, .playing)
+        allowed = false
+        playback.play(explicit: true)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        allowed = true
+        playback.play(explicit: true)
+        let deadline = Date().addingTimeInterval(5)
+        while renderer.playbackMonitor.state != .playing, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(renderer.playbackMonitor.state, .playing)
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        playback.pause(manual: true)
+        await drainMainQueue()
+        XCTAssertEqual(renderer.playbackMonitor.state, .paused)
+        renderer.stop()
+        await drainMainQueue()
+        XCTAssertEqual(renderer.playbackMonitor.state, .idle)
     }
 
     private enum FixtureError: Error { case encodingFailed }
@@ -405,6 +470,7 @@ final class PlaybackRendererTests: XCTestCase {
 }
 
 private final class ProfileRendererSpy: WallpaperRenderer {
+    let playbackMonitor = RendererPlaybackMonitor()
     let rendererView = NSView()
     var modes: [PerformanceManager.PerformanceMode] = []
     var playbackMutations = 0

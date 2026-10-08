@@ -26,6 +26,7 @@ class VideoRenderer: NSObject {
     private let preferredBufferDuration: TimeInterval = 4.0
     private var shouldPlayWhenReady = false
 
+    let playbackMonitor = RendererPlaybackMonitor()
     /// True once the layer has actually produced a frame. The overlay window
     /// must stay hidden until this is true, or it covers the desktop in black.
     var hasPresentedFrame = false
@@ -46,14 +47,14 @@ class VideoRenderer: NSObject {
     /// Loads a video file. The currently displayed player is kept until the
     /// new item is ready, so a switch cannot flash black.
     func loadVideo(url: URL) {
-        guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else {
-            Log.video.error("File does not exist: \(url.path, privacy: .public)")
-            return
-        }
-
         loadTask?.cancel()
         loadGeneration &+= 1
         let generation = loadGeneration
+        playbackMonitor.beginLoad()
+        guard url.isFileURL, FileManager.default.isReadableFile(atPath: url.path) else {
+            failLoading(.missingFile)
+            return
+        }
 
         let asset = AVURLAsset(url: url, options: [
             AVURLAssetPreferPreciseDurationAndTimingKey: false
@@ -62,16 +63,21 @@ class VideoRenderer: NSObject {
         loadTask = Task { @MainActor [weak self] in
             do {
                 let isPlayable = try await asset.load(.isPlayable)
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
                 guard isPlayable else {
-                    Log.video.error("Asset is not playable")
+                    self.failLoading(.unplayable)
                     return
                 }
-                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
                 self.setupPlayer(with: asset, generation: generation)
             } catch {
-                Log.video.error("Failed to load asset: \(error.localizedDescription, privacy: .public)")
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
+                self.failLoading(.loadFailed)
             }
         }
+    }
+
+    private func failLoading(_ failure: RendererPlaybackFailure) {
+        playbackMonitor.fail(failure)
     }
 
     private func setupPlayer(with asset: AVURLAsset, generation: UInt64) {
@@ -92,6 +98,7 @@ class VideoRenderer: NSObject {
         newPlayer.volume = 0
         newPlayer.actionAtItemEnd = .none
 
+        playbackMonitor.attach(newPlayer)
         itemStatusObserver = playerItem.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
             guard let self else { return }
             switch item.status {
@@ -100,7 +107,10 @@ class VideoRenderer: NSObject {
                     self.attachIfCurrent(player: newPlayer, item: playerItem, generation: generation)
                 }
             case .failed:
-                Log.video.error("Failed: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
+                DispatchQueue.main.async {
+                    guard generation == self.loadGeneration else { return }
+                    self.failLoading(.loadFailed)
+                }
             default:
                 break
             }
@@ -158,6 +168,7 @@ class VideoRenderer: NSObject {
                 guard generation == self.loadGeneration else { return }
                 let firstFrame = !self.hasPresentedFrame
                 self.hasPresentedFrame = true
+                self.playbackMonitor.framePresented()
                 if firstFrame {
                     self.onBecameReady?()
                 }
@@ -182,6 +193,7 @@ class VideoRenderer: NSObject {
     }
 
     func play() {
+        guard !playbackMonitor.state.isFailed else { return }
         shouldPlayWhenReady = true
         pinOrStart()
     }
@@ -196,6 +208,7 @@ class VideoRenderer: NSObject {
     }
 
     private func cleanup() {
+        playbackMonitor.reset()
         loadGeneration &+= 1
         loadTask?.cancel()
         loadTask = nil
@@ -249,11 +262,13 @@ class VideoRenderer: NSObject {
     }
 
     func recoverPlayback() {
+        guard !playbackMonitor.state.isFailed else { return }
         shouldPlayWhenReady = true
         pinOrStart()
     }
 
     func maintainPlayback() {
+        guard !playbackMonitor.state.isFailed else { return }
         guard shouldPlayWhenReady else { return }
         pinOrStart()
     }

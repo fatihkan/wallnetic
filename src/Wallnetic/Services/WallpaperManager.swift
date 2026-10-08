@@ -69,6 +69,7 @@ protocol PlaybackDelegate: AnyObject {
     ///   callers must not report "Playing" over a desktop that isn't.
     @discardableResult func playbackPlay() -> Bool
     func playbackPause()
+    func playbackRetry(on displayID: UInt32)
     func playbackApplyScreenWallpapers()
 }
 
@@ -98,6 +99,11 @@ class WallpaperManager: ObservableObject {
     @Published var currentWallpaper: Wallpaper?
     @Published var isPlaying: Bool = false
     @Published var isPausedAfterDuration: Bool = false
+    @Published var displayPlaybackStatuses: [DisplayPlaybackStatus] = []
+
+    func retryWallpaper(on displayID: UInt32) {
+        playbackDelegate?.playbackRetry(on: displayID)
+    }
     @Published var wallpaperMode: WallpaperMode = .same
 
     /// Maps wallpaper.id → index in `wallpapers`. Rebuilt on every

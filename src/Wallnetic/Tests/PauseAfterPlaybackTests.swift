@@ -183,6 +183,7 @@ final class PauseAfterPlaybackTests: XCTestCase {
 }
 
 private final class DurationRendererSpy: WallpaperRenderer {
+    let playbackMonitor = RendererPlaybackMonitor()
     let rendererView = NSView()
     var hasPresentedFrame = true
     var onBecameReady: (() -> Void)?

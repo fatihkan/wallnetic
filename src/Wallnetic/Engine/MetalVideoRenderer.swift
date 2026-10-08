@@ -114,9 +114,13 @@ final class MetalVideoRenderer: NSObject {
     private var performanceMode: PerformanceManager.PerformanceMode = .balanced
     private let renderLock = NSLock()
     private var loadGeneration: UInt64 = 0
+    private var frameGeneration: UInt64?
+    private var reportedFrameGeneration: UInt64?
+    private var playerGeneration: UInt64?
     private var loadTask: Task<Void, Never>?
     private var currentItemObserver: NSKeyValueObservation?
 
+    let playbackMonitor = RendererPlaybackMonitor()
     var hasPresentedFrame = false
     var onBecameReady: (() -> Void)?
     var filterLayer: CALayer? { metalView.layer }
@@ -267,14 +271,14 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - Video Loading
 
     func loadVideo(url: URL) {
-        guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else {
-            logger.error("Video file does not exist: \(url.path)")
-            return
-        }
-
         loadTask?.cancel()
         loadGeneration &+= 1
         let generation = loadGeneration
+        playbackMonitor.beginLoad()
+        guard url.isFileURL, FileManager.default.isReadableFile(atPath: url.path) else {
+            failLoading(.missingFile)
+            return
+        }
 
         let asset = AVURLAsset(url: url, options: [
             AVURLAssetPreferPreciseDurationAndTimingKey: false
@@ -283,8 +287,9 @@ final class MetalVideoRenderer: NSObject {
         loadTask = Task { @MainActor [weak self] in
             do {
                 let isPlayable = try await asset.load(.isPlayable)
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
                 guard isPlayable else {
-                    logger.error("Asset is not playable")
+                    self.failLoading(.unplayable)
                     return
                 }
                 var videoSize = CGSize.zero
@@ -295,14 +300,19 @@ final class MetalVideoRenderer: NSObject {
                     videoSize = CGSize(width: abs(displayed.width), height: abs(displayed.height))
                 }
 
-                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
+                guard !Task.isCancelled, generation == self.loadGeneration else { return }
                 self.videoSize = videoSize
                 self.setupVertexBuffer()
                 self.setupPlayer(with: asset, generation: generation)
             } catch {
-                logger.error("Failed to load asset: \(error.localizedDescription)")
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
+                self.failLoading(.loadFailed)
             }
         }
+    }
+
+    private func failLoading(_ failure: RendererPlaybackFailure) {
+        playbackMonitor.fail(failure)
     }
 
     private func setupPlayer(with asset: AVURLAsset, generation: UInt64) {
@@ -331,6 +341,8 @@ final class MetalVideoRenderer: NSObject {
         let previousPlayer = player
         videoOutput = output
         player = newPlayer
+        playerGeneration = generation
+        playbackMonitor.attach(newPlayer)
         queuePlayer = nil
         playerLooper?.disableLooping()
         playerLooper = nil
@@ -378,6 +390,7 @@ final class MetalVideoRenderer: NSObject {
     }
 
     func play() {
+        guard !playbackMonitor.state.isFailed else { return }
         wantsToPlay = true
         pinOrStart()
         // Never use MTKView's internal timer: it auto-pauses when a windowed
@@ -416,6 +429,7 @@ final class MetalVideoRenderer: NSObject {
     }
 
     func recoverPlayback() {
+        guard !playbackMonitor.state.isFailed else { return }
         wantsToPlay = true
         pinOrStart()
         metalView.isPaused = true
@@ -423,6 +437,7 @@ final class MetalVideoRenderer: NSObject {
     }
 
     func maintainPlayback() {
+        guard !playbackMonitor.state.isFailed else { return }
         guard wantsToPlay else { return }
         pinOrStart()
         metalView.isPaused = true
@@ -475,6 +490,7 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - Cleanup
 
     private func cleanup() {
+        playbackMonitor.reset()
         loadGeneration &+= 1
         loadTask?.cancel()
         loadTask = nil
@@ -529,7 +545,9 @@ final class MetalVideoRenderer: NSObject {
         }
 
         lastPresentedSeconds = seconds
-        return createTexture(from: pixelBuffer)
+        guard let frame = createTexture(from: pixelBuffer) else { return nil }
+        frameGeneration = playerGeneration
+        return frame
     }
 
     private func createTexture(from pixelBuffer: CVPixelBuffer) -> VideoFrame? {
@@ -607,5 +625,13 @@ extension MetalVideoRenderer: MTKViewDelegate {
         }
         commandBuffer.present(drawable)
         commandBuffer.commit()
+        if frameGeneration == loadGeneration, reportedFrameGeneration != loadGeneration {
+            let generation = loadGeneration
+            reportedFrameGeneration = generation
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.loadGeneration == generation else { return }
+                self.playbackMonitor.framePresented()
+            }
+        }
     }
 }
