@@ -488,6 +488,7 @@ class WallpaperManager: ObservableObject {
         isPlaying = playbackDelegate?.playbackIsPlaying ?? false
 
         // Clear persisted automation references in the same main-actor turn.
+        OptimizedCopyStore.shared.removeCopies(at: paths)
         CollectionManager.shared.removeWallpaperIDs(update.ids)
         TimeOfDayManager.shared.removeWallpaperPaths(paths)
         PlaylistManager.shared.removeWallpaperPaths(paths)
