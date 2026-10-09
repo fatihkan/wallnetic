@@ -487,10 +487,10 @@ class WallpaperManager: ObservableObject {
         wallpapers = update.wallpapers
         isPlaying = playbackDelegate?.playbackIsPlaying ?? false
 
-        // Playlist sources read this array or collections dynamically. Time-of-day,
-        // weather and Spaces persist paths, so prune them in the same main-actor turn.
+        // Clear persisted automation references in the same main-actor turn.
         CollectionManager.shared.removeWallpaperIDs(update.ids)
         TimeOfDayManager.shared.removeWallpaperPaths(paths)
+        PlaylistManager.shared.removeWallpaperPaths(paths)
         WeatherWallpaperManager.shared.removeWallpaperPaths(paths)
         SpaceWallpaperManager.shared.removeWallpaperPaths(paths)
         pendingFavoritesWrite?.cancel()
@@ -664,6 +664,18 @@ class WallpaperManager: ObservableObject {
 
     // MARK: - Playback
 
+    /// Scheduled changes own all displays and keep the normal playback pause policy.
+    func applyScheduledWallpaper(_ wallpaper: Wallpaper) {
+        wallpaperMode = .same
+        wallpaperModeRaw = WallpaperMode.same.rawValue
+        setWallpaper(wallpaper, userInitiated: false)
+    }
+
+    private func holdAutomationForManualChoice() {
+        TimeOfDayManager.shared.onManualChange()
+        PlaylistManager.shared.onManualChange()
+    }
+
     /// Sets wallpaper for all screens (same mode).
     /// PlaybackDelegate drives the renderer directly (#170); the broadcast
     /// notification fans out to observers like DynamicIslandController and
@@ -673,6 +685,7 @@ class WallpaperManager: ObservableObject {
     /// switch (playlist / time-of-day). Only user-initiated applies feed the
     /// rating prompt — passive rotation isn't a "ask for a review" moment.
     func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool = true) {
+        if userInitiated { holdAutomationForManualChoice() }
         currentWallpaper = wallpaper
         lastWallpaperURL = wallpaper.url.path
 
@@ -700,6 +713,7 @@ class WallpaperManager: ObservableObject {
 
     /// Sets wallpaper for a specific screen (different mode).
     func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen, userInitiated: Bool = true) {
+        if userInitiated { holdAutomationForManualChoice() }
         let screenName = screen.localizedName
         displayAssignments.set(wallpaper.url, for: screen.wallpaperAssignmentKey)
         screenWallpapers[screenName] = wallpaper.id
@@ -752,6 +766,7 @@ class WallpaperManager: ObservableObject {
     }
 
     func setWallpaperMode(_ mode: WallpaperMode) {
+        holdAutomationForManualChoice()
         wallpaperMode = mode
         wallpaperModeRaw = mode.rawValue
 

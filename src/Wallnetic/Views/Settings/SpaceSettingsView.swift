@@ -17,6 +17,9 @@ struct SpaceSettingsView: View {
                         if enabled { spaceManager.start() } else { spaceManager.stop() }
                     }
 
+                Text("Daily schedules and playlists take priority over automatic Space changes while enabled.")
+                    .font(.caption).foregroundColor(.secondary)
+
                 if spaceManager.isEnabled {
                     Text("Right-click any wallpaper and select \"Set for This Space\" to assign it to your current desktop.")
                         .font(.caption)

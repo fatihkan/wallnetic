@@ -39,6 +39,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup power manager with callbacks
         setupPowerManager()
 
+        // Restore automation after WallpaperManager's delayed launch restore.
+        // Unit tests use isolated managers and must not run user automation.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                WallpaperAutomation.restore()
+            }
+        }
+
         // Setup display change observer
         setupDisplayObserver()
 
