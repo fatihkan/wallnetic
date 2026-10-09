@@ -127,6 +127,12 @@ class TimeOfDayManager: ObservableObject {
         }
     }
 
+    func removeWallpaperPaths(_ paths: Set<String>) {
+        for slot in TimeSlot.allCases where paths.contains(wallpaperPath(for: slot)) {
+            setWallpaperPath("", for: slot)
+        }
+    }
+
     func startHour(for slot: TimeSlot) -> Int {
         switch slot {
         case .morning: return morningHour

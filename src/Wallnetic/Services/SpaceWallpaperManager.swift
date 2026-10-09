@@ -98,6 +98,11 @@ class SpaceWallpaperManager: ObservableObject {
         Log.space.info("Cleared all space assignments")
     }
 
+    func removeWallpaperPaths(_ paths: Set<String>) {
+        spaceAssignments = spaceAssignments.filter { !paths.contains($0.value) }
+        saveAssignments()
+    }
+
     // MARK: - Space Detection
 
     private func onSpaceChanged() {

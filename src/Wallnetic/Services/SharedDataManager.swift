@@ -1,5 +1,6 @@
 import Foundation
 import WidgetKit
+import Darwin
 
 /// Manages shared data between the main app and widget extension via App Groups.
 /// Uses file-based JSON storage for macOS sandbox compatibility.
@@ -40,6 +41,28 @@ class SharedDataManager {
             return SharedWidgetData()
         }
         return sharedData
+    }
+
+    /// Cleanup must know which thumbnails the widget still references. Unlike
+    /// the display fallback above, an unreadable record is not an empty record.
+    /// Called off the main thread by storage scans and cleanup.
+    func readSharedDataForStorage() throws -> SharedWidgetData {
+        guard let url = sharedDataFileURL else { return SharedWidgetData() }
+        return try Self.readStorageReferences(at: url)
+    }
+
+    static func readStorageReferences(at url: URL) throws -> SharedWidgetData {
+        let fd = open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        if fd < 0 && errno == ENOENT { return SharedWidgetData() }
+        guard fd >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
+        let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+        defer { try? handle.close() }
+        var info = stat()
+        guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
+              info.st_size <= 1_048_576 else { throw StorageError.unsafeFile }
+        let data = try handle.read(upToCount: 1_048_577) ?? Data()
+        guard data.count <= 1_048_576 else { throw StorageError.unsafeFile }
+        return try JSONDecoder().decode(SharedWidgetData.self, from: data)
     }
 
     private func writeSharedData(_ sharedData: SharedWidgetData) {
