@@ -109,13 +109,14 @@ class SpaceWallpaperManager: ObservableObject {
         let previousSpace = currentSpaceIndex
         detectCurrentSpace()
 
-        guard currentSpaceIndex != previousSpace, isEnabled else { return }
+        guard currentSpaceIndex != previousSpace, isEnabled,
+              !WallpaperAutomation.takesPriorityOverOtherModes else { return }
 
         // Apply wallpaper for new space
         if let wallpaper = wallpaper(forSpace: currentSpaceIndex) {
             let idx = currentSpaceIndex
             Log.space.info("Space changed to \(idx), applying: \(wallpaper.name, privacy: .public)")
-            WallpaperManager.shared.setWallpaper(wallpaper)
+            WallpaperManager.shared.setWallpaper(wallpaper, userInitiated: false)
         }
     }
 

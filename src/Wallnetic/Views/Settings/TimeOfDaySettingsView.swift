@@ -1,133 +1,62 @@
 import SwiftUI
 
-/// Settings view for time-of-day wallpaper switching
 struct TimeOfDaySettingsView: View {
-    @ObservedObject private var todManager = TimeOfDayManager.shared
-    @EnvironmentObject var wallpaperManager: WallpaperManager
+    @ObservedObject private var manager: TimeOfDayManager
+    @EnvironmentObject private var wallpapers: WallpaperManager
+
+    init(manager: TimeOfDayManager = .shared) { self.manager = manager }
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Auto-switch wallpapers by time of day", isOn: $todManager.isEnabled)
-                    .onChange(of: todManager.isEnabled) { enabled in
-                        if enabled {
-                            // Mutually exclusive with the playlist — only one
-                            // scheduler may drive the wallpaper at a time.
-                            PlaylistManager.shared.stop()
-                            todManager.start()
-                        } else {
-                            todManager.stop()
-                        }
-                    }
-
-                if todManager.isEnabled {
-                    HStack(spacing: 6) {
-                        Image(systemName: todManager.currentSlot.icon)
-                            .foregroundColor(todManager.currentSlot.color)
-                        Text("Current: \(todManager.currentSlot.rawValue)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        if todManager.manualOverride {
-                            Text("(paused - manual override)")
-                                .font(.caption2)
-                                .foregroundColor(.orange)
-                        }
-                    }
-                }
-            }
-
-            if todManager.isEnabled {
-                Section("Time Slots") {
-                    ForEach(TimeOfDayManager.TimeSlot.allCases) { slot in
-                        timeSlotRow(slot)
-                    }
-                }
-
-                Section {
-                    Text("Wallpapers automatically switch when the time enters a new slot. Manual changes pause auto-switch for 30 minutes.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .formStyle(.grouped)
+        DailyScheduleContent(manager: manager, wallpapers: wallpapers.wallpapers)
     }
+}
 
-    private func timeSlotRow(_ slot: TimeOfDayManager.TimeSlot) -> some View {
-        HStack(spacing: 12) {
-            // Icon + name
-            Image(systemName: slot.icon)
-                .foregroundColor(slot.color)
-                .frame(width: 24)
+struct DailyScheduleContent: View {
+    @ObservedObject var manager: TimeOfDayManager
+    let wallpapers: [Wallpaper]
+    @State private var editing: DailyWallpaperRange?
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(slot.rawValue)
-                    .fontWeight(.medium)
-
-                // Time picker
-                HStack(spacing: 4) {
-                    Text("Starts at")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Picker("", selection: Binding(
-                        get: { todManager.startHour(for: slot) },
-                        set: { todManager.setStartHour($0, for: slot) }
-                    )) {
-                        ForEach(0..<24, id: \.self) { hour in
-                            Text(String(format: "%02d:00", hour)).tag(hour)
-                        }
-                    }
-                    .frame(width: 80)
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Toggle("Daily wallpaper schedule", isOn: Binding(
+                    get: { manager.isEnabled }, set: { if $0 { manager.start() } else { manager.stop() } }))
+                Text(manager.status).font(.caption).foregroundColor(.secondary)
+                if manager.manualOverrideUntil != nil && manager.isEnabled {
+                    Button("Resume schedule now") { manager.resumeNow() }
                 }
-            }
-
-            Spacer()
-
-            // Wallpaper picker
-            let path = todManager.wallpaperPath(for: slot)
-            if !path.isEmpty,
-               let wallpaper = wallpaperManager.wallpapers.first(where: { $0.url.path == path }) {
-                HStack(spacing: 6) {
-                    AsyncThumbnailView(wallpaper: wallpaper, size: CGSize(width: 40, height: 24))
-                        .cornerRadius(4)
-
-                    Text(wallpaper.displayName)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .frame(maxWidth: 80)
-                }
-            }
-
-            // Choose button
-            Menu {
-                ForEach(wallpaperManager.wallpapers) { wallpaper in
-                    Button(wallpaper.displayName) {
-                        todManager.setWallpaperPath(wallpaper.url.path, for: slot)
+                if let notice = manager.migrationNotice { Text(notice).font(.caption).foregroundColor(.orange) }
+                if let error = manager.error {
+                    HStack {
+                        Text(error).font(.caption).foregroundColor(.orange)
+                        Spacer()
+                        Button("Dismiss") { manager.dismissError() }.controlSize(.small)
                     }
                 }
-
+                DailyScheduleTimeline(ranges: manager.ranges, activeID: manager.activeRangeID,
+                                      edit: { editing = $0 }, commit: { _ = manager.save($0) })
+                HStack {
+                    Button("Add range…") {
+                        editing = DailyWallpaperRange(name: "Custom range", startMinute: 9 * 60, endMinute: 10 * 60, wallpaperPath: "")
+                    }
+                    Spacer()
+                    Text("Drag a bar or its handles · 5-minute steps").font(.caption2).foregroundColor(.secondary)
+                }
+                if manager.ranges.reduce(0, { $0 + $1.durationMinutes }) == 1440 {
+                    Text("The day is full. Shorten or remove a range to make room for another.")
+                        .font(.caption).foregroundColor(.secondary)
+                }
                 Divider()
-
-                Button("Clear") {
-                    todManager.setWallpaperPath("", for: slot)
-                }
-            } label: {
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 24)
-
-            // Active indicator
-            if todManager.currentSlot == slot {
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 6, height: 6)
-            }
+                Text("Gaps and missing wallpapers keep the current wallpaper. Ranges cannot overlap. Overnight ranges are supported.")
+                    .font(.caption).foregroundColor(.secondary)
+                Text("Uses local time on all displays. Enabling this turns off the playlist and takes priority over Space and weather assignments. Manual choices hold for 30 minutes.")
+                    .font(.caption).foregroundColor(.secondary)
+            }.padding(20)
         }
-        .padding(.vertical, 4)
+        .sheet(item: $editing) { range in
+            DailyRangeEditor(range: range, wallpapers: wallpapers,
+                             save: { manager.save($0) ? nil : manager.error },
+                             remove: manager.ranges.contains(where: { $0.id == range.id }) ? { manager.remove(range.id) } : nil)
+        }
     }
 }

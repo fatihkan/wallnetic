@@ -90,7 +90,7 @@ struct MenuBarView: View {
                 PlaylistManager.shared.toggle()
             } label: {
                 Label(
-                    PlaylistManager.shared.isEnabled ? "Stop Shuffle" : "Shuffle Wallpapers",
+                    PlaylistManager.shared.isEnabled ? "Stop Playlist" : "Start Playlist",
                     systemImage: PlaylistManager.shared.isEnabled ? "shuffle.circle.fill" : "shuffle"
                 )
             }

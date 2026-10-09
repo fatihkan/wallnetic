@@ -136,6 +136,7 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
         guard condition != currentCondition else { return }
 
         currentCondition = condition
+        guard !WallpaperAutomation.takesPriorityOverOtherModes else { return }
         let path = wallpaperPath(for: condition)
         guard !path.isEmpty else { return }
 
