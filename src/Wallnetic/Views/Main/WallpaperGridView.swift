@@ -11,6 +11,7 @@ struct WallpaperGridView: View {
     let searchText: String
     var filter: GridFilter = .all
     @State private var previewWallpaper: Wallpaper?
+    @State private var optimizingWallpaper: Wallpaper?
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText: String = ""
 
@@ -65,6 +66,7 @@ struct WallpaperGridView: View {
                                 onPreview: {
                                     withAnimation { previewWallpaper = wallpaper }
                                 },
+                                onOptimize: { optimizingWallpaper = wallpaper },
                                 onRename: {
                                     renameText = wallpaper.displayName
                                     renamingWallpaper = wallpaper
@@ -102,6 +104,7 @@ struct WallpaperGridView: View {
                 .transition(.opacity)
             }
         }
+        .sheet(item: $optimizingWallpaper) { VideoOptimizationSheet(wallpaper: $0) }
         .sheet(item: $renamingWallpaper) { wallpaper in
             RenameWallpaperSheet(
                 wallpaper: wallpaper,
@@ -298,10 +301,13 @@ struct WallpaperCard: View {
 
 // MARK: - Context Menu
 
+@MainActor
 struct WallpaperContextMenu: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     let wallpaper: Wallpaper
+    @ObservedObject private var optimizedCopies = OptimizedCopyStore.shared
     var onPreview: (() -> Void)? = nil
+    var onOptimize: (() -> Void)? = nil
     var onRename: (() -> Void)? = nil
 
     var body: some View {
@@ -335,6 +341,17 @@ struct WallpaperContextMenu: View {
                 onRename()
             } label: {
                 Label("Rename", systemImage: "pencil")
+            }
+        }
+
+        if let onOptimize {
+            Button(action: onOptimize) { Label("Create Optimized Copy…", systemImage: "arrow.down.right.and.arrow.up.left") }
+        }
+        if let path = optimizedCopies.originalPath(for: wallpaper.url) {
+            if let original = wallpaperManager.wallpapers.first(where: { $0.url.standardizedFileURL == URL(fileURLWithPath: path).standardizedFileURL }) {
+                Button { wallpaperManager.setWallpaper(original) } label: { Label("Use Original Video", systemImage: "arrow.uturn.backward") }
+            } else {
+                Text("Original video is no longer in Library")
             }
         }
 

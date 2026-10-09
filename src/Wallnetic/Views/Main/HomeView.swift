@@ -420,6 +420,7 @@ struct CarouselCard: View {
     @State private var thumbnail: NSImage?
     @State private var isLoadingThumbnail = true
     @State private var isHovering = false
+    @State private var optimizingWallpaper: Wallpaper?
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText = ""
     @State private var pointer = CGPoint(x: 0.5, y: 0.5)
@@ -585,11 +586,12 @@ struct CarouselCard: View {
         .animation(reduceMotion ? nil : .spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
         .onHover { h in isHovering = h }
         .contextMenu {
-            WallpaperContextMenu(wallpaper: wallpaper, onRename: {
+            WallpaperContextMenu(wallpaper: wallpaper, onOptimize: { optimizingWallpaper = wallpaper }, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
             })
         }
+        .sheet(item: $optimizingWallpaper) { VideoOptimizationSheet(wallpaper: $0) }
         .sheet(item: $renamingWallpaper) { wp in
             RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
                 wallpaperManager.renameWallpaper(wp, to: newTitle)
