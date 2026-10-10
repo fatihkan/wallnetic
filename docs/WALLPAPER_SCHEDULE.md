@@ -24,7 +24,7 @@ The existing Whole Library, Favorites, and Collection modes retain their source,
 
 ## Manual choice and automation priority
 
-Daily scheduling and playlist rotation are mutually exclusive. Enabling either stops the other and makes it take priority over automatic Space and weather changes. Existing Space/weather selections remain stored; their callbacks cannot overwrite the active schedule, including during gaps or manual holds. After scheduling is disabled, they can apply on their next normal condition/Space change.
+Daily scheduling and playlist rotation are mutually exclusive. Enabling either stops the other and makes it take priority over automatic weather changes. Weather callbacks cannot overwrite the active schedule, including during gaps or manual holds. After scheduling is disabled, weather can apply on its next normal condition change. Space selections now use [explicit manual recovery](SPACE_RECOVERY.md), with the same 30-minute manual hold; Space changes never automatically apply a selection.
 
 A manual wallpaper choice, including a choice for one display or a display mode change, defers the enabled schedule/playlist for 30 minutes. A later choice extends that deadline. The deadline survives relaunch, and **Resume schedule/playlist now** ends the hold immediately. A playlist's cycle continues during the hold; resuming selects the item at the current elapsed position.
 
