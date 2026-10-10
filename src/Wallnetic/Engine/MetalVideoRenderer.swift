@@ -102,6 +102,7 @@ final class MetalVideoRenderer: NSObject {
     private var vertexBuffer: MTLBuffer?
     private var videoSize: CGSize = .zero
     private var lastPresentedSeconds: Double = -1
+    private var hasLoggedFrameColorInfo = false
     private var loopObserver: NSObjectProtocol?
 
     // MARK: - State
@@ -293,17 +294,22 @@ final class MetalVideoRenderer: NSObject {
                     return
                 }
                 var videoSize = CGSize.zero
+                var isHDR = false
                 if let track = try await asset.loadTracks(withMediaType: .video).first {
                     let natural = try await track.load(.naturalSize)
                     let transform = try await track.load(.preferredTransform)
                     let displayed = CGRect(origin: .zero, size: natural).applying(transform)
                     videoSize = CGSize(width: abs(displayed.width), height: abs(displayed.height))
+                    isHDR = await Self.isHDRSource(track)
                 }
+
+                // SDR sources keep the untouched path; only HDR needs conversion.
+                let sdrComposition = isHDR ? await Self.makeSDRVideoComposition(for: asset) : nil
 
                 guard !Task.isCancelled, generation == self.loadGeneration else { return }
                 self.videoSize = videoSize
                 self.setupVertexBuffer()
-                self.setupPlayer(with: asset, generation: generation)
+                self.setupPlayer(with: asset, videoComposition: sdrComposition, generation: generation)
             } catch {
                 guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
                 self.failLoading(.loadFailed)
@@ -315,11 +321,77 @@ final class MetalVideoRenderer: NSObject {
         playbackMonitor.fail(failure)
     }
 
-    private func setupPlayer(with asset: AVURLAsset, generation: UInt64) {
+    /// Whether the track carries a PQ or HLG signal (HDR10, HLG, Dolby Vision).
+    ///
+    /// `.containsHDRVideo` is checked first; the format description's transfer
+    /// function is a second opinion for files whose HDR flag is missing or
+    /// incomplete. A failed property load counts as SDR so playback never
+    /// depends on this check.
+    @MainActor
+    private static func isHDRSource(_ track: AVAssetTrack) async -> Bool {
+        if let characteristics = try? await track.load(.mediaCharacteristics),
+           characteristics.contains(.containsHDRVideo) {
+            return true
+        }
+        guard let descriptions = try? await track.load(.formatDescriptions) else { return false }
+        let hdrTransfers: [String] = [
+            kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ as String,
+            kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG as String
+        ]
+        return descriptions.contains { description in
+            let transfer = CMFormatDescriptionGetExtension(
+                description,
+                extensionKey: kCMFormatDescriptionExtension_TransferFunction
+            ) as? String
+            return transfer.map(hdrTransfers.contains) ?? false
+        }
+    }
+
+    /// Builds a composition that makes AVFoundation deliver BT.709 SDR frames,
+    /// or returns `nil` (playing the source untouched) if it cannot be built.
+    ///
+    /// `AVPlayerItemVideoOutput` hands us raw 8-bit BGRA and the fragment shader
+    /// samples it as-is, so there is no color management on this path. A PQ/HLG
+    /// source would reach the screen as encoded HDR signal values and look
+    /// washed out. Declaring BT.709 output on the composition makes
+    /// AVFoundation tone-map the frames before they reach the video output.
+    @MainActor
+    private static func makeSDRVideoComposition(for asset: AVAsset) async -> AVVideoComposition? {
+        do {
+            let base = try await AVVideoComposition.videoComposition(withPropertiesOf: asset)
+            guard let composition = base.mutableCopy() as? AVMutableVideoComposition else { return nil }
+            composition.colorPrimaries = AVVideoColorPrimaries_ITU_R_709_2
+            composition.colorTransferFunction = AVVideoTransferFunction_ITU_R_709_2
+            composition.colorYCbCrMatrix = AVVideoYCbCrMatrix_ITU_R_709_2
+            logger.info("HDR source detected, tone-mapping to BT.709 SDR")
+            return composition
+        } catch {
+            logger.error("HDR source left untouched, SDR composition failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Logs the color tags of the first frame decoded after each load. For an
+    /// HDR source this should read ITU_R_709_2; a PQ/HLG value here means the
+    /// tone-mapping is not taking effect.
+    private func logFrameColorInfoOnce(_ pixelBuffer: CVPixelBuffer) {
+        guard !hasLoggedFrameColorInfo else { return }
+        hasLoggedFrameColorInfo = true
+        let transfer = CVBufferCopyAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, nil)
+        let primaries = CVBufferCopyAttachment(pixelBuffer, kCVImageBufferColorPrimariesKey, nil)
+        logger.debug("First frame color tags: transfer=\(String(describing: transfer)) primaries=\(String(describing: primaries))")
+    }
+
+    private func setupPlayer(
+        with asset: AVURLAsset,
+        videoComposition: AVVideoComposition? = nil,
+        generation: UInt64
+    ) {
         guard generation == loadGeneration else { return }
 
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.preferredForwardBufferDuration = 4.0
+        playerItem.videoComposition = videoComposition
 
         // Single player + end-time seek. AVPlayerLooper copies the template
         // without the video output and, under CPU pressure, jumps a few
@@ -347,6 +419,7 @@ final class MetalVideoRenderer: NSObject {
         playerLooper?.disableLooping()
         playerLooper = nil
         lastPresentedSeconds = -1
+        hasLoggedFrameColorInfo = false
 
         if let loopObserver {
             NotificationCenter.default.removeObserver(loopObserver)
@@ -545,6 +618,7 @@ final class MetalVideoRenderer: NSObject {
         }
 
         lastPresentedSeconds = seconds
+        logFrameColorInfoOnce(pixelBuffer)
         guard let frame = createTexture(from: pixelBuffer) else { return nil }
         frameGeneration = playerGeneration
         return frame

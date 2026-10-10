@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- HDR (PQ/HLG) videos no longer look washed out with the Metal renderer. The
+  renderer reads 8-bit BGRA without color management, so HDR sources are now
+  tone-mapped to BT.709 SDR by AVFoundation before drawing. SDR videos are
+  unaffected.
+
 ## [1.4.2] — 2026-09-24
 
 ### Fixed
