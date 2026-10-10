@@ -74,7 +74,7 @@ struct PlaylistScheduleContent: View {
                 Divider()
                 Text("Elapsed time includes sleep and time while the app is closed. On return, the playlist picks the current item. Editing the playlist starts a new cycle.")
                     .font(.caption).foregroundColor(.secondary)
-                Text("Applies to all displays. Enabling this turns off the daily schedule and takes priority over Space and weather assignments. Manual choices hold for 30 minutes.")
+                Text("Applies to all displays. Enabling this turns off the daily schedule and takes priority over weather assignments. Manual choices, including Space recovery, hold for 30 minutes.")
                     .font(.caption).foregroundColor(.secondary)
             }.padding(20)
         }

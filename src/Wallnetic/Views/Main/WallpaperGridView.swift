@@ -306,6 +306,7 @@ struct WallpaperContextMenu: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     let wallpaper: Wallpaper
     @ObservedObject private var optimizedCopies = OptimizedCopyStore.shared
+    @ObservedObject private var spaceManager = SpaceWallpaperManager.shared
     var onPreview: (() -> Void)? = nil
     var onOptimize: (() -> Void)? = nil
     var onRename: (() -> Void)? = nil
@@ -355,16 +356,18 @@ struct WallpaperContextMenu: View {
             }
         }
 
-        // Space assignment - auto-detect current space
-        if SpaceWallpaperManager.shared.isEnabled {
+        // Save intent for manual recovery; no persistent Space identity exists.
+        if spaceManager.isEnabled {
             Divider()
 
             Button {
-                let currentSpace = SpaceWallpaperManager.shared.currentSpaceIndex
-                SpaceWallpaperManager.shared.setWallpaper(wallpaper, forSpace: currentSpace)
+                spaceManager.saveForRecovery(wallpaper)
             } label: {
-                Label("Set for This Space", systemImage: "square.stack.3d.up")
+                Label(spaceManager.selections.contains(where: { $0.wallpaperPath == wallpaper.url.path })
+                      ? "Saved for Space Recovery" : "Save for Space Recovery", systemImage: "square.stack.3d.up")
             }
+            .disabled(spaceManager.hasUnreadableData || spaceManager.selections.count >= 500 ||
+                      spaceManager.selections.contains(where: { $0.wallpaperPath == wallpaper.url.path }))
         }
 
         Divider()

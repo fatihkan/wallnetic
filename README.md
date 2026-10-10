@@ -49,7 +49,7 @@ share of Workshop items that are plain video, once you have the file locally.
 | **Built-in library** | **None — by design** | Yes | 4,000+ | Yes | Via Wallpaper Engine |
 | **In-app source browsing** | **8 sources** | Community library | Own library | Own library | — |
 | **Per-display wallpaper** | Yes | Yes | Yes | Yes | Yes |
-| **Per-Space wallpaper** | **Yes** | — | — | — | — |
+| **Per-Space wallpaper** | Manual recovery choices¹ | — | — | — | — |
 | **Pauses when covered** | **Yes, per display** | — | — | — | — |
 | **Photo slideshow generator** | **Yes** | — | — | — | — |
 | **Renders WE `.scene` files** | No | No | No | No | **Yes** |
@@ -57,6 +57,8 @@ share of Workshop items that are plain video, once you have the file locally.
 
 *Competitor pricing and features as published on their own sites, September 2026. Corrections
 welcome via issue or PR.*
+
+¹ On `dev`, Space selections are saved for manual recovery. Automatic per-Space switching is disabled because reliable desktop identity is unavailable; applying a choice affects all displays and Spaces. See [Space recovery](docs/SPACE_RECOVERY.md).
 
 ## Frequently asked questions
 
@@ -119,10 +121,11 @@ later.
 - Drag & drop or file picker import
 - Crossfade transitions between wallpaper changes
 
-### Per-Space Wallpapers
-- Set different wallpapers for each macOS Space (virtual desktop)
-- Auto-switches when changing Spaces via Mission Control
-- Right-click any wallpaper > "Set for This Space"
+### Space Selection Recovery (`dev`)
+- Preserve previous Space wallpaper choices after relaunch or display changes
+- Name, edit and manually apply saved choices without reimporting Library media
+- Settings > Spaces, or right-click a wallpaper > "Save for Space Recovery"
+- Automatic Space matching is unavailable. Applying a saved choice affects all displays and Spaces, without binding it to an individual desktop. [Behavior and limits](docs/SPACE_RECOVERY.md)
 
 ### Lock Screen Video
 - Video wallpaper on lock screen with clock overlay
@@ -311,7 +314,7 @@ open Wallnetic.xcodeproj
 ### v1.1
 - [x] Netflix-style UI redesign
 - [x] Discover wallpaper sources (Pixabay, Pexels, web browser)
-- [x] Per-Space wallpapers
+- [x] Space wallpaper selections (now manual recovery on `dev`; automatic matching is unavailable)
 - [x] Lock screen video
 - [x] Wallpaper effects (blur, brightness, tint, vignette)
 - [x] Time-of-day auto switch

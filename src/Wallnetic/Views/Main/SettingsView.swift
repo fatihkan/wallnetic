@@ -247,7 +247,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .effects:       return "Live wallpaper post-processing."
         case .schedule:      return "Custom daily time ranges."
         case .playlist:      return "Rotate with individual durations."
-        case .spaces:        return "Per-Space wallpaper assignments."
+        case .spaces:        return "Saved choices and desktop recovery."
         case .display:       return "Per-monitor mode and tracking."
         case .notifications: return "Toggle alert categories."
         case .about:         return "Version, credits, and links."

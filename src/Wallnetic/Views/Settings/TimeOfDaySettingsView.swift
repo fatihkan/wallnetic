@@ -49,7 +49,7 @@ struct DailyScheduleContent: View {
                 Divider()
                 Text("Gaps and missing wallpapers keep the current wallpaper. Ranges cannot overlap. Overnight ranges are supported.")
                     .font(.caption).foregroundColor(.secondary)
-                Text("Uses local time on all displays. Enabling this turns off the playlist and takes priority over Space and weather assignments. Manual choices hold for 30 minutes.")
+                Text("Uses local time on all displays. Enabling this turns off the playlist and takes priority over weather assignments. Manual choices, including Space recovery, hold for 30 minutes.")
                     .font(.caption).foregroundColor(.secondary)
             }.padding(20)
         }
