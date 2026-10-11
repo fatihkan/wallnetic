@@ -187,6 +187,9 @@ later.
 - Configurable sensitivity and placement
 
 ### Smart Power Management
+- [Calm Mode and thermal-aware playback](docs/CALM_MODE.md): hold wallpaper motion
+  from the menu bar or Shortcuts, with optional pausing during sustained heat.
+  Manual pauses, power restrictions and expired playback timers remain effective.
 - Optional [Pause After](docs/PAUSE_AFTER.md): global or per-wallpaper intervals,
   a retained still frame after expiry, and optional desktop-clear replay
 - Auto-pause on battery power with opt-in prompt
@@ -197,7 +200,7 @@ later.
 - `CGWindowListCopyWindowInfo` runs off the main thread (no UI stalls)
 
 ### Apple Shortcuts & Siri
-- Set Wallpaper, Next Wallpaper, Toggle Playback, Random Wallpaper
+- Set Wallpaper, Next Wallpaper, Toggle Playback, Random Wallpaper, Toggle Calm Mode, Set Calm Mode
 - Siri: "Change wallpaper in Wallnetic"
 - macOS 14+ required
 
@@ -283,6 +286,7 @@ open Wallnetic.xcodeproj
 |----------|--------|
 | `Cmd + I` | Import videos |
 | `Cmd + P` | Toggle play/pause |
+| `Cmd + Shift + M` | Toggle Calm Mode (while Wallnetic is active) |
 | `Cmd + N` | Next wallpaper |
 | `Cmd + F` | Search |
 | `Cmd + O` | Open main window |

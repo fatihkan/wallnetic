@@ -557,7 +557,8 @@ class PowerManager {
     private func notifyPauseIfNeeded() {
         if PowerPauseOwnership.shouldClaimPause(
             wallpaperIsPlaying: WallpaperManager.shared.isPlaying,
-            isPausedAfterDuration: WallpaperManager.shared.isPausedAfterDuration
+            isPausedAfterDuration: WallpaperManager.shared.isPausedAfterDuration,
+            hasPlaybackResumeIntent: WallpaperManager.shared.playbackDelegate?.playbackHasResumeIntent ?? false
         ) {
             pausedByPower = true
         }

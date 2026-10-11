@@ -29,6 +29,9 @@ struct WallneticApp: App {
         .defaultPosition(.center)
         .commands {
             CommandGroup(replacing: .newItem) { }
+            CommandMenu("Playback") {
+                CalmModeButton(settings: .shared)
+            }
             CommandGroup(replacing: .appSettings) {
                 Button("Settings…") {
                     openWindow(id: "settings")

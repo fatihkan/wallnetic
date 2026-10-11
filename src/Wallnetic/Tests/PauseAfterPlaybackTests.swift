@@ -1,5 +1,6 @@
 import XCTest
 import AppKit
+import Combine
 @testable import Wallnetic
 
 final class PauseAfterPlaybackTests: XCTestCase {
@@ -167,6 +168,189 @@ final class PauseAfterPlaybackTests: XCTestCase {
         playback.pause(manual: true)
         playback.replayExpiredDisplay(1)
         XCTAssertFalse(playback.hasActivePlayback)
+    }
+
+    @MainActor
+    func testOverlappingHoldsKeepIntentAndFreezeTheRemainingPlaybackInterval() {
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        let renderer = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: renderer, on: 1, preferences: .init(defaultSeconds: 30))
+        playback.play()
+        time = 10
+        playback.setHolds([.calm])
+        XCTAssertTrue(playback.isRequested)
+        XCTAssertFalse(playback.hasActivePlayback)
+        XCTAssertFalse(playback.isPausedAfterDuration)
+        XCTAssertFalse(playback.needsTimer)
+        XCTAssertFalse(playback.shouldPlay(on: 1))
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        let plays = renderer.plays
+        time = 40
+        playback.setHolds([.calm, .thermal])
+        playback.setHolds([.thermal])
+        playback.tick()
+        playback.replayExpiredDisplay(1)
+        XCTAssertEqual(renderer.plays, plays)
+        time = 100
+        playback.setHolds([])
+        XCTAssertEqual(renderer.plays, plays + 1)
+        time = 119.999
+        playback.tick()
+        XCTAssertTrue(playback.hasActivePlayback)
+        time = 120
+        playback.tick()
+        XCTAssertTrue(playback.isPausedAfterDuration)
+    }
+
+    @MainActor
+    func testHoldReleaseCannotRestartExpiredDisplaysOrAnIdleSession() {
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        let a = DurationRendererSpy(), b = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: a, on: 1, preferences: .init(defaultSeconds: 15))
+        playback.setWallpaper(secondURL, renderer: b, on: 2, preferences: .init(defaultSeconds: 30))
+        playback.setHolds([.calm])
+        playback.setHolds([])
+        XCTAssertEqual(a.plays + b.plays, 0)
+        playback.play()
+        time = 15
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 1))
+        let aPlays = a.plays
+        playback.setHolds([.thermal])
+        time = 100
+        playback.setHolds([])
+        XCTAssertEqual(a.plays, aPlays)
+        XCTAssertFalse(playback.shouldPlay(on: 1))
+        XCTAssertTrue(playback.shouldPlay(on: 2))
+        time = 115
+        playback.tick()
+        XCTAssertTrue(playback.isPausedAfterDuration)
+        let allPlays = a.plays + b.plays
+        playback.setHolds([.calm, .thermal])
+        playback.setHolds([])
+        XCTAssertEqual(a.plays + b.plays, allPlays)
+        XCTAssertTrue(playback.isPausedAfterDuration)
+    }
+
+    @MainActor
+    func testManualPauseDuringHoldSurvivesHoldRemovalAndSubsequentPowerResume() {
+        let playback = PauseAfterPlayback(canPlay: { true })
+        let renderer = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: renderer, on: 1, preferences: .init())
+        playback.play()
+        playback.setHolds([.calm, .thermal])
+        playback.pause(manual: true)
+        let plays = renderer.plays
+        playback.setHolds([.thermal])
+        playback.setHolds([])
+        playback.pause(manual: false)
+        playback.play()
+        XCTAssertEqual(renderer.plays, plays)
+        XCTAssertTrue(playback.isManuallyPaused)
+        playback.play(explicit: true)
+        XCTAssertTrue(playback.hasActivePlayback)
+    }
+
+    @MainActor
+    func testPowerAndHoldOrderingPreservesManualIntentAndAutoResumePreference() {
+        for holdFirst in [true, false] {
+            for releaseHoldFirst in [true, false] {
+                for autoResume in [true, false] {
+                    for manual in [true, false] {
+                        var allowed = true
+                        let playback = PauseAfterPlayback(canPlay: { allowed })
+                        let renderer = DurationRendererSpy()
+                        playback.setWallpaper(firstURL, renderer: renderer, on: 1, preferences: .init())
+                        playback.play()
+                        if manual { playback.pause(manual: true) }
+                        if holdFirst { playback.setHolds([.calm, .thermal]) }
+                        let owned = PowerPauseOwnership.shouldClaimPause(
+                            wallpaperIsPlaying: playback.hasActivePlayback,
+                            isPausedAfterDuration: playback.isPausedAfterDuration,
+                            hasPlaybackResumeIntent: playback.isRequested)
+                        XCTAssertEqual(owned, !manual)
+                        allowed = false
+                        playback.pause(manual: false)
+                        if !holdFirst { playback.setHolds([.calm, .thermal]) }
+                        if releaseHoldFirst {
+                            playback.setHolds([])
+                            XCTAssertFalse(playback.hasActivePlayback)
+                        }
+                        allowed = true
+                        if PowerPauseOwnership.shouldResume(pausedByPower: owned, shouldBePaused: false,
+                                                            respectAutoResume: true, autoResumeEnabled: autoResume) {
+                            playback.play()
+                        }
+                        if !releaseHoldFirst {
+                            XCTAssertFalse(playback.hasActivePlayback)
+                            playback.setHolds([])
+                        }
+                        XCTAssertEqual(playback.hasActivePlayback, autoResume && !manual,
+                                       "holdFirst=\(holdFirst), releaseHoldFirst=\(releaseHoldFirst), auto=\(autoResume), manual=\(manual)")
+                        XCTAssertEqual(renderer.currentPlaybackRate, autoResume && !manual ? 1 : 0)
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testNewDisplaysReplacementsAndPreferenceChangesCannotBypassHolds() {
+        let playback = PauseAfterPlayback(canPlay: { true })
+        let a = DurationRendererSpy(), b = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: a, on: 1, preferences: .init(defaultSeconds: 15))
+        playback.play()
+        playback.setHolds([.calm])
+        let oldPlays = a.plays
+        playback.setWallpaper(secondURL, renderer: a, on: 1, preferences: .init(defaultSeconds: 30))
+        playback.setWallpaper(firstURL, renderer: b, on: 2, preferences: .init(defaultSeconds: 15))
+        playback.updatePreferences(.init(defaultSeconds: 60))
+        playback.play()
+        playback.tick()
+        XCTAssertEqual(a.plays, oldPlays)
+        XCTAssertEqual(b.plays, 0)
+        playback.remove(1)
+        playback.setHolds([])
+        XCTAssertEqual(a.plays, oldPlays)
+        XCTAssertEqual(b.plays, 1)
+    }
+
+    @MainActor
+    func testPowerGateStillBlocksHoldReleaseBeforeItsPauseCallbackArrives() {
+        var allowed = true
+        let playback = PauseAfterPlayback(canPlay: { allowed })
+        let renderer = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: renderer, on: 1, preferences: .init())
+        playback.play()
+        playback.setHolds([.calm])
+        allowed = false
+        let plays = renderer.plays
+        playback.setHolds([])
+        XCTAssertFalse(playback.shouldPlay(on: 1))
+        XCTAssertEqual(renderer.plays, plays)
+    }
+
+    @MainActor
+    func testSettingsBindingReleasesThermalAndCalmIndependently() throws {
+        let suite = "CalmBindingTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = CalmPlaybackSettings(defaults: defaults, center: NotificationCenter(), thermalState: { .critical })
+        let playback = PauseAfterPlayback(canPlay: { true })
+        let renderer = DurationRendererSpy()
+        let binding = settings.$state.map(\.holds).removeDuplicates().sink { playback.setHolds($0) }
+        defer { binding.cancel() }
+        playback.setWallpaper(firstURL, renderer: renderer, on: 1, preferences: .init())
+        playback.play()
+        settings.setCalmEnabled(true)
+        settings.setThermalEnabled(true)
+        settings.setCalmEnabled(false)
+        XCTAssertEqual(playback.holds, [.thermal])
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        settings.setThermalEnabled(false)
+        XCTAssertEqual(renderer.currentPlaybackRate, 1)
     }
 
     func testDesktopClearNeedsStableCoveredToClearEdgeWithoutRepeating() {

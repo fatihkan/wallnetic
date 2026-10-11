@@ -1,11 +1,13 @@
 import Foundation
 
 enum PlaybackPauseReason: Int, CaseIterable, Equatable {
-    case manual, sessionInactive, sleeping, screenSaver, lowPower, battery, fullscreen, covered, timer
+    case manual, calm, thermal, sessionInactive, sleeping, screenSaver, lowPower, battery, fullscreen, covered, timer
 
     var title: String {
         switch self {
         case .manual: return "Paused by you"
+        case .calm: return "Paused in Calm Mode"
+        case .thermal: return "Paused to reduce heat"
         case .sessionInactive: return "Paused while the session is locked or inactive"
         case .sleeping: return "Paused while the display is asleep"
         case .screenSaver: return "Paused for the screen saver"
@@ -22,6 +24,8 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
     var condition: String {
         switch self {
         case .manual: return "manual pause"
+        case .calm: return "Calm Mode"
+        case .thermal: return "thermal pressure or cooling interval"
         case .sessionInactive: return "inactive session"
         case .sleeping: return "sleeping display"
         case .screenSaver: return "screen saver"
@@ -114,9 +118,19 @@ struct DisplayPlaybackStatus: Equatable, Identifiable {
         case .playing:
             return reasons.isEmpty ? "" : "Active pause conditions: \(reasons.map(\.condition).joined(separator: ", "))."
         case .paused:
-            guidance = reasons.contains(where: \.blocksResume)
-                ? "Playback can resume after the active restrictions clear."
-                : "Press Play to resume."
+            let holds = [
+                reasons.contains(.calm) ? "Turn off Calm Mode to release its hold." : nil,
+                reasons.contains(.thermal) ? "The heat hold clears after one minute of cooling, or when thermal-aware playback is turned off." : nil
+            ].compactMap { $0 }
+            let restoration: String
+            if reasons.contains(where: \.blocksResume) {
+                restoration = reasons.contains(.manual) || reasons.contains(.timer)
+                    ? "After the active restrictions clear, press Play to resume."
+                    : "Playback can resume after the active restrictions clear."
+            } else {
+                restoration = "Press Play to resume."
+            }
+            guidance = (holds + [restoration]).joined(separator: " ")
         }
         return [additional, guidance].filter { !$0.isEmpty }.joined(separator: ". ")
     }

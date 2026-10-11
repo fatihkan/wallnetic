@@ -66,6 +66,18 @@ final class PlaybackStatusTests: XCTestCase {
         XCTAssertFalse(first.detail.isEmpty)
     }
 
+    func testCalmAndThermalGuidanceExplainsReleaseWithoutOverridingManualPause() {
+        let value = status(.paused, reasons: [.thermal, .calm, .manual])
+        XCTAssertEqual(value.title, "Paused by you")
+        XCTAssertTrue(value.detail.contains("Turn off Calm Mode"))
+        XCTAssertTrue(value.detail.contains("one minute of cooling"))
+        XCTAssertTrue(value.detail.contains("press Play to resume"))
+        XCTAssertTrue(value.blocksResume)
+        XCTAssertEqual(status(.paused, reasons: [.calm]).title, "Paused in Calm Mode")
+        XCTAssertEqual(status(.paused, reasons: [.thermal]).title, "Paused to reduce heat")
+        XCTAssertEqual(status(.paused, reasons: [.manual]).detail, "Press Play to resume.")
+    }
+
     @MainActor
     func testQueuedPlayerCallbacksCannotOverwriteFailureOrCleanup() async {
         let monitor = RendererPlaybackMonitor()

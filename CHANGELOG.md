@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Calm Mode holds wallpaper motion from the menu bar, the Playback menu,
+  Command–Shift–M while Wallnetic is active, and Shortcuts on macOS 14+.
+- Optional thermal-aware playback pauses during sustained serious or critical
+  thermal pressure and waits for stable cooling before releasing its hold.
+  Manual pauses, power restrictions and expired playback timers remain effective.
+
 ### Fixed
 - HDR (PQ/HLG) videos no longer look washed out with the Metal renderer. The
   renderer reads 8-bit BGRA without color management, so HDR sources are now

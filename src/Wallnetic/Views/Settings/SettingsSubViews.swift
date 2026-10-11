@@ -243,6 +243,7 @@ struct PlaybackSettingsView: View {
                 .help("Clears saved battery-mode choice so the prompt appears again.")
             }
             PauseAfterSettingsView()
+            CalmPlaybackSettingsView(settings: .shared)
             Section("Performance") {
                 Picker("Playback profile", selection: $performance.mode) {
                     ForEach(PerformanceManager.PerformanceMode.allCases, id: \.self) { mode in

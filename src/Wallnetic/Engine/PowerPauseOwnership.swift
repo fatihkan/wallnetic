@@ -21,10 +21,11 @@ enum PowerPauseOwnership {
     /// Whether a pause should be *claimed* as ours when a power condition
     /// fires.
     ///
-    /// A duration pause retains playback intent and may start a fresh interval
-    /// after unlock. A manual pause has neither flag and must never be claimed.
-    static func shouldClaimPause(wallpaperIsPlaying: Bool, isPausedAfterDuration: Bool = false) -> Bool {
-        wallpaperIsPlaying || isPausedAfterDuration
+    /// Duration, Calm and thermal holds retain playback intent. A manual pause
+    /// revokes it and must never be claimed by a later power event.
+    static func shouldClaimPause(wallpaperIsPlaying: Bool, isPausedAfterDuration: Bool = false,
+                                 hasPlaybackResumeIntent: Bool = false) -> Bool {
+        wallpaperIsPlaying || isPausedAfterDuration || hasPlaybackResumeIntent
     }
 
     /// Whether playback should resume now.

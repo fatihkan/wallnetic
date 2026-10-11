@@ -286,6 +286,7 @@ extension AppDelegate: PlaybackDelegate {
         desktopWindowController?.retryWallpaper(on: displayID)
     }
     var playbackIsPlaying: Bool { desktopWindowController?.isCurrentlyPlaying ?? false }
+    var playbackHasResumeIntent: Bool { desktopWindowController?.hasPlaybackResumeIntent ?? false }
     func playbackSetWallpaper(url: URL) {
         Log.app.debug("PlaybackDelegate: setWallpaper \(url.lastPathComponent, privacy: .public)")
         desktopWindowController?.setWallpaper(url: url)
