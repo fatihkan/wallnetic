@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Optional wallpaper packs in Discover, starting with two original MIT-licensed
+  animations. Includes offline previews, explicit bounded downloads, integrity
+  checks, cancellation/retry and ownership-checked removal.
 - Calm Mode holds wallpaper motion from the menu bar, the Playback menu,
   Command–Shift–M while Wallnetic is active, and Shortcuts on macOS 14+.
 - Optional thermal-aware playback pauses during sustained serious or critical
