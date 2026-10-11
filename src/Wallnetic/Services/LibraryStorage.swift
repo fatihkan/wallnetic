@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import CryptoKit
 
 enum StorageCategory: String, CaseIterable, Sendable {
     case videos = "Library videos"
@@ -7,7 +8,7 @@ enum StorageCategory: String, CaseIterable, Sendable {
     case caches = "Caches"
 }
 
-struct StorageFileIdentity: Equatable, Sendable {
+struct StorageFileIdentity: Codable, Equatable, Sendable {
     let device: Int32
     let inode: UInt64
     let size: Int64
@@ -194,6 +195,83 @@ struct LibraryStorage: Sendable {
             }
         }
         return result
+    }
+
+    /// The remote catalog never controls a destination name. O_EXCL avoids
+    /// overwrites and every lookup stays relative to the anchored library fd.
+    func installPackData(_ data: Data) throws -> StorageItem {
+        guard !data.isEmpty, data.count <= WallpaperPackCatalog.maximumMediaBytes else { throw PackError.invalidMedia }
+        try Task.checkCancellation()
+        let directory = try openDirectory(libraryURL)
+        defer { close(directory) }
+        var directoryInfo = stat()
+        guard fstat(directory, &directoryInfo) == 0 else { throw posixError() }
+        let name = "pack-\(UUID().uuidString).mp4"
+        let fd = openat(directory, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        guard fd >= 0 else { throw posixError() }
+        defer { close(fd) }
+        var created = stat()
+        guard fstat(fd, &created) == 0 else { throw posixError() }
+        var completed = false
+        defer {
+            if !completed, let current = try? regularFile(name, in: directory),
+               current.st_dev == created.st_dev, current.st_ino == created.st_ino {
+                _ = unlinkat(directory, name, 0)
+            }
+        }
+        try data.withUnsafeBytes { buffer in
+            var offset = 0
+            while offset < buffer.count {
+                try Task.checkCancellation()
+                let count = Darwin.write(fd, buffer.baseAddress!.advanced(by: offset), buffer.count - offset)
+                if count < 0 && errno == EINTR { continue }
+                guard count > 0 else { throw posixError() }
+                offset += count
+            }
+        }
+        guard fsync(fd) == 0 else { throw posixError() }
+        var final = stat()
+        guard fstat(fd, &final) == 0,
+              StorageFileIdentity(try regularFile(name, in: directory)) == StorageFileIdentity(final) else { throw StorageError.changedFile }
+        completed = true
+        return StorageItem(url: libraryURL.appendingPathComponent(name), category: .videos, canRemove: true,
+                           identity: StorageFileIdentity(final), directoryIdentity: StorageFileIdentity(directoryInfo))
+    }
+
+    /// A receipt proves ownership only while both identity and content match.
+    /// Missing copies are harmless; changed files must never be adopted/deleted.
+    func verifiedPackItem(_ receipt: PackReceipt) throws -> StorageItem? {
+        guard receipt.isValid else { throw PackError.receipts }
+        let directory = try openDirectory(libraryURL)
+        defer { close(directory) }
+        var directoryInfo = stat()
+        guard fstat(directory, &directoryInfo) == 0 else { throw posixError() }
+        guard directoryInfo.st_dev == receipt.directoryIdentity.device,
+              directoryInfo.st_ino == receipt.directoryIdentity.inode else { throw PackError.changedContent }
+        let fd = openat(directory, receipt.filename, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        if fd < 0 && errno == ENOENT { return nil }
+        guard fd >= 0 else { throw PackError.changedContent }
+        defer { close(fd) }
+        var info = stat()
+        guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
+              StorageFileIdentity(info) == receipt.identity else { throw PackError.changedContent }
+        var hash = SHA256(), buffer = [UInt8](repeating: 0, count: 64 * 1024), total = 0
+        while true {
+            try Task.checkCancellation()
+            let count = Darwin.read(fd, &buffer, buffer.count)
+            if count < 0 && errno == EINTR { continue }
+            guard count >= 0 else { throw posixError() }
+            if count == 0 { break }
+            total += count
+            guard total <= WallpaperPackCatalog.maximumMediaBytes else { throw PackError.changedContent }
+            hash.update(data: Data(buffer.prefix(count)))
+        }
+        guard total == receipt.identity.size,
+              hash.finalize().map({ String(format: "%02x", $0) }).joined() == receipt.sha256,
+              fstat(fd, &info) == 0, StorageFileIdentity(info) == receipt.identity,
+              StorageFileIdentity(try regularFile(receipt.filename, in: directory)) == receipt.identity else { throw PackError.changedContent }
+        return StorageItem(url: libraryURL.appendingPathComponent(receipt.filename), category: .videos,
+                           canRemove: true, identity: receipt.identity, directoryIdentity: receipt.directoryIdentity)
     }
 
     private func accepts(_ name: String, in directory: URL) -> Bool {

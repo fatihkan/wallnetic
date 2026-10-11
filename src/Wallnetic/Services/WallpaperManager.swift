@@ -309,6 +309,30 @@ class WallpaperManager: ObservableObject {
         return wallpaper
     }
 
+    /// Pack downloads are already hash/format checked; install through the same
+    /// permit as imports/removals, using a descriptor-anchored exclusive write.
+    func importPackData(_ data: Data, name: String) async throws -> StorageItem {
+        let item = try await importGate.run { [self] in
+            let storage = await MainActor.run { self.storage }
+            let item = try await Task.detached { try storage.installPackData(data) }.value
+            await MainActor.run {
+                self.loadWallpapers()
+                if let wallpaper = self.wallpapers.first(where: { $0.url == item.url }) {
+                    self.renameWallpaper(wallpaper, to: name)
+                    self.postImportProcess(wallpaper)
+                }
+            }
+            return item
+        }
+        return item
+    }
+
+    @MainActor
+    func verifiedPackItem(_ receipt: PackReceipt) async throws -> StorageItem? {
+        let storage = self.storage
+        return try await Task.detached { try storage.verifiedPackItem(receipt) }.value
+    }
+
     /// P3-12 / YUKSEK-1: true producer-consumer. Maintains up to
     /// `maxInflight` tasks in flight at any moment; as each finishes a
     /// new one is added until the input is exhausted. KRITIK-2's gate

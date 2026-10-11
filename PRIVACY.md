@@ -1,6 +1,6 @@
 # Wallnetic Privacy Policy
 
-**Last updated:** March 2026
+**Last updated:** October 2026
 
 ## Overview
 
@@ -14,13 +14,13 @@ Wallnetic:
 - Does not collect personal information
 - Does not track usage or analytics
 - Does not send crash reports to external servers
-- Does not use cookies or identifiers
+- Does not add advertising identifiers or usage analytics
 - Does not require an account
-- Works entirely offline
+- Supports local imports and playback entirely offline
 
 ## Local Storage
 
-All data is stored locally on your Mac and never leaves your device:
+Your wallpaper library and application preferences are stored locally on your Mac:
 
 ### Video Files
 Your imported wallpaper videos are stored in:
@@ -46,9 +46,17 @@ Video thumbnails are cached locally for faster loading.
 
 ## Network Access
 
-Wallnetic operates entirely offline. The current version does not require an internet connection and does not communicate with any external servers.
+Local imports and playback do not require an internet connection.
 
-> **Note:** Future versions may include optional AI features that require internet access. These features will be opt-in and clearly disclosed.
+### Optional wallpaper packs
+
+Opening the pack catalog uses bundled or locally saved previews without making a network request. Choosing **Refresh Catalog** contacts `raw.githubusercontent.com` to retrieve the Wallnetic catalog. Choosing **Download Pack / Download / Retry** contacts the same host to download the selected media from the public `fatihkan/wallnetic` repository.
+
+These requests disclose ordinary connection information to GitHub, including your IP address, requested URL and request time. The pack feature sends no library contents, account details or tracking identifiers, uses no cookies or stored credentials, and performs no background catalog polling. Saved catalogs, download ownership records and downloaded copies remain on your Mac. GitHub operates the host under its [privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
+
+### Other optional connections
+
+Opening external wallpaper sources or using optional network/AI integrations contacts the websites or providers you choose. Those services have their own privacy policies and may receive the requests and inputs needed for the selected action. You can continue using local wallpapers without using these features.
 
 ## App Permissions
 
@@ -68,11 +76,11 @@ Your data is protected by macOS security features:
 
 - **App Sandbox:** Wallnetic runs in a sandboxed environment, isolated from other apps
 - **Secure Storage:** All data is stored using macOS secure storage mechanisms
-- **No Transmission:** Your data is never sent over the internet
+- **Local Library:** Wallpaper-pack requests do not upload your imported videos or library metadata
 
 ## Third-Party Services
 
-Wallnetic does not use any third-party services, analytics platforms, advertising networks, or tracking tools.
+Optional wallpaper packs use GitHub hosting. External wallpaper websites and optional network/AI providers are separate services with their own policies. Wallnetic does not add an analytics platform or advertising network to the pack feature.
 
 ## Children's Privacy
 

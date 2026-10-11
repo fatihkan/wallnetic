@@ -51,6 +51,7 @@ struct WallpaperSource: Identifiable {
 struct DiscoverView: View {
     @State private var selectedSource: WallpaperSource?
     @State private var showingBrowser = false
+    @State private var showingPacks = false
 
     private let columns = [
         GridItem(.adaptive(minimum: 280, maximum: 400), spacing: 16)
@@ -85,6 +86,19 @@ struct DiscoverView: View {
 
             // Source grid with staggered entrance
             ScrollView {
+                HStack(spacing: 16) {
+                    Image(systemName: "square.stack.3d.up.fill").font(.title2).foregroundColor(.accentColor)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Wallpaper Packs").font(.headline)
+                        Text("Original animations, clear licenses, optional downloads.").font(.callout).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Browse Packs") { showingPacks = true }
+                }
+                .padding(16)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Surface.glassControl))
+                .padding(.horizontal, 24)
+                .padding(.bottom, 16)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(Array(WallpaperSource.allSources.enumerated()), id: \.element.id) { index, source in
                         SourceCard(source: source)
@@ -101,6 +115,7 @@ struct DiscoverView: View {
             }
         }
         .background(Color.clear)
+        .sheet(isPresented: $showingPacks) { WallpaperPacksView(model: .shared) }
         .overlay {
             if showingBrowser, let source = selectedSource {
                 InAppBrowserView(source: source, isPresented: $showingBrowser)
@@ -474,4 +489,3 @@ struct InAppBrowserView: View {
         }
     }
 }
-
