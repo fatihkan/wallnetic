@@ -146,7 +146,7 @@ final class SpaceWallpaperRecoveryTests: XCTestCase {
         var edited = value.selections[0]
         edited.name = "  Focus  "
         edited.wallpaperPath = library[1].url.path
-        XCTAssertTrue(value.save(edited))
+        XCTAssertTrue(value.save(edited, replacing: value.selections[0]))
         XCTAssertEqual(value.selections[0].name, "Focus")
         XCTAssertEqual(value.selections[0].wallpaperPath, library[1].url.path)
         XCTAssertTrue(applied.isEmpty)
@@ -161,8 +161,9 @@ final class SpaceWallpaperRecoveryTests: XCTestCase {
         XCTAssertFalse(value.applySelection(selection.id))
         XCTAssertEqual(value.selections[0], selection)
         XCTAssertNotNil(value.error)
+        let original = selection
         selection.wallpaperPath = library[1].url.path
-        XCTAssertTrue(value.save(selection))
+        XCTAssertTrue(value.save(selection, replacing: original))
         XCTAssertTrue(value.applySelection(selection.id))
         XCTAssertEqual(applied, [library[1].url.path])
         XCTAssertNil(value.error)
@@ -296,9 +297,65 @@ final class SpaceWallpaperRecoveryTests: XCTestCase {
         for name in ["  \n  ", String(repeating: "x", count: 81)] {
             var invalid = valid
             invalid.name = name
-            XCTAssertFalse(value.save(invalid))
+            XCTAssertFalse(value.save(invalid, replacing: valid))
             XCTAssertEqual(value.selections, [valid])
             XCTAssertEqual(defaults.data(forKey: SpaceWallpaperManager.documentKey), saved)
         }
+    }
+
+    func testStaleEditorCannotRestoreADeletedSelection() {
+        let value = manager(), original = choice()
+        XCTAssertTrue(value.save(original))
+        value.remove(original.id)
+        var edited = original
+        edited.name = "Edited after removal"
+        XCTAssertFalse(value.save(edited, replacing: original))
+        XCTAssertTrue(value.selections.isEmpty)
+        XCTAssertTrue(manager().selections.isEmpty)
+        XCTAssertNotNil(value.error)
+        XCTAssertTrue(applied.isEmpty)
+    }
+
+    func testStaleEditorCannotRestoreADeletedMediaReference() {
+        let value = manager(), original = choice()
+        XCTAssertTrue(value.save(original))
+        value.removeWallpaperPaths([original.wallpaperPath])
+        var edited = original
+        edited.name = "Edited after Library cleanup"
+        XCTAssertFalse(value.save(edited, replacing: original))
+        XCTAssertEqual(value.selections[0].wallpaperPath, "")
+        XCTAssertEqual(manager().selections[0].wallpaperPath, "")
+        // Reopening the editor reads the current snapshot and permits repair.
+        let reopened = value.selections[0]
+        edited.wallpaperPath = library[1].url.path
+        XCTAssertTrue(value.save(edited, replacing: reopened))
+        XCTAssertEqual(value.selections[0], edited)
+        XCTAssertTrue(applied.isEmpty)
+    }
+
+    func testOlderEditorCannotOverwriteAChangeSavedInAnotherWindow() {
+        let value = manager(), original = choice()
+        XCTAssertTrue(value.save(original))
+        var newer = original
+        newer.name = "Latest choice"
+        newer.wallpaperPath = library[1].url.path
+        XCTAssertTrue(value.save(newer, replacing: original))
+        var older = original
+        older.name = "Stale choice"
+        XCTAssertFalse(value.save(older, replacing: original))
+        XCTAssertEqual(value.selections, [newer])
+        XCTAssertEqual(manager().selections, [newer])
+    }
+
+    func testNewChoiceCannotOverwriteExistingIDOrChangeAnEditedID() {
+        let value = manager(), original = choice()
+        XCTAssertTrue(value.save(original))
+        var sameID = original
+        sameID.name = "Unexpected replacement"
+        XCTAssertFalse(value.save(sameID))
+        var changedID = original
+        changedID.id = UUID()
+        XCTAssertFalse(value.save(changedID, replacing: original))
+        XCTAssertEqual(value.selections, [original])
     }
 }

@@ -667,8 +667,6 @@ class WallpaperManager: ObservableObject {
 
     /// Scheduled changes own all displays and keep the normal playback pause policy.
     func applyScheduledWallpaper(_ wallpaper: Wallpaper) {
-        wallpaperMode = .same
-        wallpaperModeRaw = WallpaperMode.same.rawValue
         setWallpaper(wallpaper, userInitiated: false)
     }
 
@@ -687,6 +685,10 @@ class WallpaperManager: ObservableObject {
     /// rating prompt — passive rotation isn't a "ask for a review" moment.
     func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool = true) {
         if userInitiated { holdAutomationForManualChoice() }
+        // Match the all-display renderer command in both UI and persistence.
+        // Otherwise a later hot-plug/relaunch restores old per-display choices.
+        wallpaperMode = .same
+        wallpaperModeRaw = WallpaperMode.same.rawValue
         currentWallpaper = wallpaper
         lastWallpaperURL = wallpaper.url.path
 

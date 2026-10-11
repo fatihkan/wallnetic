@@ -92,11 +92,25 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - View
 
     let metalView: MTKView
-    // Retain Core Video's wrapper, not just its borrowed Metal texture. The
-    // wrapper prevents pixel-buffer recycling while a frame remains in use.
-    private struct VideoFrame {
+    // An in-flight frame can outlive the renderer. Keep its Core Video cache
+    // alive as well as the texture wrapper: releasing the wrapper returns its
+    // backing to that cache, including on Metal's completion queue.
+    private final class VideoFrame {
         let texture: MTLTexture
-        let backing: CVMetalTexture
+        private var backing: CVMetalTexture?
+        private let cache: CVMetalTextureCache
+
+        init(texture: MTLTexture, backing: CVMetalTexture, cache: CVMetalTextureCache) {
+            self.texture = texture
+            self.backing = backing
+            self.cache = cache
+        }
+
+        deinit {
+            // Do not rely on stored-property destruction order. Core Video's
+            // wrapper must be released before the last reference to its cache.
+            withExtendedLifetime(cache) { backing = nil }
+        }
     }
     private var currentFrame: VideoFrame?
     private var vertexBuffer: MTLBuffer?
@@ -574,7 +588,7 @@ final class MetalVideoRenderer: NSObject {
         }
 
         guard let texture = CVMetalTextureGetTexture(cvTexture) else { return nil }
-        return VideoFrame(texture: texture, backing: cvTexture)
+        return VideoFrame(texture: texture, backing: cvTexture, cache: textureCache)
     }
 }
 
@@ -619,7 +633,7 @@ extension MetalVideoRenderer: MTKViewDelegate {
 
         renderEncoder.endEncoding()
         // A replacement/stop can release currentFrame before the GPU finishes.
-        // Each submitted command buffer must own the backing for its own frame.
+        // Each command buffer owns its frame, wrapper and cache until completion.
         commandBuffer.addCompletedHandler { [frame] _ in
             withExtendedLifetime(frame) {}
         }

@@ -52,6 +52,42 @@ final class PlaybackRendererTests: XCTestCase {
     }
 
     @MainActor
+    func testMetalRendererCanDeallocateWithSubmittedFrames() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("gpu-teardown-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video)
+        window.orderFront(nil)
+        for _ in 0..<6 {
+            var renderer: MetalVideoRenderer? = MetalVideoRenderer()
+            weak var releasedRenderer = renderer
+            window.contentView = renderer?.metalView
+            renderer?.loadVideo(url: video)
+            renderer?.play()
+            let deadline = Date().addingTimeInterval(5)
+            while renderer?.hasPresentedFrame == false, Date() < deadline {
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+            XCTAssertEqual(renderer?.hasPresentedFrame, true)
+            for _ in 0..<8 { renderer?.metalView.draw() }
+            renderer?.stop()
+            window.contentView = nil
+            // Unlike the existing stop test, drop the cache owner immediately,
+            // while GPU completion handlers may still retain submitted frames.
+            renderer = nil
+            XCTAssertNil(releasedRenderer, "Frames must not retain the renderer")
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        try await Task.sleep(nanoseconds: 200_000_000)
+    }
+
+    @MainActor
     func testInvalidatedSessionCannotDrawAfterRestart() async {
         var oldFrames = 0
         var newFrames = 0
