@@ -26,13 +26,18 @@ struct SpaceSettingsView: View {
 struct SpaceRecoverySections: View {
     @ObservedObject var manager: SpaceWallpaperManager
     let wallpapers: [Wallpaper]
-    @State private var editing: SpaceWallpaperSelection?
+    private struct Draft: Identifiable {
+        let selection: SpaceWallpaperSelection
+        let original: SpaceWallpaperSelection?
+        var id: UUID { selection.id }
+    }
+    @State private var editing: Draft?
     @State private var confirmingNewList = false
 
     var body: some View {
         Group {
             Section("Virtual Desktops (Spaces)") {
-                Toggle("Keep selections for Spaces", isOn: Binding(
+                Toggle("Enable Space recovery", isOn: Binding(
                     get: { manager.isEnabled }, set: { if $0 { manager.start() } else { manager.stop() } }))
                 Text("Automatic per-Space switching is unavailable because individual desktops cannot be reliably identified.")
                     .font(.caption).foregroundColor(.secondary)
@@ -58,16 +63,17 @@ struct SpaceRecoverySections: View {
                     selectionRow(selection)
                 }
                 Button("Add saved choice…") {
-                    editing = SpaceWallpaperSelection(name: "", wallpaperPath: wallpapers.first?.url.path ?? "")
+                    editing = Draft(selection: SpaceWallpaperSelection(name: "",
+                        wallpaperPath: wallpapers.first?.url.path ?? ""), original: nil)
                 }
                 .disabled(manager.hasUnreadableData || manager.selections.count >= 500)
                 Text("An enabled daily schedule or playlist holds a manual choice for 30 minutes, then resumes.")
                     .font(.caption).foregroundColor(.secondary)
             }
         }
-        .sheet(item: $editing) { selection in
-            SpaceSelectionEditor(selection: selection, wallpapers: wallpapers) {
-                manager.save($0) ? nil : manager.error
+        .sheet(item: $editing) { draft in
+            SpaceSelectionEditor(selection: draft.selection, wallpapers: wallpapers) {
+                manager.save($0, replacing: draft.original) ? nil : (manager.error ?? "The saved choice could not be updated.")
             }
         }
         .alert("Start a new saved list?", isPresented: $confirmingNewList) {
@@ -101,7 +107,7 @@ struct SpaceRecoverySections: View {
                 .disabled(!manager.isEnabled || wallpaper == nil || manager.hasUnreadableData)
                 .accessibilityLabel("Apply \(selection.name) to all displays and Spaces")
                 .help("Apply to all displays and Spaces")
-            Button("Edit") { editing = selection }
+            Button("Edit") { editing = Draft(selection: selection, original: selection) }
                 .accessibilityLabel("Edit \(selection.name)")
             Button { manager.remove(selection.id) } label: { Image(systemName: "minus.circle") }
                 .accessibilityLabel("Remove saved choice \(selection.name)")

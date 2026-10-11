@@ -83,7 +83,16 @@ final class SpaceWallpaperManager: ObservableObject {
     }
 
     @discardableResult
-    func save(_ selection: SpaceWallpaperSelection) -> Bool {
+    func save(_ selection: SpaceWallpaperSelection, replacing original: SpaceWallpaperSelection? = nil) -> Bool {
+        guard !hasUnreadableData else { return false }
+        // An editor holds a snapshot while library cleanup and other settings
+        // windows can change this list. Reject stale edits instead of reviving
+        // deleted references or overwriting a newer choice. A nil original adds.
+        guard original == nil || original?.id == selection.id,
+              selections.first(where: { $0.id == selection.id }) == original else {
+            error = "This saved choice changed or was removed while you were editing. Cancel and open it again."
+            return false
+        }
         var candidate = selections
         var selection = selection
         selection.name = selection.name.trimmingCharacters(in: .whitespacesAndNewlines)

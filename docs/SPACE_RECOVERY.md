@@ -8,6 +8,8 @@ Settings → Spaces saves named wallpaper choices for manual recovery. Existing 
 
 Applying a choice uses the normal manual wallpaper action on **all displays and Spaces**. It does not assign a wallpaper exclusively to one desktop. Desktop windows use `.canJoinAllSpaces`; the UI and README now say so. An enabled daily schedule or playlist holds the manual choice for 30 minutes through the existing manual-override mechanism. Other normal playback/power controls still apply.
 
+The all-display action also saves **Same on all displays** as the display mode. Later display connections and ordinary app-wide launch restoration therefore follow the chosen scope. Previous per-display choices remain stored and can be restored by explicitly switching back to **Different per display**.
+
 The former Dock/Finder window-number sum and six numbered desktop rows are removed. Window numbers can change and collide; neither their sum nor the order of observation proves a desktop identity. Previously persisted numeric keys, including old index keys, are treated only as saved user choices. No assignment is automatically matched or applied.
 
 ## Supported API investigation
@@ -40,11 +42,14 @@ The acknowledgement **Applied manually · no desktop binding** records a user ac
 - Migrate every legacy `spaces.assignmentsJSON` value once; retain the legacy JSON unchanged for recovery. Keys such as `1` and `01` cannot collide because no integer-key dictionary is constructed. An empty new document prevents deleted selections from returning on a later launch.
 - Unreadable, duplicate-ID, oversized or future-version documents block mutation. **Start a new list…** requires an in-app confirmation, keeps the unreadable document under a unique backup key, and starts an empty list. Invalid legacy JSON remains at its original key.
 - Apply requires an enabled feature, a matching current Library item, a local file URL, and an existing file. A saved path alone does not authorize arbitrary file loading, network access or import. No media is deleted by removing a saved choice.
+- Editing retains the original record as a snapshot. If Library cleanup, removal or another settings window changes it, saving reports a conflict and asks the user to reopen the editor. An old form cannot resurrect a removed choice or overwrite a newer media selection.
 
 ## Validation
 
 Automated coverage in `SpaceWallpaperRecoveryTests` exercises legacy-key collisions, one-time migration, relaunch, manual-only application, notification-driven invalidation, observer lifetime, rescan identity, unavailable/network/out-of-library media, replacement, deletion, disabled recovery, malformed/future data and invalid edits. Tests use isolated defaults and injected notification centers/application callbacks; they do not switch the user's real desktops or wallpaper.
 
 Local validation on 2026-10-10: the full suite passed **303 tests, zero failures**. After final review adjustments, all **19 Space recovery tests** passed again. Universal Release compilation succeeded for **arm64 and x86_64**, including the widget. Native previews at the 596 × 455 settings size covered available/missing choices, manual-application acknowledgement, editing and unreadable settings. Build/test runs used ad-hoc signing with entitlements cleared and sandbox disabled, matching CI; they are not signed-distribution validation.
+
+Review follow-up on 2026-10-11: all-display application now persists the matching display mode, and edits reject changed/deleted snapshots. Four additional recovery tests cover removed records, deleted media, concurrent edits and identity conflicts; all **23 recovery tests** pass. A full run also exposed an in-flight Metal texture-cache lifetime crash. After retaining the cache with each submitted frame and explicitly releasing the Core Video wrapper first, the full suite passed **308 tests, zero failures**, including a new renderer-deallocation test. The two Metal lifecycle tests also passed ten iterations each (**20 executions, zero failures**). Universal Release compilation passed for the app and widget on **arm64 and x86_64**. A native preview also checked the conflict message.
 
 Physical release checks remain required on supported Macs: quit/relaunch and reboot, create/remove/reorder Spaces, separate Spaces per display on/off, real monitor hot-plug, sleep/wake, VoiceOver, and the signed sandbox build. Simulated notifications and CI builds do not establish those hardware results. Keep #256 open until its physical lifecycle criterion is verified.
