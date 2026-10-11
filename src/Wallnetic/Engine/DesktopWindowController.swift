@@ -60,6 +60,7 @@ class DesktopWindowController {
     private var isPlaying: Bool { durationPlayback.isRequested }
     private var durationTimer: Timer?
     private var durationSettingsObserver: AnyCancellable?
+    private var calmSettingsObserver: AnyCancellable?
     private let desktopClearMonitor = DesktopClearMonitor()
     private var reportedPlaying: Bool?
     private var reportedDurationPause: Bool?
@@ -89,6 +90,10 @@ class DesktopWindowController {
         setupEffectsObserver()
         setupReassertObservers()
         durationPlayback.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
+        calmSettingsObserver = CalmPlaybackSettings.shared.$state
+            .map(\.holds).removeDuplicates().sink { [weak self] holds in
+                self?.durationPlayback.setHolds(holds)
+            }
         durationSettingsObserver = PauseAfterSettings.shared.$preferences.sink { [weak self] preferences in
             self?.durationPlayback.updatePreferences(preferences)
             self?.refreshPlaybackLifecycle(preferences: preferences)
@@ -382,7 +387,7 @@ class DesktopWindowController {
             durationTimer = nil
         }
         let preferences = preferences ?? PauseAfterSettings.shared.preferences
-        desktopClearMonitor.setEnabled(isPlaying && durationPlayback.hasTimedWallpapers && preferences.replayWhenDesktopClears)
+        desktopClearMonitor.setEnabled(isPlaying && durationPlayback.holds.isEmpty && durationPlayback.hasTimedWallpapers && preferences.replayWhenDesktopClears)
         let playing = durationPlayback.hasActivePlayback
         let held = durationPlayback.isPausedAfterDuration
         if reportedPlaying != playing || reportedDurationPause != held {
@@ -397,6 +402,7 @@ class DesktopWindowController {
         let statuses = NSScreen.screens.compactMap { screen -> DisplayPlaybackStatus? in
             guard let id = screen.displayID, let renderer = renderers[id] else { return nil }
             var reasons = restrictions
+            reasons.append(contentsOf: durationPlayback.holds.map(\.pauseReason))
             if durationPlayback.isManuallyPaused { reasons.append(.manual) }
             if durationPlayback.isExpired(on: id) { reasons.append(.timer) }
             if occlusionSuspended.contains(id) { reasons.append(.covered) }
@@ -490,6 +496,10 @@ class DesktopWindowController {
     var isCurrentlyPlaying: Bool {
         return durationPlayback.hasActivePlayback
     }
+
+    /// Power pauses must still claim an intended session held by Calm/thermal
+    /// policy; otherwise their resume path would strand that session.
+    var hasPlaybackResumeIntent: Bool { durationPlayback.isRequested }
 
     // MARK: - Occlusion
 
@@ -807,6 +817,7 @@ class DesktopWindowController {
         statusObservers.removeAll()
         onDisplayStatusesChanged = nil
         durationSettingsObserver = nil
+        calmSettingsObserver = nil
         durationTimer?.invalidate()
         durationTimer = nil
         desktopClearMonitor.stop()

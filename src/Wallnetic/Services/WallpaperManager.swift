@@ -62,6 +62,7 @@ actor ImportGate {
 /// Receives playback commands directly instead of through NotificationCenter.
 protocol PlaybackDelegate: AnyObject {
     var playbackIsPlaying: Bool { get }
+    var playbackHasResumeIntent: Bool { get }
     func playbackSetWallpaper(url: URL)
     func playbackSetWallpaper(url: URL, for screen: NSScreen)
     /// - Returns: whether playback actually started. A power condition (screen

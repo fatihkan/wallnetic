@@ -16,6 +16,8 @@ final class PauseAfterPlayback {
     private let canPlay: () -> Bool
     private(set) var isRequested = false
     private(set) var isManuallyPaused = false
+    private(set) var holds: Set<PlaybackHold> = []
+    private var heldAt: TimeInterval?
     var onChange: (() -> Void)?
 
     init(now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
@@ -24,13 +26,13 @@ final class PauseAfterPlayback {
         self.canPlay = canPlay
     }
 
-    var hasActivePlayback: Bool { isRequested && entries.values.contains { !$0.expired } }
-    var isPausedAfterDuration: Bool { isRequested && !entries.isEmpty && !hasActivePlayback }
-    var needsTimer: Bool { isRequested && entries.values.contains { !$0.expired && $0.duration != nil } }
+    var hasActivePlayback: Bool { isRequested && holds.isEmpty && entries.values.contains { !$0.expired } }
+    var isPausedAfterDuration: Bool { isRequested && !entries.isEmpty && entries.values.allSatisfy { $0.expired } }
+    var needsTimer: Bool { isRequested && holds.isEmpty && entries.values.contains { !$0.expired && $0.duration != nil } }
     var hasTimedWallpapers: Bool { entries.values.contains { $0.duration != nil } }
 
     func shouldPlay(on display: UInt32) -> Bool {
-        isRequested && entries[display].map { !$0.expired } == true
+        isRequested && holds.isEmpty && canPlay() && entries[display].map { !$0.expired } == true
     }
 
     func isExpired(on display: UInt32) -> Bool { entries[display]?.expired == true }
@@ -38,7 +40,31 @@ final class PauseAfterPlayback {
     func setWallpaper(_ url: URL, renderer: WallpaperRenderer, on display: UInt32,
                       preferences: PauseAfterSettings.Preferences) {
         entries[display] = Entry(renderer: renderer, url: url, duration: preferences.duration(for: url))
-        if isRequested && canPlay() { renderer.play() }
+        if shouldPlay(on: display) { renderer.play() }
+        onChange?()
+    }
+
+    /// Holds stop motion without revoking the user's intent or expiring/restarting
+    /// per-display timers. Removing one hold cannot release another one.
+    func setHolds(_ next: Set<PlaybackHold>) {
+        guard next != holds else { return }
+        let wasHeld = !holds.isEmpty
+        holds = next
+        if !holds.isEmpty {
+            if !wasHeld {
+                heldAt = now()
+                for entry in entries.values { entry.renderer.pause() }
+            }
+        } else {
+            if let heldAt {
+                let elapsed = max(0, now() - heldAt)
+                for id in Array(entries.keys) {
+                    if let started = entries[id]?.startedAt { entries[id]?.startedAt = started + elapsed }
+                }
+            }
+            heldAt = nil
+            for (id, entry) in entries where shouldPlay(on: id) { entry.renderer.play() }
+        }
         onChange?()
     }
 
@@ -55,7 +81,7 @@ final class PauseAfterPlayback {
                 entries[id]?.startedAt = nil
                 entries[id]?.expired = false
             }
-            if let entry = entries[id], !entry.expired { entry.renderer.play() }
+            if let entry = entries[id], shouldPlay(on: id) { entry.renderer.play() }
         }
         tick()
         onChange?()
@@ -77,14 +103,14 @@ final class PauseAfterPlayback {
             entry.startedAt = nil
             entry.expired = false
             entries[id] = entry
-            if isRequested && canPlay() { entry.renderer.play() }
+            if shouldPlay(on: id) { entry.renderer.play() }
         }
         tick()
         onChange?()
     }
 
     func tick() {
-        guard isRequested && canPlay() else { return }
+        guard isRequested && holds.isEmpty && canPlay() else { return }
         let time = now()
         guard time.isFinite else { return }
         var changed = false
@@ -104,7 +130,7 @@ final class PauseAfterPlayback {
     }
 
     func replayExpiredDisplay(_ display: UInt32) {
-        guard isRequested, !isManuallyPaused, canPlay(), entries[display]?.expired == true else { return }
+        guard isRequested, holds.isEmpty, !isManuallyPaused, canPlay(), entries[display]?.expired == true else { return }
         entries[display]?.expired = false
         entries[display]?.startedAt = nil
         entries[display]?.renderer.play()

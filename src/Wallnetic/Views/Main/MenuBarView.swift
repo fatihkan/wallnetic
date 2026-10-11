@@ -77,6 +77,8 @@ struct MenuBarView: View {
             .disabled(!wallpaperManager.isPlaying &&
                 wallpaperManager.displayPlaybackStatuses.contains(where: \.blocksResume))
 
+            CalmModeButton(settings: .shared)
+
             Button {
                 wallpaperManager.cycleToNextWallpaper()
             } label: {

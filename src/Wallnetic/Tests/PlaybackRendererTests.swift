@@ -106,6 +106,57 @@ final class PlaybackRendererTests: XCTestCase {
     }
 
     @MainActor
+    func testMetalCalmAndThermalHoldsKeepThePresentedFrame() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertMotionHolds(MetalVideoRenderer())
+    }
+
+    @MainActor
+    func testAVFoundationCalmAndThermalHoldsKeepThePresentedFrame() async throws {
+        try await assertMotionHolds(VideoRenderer())
+    }
+
+    @MainActor
+    private func assertMotionHolds(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("holds-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 40, fps: 10)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        let playback = PauseAfterPlayback(canPlay: { true })
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init())
+        playback.play()
+        let deadline = Date().addingTimeInterval(5)
+        while !renderer.hasPresentedFrame, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        playback.setHolds([.calm, .thermal])
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let pausedTime = try XCTUnwrap(renderer.currentPlaybackTime)
+        playback.setHolds([.thermal])
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(renderer.currentPlaybackTime ?? -1, pausedTime, accuracy: 0.02)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertTrue(renderer.hasPresentedFrame, "The hold must preserve the displayed frame")
+        playback.setHolds([])
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertGreaterThan(renderer.currentPlaybackTime ?? -1, pausedTime + 0.05)
+        playback.pause(manual: true)
+        playback.setHolds([.calm])
+        playback.setHolds([])
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+    }
+
+    @MainActor
     func testAVFoundationKeepsLoopingAfterFailedReplacement() async throws {
         try await assertKeepsLoopingAfterFailedReplacement(VideoRenderer())
     }
