@@ -67,6 +67,13 @@ jobs:
         timeout-minutes: 5
         run: tools/screensaver-probe/build.sh --run
 
+      # Compile the current renderers; do not collect noisy CI performance baselines.
+      - name: Build playback benchmark tools and check reporting
+        timeout-minutes: 5
+        run: |
+          python3 tools/playback-benchmark/benchmark.py build
+          python3 -m unittest discover -s tools/playback-benchmark -p 'test_*.py'
+
       # Entitlements are cleared and the sandbox disabled because the app-group
       # entitlement cannot be ad-hoc signed on a runner. This mirrors the
       # documented local recipe so CI and local runs agree.

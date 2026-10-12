@@ -45,6 +45,9 @@ display subscriptions, callback coalescing, session invalidation, and simulated
 
 ### Local measurement — 2026-09-27
 
+For future repeatable measurements, use the [benchmark protocol and tools](PLAYBACK_BENCHMARKS.md).
+The observations below predate that protocol and are not its baseline.
+
 An optimized standalone harness compiled the renderer sources from baseline
 `f9e5083` and this change. It played the same synthetic 1920×1080, 60 FPS H.264
 file in a 960×540-point window at 2× scale. Each sample used a two-second warmup
