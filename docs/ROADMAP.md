@@ -156,13 +156,13 @@ Bu doküman Wallnetic projesinin tüm geliştirme aşamalarını, task'larını 
 | 2.4.3 | Retina/HiDPI desteği | P1 | ⬜ |
 | 2.4.4 | Upscaling (düşük çözünürlük → yüksek) | P2 | ⬜ |
 
-### 2.5 Lock Screen Desteği (macOS 14+)
+### 2.5 Screen Saver & Lock Screen Feasibility
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 2.5.1 | Lock Screen API araştırması | P1 | ⬜ |
-| 2.5.2 | Lock Screen wallpaper ayarlama | P1 | ⬜ |
-| 2.5.3 | Desktop + Lock Screen sync | P2 | ⬜ |
+| 2.5.1 | Supported API research ([#259](https://github.com/fatihkan/wallnetic/issues/259)); [findings](SCREENSAVER_FEASIBILITY.md) | P1 | ✅ |
+| 2.5.2 | Live lock-screen playback: no supported implementation path identified | P1 | ❌ |
+| 2.5.3 | System wallpaper still-frame sync; OS controls lock-screen presentation | P2 | ✅ |
 
 ---
 

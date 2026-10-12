@@ -14,7 +14,7 @@ struct SpaceSettingsView: View {
                     .onChange(of: syncManager.isEnabled) { enabled in
                         if enabled { syncManager.syncNow() } else { syncManager.restoreOriginals() }
                     }
-                Text("macOS shows the system wallpaper on the lock screen, in Mission Control previews, and during Space transitions. Wallnetic keeps it in sync with a still frame of your current video. macOS doesn't allow apps to play video on the lock screen itself.")
+                Text("Wallnetic applies a still frame of your current video to the system wallpaper. macOS controls how it appears on the lock screen, in Mission Control, and during Space transitions. Live lock-screen video playback is unavailable.")
                     .font(.caption).foregroundColor(.secondary)
             }
         }

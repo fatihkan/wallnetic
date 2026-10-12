@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Manual pauses, power restrictions and expired playback timers remain effective.
 
 ### Fixed
+- Corrected lock-screen capability descriptions: Wallnetic provides system
+  wallpaper still-frame synchronization, not live lock-screen playback. Screen
+  saver feasibility and an isolated development prototype are documented.
 - HDR (PQ/HLG) videos no longer look washed out with the Metal renderer. The
   renderer reads 8-bit BGRA without color management, so HDR sources are now
   tone-mapped to BT.709 SDR by AVFoundation before drawing. SDR videos are

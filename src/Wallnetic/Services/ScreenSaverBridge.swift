@@ -2,8 +2,10 @@ import Foundation
 import AppKit
 import SwiftUI
 
-/// Bridge between Wallnetic and macOS Screen Saver system
-/// Exports wallpaper info for a companion .saver bundle to use
+/// Unwired legacy placeholder: no companion .saver is shipped or installed.
+/// A UserDefaults suite and file paths do not grant another host permission to
+/// read the sandboxed library. Do not connect this to shipping behavior without
+/// a validated access model; see docs/SCREENSAVER_FEASIBILITY.md (#259).
 class ScreenSaverBridge {
     static let shared = ScreenSaverBridge()
 
