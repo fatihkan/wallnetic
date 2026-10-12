@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleIdentifier</key><string>com.wallnetic.screensaver</string>
+    <key>CFBundleName</key><string>Wallnetic Screen Saver</string>
+    <key>CFBundleDisplayName</key><string>Wallnetic Screen Saver</string>
+    <key>CFBundleExecutable</key><string>WallneticScreenSaver</string>
+    <key>CFBundlePackageType</key><string>BNDL</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>LSMinimumSystemVersion</key><string>13.0</string>
+    <key>NSPrincipalClass</key><string>WallneticScreenSaverView</string>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2024–2026 Fatih Kan. MIT license.</string>
+</dict></plist>

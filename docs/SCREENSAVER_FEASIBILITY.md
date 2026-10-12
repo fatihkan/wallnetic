@@ -6,6 +6,11 @@ macOS 26.4 SDK in Xcode 26.4 (17E192), and macOS 26.6.2 (25G83) on Apple Silicon
 This is a decision record and isolated prototype, not a shipping feature or a
 claim that older/newer OS releases were physically tested.
 
+Follow-up: #274 now has a [standalone development candidate](STANDALONE_SCREEN_SAVER.md).
+The development host was migrated to test that candidate directly. The prototype
+results below describe the original #259 experiment, preserved in #275; they do
+not establish the candidate's outstanding physical/signed release gates.
+
 ## Decision
 
 | Surface / route | Decision | Reason and next step |

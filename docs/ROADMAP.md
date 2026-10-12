@@ -163,6 +163,7 @@ Bu doküman Wallnetic projesinin tüm geliştirme aşamalarını, task'larını 
 | 2.5.1 | Supported API research ([#259](https://github.com/fatihkan/wallnetic/issues/259)); [findings](SCREENSAVER_FEASIBILITY.md) | P1 | ✅ |
 | 2.5.2 | Live lock-screen playback: no supported implementation path identified | P1 | ❌ |
 | 2.5.3 | System wallpaper still-frame sync; OS controls lock-screen presentation | P2 | ✅ |
+| 2.5.4 | Standalone bundled-video screen saver candidate ([#274](https://github.com/fatihkan/wallnetic/issues/274)); [implementation and release gates](STANDALONE_SCREEN_SAVER.md) | P2 | 🚧 |
 
 ---
 

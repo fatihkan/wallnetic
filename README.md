@@ -132,7 +132,8 @@ later.
 - Settings > Spaces > "Sync video frame to system wallpaper"
 - Disabling sync attempts to restore the previously recorded image for each connected display
 - Live lock-screen playback and an installable Wallnetic screen saver have not shipped.
-  The isolated [screen saver research prototype](tools/screensaver-probe/README.md) is a development tool.
+  A separate [screen saver development candidate](docs/STANDALONE_SCREEN_SAVER.md)
+  uses bundled original videos; system-host and signed distribution checks remain open.
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display

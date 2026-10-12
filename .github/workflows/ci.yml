@@ -61,10 +61,11 @@ jobs:
             exit 1
           fi
 
-      # The research plug-in is built independently and never installed or
-      # included in the shipping application. Its windowed host is run locally.
-      - name: Build isolated screen saver research prototype
-        run: tools/screensaver-probe/build.sh
+      # The standalone candidate is never installed or included in the app.
+      # Its separate windowed host exercises real playback and bad-media copies.
+      - name: Build and test standalone screen saver candidate
+        timeout-minutes: 5
+        run: tools/screensaver-probe/build.sh --run
 
       # Entitlements are cleared and the sandbox disabled because the app-group
       # entitlement cannot be ad-hoc signed on a runner. This mirrors the

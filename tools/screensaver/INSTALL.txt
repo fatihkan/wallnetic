@@ -1,0 +1,41 @@
+Wallnetic Screen Saver — validation candidate, not a released product
+
+This is a separate macOS screen saver, not a live wallpaper behind the system
+login or lock-screen authentication UI. It includes two original silent videos
+under the MIT license and does not read your Wallnetic library or use the network.
+The main Wallnetic application is not required. Minimum deployment target: macOS 13.
+
+Installation and update checklist for a signed, notarized candidate:
+1. Download the approved candidate through a browser and open its disk image.
+2. Verify macOS accepts it through the normal Gatekeeper workflow. If it is
+   rejected, stop and report the failure. Do not remove quarantine or bypass
+   system security settings.
+3. Open WallneticScreenSaver.saver and follow macOS's screen-saver installation
+   workflow. Choose installation for the current user when offered.
+4. Select Wallnetic Screen Saver in System Settings > Screen Saver and preview it.
+   System Settings layout may differ between OS versions. The companion never
+   selects itself or changes your password delay, lock policy or desktop image.
+5. Validate actual idle activation, each display, sleep/wake and dismissal before
+   relying on it. These checks have not yet been certified for this candidate.
+6. To update, first choose a different saver. Install the newer signed candidate
+   through the same workflow and confirm that the new build loads. If macOS keeps
+   old code cached, stop testing and record the failure; do not kill system hosts
+   or edit their private preferences as a workaround.
+
+Removal:
+1. Choose a different screen saver in System Settings.
+2. Remove only WallneticScreenSaver.saver through the supported system removal
+   control, or move that exact bundle from your user Library/Screen Savers folder
+   to Trash. Do not remove other savers, media, or the Screen Savers folder itself.
+3. Confirm your chosen replacement activates and the companion no longer loads.
+   Installation, host refresh and removal must be validated on each supported OS.
+
+The companion stores no user preferences or external media and changes no system
+wallpaper settings. Removing it does not remove Wallnetic or its library. If you
+separately enabled Wallnetic's still-frame sync, disable that option in Wallnetic
+to request restoration of its recorded desktop images; the screen saver does not
+manage that feature.
+
+Report issues at https://github.com/fatihkan/wallnetic/issues/274 with the build,
+macOS version, Mac architecture, display arrangement and reproduction steps.
+Do not post account credentials or private media paths.
