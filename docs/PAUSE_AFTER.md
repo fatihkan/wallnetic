@@ -18,7 +18,7 @@ like other library metadata. Changing a display title does not lose its override
 
 | Event | Behavior |
 | --- | --- |
-| First valid frame available | Begin the interval while playback is allowed. An empty loading overlay is never frozen. |
+| First valid frame of the selected video available | Begin the interval while playback is allowed. An older retained frame cannot start a replacement video's interval. Loading or failed selections do not run the duration timer. |
 | Duration expires | Pause that display's renderer and retain its frame. Stop its watchdog recovery; stop the duration timer, watchdog, and playback activity when all displays are held. |
 | Explicit Play | Start fresh intervals on all displays, subject to power restrictions. |
 | Explicit Pause | Hold all displays until explicit Play; wallpaper rotation, preference edits, unlock, and desktop-clear replay cannot override it. |
@@ -32,6 +32,9 @@ The timer uses monotonic uptime and checks every 250 ms while needed; busy run
 loops can delay expiration. It never seeks, changes video speed, discards the
 retained frame, or writes modified videos. The menu bar explains a duration pause
 when every active wallpaper has timed out; the widget reflects paused playback.
+Renderer status events enable the timer once the current load has a valid frame;
+retries receive a fresh interval after their own frame arrives. Other displays'
+deadlines and manual, Calm Mode, thermal and power pause ownership stay intact.
 
 ## Optional desktop-clear replay
 
@@ -48,6 +51,16 @@ APIs. Failed/incomplete metadata is not treated as permission to replay. Samplin
 stops when disabled, manually/power paused, or no displayed wallpaper has a limit.
 
 ## Validation
+
+The replacement-readiness fix for [#278](https://github.com/fatihkan/wallnetic/issues/278)
+passed 47 focused duration, playback-status and native-renderer tests on Apple M4 /
+macOS 26.6.2. An isolated injected-clock reproduction expires a still-loading
+replacement before the fix; after the fix, it expires exactly 15 simulated seconds
+after the replacement's first frame. Regression coverage includes independent
+display deadlines, failure/retry, Metal and AVPlayer, and existing pause ownership.
+These checks do not replace the physical-device validation below.
+
+### Original feature validation
 
 The full local suite passed 195 tests on Apple M4 / macOS 26.6.2. This includes
 duration-boundary and lifecycle tests, independent display deadlines, persistence,

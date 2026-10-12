@@ -79,6 +79,33 @@ final class PlaybackStatusTests: XCTestCase {
     }
 
     @MainActor
+    func testCurrentLoadReadinessResetsForReplacementFailureRetryAndStop() async {
+        let monitor = RendererPlaybackMonitor()
+        let player = AVPlayer()
+        XCTAssertFalse(monitor.hasFrameForCurrentLoad)
+        monitor.beginLoad()
+        monitor.attach(player)
+        await drainMainQueue()
+        XCTAssertFalse(monitor.hasFrameForCurrentLoad)
+        monitor.framePresented()
+        XCTAssertTrue(monitor.hasFrameForCurrentLoad)
+        XCTAssertEqual(monitor.state, .paused, "An already presented paused frame is still ready")
+        monitor.beginLoad()
+        XCTAssertFalse(monitor.hasFrameForCurrentLoad)
+        monitor.fail(.loadFailed)
+        monitor.framePresented() // A late frame cannot make a failed load ready.
+        XCTAssertFalse(monitor.hasFrameForCurrentLoad)
+        monitor.beginLoad()
+        monitor.attach(player)
+        XCTAssertFalse(monitor.hasFrameForCurrentLoad)
+        monitor.framePresented()
+        XCTAssertTrue(monitor.hasFrameForCurrentLoad)
+        monitor.reset()
+        await drainMainQueue()
+        XCTAssertFalse(monitor.hasFrameForCurrentLoad)
+    }
+
+    @MainActor
     func testQueuedPlayerCallbacksCannotOverwriteFailureOrCleanup() async {
         let monitor = RendererPlaybackMonitor()
         let player = AVPlayer()

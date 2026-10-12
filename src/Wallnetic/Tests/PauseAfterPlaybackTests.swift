@@ -60,6 +60,73 @@ final class PauseAfterPlaybackTests: XCTestCase {
     }
 
     @MainActor
+    func testReplacementWaitsForItsOwnFrameWhileOtherDisplayKeepsItsDeadline() async {
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        let a = DurationRendererSpy(), b = DurationRendererSpy()
+        let preferences = PauseAfterSettings.Preferences(defaultSeconds: 15)
+        playback.setWallpaper(firstURL, renderer: a, on: 1, preferences: preferences)
+        playback.setWallpaper(firstURL, renderer: b, on: 2, preferences: preferences)
+        playback.play()
+
+        time = 5
+        // Real renderers preserve A's old frame during the asynchronous load.
+        a.playbackMonitor.beginLoad()
+        playback.setWallpaper(secondURL, renderer: a, on: 1, preferences: preferences)
+        playback.tick()
+        time = 100
+        playback.tick()
+        XCTAssertTrue(a.hasPresentedFrame, "The previous wallpaper remains visible")
+        XCTAssertFalse(playback.isExpired(on: 1), "A retained old frame cannot start the replacement's timer")
+        XCTAssertEqual(a.pauses, 0, "Loading must not lose its playback request before a new frame arrives")
+        XCTAssertTrue(playback.isExpired(on: 2), "Another display's interval still expires normally")
+        XCTAssertFalse(playback.needsTimer, "A loading replacement does not need timer polling")
+
+        a.playbackMonitor.framePresented()
+        XCTAssertTrue(playback.needsTimer)
+        playback.tick()
+        time = 114.999
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 1))
+        time = 115
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 1))
+        XCTAssertEqual(a.pauses, 1)
+    }
+
+    @MainActor
+    func testFailedReplacementAndRetryDoNotSpendTheNewIntervalOnAnOldFrame() async {
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        let renderer = DurationRendererSpy()
+        let preferences = PauseAfterSettings.Preferences(defaultSeconds: 15)
+        playback.setWallpaper(firstURL, renderer: renderer, on: 1, preferences: preferences)
+        playback.play()
+        time = 5
+        renderer.playbackMonitor.beginLoad()
+        playback.setWallpaper(secondURL, renderer: renderer, on: 1, preferences: preferences)
+        renderer.playbackMonitor.fail(.unplayable)
+        playback.tick()
+        time = 100
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 1), "Failed selection must not report a completed interval")
+        XCTAssertFalse(playback.needsTimer, "No duration polling for a failed selection")
+
+        renderer.playbackMonitor.beginLoad()
+        playback.setWallpaper(secondURL, renderer: renderer, on: 1, preferences: preferences)
+        playback.tick()
+        time = 200
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 1))
+        renderer.playbackMonitor.framePresented()
+        playback.tick()
+        time = 215
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 1))
+        XCTAssertEqual(renderer.pauses, 1)
+    }
+
+    @MainActor
     func testDifferentDisplaysAndWallpaperChangesHaveIndependentIntervals() {
         var time = 0.0
         let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
@@ -369,13 +436,19 @@ final class PauseAfterPlaybackTests: XCTestCase {
 private final class DurationRendererSpy: WallpaperRenderer {
     let playbackMonitor = RendererPlaybackMonitor()
     let rendererView = NSView()
-    var hasPresentedFrame = true
+    var hasPresentedFrame = true {
+        didSet {
+            if hasPresentedFrame { playbackMonitor.framePresented() }
+            else { playbackMonitor.beginLoad() }
+        }
+    }
     var onBecameReady: (() -> Void)?
     var filterLayer: CALayer? { nil }
     var currentPlaybackTime: TimeInterval? { 1 }
     var currentPlaybackRate: Float = 0
     var plays = 0
     var pauses = 0
+    init() { playbackMonitor.framePresented() }
     func play() { plays += 1; currentPlaybackRate = 1 }
     func pause() { pauses += 1; currentPlaybackRate = 0 }
     func stop() { currentPlaybackRate = 0; hasPresentedFrame = false }

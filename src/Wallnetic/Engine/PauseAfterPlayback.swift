@@ -28,7 +28,11 @@ final class PauseAfterPlayback {
 
     var hasActivePlayback: Bool { isRequested && holds.isEmpty && entries.values.contains { !$0.expired } }
     var isPausedAfterDuration: Bool { isRequested && !entries.isEmpty && entries.values.allSatisfy { $0.expired } }
-    var needsTimer: Bool { isRequested && holds.isEmpty && entries.values.contains { !$0.expired && $0.duration != nil } }
+    var needsTimer: Bool {
+        isRequested && holds.isEmpty && entries.values.contains {
+            !$0.expired && $0.duration != nil && $0.renderer.playbackMonitor.hasFrameForCurrentLoad
+        }
+    }
     var hasTimedWallpapers: Bool { entries.values.contains { $0.duration != nil } }
 
     func shouldPlay(on display: UInt32) -> Bool {
@@ -116,8 +120,10 @@ final class PauseAfterPlayback {
         var changed = false
         for id in Array(entries.keys) {
             guard var entry = entries[id], !entry.expired,
-                  let duration = entry.duration, entry.renderer.hasPresentedFrame else { continue }
-            // Never freeze an empty overlay while its first video is loading.
+                  let duration = entry.duration, entry.renderer.hasPresentedFrame,
+                  entry.renderer.playbackMonitor.hasFrameForCurrentLoad else { continue }
+            // A retained frame can belong to the previous wallpaper. Only the
+            // selected video's first frame may start its playback interval.
             if entry.startedAt == nil { entry.startedAt = time }
             if time - (entry.startedAt ?? time) >= duration {
                 entry.expired = true

@@ -202,7 +202,9 @@ class DesktopWindowController {
         renderer.onBecameReady = { [weak self] in
             self?.revealDesktopWindow(for: displayID)
         }
-        renderer.playbackMonitor.onChange = { [weak self] in self?.refreshPlaybackStatuses() }
+        // Readiness can change while an old frame remains visible. Start/stop
+        // the duration timer on those events instead of polling a pending load.
+        renderer.playbackMonitor.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
 
         // Create effect overlay view
         let effectOverlay = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
