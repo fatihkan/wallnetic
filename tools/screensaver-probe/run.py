@@ -82,6 +82,12 @@ for scenario in ["identifier", "extra-code", "license", "same-size-media", "enti
             contents[-1] ^= 1
             media.write_bytes(contents)
         else:
+            executable = fixture / "Contents/MacOS/WallneticScreenSaver"
+            clean_arm = Path(temporary) / "clean-arm64"
+            test_intel = Path(temporary) / "test-x86_64"
+            run("lipo", str(executable), "-thin", "arm64", "-output", str(clean_arm))
+            run("lipo", str(executable), "-thin", "x86_64", "-output", str(test_intel))
+            shutil.copyfile(test_intel, executable)
             entitlements = Path(temporary) / "test-entitlements.plist"
             entitlements.write_bytes(plistlib.dumps({"com.apple.security.get-task-allow": True}))
             # macOS 15+ omits library entitlements unless explicitly forced.
@@ -92,6 +98,12 @@ for scenario in ["identifier", "extra-code", "license", "same-size-media", "enti
             embedded = subprocess.check_output(["codesign", "--display", "--entitlements", "-", "--xml", str(fixture)])
             if not plistlib.loads(embedded).get("com.apple.security.get-task-allow"):
                 raise SystemExit("Fault fixture did not embed its test entitlement")
+            # Restore the clean arm64 slice: validation must inspect the Intel
+            # signature too, even when this test runs natively on Apple Silicon.
+            combined = Path(temporary) / "combined"
+            run("lipo", "-create", str(clean_arm), str(executable), "-output", str(combined))
+            shutil.copyfile(combined, executable)
+            run("codesign", "--verify", "--strict", "--all-architectures", str(fixture))
         run(sys.executable, str(validator), str(fixture), succeeds=False)
         print("PASS: packaging rejected " + scenario, flush=True)
 print("RESULT: all candidate scenarios and 11 packaging rejection checks passed", flush=True)

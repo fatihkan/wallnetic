@@ -64,7 +64,8 @@ public animation callback while AVFoundation decodes and presents real video.
 
 `tools/screensaver/validate.py` verifies the resource manifest, license presence,
 bundle identity, payload, native architectures, deployment target, system library
-dependencies, signature and absence of entitlements. `--distribution` additionally
+dependencies, signatures and absence of entitlements in **both** architecture
+slices. `--distribution` additionally
 requires a Developer ID Application signature, hardened runtime and timestamp;
 an ad-hoc local build is rejected. CI runs the windowed checks, bad-media copies
 and packaging rejection cases before the existing application test suite.
@@ -124,7 +125,8 @@ Observed **2026-10-12**, local Apple Silicon, macOS 26.6.2 (25G83), Xcode 26.4
   passed four fallback/release/no-retry assertions: **46 runtime assertions total**.
 - **Eleven packaging rejection checks** passed: ad-hoc distribution, the five
   bad-media variants, changed identifier, extra executable, missing license,
-  same-size media tampering and added signing entitlements.
+  same-size media tampering and signing entitlements added only to the Intel
+  slice (with the clean arm64 slice retained).
 - Candidate and host compile for both architectures with warnings treated as
   errors. Real Intel runtime is untested. The application target is untouched.
 

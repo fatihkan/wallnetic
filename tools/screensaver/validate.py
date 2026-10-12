@@ -64,13 +64,17 @@ def validate(bundle, resources_only=False, distribution=False):
             require(line.strip().startswith(("/System/Library/Frameworks/", "/usr/lib/")),
                     "Unexpected non-system dependency")
     command("codesign", "--verify", "--strict", "--all-architectures", str(bundle))
-    entitlements = command("codesign", "--display", "--entitlements", "-", "--xml", str(bundle)).stdout.strip()
-    require(not entitlements or not plistlib.loads(entitlements.encode()), "Candidate must not declare entitlements")
-    if distribution:
-        signature = command("codesign", "--display", "--verbose=4", str(bundle)).stderr
-        require("Authority=Developer ID Application:" in signature, "Developer ID Application signature required")
-        require("(runtime)" in signature and "Timestamp=" in signature,
-                "Hardened runtime and secure timestamp required")
+    for architecture in ["arm64", "x86_64"]:
+        display = ["codesign", "--display", "--architecture", architecture]
+        entitlements = command(*display, "--entitlements", "-", "--xml", str(bundle)).stdout.strip()
+        require(not entitlements or not plistlib.loads(entitlements.encode()),
+                f"Candidate must not declare entitlements ({architecture})")
+        if distribution:
+            signature = command(*display, "--verbose=4", str(bundle)).stderr
+            require("Authority=Developer ID Application:" in signature,
+                    f"Developer ID Application signature required ({architecture})")
+            require("(runtime)" in signature and "Timestamp=" in signature,
+                    f"Hardened runtime and secure timestamp required ({architecture})")
     return info
 
 
