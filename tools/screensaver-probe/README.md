@@ -1,49 +1,39 @@
-# Isolated screen saver research probe
+# Standalone screen saver development host
 
-Development artifact for [#259](https://github.com/fatihkan/wallnetic/issues/259).
-It is **not an installed screen saver, an app extension, a lock-screen feature,
-or a distributable release**. See [the decision record](../../docs/SCREENSAVER_FEASIBILITY.md).
-
-Requirements: a Mac with Xcode command-line tools and a graphical login session
-for the optional playback checks. Deployment target: macOS 13.0. The build emits
-both arm64 and x86_64 slices; native runtime checks exercise the current machine's
-architecture only.
-
-From the repository root:
+This harness began as the isolated [#259](https://github.com/fatihkan/wallnetic/issues/259)
+research probe. It now builds and tests the actual [#274](https://github.com/fatihkan/wallnetic/issues/274)
+candidate in `src/WallneticScreenSaver`; there is no duplicate plug-in implementation.
+The original research code and 16-check result remain in the #275 Git history.
 
 ```sh
-tools/screensaver-probe/build.sh        # compile/sign locally; CI uses this
-tools/screensaver-probe/build.sh --run  # also show two ordinary test windows
+tools/screensaver-probe/build.sh             # compile candidate + host
+tools/screensaver-probe/build.sh --run       # runtime and packaging checks
+tools/screensaver-probe/build.sh --benchmark # also report host CPU/footprint
 ```
 
-Each run creates a new `.build/screensaver-probe.XXXXXX/` directory containing:
+Requires macOS, Xcode command-line tools and a graphical login session for runtime
+checks. Output goes to a new `.build/screensaver-candidate.XXXXXX` directory. The
+candidate and host are universal, ad-hoc signed developer artifacts. No system
+screen saver, wallpaper, lock policy, sleep state or security setting is changed.
+Nothing is installed, registered or selected. Remove only that output directory
+to clean up. Do not pass untrusted plug-ins to the host.
 
-- `WallneticScreenSaverProbe.saver`: a ScreenSaverView plug-in that loops the
-  repository's original `AuroraSample.mp4` through AVQueuePlayer/AVPlayerLooper
-  and AVPlayerLayer, muted and without preventing display sleep.
-- `ScreenSaverProbeHost`: a separate development host that loads that bundle,
-  runs bounded checks, closes its windows and exits nonzero on failure.
+The host runs two ordinary windows, emulates the public one-second animation
+callback and observes real AVFoundation playback. It checks loops, per-view
+lifecycle, resize, resource release, synthetic system/display sleep, reattachment,
+deallocation, repeat start/stop and stall timeout/recovery. The external host
+pauses its own queue to simulate a stalled decoder; the plug-in has no test-only
+behavior. Separate processes load private copies with
+missing, empty, corrupt, oversized or symlinked media and check safe fallback.
+The Python runner imposes a timeout per subprocess and verifies packaging rejects
+bad payloads and ad-hoc distribution. No test media outside its build directory
+is modified. Logs containing an expected `Validation failed` are negative checks;
+an unexpected exit or failed assertion makes the suite fail.
 
-The signature is ad-hoc, for local development only. The script does not use
-production signing credentials or submit anything for notarization. It does not
-install a bundle, register/select a system screen saver, change the user's
-wallpaper, modify lock settings, remove quarantine, or terminate system services.
-The host accepts a bundle path only for the locally built probe; do not use it to
-load untrusted plug-ins. No network or external media is used by the probe.
+`--benchmark` reports the host's process CPU and physical footprint only. It does
+not measure GPU/decoder-service memory or energy, and is not a system-host result.
+Actual multi-display, sleep/lock, signed sandbox, supported-OS and installation
+validation remain separate release gates.
 
-The 16 runtime checks cover two instances, preview input, real decoder progress,
-a completed six-second loop, portrait resize, duplicate start/stop, resource
-release, synthetic in-process screen sleep/wake notifications, stop during sleep,
-view detachment, 20 restart/stop cycles, and observer lifetime. Both view sizes
-run as ordinary windows on the current display. This is **not** physical
-multi-monitor, actual sleep/wake, login-window, system-host or signed-sandbox
-validation. The harness fails normally instead of deliberately crashing.
-
-Nothing is installed outside the printed build directory. Removing that exact
-output directory removes the research artifacts; no system restore step is
-needed. Leave the user's real screen saver and lock settings alone when working
-on the probe. Follow the production validation gates in the decision record
-before considering a real installation or release.
-
-The bundled sample and code use the repository MIT license. The build copies
-that license into the probe. Sample provenance: [ONBOARDING_SAMPLE.md](../../docs/ONBOARDING_SAMPLE.md).
+See [candidate behavior, evidence and release gates](../../docs/STANDALONE_SCREEN_SAVER.md)
+and [the original feasibility record](../../docs/SCREENSAVER_FEASIBILITY.md).

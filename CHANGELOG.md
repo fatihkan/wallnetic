@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Standalone screen saver development candidate with two bundled original videos,
+  bounded failure handling and isolated lifecycle tests. Distribution remains
+  deferred pending actual system-host, hardware and signed-installation checks.
 - Optional wallpaper packs in Discover, starting with two original MIT-licensed
   animations. Includes offline previews, explicit bounded downloads, integrity
   checks, cancellation/retry and ownership-checked removal.
