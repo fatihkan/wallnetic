@@ -77,10 +77,10 @@ From you. Drag in any video you own, or use the in-app browser to search Pexels,
 Wallhaven, MyLiveWallpapers, DesktopHut, MoeWalls and MotionBGs.
 
 **Can it play video on the lock screen?**
-Not in the Mac App Store build — macOS does not permit a sandboxed app to draw over `loginwindow`.
-Instead, Wallnetic extracts a still frame from your current video and applies it as the system
-wallpaper, so the lock screen and Mission Control match your desktop rather than showing an
-unrelated default picture.
+Wallnetic does not provide live lock-screen playback in either distribution. It can apply a
+still frame from your current video as the system wallpaper; macOS controls its appearance
+on the lock screen and in Mission Control. A screen saver is a separate integration.
+See the [screen saver and lock-screen feasibility findings](docs/SCREENSAVER_FEASIBILITY.md).
 
 **Does it work on Intel Macs?**
 Yes. Wallnetic ships a universal binary supporting both Apple Silicon and Intel, on macOS 13 or
@@ -127,12 +127,12 @@ later.
 - Settings > Spaces, or right-click a wallpaper > "Save for Space Recovery"
 - Automatic Space matching is unavailable. Applying a saved choice affects all displays and Spaces, without binding it to an individual desktop. [Behavior and limits](docs/SPACE_RECOVERY.md)
 
-### Lock Screen Video
-- Video wallpaper on lock screen with clock overlay
-- Uses current wallpaper or a specific selection
-- Auto-detects screen lock/unlock
-- > **Note:** not available in the Mac App Store build — macOS sandboxing
-  > prevents drawing over the system lock screen (`loginwindow`).
+### System Wallpaper Still-Frame Sync
+- Apply a still frame of the selected video to the system wallpaper
+- Settings > Spaces > "Sync video frame to system wallpaper"
+- Disabling sync attempts to restore the previously recorded image for each connected display
+- Live lock-screen playback and an installable Wallnetic screen saver have not shipped.
+  The isolated [screen saver research prototype](tools/screensaver-probe/README.md) is a development tool.
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
@@ -319,7 +319,7 @@ open Wallnetic.xcodeproj
 - [x] Netflix-style UI redesign
 - [x] Discover wallpaper sources (Pixabay, Pexels, web browser)
 - [x] Space wallpaper selections (now manual recovery on `dev`; automatic matching is unavailable)
-- [x] Lock screen video
+- [x] System wallpaper still-frame sync (live lock-screen playback is unavailable)
 - [x] Wallpaper effects (blur, brightness, tint, vignette)
 - [x] Time-of-day auto switch
 - [x] Apple Shortcuts & Siri integration

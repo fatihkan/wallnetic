@@ -11,9 +11,9 @@ import SwiftUI
 /// screen, in Mission Control Space previews, and during Space transition
 /// animations. Wallnetic draws video in its own desktop-level window, so
 /// without this sync those surfaces show whatever unrelated picture is
-/// configured in System Settings. Playing actual video on the lock screen
-/// is not possible for third-party apps (it lives in a separate secure
-/// session), so a matching still frame is the best the platform allows.
+/// configured in System Settings. The documented API used here sets an image;
+/// it does not register a live lock-screen background. The OS controls how that
+/// image appears on each surface. See docs/SCREENSAVER_FEASIBILITY.md (#259).
 @MainActor
 final class SystemWallpaperSync: ObservableObject {
     static let shared = SystemWallpaperSync()
