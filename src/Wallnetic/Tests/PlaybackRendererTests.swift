@@ -288,6 +288,72 @@ final class PlaybackRendererTests: XCTestCase {
     }
 
     @MainActor
+    func testAVFoundationReplacementGetsFullIntervalAfterItsOwnFirstFrame() async throws {
+        try await assertReplacementDuration(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalReplacementGetsFullIntervalAfterItsOwnFirstFrame() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertReplacementDuration(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertReplacementDuration(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("replacement-duration-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 40, fps: 10)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        let preferences = PauseAfterSettings.Preferences(defaultSeconds: 15)
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: preferences)
+        playback.play()
+        var deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        playback.tick()
+
+        time = 5
+        renderer.loadVideo(url: video) // A fresh load generation, as with Retry.
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: preferences)
+        XCTAssertTrue(renderer.hasPresentedFrame, "Keep the previous image on the desktop")
+        XCTAssertFalse(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertFalse(playback.needsTimer)
+        playback.tick()
+        time = 100 // Advance the injected clock before asynchronous loading can finish.
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 1))
+
+        deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertTrue(playback.needsTimer)
+        playback.tick()
+        time = 114.999
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 1))
+        time = 115
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 1))
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertTrue(renderer.hasPresentedFrame)
+    }
+
+    @MainActor
     func testDurationPauseHoldsAVPlayerFrameUntilExplicitResume() async throws {
         try await assertDurationPause(VideoRenderer())
     }
@@ -318,7 +384,7 @@ final class PlaybackRendererTests: XCTestCase {
         playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init(defaultSeconds: 15))
         playback.play()
         let deadline = Date().addingTimeInterval(5)
-        while !renderer.hasPresentedFrame, Date() < deadline {
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         XCTAssertTrue(renderer.hasPresentedFrame)

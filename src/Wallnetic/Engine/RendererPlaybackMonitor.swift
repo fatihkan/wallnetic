@@ -10,6 +10,11 @@ final class RendererPlaybackMonitor {
     private var generation = 0
     private var hasFrame = false
 
+    /// An older frame can remain on the desktop during a replacement load.
+    /// Failed loads (including a player failing after its first frame) cannot
+    /// start a new playback interval from that retained fallback.
+    var hasFrameForCurrentLoad: Bool { hasFrame && !state.isFailed }
+
     func beginLoad() {
         detach()
         publish(.loading)
