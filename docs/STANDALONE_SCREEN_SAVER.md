@@ -122,8 +122,9 @@ Observed **2026-10-12**, local Apple Silicon, macOS 26.6.2 (25G83), Xcode 26.4
   timeout, prevention of retries and recovery after explicit stop/start.
 - Five bad-media scenarios (missing, empty, corrupt, oversized, symlink) each
   passed four fallback/release/no-retry assertions: **46 runtime assertions total**.
-- **Nine packaging rejection checks** passed: ad-hoc distribution, the five
-  bad-media variants, changed identifier, extra executable, missing license.
+- **Eleven packaging rejection checks** passed: ad-hoc distribution, the five
+  bad-media variants, changed identifier, extra executable, missing license,
+  same-size media tampering and added signing entitlements.
 - Candidate and host compile for both architectures with warnings treated as
   errors. Real Intel runtime is untested. The application target is untouched.
 

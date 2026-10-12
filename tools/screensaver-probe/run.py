@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 import plistlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -62,7 +63,7 @@ for scenario in ["missing", "empty", "corrupt", "oversized", "symlink"]:
         print("SCENARIO: " + scenario, flush=True)
         run(str(host), str(fixture), "--expect-fallback")
 
-for scenario in ["identifier", "extra-code", "license"]:
+for scenario in ["identifier", "extra-code", "license", "same-size-media", "entitlements"]:
     with tempfile.TemporaryDirectory(prefix="package-" + scenario + "-", dir=root) as temporary:
         fixture = Path(temporary) / "WallneticScreenSaver.saver"
         shutil.copytree(bundle, fixture)
@@ -73,8 +74,24 @@ for scenario in ["identifier", "extra-code", "license"]:
             path.write_bytes(plistlib.dumps(info))
         elif scenario == "extra-code":
             (fixture / "Contents/MacOS/UnexpectedHelper").write_bytes(b"unexpected payload")
-        else:
+        elif scenario == "license":
             (fixture / "Contents/Resources/LICENSE.txt").unlink()
+        elif scenario == "same-size-media":
+            media = fixture / "Contents/Resources/lagoon.mp4"
+            contents = bytearray(media.read_bytes())
+            contents[-1] ^= 1
+            media.write_bytes(contents)
+        else:
+            entitlements = Path(temporary) / "test-entitlements.plist"
+            entitlements.write_bytes(plistlib.dumps({"com.apple.security.get-task-allow": True}))
+            # macOS 15+ omits library entitlements unless explicitly forced.
+            # This fault fixture must really contain the unwanted entitlement.
+            force_library = ["--force-library-entitlements"] if int(platform.mac_ver()[0].split(".")[0]) >= 15 else []
+            run("codesign", "--force", "--sign", "-", "--timestamp=none", *force_library,
+                "--entitlements", str(entitlements), str(fixture))
+            embedded = subprocess.check_output(["codesign", "--display", "--entitlements", "-", "--xml", str(fixture)])
+            if not plistlib.loads(embedded).get("com.apple.security.get-task-allow"):
+                raise SystemExit("Fault fixture did not embed its test entitlement")
         run(sys.executable, str(validator), str(fixture), succeeds=False)
         print("PASS: packaging rejected " + scenario, flush=True)
-print("RESULT: all candidate scenarios and 9 packaging rejection checks passed", flush=True)
+print("RESULT: all candidate scenarios and 11 packaging rejection checks passed", flush=True)
