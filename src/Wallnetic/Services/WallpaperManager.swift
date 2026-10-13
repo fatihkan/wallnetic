@@ -290,6 +290,10 @@ class WallpaperManager: ObservableObject {
     private let importGate = ImportGate()
 
     func importVideo(from sourceURL: URL) async throws -> Wallpaper {
+        try await importVideo(from: sourceURL, displayName: nil)
+    }
+
+    func importVideo(from sourceURL: URL, displayName: String?) async throws -> Wallpaper {
         // Serialize the critical region. `postImportProcess` runs after
         // the gate releases so thumbnails/color extraction stay parallel.
         let wallpaper = try await importGate.run { [weak self] in
@@ -299,11 +303,12 @@ class WallpaperManager: ObservableObject {
                 from: sourceURL,
                 existingWallpapers: existingWallpapers
             )
-            let wp = Wallpaper(url: destURL)
-            await MainActor.run {
+            return await MainActor.run {
+                var wp = Wallpaper(url: destURL)
+                self.metadata.applyImportedTitle(displayName, to: &wp)
                 self.wallpapers.append(wp)
+                return wp
             }
-            return wp
         }
         postImportProcess(wallpaper)
         return wallpaper

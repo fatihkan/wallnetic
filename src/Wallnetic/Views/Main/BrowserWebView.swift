@@ -245,7 +245,7 @@ struct WebViewWrapper: NSViewRepresentable {
             Task {
                 do {
                     let importURL = try processDownloadedFile(at: info.dest, name: info.name)
-                    _ = try await WallpaperManager.shared.importVideo(from: importURL)
+                    _ = try await WallpaperManager.shared.importVideo(from: importURL, displayName: info.name)
                     try? FileManager.default.removeItem(at: importURL)
                     if importURL != info.dest {
                         try? FileManager.default.removeItem(at: info.dest)
