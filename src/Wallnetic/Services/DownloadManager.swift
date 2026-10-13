@@ -162,7 +162,7 @@ class DownloadManager: NSObject, ObservableObject {
                 case .success(let localURL):
                     do {
                         let importURL = try Self.processDownload(at: localURL, name: name)
-                        _ = try await WallpaperManager.shared.importVideo(from: importURL)
+                        _ = try await WallpaperManager.shared.importVideo(from: importURL, displayName: name)
                         try? FileManager.default.removeItem(at: importURL)
                         if importURL != localURL {
                             try? FileManager.default.removeItem(at: localURL)

@@ -78,7 +78,7 @@ class WallpaperStoreManager: ObservableObject {
         }
 
         let downloadedURL = try await URLImporter.shared.downloadAndImport(from: url.absoluteString)
-        _ = try await WallpaperManager.shared.importVideo(from: downloadedURL)
+        _ = try await WallpaperManager.shared.importVideo(from: downloadedURL, displayName: wallpaper.name)
 
         // Cleanup temp file
         try? FileManager.default.removeItem(at: downloadedURL)
