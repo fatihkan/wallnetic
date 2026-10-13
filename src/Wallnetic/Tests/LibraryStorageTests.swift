@@ -47,6 +47,35 @@ final class LibraryStorageTests: XCTestCase {
         XCTAssertTrue(scan.failures.isEmpty, scan.failures.joined(separator: "; "))
     }
 
+    /// Run with the app's development signing and sandbox entitlements enabled
+    /// to catch ancestor-directory opens denied outside the app container.
+    func testApplicationSupportStorageCanScanInstallVerifyAndRemove() throws {
+        let support = try XCTUnwrap(FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first)
+        let probe = support.appendingPathComponent("WallneticStorageTests-\(UUID().uuidString)")
+        let library = probe.appendingPathComponent("Library")
+        try FileManager.default.createDirectory(at: library, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: probe) }
+        let storage = LibraryStorage(libraryURL: library, framesURL: probe.appendingPathComponent("Frames"),
+                                     thumbnailsURL: nil, metadataURL: probe.appendingPathComponent("metadata.sqlite"))
+        let original = try file(library.appendingPathComponent("keep.mp4"), bytes: 13)
+        let initial = try storage.scan()
+        XCTAssertTrue(initial.failures.isEmpty, initial.failures.joined(separator: "; "))
+        XCTAssertEqual(initial.items.map(\.url), [original])
+
+        let data = Data("verified pack fixture".utf8)
+        let installed = try storage.installPackData(data)
+        let receipt = PackReceipt(packID: "test-pack", itemID: "test-item", sha256: WallpaperPackCatalog.digest(data),
+                                  filename: installed.url.lastPathComponent, identity: installed.identity,
+                                  directoryIdentity: installed.directoryIdentity)
+        XCTAssertNotNil(try storage.verifiedPackItem(receipt))
+        let result = storage.remove([installed])
+        XCTAssertTrue(result.failures.isEmpty, result.failures.joined(separator: "; "))
+        XCTAssertEqual(result.removed.map(\.url), [installed.url])
+        XCTAssertNil(try storage.verifiedPackItem(receipt))
+        XCTAssertEqual(try Data(contentsOf: original), Data(repeating: 7, count: 13))
+        XCTAssertEqual(try storage.scan().items.map(\.url), [original])
+    }
+
     func testBulkRemovalPreservesOriginalsAndOnlyRemovesSelectedCopiesOnce() throws {
         let original = try file(root.appendingPathComponent("original.mp4"), bytes: 40)
         let copy = service.libraryURL.appendingPathComponent("copy.mp4")
@@ -112,6 +141,29 @@ final class LibraryStorageTests: XCTestCase {
         try file(service.libraryURL.appendingPathComponent("copy.mp4"), bytes: 12)
         XCTAssertEqual(service.remove([item]).failures.count, 1)
         XCTAssertTrue(FileManager.default.fileExists(atPath: old.appendingPathComponent("copy.mp4").path))
+    }
+
+    func testReplacedAncestorCannotRedirectScanInstallationOrRemoval() throws {
+        let parent = root.appendingPathComponent("OwnedParent")
+        let library = parent.appendingPathComponent("Library")
+        let original = try file(library.appendingPathComponent("copy.mp4"), bytes: 12)
+        let storage = LibraryStorage(libraryURL: library, framesURL: service.framesURL,
+                                     thumbnailsURL: nil, metadataURL: service.metadataURL)
+        let item = try XCTUnwrap(storage.scan().items.first { $0.url == original })
+        let moved = root.appendingPathComponent("MovedParent")
+        try FileManager.default.moveItem(at: parent, to: moved)
+        try FileManager.default.createSymbolicLink(at: parent, withDestinationURL: moved)
+
+        let scan = try storage.scan()
+        XCTAssertTrue(scan.items.isEmpty)
+        XCTAssertFalse(scan.failures.isEmpty)
+        XCTAssertThrowsError(try storage.installPackData(Data("pack bytes".utf8)))
+        let removal = storage.remove([item])
+        XCTAssertTrue(removal.removed.isEmpty)
+        XCTAssertEqual(removal.failures.count, 1)
+        let retained = moved.appendingPathComponent("Library/copy.mp4")
+        XCTAssertEqual(try Data(contentsOf: retained), Data(repeating: 7, count: 12))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: retained.deletingLastPathComponent().path), ["copy.mp4"])
     }
 
     func testForeignSnapshotCannotDeleteOutsideThisLibrary() throws {
