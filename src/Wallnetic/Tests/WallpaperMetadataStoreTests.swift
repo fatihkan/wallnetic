@@ -1,3 +1,4 @@
+import Darwin
 import XCTest
 @testable import Wallnetic
 
@@ -15,6 +16,11 @@ final class WallpaperMetadataStoreTests: XCTestCase {
         store = WallpaperMetadataStore(defaults: defaults)
         root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        // Directory enumeration can return /private/var for a /var temporary
+        // URL. Use one physical fixture path for import and rescan metadata.
+        let physicalPath = try XCTUnwrap(realpath(root.path, nil))
+        defer { free(physicalPath) }
+        root = URL(fileURLWithPath: String(cString: physicalPath), isDirectory: true)
     }
 
     override func tearDownWithError() throws {
