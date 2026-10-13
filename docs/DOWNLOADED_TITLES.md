@@ -4,6 +4,19 @@ Discover downloads and native browser downloads keep their available display
 names when imported into Library, including ZIP/MLW conversion. The store
 download handoff passes its known item name through the same import API.
 
+Browser direct-link downloads use the current page title. Native WebKit downloads
+capture that title when the download begins and keep it with the transfer, so
+later navigation or another download does not replace the name. If the page has
+no usable title, the server filename is the fallback.
+
+Scan keeps the media URL and title together. A video/link's `title` or `aria-label`
+takes precedence over the page's HTML title; the URL filename is the final
+fallback. The same name appears in Scan results, download progress and Library.
+Scanning another page does not mutate titles of previously captured results.
+Titles are returned as data by a fixed DOM-reading script, never interpolated
+into executable JavaScript. Scan accepts HTTP(S) media candidates, deduplicates
+by URL and examines at most 200 returned candidates.
+
 Temporary media continues to use generated filenames. `importVideo` accepts an
 optional display name and records it in the existing path-keyed custom-title
 metadata before publishing the item and starting thumbnail/search processing.
@@ -32,3 +45,9 @@ and the app sandbox enabled. The import regression copies an isolated synthetic
 file, recreates the metadata store, rescans the library and rebuilds the search
 index. It checks persistence and file preservation, not video decoding or a live
 third-party download. End-to-end download UI checks remain part of local testing.
+
+The page-title follow-up passed 23 focused tests with the sandbox enabled,
+including seven browser metadata tests. Real WebKit HTML fixtures verify video
+labels, page-title fallback, relative URLs, title changes and code-like title
+text remaining inert. Fixtures use nonpersistent website storage and disable
+page scripts/media requests with a content security policy.
