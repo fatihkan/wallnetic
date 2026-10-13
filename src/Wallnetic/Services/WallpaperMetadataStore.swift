@@ -79,7 +79,8 @@ final class WallpaperMetadataStore {
         customTitles = titles
     }
 
-    private static func normalizedImportedTitle(_ value: String?) -> String? {
+    /// Also used before displaying untrusted page titles in download UI.
+    static func normalizedImportedTitle(_ value: String?) -> String? {
         guard let value, value.utf8.count <= 4096 else { return nil }
         var scalars = String.UnicodeScalarView()
         for scalar in value.unicodeScalars {

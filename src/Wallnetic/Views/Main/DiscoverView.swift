@@ -201,7 +201,7 @@ struct InAppBrowserView: View {
     @ObservedObject var downloadManager = DownloadManager.shared
     @State private var currentURL: String
     @State private var isLoading = true
-    @State private var foundVideos: [String] = []
+    @State private var foundVideos: [BrowserVideo] = []
     @State private var showingVideos = false
     @State private var webView: WKWebView?
     @State private var canGoBack = false
@@ -383,11 +383,8 @@ struct InAppBrowserView: View {
                         Spacer()
 
                         Button("Download All") {
-                            for url in foundVideos {
-                                if let videoURL = URL(string: url) {
-                                    let name = videoURL.deletingPathExtension().lastPathComponent
-                                    DownloadManager.shared.downloadAndImport(name: name, from: videoURL)
-                                }
+                            for video in foundVideos {
+                                DownloadManager.shared.downloadAndImport(name: video.name, from: video.url)
                             }
                             foundVideos = []
                         }
@@ -408,13 +405,13 @@ struct InAppBrowserView: View {
                     .padding(.vertical, 8)
 
                     // Video list
-                    ForEach(foundVideos, id: \.self) { urlStr in
+                    ForEach(foundVideos) { video in
                         HStack(spacing: 8) {
                             Image(systemName: "film")
                                 .font(.system(size: 9))
                                 .foregroundColor(.primary.opacity(0.55))
 
-                            Text(URL(string: urlStr)?.lastPathComponent ?? urlStr)
+                            Text(video.name)
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundColor(.primary.opacity(0.7))
                                 .lineLimit(1)
@@ -422,11 +419,8 @@ struct InAppBrowserView: View {
                             Spacer()
 
                             Button("Download") {
-                                if let videoURL = URL(string: urlStr) {
-                                    let name = videoURL.deletingPathExtension().lastPathComponent
-                                    DownloadManager.shared.downloadAndImport(name: name, from: videoURL)
-                                    foundVideos.removeAll { $0 == urlStr }
-                                }
+                                DownloadManager.shared.downloadAndImport(name: video.name, from: video.url)
+                                foundVideos.removeAll { $0.id == video.id }
                             }
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.blue)
@@ -452,38 +446,16 @@ struct InAppBrowserView: View {
         .background(Surface.windowFill)
     }
 
-    /// Scans current page for video URLs using JavaScript
+    /// Capture titles alongside URLs; navigation after Scan must not rename them.
     private func scanPageForVideos() {
-        let js = """
-        (function() {
-            var videos = [];
-            // Find <video> source elements
-            document.querySelectorAll('video source, video').forEach(function(el) {
-                var src = el.src || el.currentSrc;
-                if (src && src.match(/\\.(mp4|mov|m4v|webm)/i)) videos.push(src);
-            });
-            // Find direct <a> links to video files
-            document.querySelectorAll('a[href]').forEach(function(el) {
-                var href = el.href;
-                if (href && href.match(/\\.(mp4|mov|m4v|webm)/i)) videos.push(href);
-            });
-            // Find og:video meta tags
-            document.querySelectorAll('meta[property="og:video"]').forEach(function(el) {
-                if (el.content) videos.push(el.content);
-            });
-            return [...new Set(videos)];
-        })();
-        """
-
-        webView?.evaluateJavaScript(js) { result, error in
-            if let urls = result as? [String] {
-                DispatchQueue.main.async {
-                    self.foundVideos = urls
-                    if urls.isEmpty {
-                        Log.browser.info("No videos found on page")
-                    } else {
-                        Log.browser.info("Found \(urls.count) videos")
-                    }
+        webView?.evaluateJavaScript(BrowserDownloadMetadata.scanScript) { result, error in
+            let videos = BrowserDownloadMetadata.videos(from: result)
+            DispatchQueue.main.async {
+                self.foundVideos = videos
+                if videos.isEmpty {
+                    Log.browser.info("No videos found on page")
+                } else {
+                    Log.browser.info("Found \(videos.count) videos")
                 }
             }
         }

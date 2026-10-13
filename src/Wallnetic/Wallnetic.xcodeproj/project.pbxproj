@@ -93,6 +93,7 @@
 		72F4CF08714A41746B6A0258 /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7021318E82664A8754F5FF1 /* AIProvider.swift */; };
 		73849203691B6B9B27EF0384 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1849D0D4B8C207540818A7E8 /* CollectionManager.swift */; };
 		742A331D6D1F74CDBA86FB9B /* ember.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = E6BF7B9F0976B88C348B278D /* ember.mp4 */; };
+		7432243BFF546DDDF46DB2A2 /* BrowserDownloadMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F91DC6D3456885E1555F352 /* BrowserDownloadMetadataTests.swift */; };
 		76D84A562F38F8BB6BEB521B /* OptimizedCopyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FDCF06E9A249E9D22603B65 /* OptimizedCopyStore.swift */; };
 		77C249855157E8D5632190EF /* PlaybackRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E1AC0A6B451E500552CA50 /* PlaybackRendererTests.swift */; };
 		782ADAB3D0278AD8028A151C /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD359DF3443AB6E3242CA90 /* LiquidGlass.swift */; };
@@ -169,6 +170,7 @@
 		D2B1BE9AAA57D679DF333F00 /* PlaybackStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50935531B451165BFCC4173 /* PlaybackStatus.swift */; };
 		D536FC913069CBC74CD142D2 /* LargeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C46699BC859D4FABE71BB58F /* LargeWidgetView.swift */; };
 		D57F15D4DC64658E22A29341 /* DynamicIslandController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */; };
+		D58F0514476E2A717318ED5E /* BrowserDownloadMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAF1A168D0AFB1A8443BBF6 /* BrowserDownloadMetadata.swift */; };
 		D729B636A0E78713E53C77FD /* PerformanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CFBA173095D37D5702C5C18 /* PerformanceManager.swift */; };
 		D72AB7DA85F7CAD4474A0FFB /* WallpaperSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8B2898EBEA15EF341D7B97 /* WallpaperSchedule.swift */; };
 		D812BECBE0458A174EF2696E /* SlideshowGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C428B5A76D12B2D39EB866E /* SlideshowGeneratorTests.swift */; };
@@ -310,6 +312,7 @@
 		5CEBCAF9E5F767C08A15158C /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		5DDCED3D911A109BE43975C7 /* WallpaperAspectFill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperAspectFill.swift; sourceTree = "<group>"; };
 		5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopWindowController.swift; sourceTree = "<group>"; };
+		5F91DC6D3456885E1555F352 /* BrowserDownloadMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserDownloadMetadataTests.swift; sourceTree = "<group>"; };
 		5FD8494A42E5AA356A35BA25 /* StrikingEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrikingEffects.swift; sourceTree = "<group>"; };
 		602F922B007A2109D23855CF /* LibraryStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStorageTests.swift; sourceTree = "<group>"; };
 		60D80208B9C31066D6C112FB /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
@@ -426,6 +429,7 @@
 		E6BF7B9F0976B88C348B278D /* ember.mp4 */ = {isa = PBXFileReference; path = ember.mp4; sourceTree = "<group>"; };
 		E72EDA5DB0538086455362EF /* WindowPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowPresentationTests.swift; sourceTree = "<group>"; };
 		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		ECAF1A168D0AFB1A8443BBF6 /* BrowserDownloadMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserDownloadMetadata.swift; sourceTree = "<group>"; };
 		ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalVideoRenderer.swift; sourceTree = "<group>"; };
 		F3D3A43BF60BFD2ADD5853F5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		F445C733089982D2231472D9 /* WallpaperVisibilityPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperVisibilityPolicyTests.swift; sourceTree = "<group>"; };
@@ -527,6 +531,7 @@
 				082027791B67C0B2DBD43F97 /* AudioVisualizerManager.swift */,
 				5391D519B2B4F2D898BEDB0F /* AuthManager.swift */,
 				E0187521E8CC2C0BB29CE90D /* BatteryPromptService.swift */,
+				ECAF1A168D0AFB1A8443BBF6 /* BrowserDownloadMetadata.swift */,
 				351519864B94BC95ECC8007E /* CalmPlaybackSettings.swift */,
 				69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */,
 				1849D0D4B8C207540818A7E8 /* CollectionManager.swift */,
@@ -782,6 +787,7 @@
 			isa = PBXGroup;
 			children = (
 				DE3820804804CF982B3EAD9E /* AIGenerateViewModelTests.swift */,
+				5F91DC6D3456885E1555F352 /* BrowserDownloadMetadataTests.swift */,
 				56F59C3C7AB56348DA1D9D45 /* ColorCategoryTests.swift */,
 				2A9660F71829E6C2D5F2B5E6 /* DeepLinkHandlerTests.swift */,
 				7BB04CF2E27DC75B29EE8A67 /* ErrorReporterTests.swift */,
@@ -1000,6 +1006,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F645400D7B3244A64FEF0BF0 /* AIGenerateViewModelTests.swift in Sources */,
+				7432243BFF546DDDF46DB2A2 /* BrowserDownloadMetadataTests.swift in Sources */,
 				4DC3D57FC37765D6CEABF304 /* ColorCategoryTests.swift in Sources */,
 				BAC40D45BA2B2C148C66259E /* DeepLinkHandlerTests.swift in Sources */,
 				1AEF59FC27860B386A6D7049 /* ErrorReporterTests.swift in Sources */,
@@ -1053,6 +1060,7 @@
 				AC7FBC93D689C03ADF1AEDF5 /* AudioVisualizerOverlayView.swift in Sources */,
 				B34E2B3843447164873423D8 /* AuthManager.swift in Sources */,
 				61773D343F4EBEEB12FF8AFB /* BatteryPromptService.swift in Sources */,
+				D58F0514476E2A717318ED5E /* BrowserDownloadMetadata.swift in Sources */,
 				F7D599673F52C74E4EF244EE /* BrowserWebView.swift in Sources */,
 				04DCA6BBB5F6EB26DBDAEB58 /* CalmModeButton.swift in Sources */,
 				30FDB21CB5F377E077FB1123 /* CalmPlaybackSettings.swift in Sources */,
