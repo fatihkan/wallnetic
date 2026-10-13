@@ -303,17 +303,14 @@ struct LibraryStorage: Sendable {
         let currentPath = String(cString: resolved)
         free(resolved)
         guard currentPath == anchor.path else { throw StorageError.changedFile }
-        // Ancestors are used only for relative lookup, never enumeration. Asking
-        // to read their contents is unnecessary outside the app's sandbox scope.
-        var fd = open("/", O_EVTONLY | O_DIRECTORY | O_CLOEXEC)
+        // Open only the owned directory. Even O_EVTONLY opens of ancestors such
+        // as /Users can be denied by App Sandbox. O_NOFOLLOW_ANY rejects symlinks
+        // in every component during this lookup, retaining the traversal defense
+        // without requiring access to ancestor directory descriptors. The anchor
+        // already resolves legitimate platform/container aliases; the comparison
+        // above rejects a logical alias that was retargeted since initialization.
+        let fd = open(anchor.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW_ANY | O_CLOEXEC)
         guard fd >= 0 else { throw posixError() }
-        for component in anchor.pathComponents.dropFirst() {
-            let next = openat(fd, component, O_EVTONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-            let failure = errno
-            close(fd)
-            guard next >= 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(failure)) }
-            fd = next
-        }
         return fd
     }
 

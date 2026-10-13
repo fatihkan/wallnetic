@@ -13,7 +13,7 @@ Settings → Storage shows the sizes of app-managed videos, generated system-wal
 
 1. Refresh the scan before confirmation. Show the exact selected file count and estimated bytes for that snapshot.
 2. Require explicit confirmation, including for the existing single-item Delete command. Cancel leaves files and assignments unchanged.
-3. Restrict deletion to direct, regular files with expected names/extensions in known app-owned directories. Do not recurse into directories or follow symbolic links. Use descriptor-relative `unlinkat`, with component-by-component `O_NOFOLLOW` directory traversal.
+3. Restrict deletion to direct, regular files with expected names/extensions in known app-owned directories. Do not recurse into directories or follow symbolic links. Open the physical owned-directory anchor with `O_NOFOLLOW_ANY`, then use descriptor-relative file operations and `unlinkat`. The kernel rejects symbolic links anywhere in that directory lookup without requiring separate opens of sandbox-inaccessible ancestors.
 4. Recheck the directory device/inode and file device/inode/size/modification time at deletion. Changed or missing files fail individually; files added after confirmation are not included.
 5. Serialize removal with imports. Only successful removals update active playback, per-display and Space assignments, collection membership/playlist sources, time-of-day and weather paths, favorites, titles, tags, colors, search metadata and widget state. Failed removals retain their references.
 6. Report individual failures and keep failed selections available for retry. Background scans support cancellation; filesystem work does not run on the main actor. Widget reference read failures disable cache deletion without disabling video cleanup.
@@ -40,3 +40,50 @@ xcodebuild test \
 ```
 
 Release-wide signed App Group, VoiceOver, physical Intel and multi-display lifecycle checks remain part of release preparation. This development does not change the app version or publish a release.
+
+### Signed sandbox directory access — 2026-10-13
+
+A local Apple Development-signed Release build exposed a shared failure: Storage
+showed no files and pack downloads stopped with `NSPOSIXErrorDomain` / `EPERM`
+after successful transfer and media validation. The former directory walker
+opened each ancestor using `O_EVTONLY`; App Sandbox denied opening `/Users` even
+though the final application-container directory was accessible.
+
+The directory opener now targets only the physical owned directory with
+`O_DIRECTORY | O_NOFOLLOW_ANY`. The existing logical-to-physical anchor check,
+file/directory identity checks, exclusive pack creation and descriptor-relative
+deletion remain in place. No entitlement or sandbox setting changes.
+[Apple's XNU definition](https://github.com/apple-oss-distributions/xnu/blob/xnu-8792.61.2/bsd/sys/fcntl.h#L169)
+specifies the no-symlink path flag; the
+[kernel lookup implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/vfs/vfs_vnops.c)
+rejects a symlink encountered anywhere in that lookup.
+
+A signed probe using the app's actual entitlements and a unique temporary test
+directory reproduced both failures before the fix. Afterwards, Storage scanning
+and both real Soft Motion downloads passed, including media/hash validation,
+installation, receipt verification and removal; an unrelated fixture was kept.
+The probe never installed pack content into the user's real library.
+
+All **43 focused storage and pack tests passed with Apple Development signing and
+App Sandbox enabled** on Apple M4 / macOS 26.6.2. The rebuilt signed Release app
+also displayed the real library sizes in Storage and reported Soft Motion as
+installed through the Packs UI. Other release-wide device checks remain pending.
+
+`LibraryStorageTests.testApplicationSupportStorageCanScanInstallVerifyAndRemove`
+provides a repeatable application-support-path regression. Run it with the app's
+development signing and entitlements enabled to exercise App Sandbox; the default
+CI recipe above deliberately disables sandboxing and cannot establish this result:
+
+```sh
+xcodebuild test \
+  -project src/Wallnetic/Wallnetic.xcodeproj -scheme Wallnetic \
+  -configuration Debug -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath .build/storage-signed-tests \
+  -only-testing:WallneticTests/LibraryStorageTests/testApplicationSupportStorageCanScanInstallVerifyAndRemove \
+  DEVELOPMENT_TEAM=YOUR_TEAM_ID CODE_SIGN_IDENTITY='Apple Development'
+```
+
+Use an existing development profile for this device and both app targets. The test
+creates and removes only its uniquely named `WallneticStorageTests-*` directory;
+it does not remove user library files. A second regression verifies that replacing
+an ancestor with a symlink cannot redirect scanning, installation or deletion.
