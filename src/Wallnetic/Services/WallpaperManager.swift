@@ -301,7 +301,8 @@ class WallpaperManager: ObservableObject {
             let existingWallpapers = await MainActor.run { self.wallpapers }
             let destURL = try await self.library.importFile(
                 from: sourceURL,
-                existingWallpapers: existingWallpapers
+                existingWallpapers: existingWallpapers,
+                preferredName: displayName
             )
             return await MainActor.run {
                 var wp = Wallpaper(url: destURL)
