@@ -26,6 +26,13 @@ RENDERER_SOURCES = [
     "Services/PerformanceManager.swift", "Utils/Log.swift",
 ]
 RECIPES = {"h264": (1920, 1080, 30, "avc1"), "hevc": (3840, 2160, 60, "hvc1")}
+COMPARISON_FIELDS = (
+    "schema_version", "scope", "hardware", "os", "engine", "profile", "warmup_seconds", "requested_seconds",
+    "window_points", "screen_indices", "connected_screens", "fixture", "power_start", "build", "git_revision",
+    "compiled_inputs_dirty", "activity_policy", "sampling_interval_seconds", "context",
+)
+SUMMARY_METRICS = ("cpu_percent_one_core", "footprint_peak_sampled_bytes", "footprint_mean_sampled_bytes",
+                   "package_idle_wakeups_per_second", "interrupt_wakeups_per_second")
 
 
 def execute(args, **kwargs):
@@ -100,8 +107,10 @@ def inspect(path):
 
 
 def verify_fixture(recipe, metadata):
+    if not isinstance(metadata, dict) or not nonnegative_number(metadata.get("duration_seconds")):
+        raise ValueError("Invalid fixture duration; expected a finite nonnegative number")
     width, height, fps, codec = RECIPES[recipe]
-    if (metadata["width"], metadata["height"], metadata["fps"], metadata["codec_fourcc"]) != (width, height, fps, codec):
+    if tuple(metadata.get(key) for key in ("width", "height", "fps", "codec_fourcc")) != (width, height, fps, codec):
         raise ValueError(f"Unexpected encoding for {recipe}; no automatic fallback")
     if abs(metadata["duration_seconds"] - 10) > 1 / fps:
         raise ValueError("Fixture must contain ten seconds of video")
@@ -153,47 +162,127 @@ def run(args):
 
 def comparable(record):
     # Revision/binary hash intentionally included: never average different builds.
-    fields = ("schema_version", "scope", "hardware", "os", "engine", "profile", "warmup_seconds", "requested_seconds",
-              "window_points", "screen_indices", "connected_screens", "fixture", "power_start", "build", "git_revision",
-              "compiled_inputs_dirty", "activity_policy", "sampling_interval_seconds", "context")
-    return {key: record[key] for key in fields}
+    return {key: record[key] for key in COMPARISON_FIELDS}
+
+
+def nonnegative_number(value):
+    # bool subclasses int in Python; it is never a measured number.
+    if type(value) not in (int, float):
+        return False
+    try:
+        return math.isfinite(value) and value >= 0
+    except OverflowError:
+        return False
+
+
+def read_record(path):
+    def invalid_constant(_):
+        raise ValueError("Non-finite JSON number in run record")
+
+    def finite_float(value):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("Non-finite JSON number in run record")
+        return number
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Duplicate JSON key in run record")
+            result[key] = value
+        return result
+
+    return json.loads(path.read_text(), parse_constant=invalid_constant,
+                      parse_float=finite_float, object_pairs_hook=unique_object)
+
+
+def validate_record(record):
+    """Validate the report inputs, not the authenticity of a measurement."""
+    if not isinstance(record, dict):
+        raise ValueError("Run record must be a JSON object")
+    required = set(COMPARISON_FIELDS) | {"id", "elapsed_seconds", "power_end", "invalid_reasons",
+                                       "eligible_for_baseline", "metrics"}
+    missing = required - record.keys()
+    if missing:
+        raise ValueError("Missing run fields: " + ", ".join(sorted(missing)))
+    if type(record["schema_version"]) is not int or record["schema_version"] != 1 or record["scope"] != "isolated_renderer_host":
+        raise ValueError("Unsupported run schema or scope")
+    for name in ("eligible_for_baseline", "compiled_inputs_dirty"):
+        if type(record[name]) is not bool:
+            raise ValueError(f"Invalid boolean flag: {name}")
+    for name in ("id", "git_revision", "activity_policy", "context"):
+        if not isinstance(record[name], str) or not record[name].strip():
+            raise ValueError(f"Invalid text field: {name}")
+    for name in ("hardware", "os", "fixture", "power_start", "power_end", "build"):
+        if not isinstance(record[name], dict) or not record[name]:
+            raise ValueError(f"Invalid configuration object: {name}")
+    if record["engine"] not in ("metal", "avplayer") or record["profile"] not in ("quality", "balanced", "battery"):
+        raise ValueError("Invalid renderer or playback profile")
+    reasons = record["invalid_reasons"]
+    if not isinstance(reasons, list) or any(not isinstance(reason, str) or not reason.strip() for reason in reasons):
+        raise ValueError("Invalid failure reasons; expected an array of nonempty strings")
+    points = record["window_points"]
+    if not isinstance(points, list) or len(points) != 2 or any(not nonnegative_number(value) or value == 0 for value in points):
+        raise ValueError("Invalid window dimensions")
+    indices = record["screen_indices"]
+    if (not isinstance(indices, list) or not indices
+            or any(type(value) is not int or value < 0 for value in indices) or len(set(indices)) != len(indices)):
+        raise ValueError("Invalid screen indices")
+    screens = record["connected_screens"]
+    if not isinstance(screens, list) or not screens or any(not isinstance(screen, dict) or not screen for screen in screens):
+        raise ValueError("Invalid connected display configuration")
+    interval = record["sampling_interval_seconds"]
+    if not nonnegative_number(interval) or interval == 0:
+        raise ValueError("Invalid sampling interval")
+    for name in ("elapsed_seconds", "requested_seconds", "warmup_seconds"):
+        if not nonnegative_number(record[name]):
+            raise ValueError(f"Invalid duration: {name}")
+    if record["elapsed_seconds"] < record["requested_seconds"] or record["requested_seconds"] < 1:
+        raise ValueError("Incomplete measurement")
+    metrics = record["metrics"]
+    if not isinstance(metrics, dict) or any(name not in metrics for name in SUMMARY_METRICS):
+        raise ValueError("Missing measurement fields; unavailable metrics must be explicit null values")
+    for name in SUMMARY_METRICS:
+        value = metrics[name]
+        if value is None and name != "cpu_percent_one_core":
+            continue
+        if not nonnegative_number(value):
+            label = "CPU measurement" if name == "cpu_percent_one_core" else f"metric: {name}"
+            raise ValueError(f"Invalid {label}")
+
+
+def finite_median(values):
+    # Avoid overflow from adding two large finite nonnegative middle values.
+    lower, upper = statistics.median_low(values), statistics.median_high(values)
+    return lower if lower == upper else lower + (upper - lower) / 2
 
 
 def summarize(paths):
     if not paths:
         raise ValueError("No run records provided")
-    records = [json.loads(path.read_text()) for path in paths]
+    records = [read_record(path) for path in paths]
+    for record in records:
+        validate_record(record)
     key = comparable(records[0])
     ids = set()
     for record in records:
-        if record["schema_version"] != 1 or record["scope"] != "isolated_renderer_host" or comparable(record) != key:
+        if comparable(record) != key:
             raise ValueError("Incompatible runs: summarize each build/environment/fixture separately")
         if record["id"] in ids:
             raise ValueError("Duplicate run ID; copies are not independent repetitions")
         ids.add(record["id"])
-        for name in ("elapsed_seconds", "requested_seconds", "warmup_seconds"):
-            value = record[name]
-            if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
-                raise ValueError(f"Invalid duration: {name}")
-        if record["elapsed_seconds"] < record["requested_seconds"] or record["requested_seconds"] < 1:
-            raise ValueError("Incomplete measurement")
-        cpu = record["metrics"]["cpu_percent_one_core"]
-        if not isinstance(cpu, (int, float)) or not math.isfinite(cpu) or cpu < 0:
-            raise ValueError("Invalid CPU measurement")
     eligible = len(records) >= 5 and all(record["eligible_for_baseline"] and not record["invalid_reasons"]
         and record["warmup_seconds"] >= 30 and record["requested_seconds"] >= 60
         and record["power_start"] == record["power_end"] for record in records)
     metrics = {}
-    for name in ("cpu_percent_one_core", "footprint_peak_sampled_bytes", "footprint_mean_sampled_bytes",
-                 "package_idle_wakeups_per_second", "interrupt_wakeups_per_second"):
-        values = [record["metrics"].get(name) for record in records]
+    for name in SUMMARY_METRICS:
+        values = [record["metrics"][name] for record in records]
         if any(value is None for value in values):
             metrics[name] = None
             continue
-        if any(not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0 for value in values):
-            raise ValueError(f"Invalid metric: {name}")
-        median = statistics.median(values)
-        metrics[name] = {"median": median, "median_absolute_deviation": statistics.median(abs(value - median) for value in values),
+        median = finite_median(values)
+        metrics[name] = {"median": median, "median_absolute_deviation": finite_median([abs(value - median) for value in values]),
                          "min": min(values), "max": max(values)}
     return {"schema_version": 1, "scope": "isolated_renderer_host", "run_count": len(records),
             "run_ids": sorted(ids), "eligible_for_baseline": eligible, "configuration": key, "metrics": metrics,
