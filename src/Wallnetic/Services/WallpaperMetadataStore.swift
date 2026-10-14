@@ -63,8 +63,8 @@ final class WallpaperMetadataStore {
         }
     }
 
-    /// Download names are display metadata, never destination filenames. Persist
-    /// before publishing the imported item so rescans/search use the same title.
+    /// Keep the full display title separate from the sanitized storage filename.
+    /// Persist before publication so rescans/search use the same title.
     /// A previously saved user title always wins over a suggested download name.
     func applyImportedTitle(_ suggestedTitle: String?, to wallpaper: inout Wallpaper) {
         var titles = customTitles
