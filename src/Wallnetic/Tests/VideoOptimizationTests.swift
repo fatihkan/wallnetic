@@ -99,6 +99,58 @@ final class VideoOptimizationTests: XCTestCase {
         XCTAssertTrue(a.hasSuffix(".mp4"))
     }
 
+    func testOutputNamesKeepWholeUnicodeCharactersWithinBothByteBudgets() throws {
+        let stems = [
+            String(repeating: "a", count: 79) + "İstanbul",
+            String(repeating: "a", count: 79) + "e\u{301}cole",
+            String(repeating: "a", count: 73) + "👩🏽‍🚀 Space",
+            String(repeating: "각", count: 60),
+            "İstanbul 🌄"
+        ]
+        for stem in stems {
+            for preset in VideoOptimizationPreset.allCases {
+                let source = root.appendingPathComponent(stem + ".mov")
+                let name = VideoOptimizer.outputName(source: source, preset: preset)
+                let marker = " - Optimized " + preset.filenameLabel + " - "
+                let range = try XCTUnwrap(name.range(of: marker))
+                let prefix = String(name[..<range.lowerBound])
+                XCTAssertFalse(prefix.isEmpty)
+                XCTAssertFalse(prefix.contains("\u{FFFD}"), "Truncation must not introduce replacement characters")
+                XCTAssertEqual(Array(prefix), Array(stem.prefix(prefix.count)), "Keep combining marks and emoji sequences intact")
+                XCTAssertLessThanOrEqual(prefix.utf8.count, 80)
+                XCTAssertLessThanOrEqual(prefix.decomposedStringWithCanonicalMapping.utf8.count, 80)
+                XCTAssertLessThan(name.decomposedStringWithCanonicalMapping.utf8.count, 255)
+                XCTAssertNotNil(UUID(uuidString: String(name[range.upperBound...].dropLast(4))))
+                XCTAssertTrue(name.hasSuffix(".mp4"))
+                if stem == "İstanbul 🌄" { XCTAssertEqual(prefix, stem, "Short names stay unchanged") }
+            }
+        }
+    }
+
+    func testOutputNameUsesReadableFallbackWhenFirstCharacterExceedsBudget() {
+        let oversizedCharacter = "a" + String(repeating: "\u{301}", count: 50)
+        XCTAssertEqual(oversizedCharacter.count, 1)
+        let source = root.appendingPathComponent(oversizedCharacter + ".mov")
+        let name = VideoOptimizer.outputName(source: source, preset: .compact)
+        XCTAssertTrue(name.hasPrefix("Wallpaper - Optimized H264-720p - "))
+        XCTAssertFalse(name.contains("\u{FFFD}"))
+    }
+
+    func testRealExportWithUnicodeFilenameRemainsDiscoverableAndKeepsOriginal() async throws {
+        let generated = try await fixture()
+        let source = root.appendingPathComponent(String(repeating: "a", count: 79) + "İstanbul 👩🏽‍🚀.mp4")
+        try FileManager.default.moveItem(at: generated, to: source)
+        let original = try Data(contentsOf: source)
+        let result = try await optimizer().optimize(source, preset: .compact) { _ in }
+        XCTAssertTrue(result.url.lastPathComponent.hasPrefix(String(repeating: "a", count: 79) + " - Optimized "))
+        XCTAssertFalse(result.url.lastPathComponent.contains("\u{FFFD}"))
+        XCTAssertEqual(try Data(contentsOf: source), original)
+        XCTAssertEqual(store.originalPath(for: result.url), source.path)
+        let library = WallpaperLibrary(directory: destination)
+        XCTAssertEqual(library.loadAll(favoritePaths: []).map { $0.url.resolvingSymlinksInPath() }, [result.url.resolvingSymlinksInPath()])
+        XCTAssertEqual(try contents().count, 1, "Only the completed copy remains")
+    }
+
     func testRealH264ExportPreservesSourceDurationMotionAndSDRColors() async throws {
         let source = try await fixture()
         let original = try Data(contentsOf: source)
