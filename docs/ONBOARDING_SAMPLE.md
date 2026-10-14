@@ -5,6 +5,20 @@ Skip and Next. Settings > General > Getting Started > Show welcome tour and
 sample reopens the same four-page tour without resetting existing preferences.
 Opening, cancelling, or closing the tour does not itself mark onboarding complete.
 
+The tour respects macOS **Reduce Motion**, including changes while it is open:
+decorative movement and animated page transitions are disabled. Decorative
+timelines also pause while the scene is inactive. These preference changes keep
+the current page and sample/import view identity; they do not dismiss the tour or
+cancel an operation. Normal page changes and closing still cancel work as described
+below. The active artwork uses a maximum requested cadence of 30 updates per second;
+this is a UI scheduling limit, not an energy-saving measurement.
+
+Each page exposes its title as an accessibility heading and a text label stating
+the current step and total. Decorative artwork and progress capsules are hidden
+from accessibility. The last page distinguishes per-display wallpapers from manual
+Space recovery: applying a saved Space choice affects all displays and Spaces,
+and automatic per-Space switching is unavailable.
+
 The default target is explicitly **All displays**. A user can choose one connected
 display before either action. The target is captured when the operation starts;
 disconnecting it produces an error instead of redirecting to another display.
@@ -59,3 +73,13 @@ display assignments. The full local suite passed 219 tests and the universal
 Release build passed for arm64 and x86_64. The first page was visually checked
 at its 640 × 520 content size. Physical Intel, actual monitor hot-plug, VoiceOver, and
 clean-install onboarding on other supported macOS versions remain release checks.
+
+The 2026-10-14 accessibility follow-up passed 12 focused sample/window tests with
+development signing and the sandbox enabled. An isolated host linked the actual
+tour content and ran 41 native checks: headings and step text, hidden decoration,
+navigation/completion, retained page state, and live motion/scene changes.
+Pairs of captured tour frames were identical with Reduce Motion enabled or the
+scene inactive, and changed when active motion resumed. Light/dark first/final
+page layouts were inspected. The host supplied preference values directly; no
+system accessibility preference or real wallpaper was changed. This is not a
+spoken VoiceOver or full physical-device certification.
