@@ -235,7 +235,18 @@ final class VideoOptimizer: VideoOptimizing {
     }
 
     static func outputName(source: URL, preset: VideoOptimizationPreset) -> String {
-        let name = String(decoding: source.deletingPathExtension().lastPathComponent.utf8.prefix(80), as: UTF8.self)
+        // Keep complete graphemes: a raw UTF-8 prefix can split Turkish letters,
+        // combining marks or emoji. Budget for filesystem normalization as well.
+        var name = ""
+        var bytes = 0
+        for character in source.deletingPathExtension().lastPathComponent {
+            let text = String(character)
+            let count = max(text.utf8.count, text.decomposedStringWithCanonicalMapping.utf8.count)
+            guard bytes + count <= 80 else { break }
+            name.append(character)
+            bytes += count
+        }
+        if name.isEmpty { name = "Wallpaper" }
         return name + " - Optimized " + preset.filenameLabel + " - " + UUID().uuidString + ".mp4"
     }
     nonisolated static func availableCapacity(_ url: URL) throws -> Int64 {
