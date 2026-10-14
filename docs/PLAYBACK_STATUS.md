@@ -16,8 +16,8 @@ change alone is not evidence that the renderer has stopped.
 
 ## Pause explanations
 
-The deterministic priority is manual pause, inactive/locked session, sleeping
-display, screen saver, Low Power Mode, battery policy, fullscreen restriction,
+The deterministic priority is manual pause, Calm Mode, thermal hold,
+inactive/locked session, sleeping display, screen saver, Low Power Mode, battery policy, fullscreen restriction,
 desktop coverage, then expiration of the playback timer. Additional active
 reasons remain in the detail. File failures take precedence so the recovery
 action remains visible, while pause reasons are retained alongside it.
@@ -54,6 +54,14 @@ the state without relying on color. Screen labels identify which display an
 action affects. Full explanations are visible in Displays settings as well as
 the menu; they are not available only through pointer hover.
 
+In different-wallpaper mode, each display has an explicit **Choose wallpaper…**
+button. Its accessible name includes the target display. Retry remains a
+separate button; activating it does not open the chooser. The picker exposes
+each wallpaper as a button with the full title, target display and Selected /
+Not selected value, even when the visible title is truncated. Standard keyboard
+focus and Space activation work on these controls. Applying a choice keeps the
+picker open so the user can try another wallpaper or finish with Done / Escape.
+
 ## Validation
 
 The local suite passes 210 tests, including every pair of pause reasons, distinct
@@ -65,3 +73,16 @@ performance profiles, and normal playback speed.
 Light/dark status views were rendered and visually inspected. Manual VoiceOver
 navigation, native menu interaction across supported macOS versions, physical
 Intel playback, and actual lock/sleep/hot-plug scenarios remain release checks.
+
+### Display selection controls — 2026-10-14
+
+The former row/card tap gestures had no native button semantics. An isolated
+macOS 26.6.2 host compiled the production `ScreenRow`, `WallpaperPickerCard` and
+status view with fixture data and harmless action counters. Accessibility
+checks confirmed separate Retry / Choose / Apply buttons, full title and display
+labels, selection-value updates, independent actions, focus and Space-key
+activation. Same-wallpaper mode exposed no per-display Choose button. The
+rendered fixture was inspected for layout and truncation. No real wallpaper,
+saved assignment or system accessibility preference was changed by this check.
+Spoken VoiceOver navigation and physical multi-display scenarios remain part of
+the collective release test session in #250.
