@@ -93,6 +93,17 @@ thermal state, reported occlusion, stalled sampling and playback rate errors mak
 a run ineligible. AppKit visibility does not prove that every pixel was unobscured;
 the operator must check visibility. Window positions/topology must remain stable.
 
+The summarizer validates comparison, eligibility and aggregated measurement fields
+before combining runs. Eligibility flags must be JSON booleans, not strings or
+numbers. Measurements must be finite nonnegative numbers; booleans are rejected.
+Unavailable optional metrics must be explicit `null` values. Every supplied
+measurement is checked even when another repetition reports that metric unavailable;
+the summary then keeps that metric `null` instead of averaging a partial set.
+Missing required fields, malformed field types, duplicate JSON keys and non-finite
+JSON numbers fail with a command-line error. Fixture durations must also be finite.
+These checks preserve schema-v1 reports and do not authenticate the measurements
+or replace review of raw samples, traces and the physical-device matrix.
+
 ## Metrics and limits
 
 | Field | Meaning / collection |
