@@ -203,27 +203,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showMainWindow() {
-        if NSApp.activationPolicy() == .accessory {
-            NSApp.setActivationPolicy(.regular)
-        }
-
-        let existingWindow = NSApp.windows.first { window in
-            guard window.level == .normal,
-                  !window.title.isEmpty || window.contentView != nil else {
-                return false
-            }
-            return !window.styleMask.contains(.borderless) || window.frame.width >= 800
-        }
-
-        if let window = existingWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-        } else {
-            WindowManager.shared.openMainWindow?()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        }
+        WindowManager.shared.showMainWindow()
 
         // #228: re-hiding the Dock icon (.accessory) is handled centrally by the
         // NSWindow.willCloseNotification observer once the last normal window

@@ -6,27 +6,8 @@ struct MenuBarView: View {
     @ObservedObject private var performance = PerformanceManager.shared
 
     private func openMainWindow() {
-        // Check if main window already exists
-        let existingWindow = NSApp.windows.first { window in
-            // Skip menu bar windows and settings
-            guard window.level == .normal,
-                  !window.title.isEmpty || window.contentView != nil else {
-                return false
-            }
-            // Check for our main window
-            return window.styleMask.contains(.borderless) == false ||
-                   window.frame.width >= 800
-        }
-
-        if let window = existingWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-        } else {
-            // Open new window using WindowGroup ID
+        WindowManager.shared.showMainWindow {
             openWindow(id: "main")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                NSApp.activate(ignoringOtherApps: true)
-            }
         }
     }
 
