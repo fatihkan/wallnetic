@@ -167,3 +167,50 @@ another unchanged-build session. Then compare candidate summaries **separately**
 under identical conditions; never average baseline and candidate builds together.
 Thresholds remain `null` until supported by those measurements. A faster result
 does not override failed visual, lifecycle, security or cleanup checks.
+
+### Comparing recorded sessions
+
+The read-only comparison command accepts the raw records for each session:
+
+```sh
+python3 tools/playback-benchmark/benchmark.py compare \
+  --baseline .build/benchmarks/baseline/[0-9][0-9].json \
+  --candidate .build/benchmarks/candidate/[0-9][0-9].json
+```
+
+It prints JSON without rebuilding, opening playback windows, collecting new
+measurements or modifying input files. Each side first passes the normal strict
+validation and summarization rules. A side containing mixed builds is rejected,
+as are run IDs duplicated within or across sessions. Separate sessions of an
+unchanged build are allowed for studying noise.
+
+Hardware, OS, renderer, profile, fixture metadata including the encoded-file hash,
+display topology, window size, power state at the start, activity policy, warmup,
+sample duration/interval and operator context must match. The compiler, SDK,
+architecture, optimization and deployment target must also match, along with the
+recorded source hashes for `Runner.swift`, `Metrics.c`, `Metrics.h` and
+`benchmark.py`. Build/revision and renderer/app source changes are allowed. A
+collector or toolchain change requires new matching sessions; do not edit old
+metadata to force a comparison. JSON checks do not authenticate measurements or
+prove that unrecorded physical conditions were identical.
+
+The report retains both summaries, run IDs and build metadata. For every CPU,
+memory and wakeup metric it includes each median, median absolute deviation and
+range, plus `candidate − baseline` and `(candidate − baseline) / baseline × 100`.
+CPU absolute changes are **percentage points of one logical core**; relative
+changes are percentages. Bytes and wakeups/second keep their own units. A negative
+delta describes a lower recorded value, not a verified improvement.
+
+If either side lacks a metric, that side and both deltas remain `null`; the other
+side's summary is retained. A zero baseline has no defined relative percentage,
+even when the candidate is also zero. An unrepresentable relative percentage is
+also `null`, with a distinct `relative_change_status`. Neither case fabricates a
+zero, infinity or a pass/fail conclusion.
+
+`eligible_for_comparison` requires both sessions to meet the existing minimum
+collection rules and have no uncommitted compiled inputs. Short, interrupted,
+flagged or dirty-input sessions can still be inspected but are explicitly
+ineligible, with reasons. This eligibility does not certify a baseline or exclude
+noise. `performance_conclusion` stays `not_assessed`, regression thresholds stay
+`null`, and full-app/device validation stays `not_performed` until the separately
+planned measurements and acceptance checks are complete.
