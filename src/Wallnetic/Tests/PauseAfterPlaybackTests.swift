@@ -433,6 +433,130 @@ final class PauseAfterPlaybackTests: XCTestCase {
     }
 }
 
+final class DesktopClearMonitorTests: XCTestCase {
+    private let firstScreen = CGRect(x: 0, y: 0, width: 1000, height: 800)
+    private let secondScreen = CGRect(x: 1000, y: 0, width: 1000, height: 800)
+
+    private func window(_ bounds: CGRect = CGRect(x: 100, y: 100, width: 300, height: 200),
+                        layer: Int = 0, alpha: Double = 1) -> [String: Any] {
+        [kCGWindowLayer as String: layer, kCGWindowAlpha as String: alpha,
+         kCGWindowBounds as String: bounds.dictionaryRepresentation]
+    }
+
+    func testCompleteMetadataSeparatesDisplaysAndIgnoresInvisibleOrNonregularWindows() {
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: []), true)
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [window()]), false)
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: secondScreen, windows: [window()]), true)
+        let spanning = window(CGRect(x: 900, y: 100, width: 200, height: 200))
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [spanning]), false)
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: secondScreen, windows: [spanning]), false)
+        for ignored in [window(layer: 1), window(layer: -1), window(alpha: 0), window(alpha: 0.01), window(.zero)] {
+            XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [ignored]), true)
+        }
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [window(alpha: 0.02)]), false)
+    }
+
+    func testIncompleteOrMalformedMetadataIsUnknownInsteadOfClearOrCovered() {
+        var invalid: [[String: Any]] = [[:]]
+        for key in [kCGWindowLayer, kCGWindowAlpha, kCGWindowBounds] {
+            var missing = window()
+            missing.removeValue(forKey: key as String)
+            invalid.append(missing)
+            var wrongType = window()
+            wrongType[key as String] = "unavailable"
+            invalid.append(wrongType)
+        }
+        for alpha in [Double.nan, .infinity, -.infinity, -1, 2] {
+            invalid.append(window(alpha: alpha))
+        }
+        for rawLayer: Any in [true, 0.5, Double.nan, Double.infinity, Double(Int32.max) + 1] {
+            var info = window()
+            info[kCGWindowLayer as String] = rawLayer
+            invalid.append(info)
+        }
+        var booleanAlpha = window()
+        booleanAlpha[kCGWindowAlpha as String] = true
+        invalid.append(booleanAlpha)
+        for info in invalid {
+            XCTAssertNil(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [info]))
+        }
+        // An actual regular window is sufficient proof of coverage, independent
+        // of metadata order; uncertainty can never establish a clear display.
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [[:], window()]), false)
+        XCTAssertEqual(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [window(), [:]]), false)
+    }
+
+    func testNonfiniteAndInvalidGeometryCannotReportAClearDesktop() {
+        let invalid = [
+            CGRect(x: CGFloat.nan, y: 0, width: 100, height: 100),
+            CGRect(x: CGFloat.infinity, y: 0, width: 100, height: 100),
+            CGRect(x: 0, y: 0, width: CGFloat.infinity, height: 100),
+            CGRect(x: 0, y: 0, width: -10, height: 100),
+            CGRect(x: CGFloat.greatestFiniteMagnitude, y: 0, width: CGFloat.greatestFiniteMagnitude, height: 100)
+        ]
+        for bounds in invalid {
+            XCTAssertNil(DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: [window(bounds)]))
+            XCTAssertNil(DesktopClearMonitor.isDesktopClear(on: bounds, windows: []))
+        }
+        XCTAssertNil(DesktopClearMonitor.isDesktopClear(on: .zero, windows: []))
+    }
+
+    func testUnknownSampleDiscardsStableAndCandidateTransitionHistory() {
+        for sequence: [Bool?] in [
+            [false, false, true, nil, true, true],
+            [false, false, nil, true, true],
+            [false, nil, false, true, true],
+            [nil, nil, true, true]
+        ] {
+            var transition = DesktopClearTransition()
+            for sample in sequence { XCTAssertFalse(transition.record(isClear: sample)) }
+            XCTAssertFalse(transition.record(isClear: false))
+            XCTAssertFalse(transition.record(isClear: false))
+            XCTAssertFalse(transition.record(isClear: true))
+            XCTAssertTrue(transition.record(isClear: true), "A fresh complete edge still replays")
+            XCTAssertFalse(transition.record(isClear: true))
+        }
+    }
+
+    @MainActor
+    func testUnknownWindowMetadataCannotReplayAnExpiredWallpaper() {
+        var missingBounds = window()
+        missingBounds.removeValue(forKey: kCGWindowBounds as String)
+        for unknown in [[:], missingBounds] {
+            var time = 0.0
+            let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+            let renderer = DurationRendererSpy()
+            playback.setWallpaper(URL(fileURLWithPath: "/fixtures/first.mp4"), renderer: renderer,
+                                  on: 1, preferences: .init(defaultSeconds: 15))
+            playback.play()
+            time = 15
+            playback.tick()
+            let plays = renderer.plays
+            var transition = DesktopClearTransition()
+            for windows in [[window()], [window()], [unknown], [unknown], [], []] {
+                if transition.record(isClear: DesktopClearMonitor.isDesktopClear(on: firstScreen, windows: windows)) {
+                    playback.replayExpiredDisplay(1)
+                }
+            }
+            XCTAssertTrue(playback.isExpired(on: 1))
+            XCTAssertEqual(renderer.plays, plays, "Missing metadata cannot manufacture or complete a replay edge")
+        }
+    }
+
+    func testUnknownDisplayDoesNotDiscardAnotherDisplaysValidTransition() {
+        var first = DesktopClearTransition(), second = DesktopClearTransition()
+        for _ in 0..<2 {
+            XCTAssertFalse(first.record(isClear: false))
+            XCTAssertFalse(second.record(isClear: false))
+        }
+        XCTAssertFalse(second.record(isClear: DesktopClearMonitor.isDesktopClear(on: .zero, windows: [])))
+        XCTAssertFalse(first.record(isClear: true))
+        XCTAssertTrue(first.record(isClear: true))
+        XCTAssertFalse(second.record(isClear: true))
+        XCTAssertFalse(second.record(isClear: true), "The uncertain display needs a new covered edge")
+    }
+}
+
 private final class DurationRendererSpy: WallpaperRenderer {
     let playbackMonitor = RendererPlaybackMonitor()
     let rendererView = NSView()
