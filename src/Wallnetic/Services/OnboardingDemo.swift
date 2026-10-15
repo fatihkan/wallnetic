@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import CryptoKit
+import Darwin
 
 /// The bundled original stays read-only. Each installation is a normal,
 /// removable library copy with a unique name; user files are never overwritten.
@@ -46,9 +47,28 @@ final class OnboardingSampleInstaller {
     }
 
     private func boundedData(at url: URL) -> Data? {
-        guard url.isFileURL, let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
-              size > 0, size <= Self.maximumBytes else { return nil }
-        return try? Data(contentsOf: url)
+        guard url.isFileURL else { return nil }
+        // Inspect the opened file, not cached URL metadata or the size of a
+        // symlink. Nonblocking open also prevents a replaced FIFO from hanging.
+        let descriptor = open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { return nil }
+        defer { close(descriptor) }
+        var info = stat()
+        guard fstat(descriptor, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
+              info.st_size > 0, info.st_size <= Self.maximumBytes else { return nil }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+        while true {
+            // At the limit, read at most one more byte to detect growth. Never
+            // allocate from a changed file size or append beyond the budget.
+            let count = Darwin.read(descriptor, &buffer, min(buffer.count, Self.maximumBytes + 1 - data.count))
+            if count < 0 && errno == EINTR { continue }
+            guard count >= 0 else { return nil }
+            if count == 0 { break }
+            guard data.count + count <= Self.maximumBytes else { return nil }
+            data.append(contentsOf: buffer.prefix(count))
+        }
+        return data.isEmpty ? nil : data
     }
 }
 
