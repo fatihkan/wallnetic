@@ -106,6 +106,51 @@ final class VideoOptimizationModelTests: XCTestCase {
         XCTAssertTrue(model.error?.contains("no longer") == true)
         XCTAssertNil(library.currentWallpaper)
     }
+
+    func testReinspectionFailureInvalidatesEarlierApprovalAndCanBeRetried() async {
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await model.load().value
+        XCTAssertTrue(model.canStart)
+
+        exporter.inspectionError = VideoOptimizationError.sourceChanged
+        let failedInspection = model.load()
+        XCTAssertTrue(model.isLoading)
+        XCTAssertNil(model.info, "A new check invalidates the previous source inspection")
+        XCTAssertFalse(model.canStart)
+        await failedInspection.value
+        XCTAssertNotNil(model.error)
+        XCTAssertFalse(model.canStart, "A failed recheck must not enable conversion using stale approval")
+        exporter.inspectionError = nil
+        await model.load().value
+        XCTAssertNil(model.error)
+        XCTAssertTrue(model.canStart)
+        XCTAssertEqual(exporter.exports, 0, "Rechecking is not consent to start conversion")
+        XCTAssertNil(library.currentWallpaper)
+    }
+
+    func testAvailableCopyRecoversFromMissingOriginalWithoutKeepingStaleError() async throws {
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await model.load().value
+        await model.start()?.value
+        try FileManager.default.removeItem(at: source.url)
+        model.apply(source.url)
+        XCTAssertNotNil(model.error)
+        XCTAssertNil(library.currentWallpaper)
+        XCTAssertNil(model.message, "A failed selection must not retain a success message")
+
+        model.apply(result.url)
+        XCTAssertEqual(library.currentWallpaper?.url, result.url)
+        XCTAssertEqual(library.userInitiated, [true])
+        XCTAssertNil(model.error, "The missing-original error must clear after selecting an available copy")
+        XCTAssertTrue(model.message?.contains("selected") == true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: source.url.path))
+
+        model.apply(source.url)
+        XCTAssertNotNil(model.error)
+        XCTAssertNil(model.message)
+        XCTAssertEqual(library.currentWallpaper?.url, result.url, "A failed apply preserves the previous selection")
+        XCTAssertEqual(library.userInitiated, [true])
+    }
 }
 
 @MainActor

@@ -52,6 +52,9 @@ struct VideoOptimizationSheet: View {
             HStack {
                 if model.isWorking {
                     Button("Cancel conversion") { model.cancel() }.disabled(model.isCancelling)
+                } else if model.result == nil && model.error != nil {
+                    Button("Check video again") { model.load() }
+                        .disabled(model.isLoading)
                 }
                 Spacer()
                 Button(model.result == nil ? "Close" : "Done") { dismiss() }.disabled(model.isWorking).keyboardShortcut(.cancelAction)

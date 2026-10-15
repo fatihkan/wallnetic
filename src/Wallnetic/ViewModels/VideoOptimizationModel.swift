@@ -33,7 +33,9 @@ final class VideoOptimizationModel: ObservableObject {
     func load() -> Task<Void, Never> {
         inspection?.cancel()
         isLoading = true
+        info = nil
         error = nil
+        message = nil
         let task = Task { [weak self] in
             guard let self else { return }
             do {
@@ -87,10 +89,13 @@ final class VideoOptimizationModel: ObservableObject {
         if isWorking { isCancelling = true; conversion?.cancel() }
     }
     func apply(_ url: URL) {
+        message = nil
         guard let wallpaper = library.wallpapers.first(where: { $0.url.standardizedFileURL == url.standardizedFileURL }), FileManager.default.fileExists(atPath: url.path) else {
             error = "That video is no longer in the library. Refresh the library and choose another wallpaper."
             return
         }
         library.setWallpaper(wallpaper, userInitiated: true)
+        error = nil
+        message = "Wallpaper selected. Your playback and pause settings still apply."
     }
 }
