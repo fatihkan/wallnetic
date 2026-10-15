@@ -53,9 +53,14 @@ offers Import my video if the bundled resource is missing or unreadable.
 
 The bundle remains read-only. Trying the sample adds an ordinary, removable copy
 to Library with a unique filename. Repeated attempts reuse only the recorded
-copy whose contents still match the bundle; similarly named user files or an
-edited copy are not overwritten, deleted, or substituted. The importer limits
-sample reads to 2 MiB. Remove the sample using the existing Library removal
+regular-file copy whose contents still match the bundle; similarly named user
+files, edited copies and symbolic links are not overwritten or deleted. Sample reads
+open without following a final-component symbolic link and validate the opened
+file's type and size. Reads are capped at 2 MiB, with at most one additional byte
+to detect an oversized or growing file. Empty files, directories and special
+files are rejected; a FIFO cannot block the read. A recorded copy replaced by a
+link is preserved and a new independent sample copy is installed instead.
+Remove the sample using the existing Library removal
 action, which also clears any desktop renderer using that file. Trying it again
 creates a fresh copy.
 
@@ -83,3 +88,13 @@ scene inactive, and changed when active motion resumed. Light/dark first/final
 page layouts were inspected. The host supplied preference values directly; no
 system accessibility preference or real wallpaper was changed. This is not a
 spoken VoiceOver or full physical-device certification.
+
+The bounded-read follow-up in #297 passed 16 focused sample/window tests in the
+development-signed, sandbox-enabled XCTest host. Regressions reject small and
+oversized linked resources, preserve a linked existing copy while installing a
+new regular copy, accept the exact size boundary, and reject empty files,
+directories and FIFOs. The actual bundled video also installs with identical
+bytes. The original reader reproduced the oversized-link and linked-copy reuse
+defects before the fix. Every read now requests at most the remaining byte
+budget plus one, and that extra byte is never appended. These isolated checks
+do not complete the remaining physical-device or production UI acceptance.

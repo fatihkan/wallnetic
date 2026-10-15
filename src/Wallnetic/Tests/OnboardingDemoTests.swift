@@ -85,6 +85,71 @@ final class OnboardingDemoTests: XCTestCase {
         XCTAssertEqual(library.importCount, 0)
     }
 
+    func testLinkedResourcesCannotBypassRegularFileAndSizeChecks() async throws {
+        let oversized = directory.appendingPathComponent("large-target.mp4")
+        try Data(count: OnboardingSampleInstaller.maximumBytes + 1).write(to: oversized)
+        let link = directory.appendingPathComponent("linked-resource.mp4")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: oversized)
+        let small = try fixture()
+        let smallLink = directory.appendingPathComponent("linked-small-resource.mp4")
+        try FileManager.default.createSymbolicLink(at: smallLink, withDestinationURL: small)
+        let library = DemoLibrary(directory: directory.appendingPathComponent("Library"))
+        for source in [link, smallLink] {
+            let installer = OnboardingSampleInstaller(library: library, defaults: defaults, source: { source })
+            do { _ = try await installer.install(); XCTFail("A linked resource is not a bounded regular-file sample") }
+            catch { XCTAssertTrue(error is OnboardingDemoError) }
+        }
+        XCTAssertEqual(library.importCount, 0)
+        XCTAssertEqual(try Data(contentsOf: oversized).count, OnboardingSampleInstaller.maximumBytes + 1)
+        XCTAssertTrue(try link.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true)
+    }
+
+    func testLinkedExistingSampleIsPreservedAndReplacedWithAnIndependentCopy() async throws {
+        let source = try fixture()
+        let library = DemoLibrary(directory: directory.appendingPathComponent("Library"))
+        let installer = OnboardingSampleInstaller(library: library, defaults: defaults, source: { source })
+        let first = try await installer.install()
+        try FileManager.default.removeItem(at: first.url)
+        try FileManager.default.createSymbolicLink(at: first.url, withDestinationURL: source)
+        let replacement = try await installer.install()
+        XCTAssertNotEqual(replacement.url, first.url, "A link is not an independent installed copy")
+        XCTAssertEqual(library.importCount, 2)
+        XCTAssertTrue(try first.url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true)
+        XCTAssertFalse(try replacement.url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true)
+        XCTAssertEqual(try Data(contentsOf: replacement.url), Data("original sample".utf8))
+        XCTAssertEqual(try Data(contentsOf: source), Data("original sample".utf8))
+        let reused = try await installer.install()
+        XCTAssertEqual(reused.url, replacement.url)
+        XCTAssertEqual(library.importCount, 2)
+    }
+
+    func testSampleAtMaximumSizeIsCopiedCompletelyAndCanBeReused() async throws {
+        let source = directory.appendingPathComponent("maximum.mp4")
+        let bytes = Data(repeating: 37, count: OnboardingSampleInstaller.maximumBytes)
+        try bytes.write(to: source)
+        let library = DemoLibrary(directory: directory.appendingPathComponent("Library"))
+        let installer = OnboardingSampleInstaller(library: library, defaults: defaults, source: { source })
+        let installed = try await installer.install()
+        XCTAssertEqual(try Data(contentsOf: installed.url), bytes)
+        let reused = try await installer.install()
+        XCTAssertEqual(reused.url, installed.url)
+        XCTAssertEqual(library.importCount, 1)
+    }
+
+    func testEmptyDirectoriesAndSpecialFilesAreRejectedWithoutImporting() async throws {
+        let empty = directory.appendingPathComponent("empty.mp4")
+        try Data().write(to: empty)
+        let fifo = directory.appendingPathComponent("pipe.mp4")
+        XCTAssertEqual(mkfifo(fifo.path, 0o600), 0)
+        let library = DemoLibrary(directory: directory.appendingPathComponent("Library"))
+        for source in [empty, directory!, fifo] {
+            let installer = OnboardingSampleInstaller(library: library, defaults: defaults, source: { source })
+            do { _ = try await installer.install(); XCTFail("Only nonempty regular files are samples") }
+            catch { XCTAssertTrue(error is OnboardingDemoError) }
+        }
+        XCTAssertEqual(library.importCount, 0)
+    }
+
     func testCancellingAnImportThatFinishesLateNeverAppliesOrDuplicates() async throws {
         let wallpaper = Wallpaper(url: try fixture())
         var continuation: CheckedContinuation<Wallpaper, Never>?
@@ -152,6 +217,10 @@ final class OnboardingDemoTests: XCTestCase {
         let sizePixels = try await track.load(.naturalSize)
         XCTAssertEqual(sizePixels, CGSize(width: 1280, height: 720))
         XCTAssertTrue(audioTracks.isEmpty)
+        let library = DemoLibrary(directory: directory.appendingPathComponent("Library"))
+        let installed = try await OnboardingSampleInstaller(library: library, defaults: defaults).install()
+        XCTAssertEqual(try Data(contentsOf: installed.url), try Data(contentsOf: url),
+                       "The bundled sample remains readable in the signed sandbox host")
     }
 
     func testUniformApplyAfterTargetedSelectionAndRemovalClearControllerState() throws {
