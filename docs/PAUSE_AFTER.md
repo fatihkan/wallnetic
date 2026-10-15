@@ -50,7 +50,27 @@ capture screens, request Accessibility/Screen Recording access, or use private
 APIs. Failed/incomplete metadata is not treated as permission to replay. Sampling
 stops when disabled, manually/power paused, or no displayed wallpaper has a limit.
 
+Each display sample is confirmed clear, confirmed covered, or unknown. Missing
+or invalid window layer, opacity or bounds cannot establish a clear desktop.
+Invalid display geometry is also unknown. A valid regular window intersecting a
+display is sufficient to confirm coverage; known transparent, non-regular and
+zero-area windows do not cover it. Unknown samples discard that display's
+transition history. Two new covered samples followed by two clear samples are
+required before replay, so a metadata gap cannot manufacture a transition.
+Other displays keep their own valid histories.
+
 ## Validation
+
+The desktop-clear metadata fix for [#295](https://github.com/fatihkan/wallnetic/issues/295)
+passed 53 focused duration, desktop-clear, playback-status and native-renderer
+tests in the development-signed, sandbox-enabled XCTest host on Apple M4 /
+macOS 26.6.2. Six new regressions cover incomplete metadata, non-finite values,
+display geometry, interrupted sample sequences, independent display histories
+and prevention of unintended replay after duration expiry. The original
+classifier reproduced the unwanted replay in the isolated renderer test.
+Existing manual/power/Calm/thermal ownership and native AVPlayer/Metal tests
+also passed. XCTest's additional permissions and synthetic window data do not
+replace production UI or physical lifecycle acceptance.
 
 The replacement-readiness fix for [#278](https://github.com/fatihkan/wallnetic/issues/278)
 passed 47 focused duration, playback-status and native-renderer tests on Apple M4 /
