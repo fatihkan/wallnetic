@@ -403,9 +403,8 @@ struct DynamicIslandView: View {
     }
 
     private func openMainWindow() {
-        openWindow(id: "main")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApp.activate(ignoringOtherApps: true)
+        WindowManager.shared.showMainWindow {
+            openWindow(id: "main")
         }
     }
 

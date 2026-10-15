@@ -6,15 +6,17 @@ import AppKit
 /// title bar so their content never composites over the traffic lights.
 struct WindowChrome: NSViewRepresentable {
     var configure: (NSWindow) -> Void
+    var onAttach: ((NSWindow) -> Void)? = nil
 
     func makeNSView(context: Context) -> NSView {
-        let view = WindowAwareView(onWindow: configure)
+        let view = WindowAwareView(onWindow: configure, onAttach: onAttach)
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
         if let aware = nsView as? WindowAwareView {
             aware.onWindow = configure
+            aware.onAttach = onAttach
             if let w = nsView.window { configure(w) }
         }
     }
@@ -46,10 +48,12 @@ struct WindowChrome: NSViewRepresentable {
 /// chrome view picks up Light/Dark toggles without recreating the scene.
 private final class WindowAwareView: NSView {
     var onWindow: ((NSWindow) -> Void)
+    var onAttach: ((NSWindow) -> Void)?
     private var appearanceObserver: NSObjectProtocol?
 
-    init(onWindow: @escaping (NSWindow) -> Void) {
+    init(onWindow: @escaping (NSWindow) -> Void, onAttach: ((NSWindow) -> Void)?) {
         self.onWindow = onWindow
+        self.onAttach = onAttach
         super.init(frame: .zero)
         appearanceObserver = NotificationCenter.default.addObserver(
             forName: .appAppearanceDidChange,
@@ -79,6 +83,7 @@ private final class WindowAwareView: NSView {
                NSApp.activationPolicy() == .accessory {
                 NSApp.setActivationPolicy(.regular)
             }
+            onAttach?(w)
             onWindow(w)
         }
     }
@@ -87,7 +92,8 @@ private final class WindowAwareView: NSView {
 extension View {
     /// Theme-aware native title bar. Apply only at the main/settings scene root;
     /// sheets, panels and borderless wallpaper windows keep their own chrome.
-    func cinematicWindowChrome() -> some View {
-        background(WindowChrome(configure: WindowChrome.configureAppWindow))
+    func cinematicWindowChrome(isMainWindow: Bool = false) -> some View {
+        background(WindowChrome(configure: WindowChrome.configureAppWindow,
+                                onAttach: isMainWindow ? WindowManager.shared.registerMainWindow : nil))
     }
 }
