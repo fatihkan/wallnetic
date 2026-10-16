@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build real renderers, generate original fixtures, collect and summarize runs.
+"""Build real renderers, generate original fixtures, collect and compare runs.
 
 No third-party Python packages, shell interpolation, app preferences, or privileged tools.
 """
@@ -33,6 +33,13 @@ COMPARISON_FIELDS = (
 )
 SUMMARY_METRICS = ("cpu_percent_one_core", "footprint_peak_sampled_bytes", "footprint_mean_sampled_bytes",
                    "package_idle_wakeups_per_second", "interrupt_wakeups_per_second")
+METRIC_UNITS = {"cpu_percent_one_core": "percent_of_one_logical_core",
+                "footprint_peak_sampled_bytes": "bytes", "footprint_mean_sampled_bytes": "bytes",
+                "package_idle_wakeups_per_second": "wakeups_per_second",
+                "interrupt_wakeups_per_second": "wakeups_per_second"}
+TOOLCHAIN_FIELDS = ("compiler", "architecture", "sdk", "optimization", "deployment_target")
+COLLECTOR_INPUTS = tuple("tools/playback-benchmark/" + name
+                         for name in ("Runner.swift", "Metrics.c", "Metrics.h", "benchmark.py"))
 
 
 def execute(args, **kwargs):
@@ -291,6 +298,72 @@ def summarize(paths):
             "note": "Eligibility is a minimum collection rule, not a performance pass. Review traces and context; calibrate thresholds from repeated baseline sessions."}
 
 
+def measurement_method(build):
+    """Keep collector and toolchain stable while allowing application changes."""
+    for name in TOOLCHAIN_FIELDS:
+        if not isinstance(build.get(name), str) or not build[name].strip():
+            raise ValueError(f"Missing or invalid comparison toolchain field: {name}")
+    sources = build.get("inputs")
+    if not isinstance(sources, dict):
+        raise ValueError("Missing collector source fingerprints")
+    for name in COLLECTOR_INPUTS:
+        if not isinstance(sources.get(name), str) or not re.fullmatch(r"[0-9a-f]{64}", sources[name]):
+            raise ValueError(f"Missing or invalid collector fingerprint: {name}")
+    return {**{name: build[name] for name in TOOLCHAIN_FIELDS},
+            "collector_inputs": {name: sources[name] for name in COLLECTOR_INPUTS}}
+
+
+def compare(baseline_paths, candidate_paths):
+    # Summarize independently: mixed builds or malformed runs must still fail.
+    baseline, candidate = summarize(baseline_paths), summarize(candidate_paths)
+    if set(baseline["run_ids"]) & set(candidate["run_ids"]):
+        raise ValueError("Duplicate run ID across baseline and candidate; sessions must be independent")
+    before, after = baseline["configuration"], candidate["configuration"]
+    changed = []
+    for name in COMPARISON_FIELDS:
+        if name in ("build", "git_revision", "compiled_inputs_dirty"):
+            continue
+        # Preserve JSON types too: true is not interchangeable with numeric 1.
+        if json.dumps(before[name], sort_keys=True) != json.dumps(after[name], sort_keys=True):
+            changed.append(name)
+    if changed:
+        raise ValueError("Incompatible comparison conditions: " + ", ".join(changed))
+    if measurement_method(before["build"]) != measurement_method(after["build"]):
+        raise ValueError("Incompatible collector or toolchain; collect both sessions with the same measurement method")
+
+    metrics = {}
+    for name in SUMMARY_METRICS:
+        first, second = baseline["metrics"][name], candidate["metrics"][name]
+        delta = relative = None
+        relative_status = "unavailable"
+        if first is not None and second is not None:
+            delta = second["median"] - first["median"]
+            if first["median"] == 0:
+                relative_status = "zero_baseline"
+            else:
+                relative = delta / first["median"] * 100
+                relative_status = "available" if math.isfinite(relative) else "outside_finite_range"
+                if not math.isfinite(relative):
+                    relative = None
+        metrics[name] = {"unit": METRIC_UNITS[name], "baseline": first, "candidate": second,
+                         "absolute_change": delta, "relative_change_percent": relative,
+                         "relative_change_status": relative_status}
+
+    issues = []
+    for label, summary in (("baseline", baseline), ("candidate", candidate)):
+        if not summary["eligible_for_baseline"]:
+            issues.append(f"{label} does not meet minimum baseline collection rules")
+        if summary["configuration"]["compiled_inputs_dirty"]:
+            issues.append(f"{label} contains uncommitted compiled inputs")
+    return {"schema_version": 1, "scope": "isolated_renderer_comparison",
+            "baseline": baseline, "candidate": candidate, "metrics": metrics,
+            "eligible_for_comparison": not issues, "eligibility_issues": issues,
+            "regression_thresholds": None, "performance_conclusion": "not_assessed",
+            "full_app_device_validation": "not_performed",
+            "note": "Changes are candidate minus baseline. CPU absolute changes are percentage points of one logical core. "
+                    "Eligibility and lower resource measurements are not a performance pass; review noise, traces and visual/lifecycle checks."}
+
+
 def finite_range(low, high):
     def parse(value):
         number = float(value)
@@ -321,6 +394,9 @@ def main():
     collect.add_argument("--context", required=True, help="Machine label, background apps, brightness, ambient conditions; no private information")
     report = commands.add_parser("summarize", help="Summarize compatible raw JSON records; reject mixed configurations")
     report.add_argument("records", nargs="+", type=Path)
+    comparison = commands.add_parser("compare", help="Compare independent raw sessions under identical measurement conditions")
+    comparison.add_argument("--baseline", nargs="+", type=Path, required=True)
+    comparison.add_argument("--candidate", nargs="+", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "build": build()
     elif args.command == "fixtures": fixtures(args.directory.resolve())
@@ -330,6 +406,8 @@ def main():
         if not args.context.strip(): parser.error("--context cannot be empty")
         args.media = args.media.resolve(); args.output = args.output.resolve()
         run(args)
+    elif args.command == "compare":
+        print(json.dumps(compare(args.baseline, args.candidate), indent=2, sort_keys=True, allow_nan=False))
     else: print(json.dumps(summarize(args.records), indent=2, sort_keys=True, allow_nan=False))
 
 
