@@ -50,7 +50,6 @@ share of Workshop items that are plain video, once you have the file locally.
 | **In-app source browsing** | **8 sources** | Community library | Own library | Own library | — |
 | **Per-display wallpaper** | Yes | Yes | Yes | Yes | Yes |
 | **Per-Space wallpaper** | **Yes** | — | — | — | — |
-| **Pauses when covered** | **Yes, per display** | — | — | — | — |
 | **Photo slideshow generator** | **Yes** | — | — | — | — |
 | **Renders WE `.scene` files** | No | No | No | No | **Yes** |
 | **Distribution** | Mac App Store | Direct | Direct | Direct · Homebrew | Direct |
@@ -65,20 +64,20 @@ Yes. There is no paid tier, no subscription and no in-app purchase. The source i
 the current version cannot be taken away from you regardless of what happens later.
 
 **Does it slow my Mac down?**
-Wallnetic suspends video decoding per display whenever that display's wallpaper is fully covered by
-a window, and when the Mac is locked, the screen saver is running, the display is asleep, or
-another user is switched in. We deliberately publish no single CPU percentage, because the figure
-varies widely with clip resolution, frame rate and state — measure it yourself in Activity Monitor.
+Wallnetic suspends video decoding when the Mac is locked, the screen saver is running, the display
+is asleep, or another user is switched in. By default it also pauses while a fullscreen app is in
+front. Ordinary windows covering the desktop do not pause playback. We deliberately publish no
+single CPU percentage, because the figure varies widely with clip resolution, frame rate and
+state — measure it yourself in Activity Monitor.
 
 **Where do the wallpapers come from?**
 From you. Drag in any video you own, or use the in-app browser to search Pexels, Pixabay,
 Wallhaven, MyLiveWallpapers, DesktopHut, MoeWalls and MotionBGs.
 
 **Can it play video on the lock screen?**
-Not in the Mac App Store build — macOS does not permit a sandboxed app to draw over `loginwindow`.
-Instead, Wallnetic extracts a still frame from your current video and applies it as the system
-wallpaper, so the lock screen and Mission Control match your desktop rather than showing an
-unrelated default picture.
+Wallnetic does not provide live lock-screen playback in either distribution. It can apply a
+still frame from your current video as the system wallpaper; macOS controls its appearance
+on the lock screen and in Mission Control.
 
 **Does it work on Intel Macs?**
 Yes. Wallnetic ships a universal binary supporting both Apple Silicon and Intel, on macOS 13 or
@@ -117,19 +116,16 @@ later.
 - Play any video file (MP4, MOV, M4V, GIF, WebM) as your desktop background
 - Seamless looping with zero stuttering
 - Drag & drop or file picker import
-- Crossfade transitions between wallpaper changes
 
 ### Per-Space Wallpapers
 - Set different wallpapers for each macOS Space (virtual desktop)
 - Auto-switches when changing Spaces via Mission Control
 - Right-click any wallpaper > "Set for This Space"
 
-### Lock Screen Video
-- Video wallpaper on lock screen with clock overlay
-- Uses current wallpaper or a specific selection
-- Auto-detects screen lock/unlock
-- > **Note:** not available in the Mac App Store build — macOS sandboxing
-  > prevents drawing over the system lock screen (`loginwindow`).
+### System Wallpaper Still-Frame Sync
+- Apply a still frame of the selected video to the system wallpaper
+- Settings > Spaces > "Sync video frame to system wallpaper"
+- Live lock-screen playback is not available in either distribution
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
@@ -198,9 +194,8 @@ later.
 
 ### Performance
 - **Metal GPU acceleration** for smooth playback
-- 3 performance modes: Quality, Balanced, Battery Saver
-- Stops decoding entirely when the desktop is covered, the Mac is locked, the
-  screen saver is running or the display is asleep
+- Stops decoding when the Mac is locked, the screen saver is running or the
+  display is asleep, and by default while a fullscreen app is in front
 - Async image caching
 
 ---
@@ -307,12 +302,12 @@ open Wallnetic.xcodeproj
 - [x] Netflix-style UI redesign
 - [x] Discover wallpaper sources (Pixabay, Pexels, web browser)
 - [x] Per-Space wallpapers
-- [x] Lock screen video
+- [x] System wallpaper still-frame sync (live lock-screen playback is unavailable)
 - [x] Wallpaper effects (blur, brightness, tint, vignette)
 - [x] Time-of-day auto switch
 - [x] Apple Shortcuts & Siri integration
 - [x] GIF/WebM/WebP format support
-- [x] Crossfade transitions
+- [x] Crossfade transitions (removed in 1.4.2)
 - [x] Performance modes
 
 ### v1.2
@@ -352,11 +347,17 @@ open Wallnetic.xcodeproj
 - [x] In-app App Store rating prompt
 - [x] macOS 26 Tahoe fix &mdash; invisible window close/minimize buttons (#228)
 
-### v1.4.1 &mdash; Power (current)
-- [x] Pauses decoding while the desktop is fully covered, per display
+### v1.4.1 &mdash; Power
+- [x] Pauses decoding while the desktop is fully covered, per display (removed in 1.4.2: it caused hitching)
 - [x] Pauses on screen lock and fast user switching
 - [x] Screen-saver pausing fixed &mdash; the observers could never fire before
 - [x] Watchdog no longer restarts a deliberately suspended renderer
+
+### v1.4.2 &mdash; Reliability (current)
+- [x] More reliable wallpaper loading, switching and looping, with aspect-fill playback
+- [x] Ordinary windows no longer pause and restart the wallpaper decoder
+- [x] User-requested pauses stay paused across power and session events
+- [x] Native title bars for the main and Settings windows
 
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
@@ -372,9 +373,10 @@ open Wallnetic.xcodeproj
 Release notes live in [CHANGELOG.md](CHANGELOG.md), formatted to
 [Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
 
-Latest: **[1.4.1](CHANGELOG.md#141--2026-08-08)** — stops decoding video nobody
-can see: per-display occlusion pause, screen lock and fast-user-switch pausing,
-and a screen-saver pause that could never fire before.
+Latest: **[1.4.2](CHANGELOG.md#142--2026-09-24)** — more reliable loading,
+switching and looping with aspect-fill playback; ordinary windows no longer pause
+and restart the decoder; user-requested pauses stay paused across power and
+session events.
 
 ---
 

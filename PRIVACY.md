@@ -1,6 +1,6 @@
 # Wallnetic Privacy Policy
 
-**Last updated:** March 2026
+**Last updated:** October 2026
 
 ## Overview
 
@@ -14,13 +14,13 @@ Wallnetic:
 - Does not collect personal information
 - Does not track usage or analytics
 - Does not send crash reports to external servers
-- Does not use cookies or identifiers
+- Does not add advertising identifiers or usage analytics
 - Does not require an account
-- Works entirely offline
+- Supports local imports and playback entirely offline
 
 ## Local Storage
 
-All data is stored locally on your Mac and never leaves your device:
+Your wallpaper library and application preferences are stored locally on your Mac:
 
 ### Video Files
 Your imported wallpaper videos are stored in:
@@ -46,9 +46,19 @@ Video thumbnails are cached locally for faster loading.
 
 ## Network Access
 
-Wallnetic operates entirely offline. The current version does not require an internet connection and does not communicate with any external servers.
+Local imports and playback do not require an internet connection. Wallnetic connects to the internet only when you use one of the optional features below. It does not send your library contents, preferences or any identifiers to us, and we do not operate servers that receive data from the app.
 
-> **Note:** Future versions may include optional AI features that require internet access. These features will be opt-in and clearly disclosed.
+### Discover (in-app browser)
+
+Opening a wallpaper website in Discover loads that site in Wallnetic's built-in browser, as any web browser would. The site receives ordinary connection information, such as your IP address and the pages you request, and it can store cookies and other website data in Wallnetic's app container on your Mac. Videos you choose to download are saved to your Wallnetic library. Each website has its own privacy policy.
+
+### Importing from a link
+
+If you open a `wallnetic://import` link and confirm the import, Wallnetic downloads the file from the HTTPS address in the link. That server receives ordinary connection information, such as your IP address and the requested address.
+
+### Other optional connections
+
+Opening external wallpaper sources or using optional network/AI integrations contacts the websites or providers you choose. Those services have their own privacy policies and may receive the requests and inputs needed for the selected action. You can continue using local wallpapers without using these features.
 
 ## App Permissions
 
@@ -68,11 +78,11 @@ Your data is protected by macOS security features:
 
 - **App Sandbox:** Wallnetic runs in a sandboxed environment, isolated from other apps
 - **Secure Storage:** All data is stored using macOS secure storage mechanisms
-- **No Transmission:** Your data is never sent over the internet
+- **Local Library:** Wallnetic does not upload your imported videos or library metadata
 
 ## Third-Party Services
 
-Wallnetic does not use any third-party services, analytics platforms, advertising networks, or tracking tools.
+Wallnetic does not include analytics platforms, advertising networks or tracking tools. Websites you open in Discover and other optional providers are separate services with their own privacy policies.
 
 ## Children's Privacy
 
