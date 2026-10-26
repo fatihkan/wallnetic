@@ -133,7 +133,9 @@ struct VideoPreviewView: View {
     }
 
     /// A trimmed item previews only its loop range, so the player's controls
-    /// cannot move outside it.
+    /// cannot move outside it. Main-actor isolated: with the Xcode 15.2 SDK a
+    /// View's methods are not, and the hide timer needs the main run loop.
+    @MainActor
     private func setupPlayer() async {
         let url = wallpaper.url
         let trim = TrimmedVideoAsset.usableTrim(PlaybackTrimStore.shared.trim(for: url), for: url)

@@ -52,9 +52,19 @@ final class VideoTrimModel: ObservableObject {
     /// Muted, looping preview of the draft range.
     let player = AVQueuePlayer()
     private(set) var frameDuration = CMTime(value: 1, timescale: 30)
+    /// Each frame's start in the file's timeline, in order, when the track can
+    /// list them. Start and End then snap to real frames, also for variable
+    /// frame rates; otherwise they snap to a grid of the shortest frame.
+    private(set) var frameStarts: [CMTime]?
+    /// Valid End positions: every later frame start, then the video's end.
+    private var endBoundaries: [CMTime] = []
+    /// The item's own duration. It can end slightly before the video track,
+    /// and the preview looper's range must stay inside it.
+    private var itemDuration: CMTime = .zero
     private var fingerprint: VideoFileFingerprint?
     private var asset: AVURLAsset?
     private var looper: AVPlayerLooper?
+    private var looperStatus: NSKeyValueObservation?
     private var previewTask: Task<Void, Never>?
     private let store: PlaybackTrimStore
     private let isInLibrary: (URL) -> Bool
@@ -70,6 +80,7 @@ final class VideoTrimModel: ObservableObject {
     }
 
     var url: URL { wallpaper.url }
+    var hasExactFrames: Bool { frameStarts != nil }
     var length: CMTime { end - start }
     var isFullVideo: Bool { start == origin && end == duration }
     /// The shortest range; a video shorter than that can only loop in full.
@@ -96,10 +107,14 @@ final class VideoTrimModel: ObservableObject {
             } else if frameRate > 0 {
                 frameDuration = CMTime(seconds: 1 / Double(frameRate), preferredTimescale: 600)
             }
+            itemDuration = try await asset.load(.duration)
+            let starts = await FrameBoundaries.frameStarts(of: track)?.filter { $0 >= range.start && $0 < range.end }
+            frameStarts = starts?.isEmpty == false ? starts : nil
             self.asset = asset
             self.fingerprint = fingerprint
-            origin = range.start
+            origin = frameStarts?.first ?? range.start
             duration = range.end
+            endBoundaries = (frameStarts ?? []).filter { $0 > origin } + [duration]
             start = origin
             end = duration
             if let stored = store.trim(for: url) {
@@ -121,9 +136,14 @@ final class VideoTrimModel: ObservableObject {
     /// length before End.
     func setStart(_ time: CMTime) {
         guard state == .ready, time.isNumeric else { return }
-        let latest = PlaybackTrim.aligned(end - minimumLength, frameDuration: frameDuration, origin: origin, rule: .down)
-        let candidate = PlaybackTrim.aligned(time, frameDuration: frameDuration, origin: origin)
-        start = max(origin, min(candidate, latest))
+        if let starts = frameStarts {
+            let latest = FrameBoundaries.last(notAfter: end - minimumLength, in: starts) ?? origin
+            start = max(origin, min(FrameBoundaries.nearest(to: time, in: starts) ?? origin, latest))
+        } else {
+            let latest = PlaybackTrim.aligned(end - minimumLength, frameDuration: frameDuration, origin: origin, rule: .down)
+            let candidate = PlaybackTrim.aligned(time, frameDuration: frameDuration, origin: origin)
+            start = max(origin, min(candidate, latest))
+        }
         error = nil
         schedulePreview()
     }
@@ -132,22 +152,37 @@ final class VideoTrimModel: ObservableObject {
     /// video, keeping at least the minimum length after Start.
     func setEnd(_ time: CMTime) {
         guard state == .ready, time.isNumeric else { return }
-        let earliest = min(duration, PlaybackTrim.aligned(start + minimumLength, frameDuration: frameDuration,
-                                                          origin: origin, rule: .up))
-        let aligned = PlaybackTrim.aligned(time, frameDuration: frameDuration, origin: origin)
-        end = min(duration, max(aligned >= duration ? duration : aligned, earliest))
+        if frameStarts != nil {
+            let earliest = FrameBoundaries.first(notBefore: start + minimumLength, in: endBoundaries) ?? duration
+            end = min(duration, max(FrameBoundaries.nearest(to: time, in: endBoundaries) ?? duration, earliest))
+        } else {
+            let earliest = min(duration, PlaybackTrim.aligned(start + minimumLength, frameDuration: frameDuration,
+                                                              origin: origin, rule: .up))
+            let aligned = PlaybackTrim.aligned(time, frameDuration: frameDuration, origin: origin)
+            end = min(duration, max(aligned >= duration ? duration : aligned, earliest))
+        }
         error = nil
         schedulePreview()
     }
 
     func stepStart(frames: Int) {
-        setStart(start + CMTimeMultiply(frameDuration, multiplier: Int32(frames)))
+        guard let starts = frameStarts else {
+            setStart(start + CMTimeMultiply(frameDuration, multiplier: Int32(frames)))
+            return
+        }
+        let index = FrameBoundaries.nearestIndex(to: start, in: starts) ?? 0
+        setStart(starts[min(max(index + frames, 0), starts.count - 1)])
     }
 
     func stepEnd(frames: Int) {
-        // The track end can fall between frame boundaries; step from the grid.
-        let base = PlaybackTrim.aligned(end, frameDuration: frameDuration, origin: origin, rule: .up)
-        setEnd(base + CMTimeMultiply(frameDuration, multiplier: Int32(frames)))
+        guard frameStarts != nil else {
+            // The track end can fall between grid points; step from the grid.
+            let base = PlaybackTrim.aligned(end, frameDuration: frameDuration, origin: origin, rule: .up)
+            setEnd(base + CMTimeMultiply(frameDuration, multiplier: Int32(frames)))
+            return
+        }
+        let index = FrameBoundaries.nearestIndex(to: end, in: endBoundaries) ?? endBoundaries.count - 1
+        setEnd(endBoundaries[min(max(index + frames, 0), endBoundaries.count - 1)])
     }
 
     func resetToFullVideo() {
@@ -192,6 +227,7 @@ final class VideoTrimModel: ObservableObject {
 
     func stopPreview() {
         previewTask?.cancel()
+        looperStatus = nil
         looper?.disableLooping()
         looper = nil
         player.pause()
@@ -212,31 +248,127 @@ final class VideoTrimModel: ObservableObject {
     }
 
     private func rebuildPreview() {
-        guard state == .ready, let asset, start >= origin, start < end, end <= duration else { return }
+        guard state == .ready, let asset,
+              let range = Self.previewRange(start: start, end: end, itemDuration: itemDuration) else { return }
+        looperStatus = nil
         looper?.disableLooping()
         player.removeAllItems()
-        looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(asset: asset),
-                                timeRange: CMTimeRange(start: start, end: end))
+        let looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(asset: asset), timeRange: range)
+        looperStatus = looper.observe(\.status, options: [.new]) { [weak self] looper, _ in
+            guard looper.status == .failed else { return }
+            Task { @MainActor [weak self] in self?.isPreviewPlaying = false }
+        }
+        self.looper = looper
         player.play()
         isPreviewPlaying = true
     }
 
+    /// The looper's range must lie within the item's duration, which can end
+    /// slightly before the video track (some fragmented MP4 files). Nil for a
+    /// range the looper cannot play.
+    static func previewRange(start: CMTime, end: CMTime, itemDuration: CMTime) -> CMTimeRange? {
+        guard start.isNumeric, end.isNumeric, itemDuration.isNumeric else { return nil }
+        let previewEnd = min(end, itemDuration)
+        guard start >= .zero, start < previewEnd else { return nil }
+        return CMTimeRange(start: start, end: previewEnd)
+    }
+
     // MARK: - Time text
+
+    /// Minutes and seconds, rounded to hundredths first so 59.997 s reads
+    /// 1:00.00 rather than 0:60.00.
+    private static func minutesAndSeconds(_ time: CMTime) -> (minutes: Int, seconds: Double) {
+        let hundredths = Int((max(0, time.seconds) * 100).rounded())
+        return (hundredths / 6000, Double(hundredths % 6000) / 100)
+    }
 
     /// "1:02.40": minutes, seconds and hundredths.
     static func clockText(_ time: CMTime) -> String {
         guard time.isNumeric else { return "--:--" }
-        let seconds = max(0, time.seconds)
-        return String(format: "%d:%05.2f", Int(seconds) / 60, seconds.truncatingRemainder(dividingBy: 60))
+        let parts = minutesAndSeconds(time)
+        return String(format: "%d:%05.2f", parts.minutes, parts.seconds)
     }
 
     /// "1 minute 2.40 seconds", for VoiceOver.
     static func spokenText(_ time: CMTime) -> String {
         guard time.isNumeric else { return "unknown" }
-        let total = max(0, time.seconds)
-        let minutes = Int(total) / 60
-        let seconds = String(format: "%.2f seconds", total.truncatingRemainder(dividingBy: 60))
-        guard minutes > 0 else { return seconds }
-        return "\(minutes) \(minutes == 1 ? "minute" : "minutes") \(seconds)"
+        let parts = minutesAndSeconds(time)
+        let seconds = String(format: "%.2f seconds", parts.seconds)
+        guard parts.minutes > 0 else { return seconds }
+        return "\(parts.minutes) \(parts.minutes == 1 ? "minute" : "minutes") \(seconds)"
+    }
+}
+
+/// Frame boundaries of a video track, and lookups over sorted times.
+enum FrameBoundaries {
+    /// Each frame's start in the track's timeline, in order: sample
+    /// presentation times from a sample cursor, mapped through the track's
+    /// edits. Nil when the track cannot provide cursors, has more than
+    /// `limit` frames, or uses an edit that changes speed.
+    static func frameStarts(of track: AVAssetTrack, limit: Int = 200_000) async -> [CMTime]? {
+        guard (try? await track.load(.canProvideSampleCursors)) == true,
+              let segments = try? await track.load(.segments),
+              let cursor = track.makeSampleCursor(presentationTimeStamp: .negativeInfinity) else { return nil }
+        var media: [CMTime] = []
+        repeat {
+            guard media.count < limit else { return nil }
+            media.append(cursor.presentationTimeStamp)
+        } while cursor.stepInPresentationOrder(byCount: 1) == 1
+        return trackTimes(ofMediaTimes: media, edits: segments.filter { !$0.isEmpty }.map(\.timeMapping))
+    }
+
+    /// Media times mapped into the track's timeline through its edits, sorted
+    /// and without duplicates. A frame outside every edit is not shown.
+    static func trackTimes(ofMediaTimes media: [CMTime], edits: [CMTimeMapping]) -> [CMTime]? {
+        var times: [CMTime] = []
+        if edits.isEmpty {
+            times = media.filter(\.isNumeric)
+        }
+        for edit in edits {
+            // Only an edit that keeps speed maps a frame's start exactly.
+            guard edit.source.duration == edit.target.duration else { return nil }
+            for time in media where time.isNumeric && time >= edit.source.start && time < edit.source.end {
+                times.append(edit.target.start + (time - edit.source.start))
+            }
+        }
+        times.sort()
+        var unique: [CMTime] = []
+        for time in times where unique.last.map({ $0 != time }) ?? true { unique.append(time) }
+        return unique.isEmpty ? nil : unique
+    }
+
+    static func nearestIndex(to time: CMTime, in sorted: [CMTime]) -> Int? {
+        guard !sorted.isEmpty, time.isNumeric else { return nil }
+        let index = firstIndex(notBefore: time, in: sorted)
+        if index == 0 { return 0 }
+        if index == sorted.count { return sorted.count - 1 }
+        return time - sorted[index - 1] <= sorted[index] - time ? index - 1 : index
+    }
+
+    static func nearest(to time: CMTime, in sorted: [CMTime]) -> CMTime? {
+        nearestIndex(to: time, in: sorted).map { sorted[$0] }
+    }
+
+    static func first(notBefore time: CMTime, in sorted: [CMTime]) -> CMTime? {
+        let index = firstIndex(notBefore: time, in: sorted)
+        return index < sorted.count ? sorted[index] : nil
+    }
+
+    static func last(notAfter time: CMTime, in sorted: [CMTime]) -> CMTime? {
+        var low = 0, high = sorted.count
+        while low < high {
+            let middle = (low + high) / 2
+            if sorted[middle] <= time { low = middle + 1 } else { high = middle }
+        }
+        return low > 0 ? sorted[low - 1] : nil
+    }
+
+    private static func firstIndex(notBefore time: CMTime, in sorted: [CMTime]) -> Int {
+        var low = 0, high = sorted.count
+        while low < high {
+            let middle = (low + high) / 2
+            if sorted[middle] < time { low = middle + 1 } else { high = middle }
+        }
+        return low
     }
 }

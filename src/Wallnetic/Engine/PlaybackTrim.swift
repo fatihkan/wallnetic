@@ -83,9 +83,16 @@ struct PlaybackTrim: Equatable {
         // A time already on the grid stays there despite floating-point error,
         // also when rounding up or down.
         if abs(position - position.rounded()) < 1e-6 { position = position.rounded() }
-        let frames = position.rounded(rule)
-        guard frames.isFinite, abs(frames) <= Double(Int32.max) else { return time }
-        return origin + CMTimeMultiply(frameDuration, multiplier: Int32(frames))
+        var frames = position.rounded(rule)
+        guard frames.isFinite, abs(frames) < Double(Int32.max) else { return time }
+        func boundary(_ count: Double) -> CMTime {
+            origin + CMTimeMultiply(frameDuration, multiplier: Int32(count))
+        }
+        // The snap above must not leave a result on the wrong side of `time`
+        // (fine timescales, such as nanoseconds, can round into it).
+        if rule == .down, boundary(frames) > time { frames -= 1 }
+        if rule == .up, boundary(frames) < time { frames += 1 }
+        return boundary(frames)
     }
 }
 

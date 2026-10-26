@@ -59,7 +59,9 @@ struct VideoTrimSheet: View {
             Text("Loop length \(VideoTrimModel.clockText(model.length)) of \(VideoTrimModel.clockText(model.duration - model.origin))")
                 .font(.callout)
                 .accessibilityLabel("Loop length \(VideoTrimModel.spokenText(model.length)), of \(VideoTrimModel.spokenText(model.duration - model.origin))")
-            Text("The original file is not changed. Each step moves by one frame; a loop is at least one second long.")
+            Text(model.hasExactFrames
+                 ? "The original file is not changed. Each step moves to the next or previous frame; a loop is at least one second long."
+                 : "The original file is not changed. Steps use the video's shortest frame interval; a loop is at least one second long.")
                 .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             if let note = model.note {
                 Label(note, systemImage: "info.circle").font(.caption).foregroundColor(.orange)

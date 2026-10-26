@@ -399,7 +399,7 @@ struct CarouselSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 10) {
                     ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                        CarouselCard(wallpaper: wallpaper)
+                        CarouselCard(wallpaper: wallpaper, allowsTrim: true)
                             .staggered(index: index)
                     }
                 }
@@ -415,6 +415,9 @@ struct CarouselSection: View {
 struct CarouselCard: View {
     let wallpaper: Wallpaper
     var onApply: ((Wallpaper) -> Void)? = nil
+    /// Trim is offered on Home's carousel, not in Explore's 3D carousel,
+    /// which shares this card.
+    var allowsTrim = false
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: NSImage?
@@ -588,7 +591,7 @@ struct CarouselCard: View {
         .onHover { h in isHovering = h }
         .contextMenu {
             WallpaperContextMenu(wallpaper: wallpaper, onOptimize: { optimizingWallpaper = wallpaper },
-                                 onTrim: { trimmingWallpaper = wallpaper }, onRename: {
+                                 onTrim: allowsTrim ? { trimmingWallpaper = wallpaper } : nil, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
             })
