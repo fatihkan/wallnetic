@@ -88,7 +88,6 @@ class DesktopWindowController {
         self.useMetalRenderer = WallpaperManager.shared.useMetalRenderer
         setupDesktopWindows()
         setupEffectsObserver()
-        setupReassertObservers()
         durationPlayback.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
         calmSettingsObserver = CalmPlaybackSettings.shared.$state
             .map(\.holds).removeDuplicates().sink { [weak self] holds in
@@ -115,27 +114,6 @@ class DesktopWindowController {
         ) { [weak self] _ in
             self?.applyEffects()
         }
-    }
-
-    private var reassertObservers: [NSObjectProtocol] = []
-
-    private func setupReassertObservers() {
-        // Only activation-policy flips need a re-pin. Observing become-active
-        // or Space changes called `orderFront` on every click / Space switch
-        // and presented as a twitch in the playing wallpaper.
-        reassertObservers.append(NotificationCenter.default.addObserver(
-            forName: .desktopWindowsNeedReassert, object: nil, queue: .main
-        ) { [weak self] _ in
-            self?.scheduleReassert()
-        })
-        // Only resign-active — not every app-switch. didActivateApplication
-        // fires while the user works in a windowed app; poking the renderer
-        // then (and the old 4 Hz pulse) paused/unpaused Metal in a loop.
-        reassertObservers.append(NotificationCenter.default.addObserver(
-            forName: NSApplication.willResignActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            self?.maintainPlayback()
-        })
     }
 
     // MARK: - Window Setup
@@ -249,56 +227,6 @@ class DesktopWindowController {
         window.orderFront(nil)
         CATransaction.commit()
         Log.window.debug("Revealed desktop window for display \(displayID, privacy: .public)")
-    }
-
-    private var reassertDebounce: Timer?
-
-    private func scheduleReassert() {
-        reassertDebounce?.invalidate()
-        reassertDebounce = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
-            self?.reassertDebounce = nil
-            self?.reassertDesktopWindows()
-        }
-    }
-
-    /// Re-pins a desktop window only when it actually dropped (level, alpha,
-    /// or ordered-out). Rewriting collectionBehavior / orderFront on an
-    /// already-correct window hitches the compositor — the playback twitch.
-    func reassertDesktopWindows() {
-        let desktopIconLevel = Int(CGWindowLevelForKey(.desktopIconWindow))
-        let expectedLevel = NSWindow.Level(rawValue: desktopIconLevel - 1)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        defer { CATransaction.commit() }
-
-        for (id, window) in desktopWindows {
-            let renderer = renderers[id]
-            let shouldShow = renderer.map {
-                WallpaperVisibilityPolicy.shouldShowOverlay(hasPresentedFrame: $0.hasPresentedFrame)
-            } ?? false
-            let needsReassert = WallpaperPlaybackPolicy.shouldReassertWindow(
-                levelMatches: window.level == expectedLevel,
-                overlayShouldShow: shouldShow,
-                isOrderedIn: window.isVisible,
-                alphaIsFull: window.alphaValue >= 1
-            )
-            guard needsReassert else { continue }
-
-            window.collectionBehavior = [
-                .canJoinAllSpaces,
-                .stationary,
-                .ignoresCycle,
-                .fullScreenNone
-            ]
-            window.level = expectedLevel
-            window.alphaValue = 1
-            window.isOpaque = true
-            window.orderFront(nil)
-        }
-
-        if isPlaying {
-            maintainPlayback()
-        }
     }
 
     // MARK: - Playback Control
@@ -703,13 +631,6 @@ class DesktopWindowController {
         durationPlayback.removeAll()
         stopWatchdog()
         endPlaybackActivity()
-        reassertDebounce?.invalidate()
-        reassertDebounce = nil
-        for observer in reassertObservers {
-            NotificationCenter.default.removeObserver(observer)
-            NSWorkspace.shared.notificationCenter.removeObserver(observer)
-        }
-        reassertObservers.removeAll()
 
         for renderer in renderers.values {
             renderer.playbackMonitor.onChange = nil

@@ -18,21 +18,9 @@ enum WallpaperVisibilityPolicy {
     }
 }
 
-/// Rules that keep wallpaper motion smooth. Re-ordering a desktop window or
-/// restarting a player that is already at rate 1 presents as a visible twitch.
+/// Rules that keep wallpaper motion smooth. Restarting a player that is
+/// already at rate 1 presents as a visible twitch.
 enum WallpaperPlaybackPolicy {
-
-    /// Touching a window that is already at the right level and on-screen
-    /// (`orderFront`, collectionBehavior rewrite) makes the compositor hitch.
-    static func shouldReassertWindow(
-        levelMatches: Bool,
-        overlayShouldShow: Bool,
-        isOrderedIn: Bool,
-        alphaIsFull: Bool
-    ) -> Bool {
-        guard overlayShouldShow else { return false }
-        return !levelMatches || !isOrderedIn || !alphaIsFull
-    }
 
     /// `AVPlayer.play()` on a player that is already running can restart
     /// the buffer and hitch. Only issue play from a full stop.
