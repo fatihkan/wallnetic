@@ -81,6 +81,7 @@
 		61773D343F4EBEEB12FF8AFB /* BatteryPromptService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0187521E8CC2C0BB29CE90D /* BatteryPromptService.swift */; };
 		61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B106464A071BF6E736C3272 /* MenuBarView.swift */; };
 		61B8431DE4EA724F4E55C7B2 /* OllamaVisionTagger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD3DFBD42A5D9B294784C5F /* OllamaVisionTagger.swift */; };
+		625D2F1CCD239E8719B79227 /* WidgetClockFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51FE99BDA82A581FC8BC3628 /* WidgetClockFormatTests.swift */; };
 		6409F37EB1ED02FDDA458327 /* PlaybackWatchdogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BED74D009FBE1A0068DC2C62 /* PlaybackWatchdogTests.swift */; };
 		64369FBB9497637963EC2B4C /* DynamicAccent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6581C17705CF0F9650F91F07 /* DynamicAccent.swift */; };
 		6A650CD75C4B32AB9889A6A7 /* SharedWidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */; };
@@ -294,6 +295,7 @@
 		4D9A31C3562655D7C27A30B1 /* WallneticApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticApp.swift; sourceTree = "<group>"; };
 		4FE1E8DA0D816BBE5BE3CE8F /* VideoOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoOptimizer.swift; sourceTree = "<group>"; };
 		51A337D506233D372B7187D6 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
+		51FE99BDA82A581FC8BC3628 /* WidgetClockFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetClockFormatTests.swift; sourceTree = "<group>"; };
 		52CE6EB39E15687BF3655B8C /* SharedDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedDataManager.swift; sourceTree = "<group>"; };
 		532FE0E3069C64B6236A343C /* WallpaperManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperManager.swift; sourceTree = "<group>"; };
 		5391D519B2B4F2D898BEDB0F /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
@@ -822,6 +824,7 @@
 				6DE7C9C529B80C5AF3DE63C4 /* WallpaperPackTests.swift */,
 				5BB9E5D3E8D807E7ECD1D0EA /* WallpaperScheduleTests.swift */,
 				F445C733089982D2231472D9 /* WallpaperVisibilityPolicyTests.swift */,
+				51FE99BDA82A581FC8BC3628 /* WidgetClockFormatTests.swift */,
 				E72EDA5DB0538086455362EF /* WindowPresentationTests.swift */,
 			);
 			path = Tests;
@@ -1043,6 +1046,7 @@
 				96D33A218367CE9F33A15251 /* WallpaperPackTests.swift in Sources */,
 				3694EFFC1639D101F12EBD74 /* WallpaperScheduleTests.swift in Sources */,
 				14C57185714738A1DAE96E17 /* WallpaperVisibilityPolicyTests.swift in Sources */,
+				625D2F1CCD239E8719B79227 /* WidgetClockFormatTests.swift in Sources */,
 				CFF70BD80B840BCA768E5A15 /* WindowPresentationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
