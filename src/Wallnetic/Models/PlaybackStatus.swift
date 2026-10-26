@@ -1,7 +1,7 @@
 import Foundation
 
 enum PlaybackPauseReason: Int, CaseIterable, Equatable {
-    case manual, calm, thermal, sessionInactive, sleeping, screenSaver, lowPower, battery, fullscreen, covered, timer
+    case manual, calm, thermal, sessionInactive, sleeping, screenSaver, lowPower, battery, fullscreen, timer
 
     var title: String {
         switch self {
@@ -14,7 +14,6 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
         case .lowPower: return "Paused in Low Power Mode"
         case .battery: return "Paused on battery"
         case .fullscreen: return "Paused for a fullscreen app"
-        case .covered: return "Paused while the desktop is covered"
         case .timer: return "Playback timer finished"
         }
     }
@@ -32,7 +31,6 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
         case .lowPower: return "Low Power Mode"
         case .battery: return "battery policy"
         case .fullscreen: return "fullscreen app"
-        case .covered: return "covered desktop"
         case .timer: return "finished playback timer"
         }
     }

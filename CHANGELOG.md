@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   renderer reads 8-bit BGRA without color management, so HDR sources are now
   tone-mapped to BT.709 SDR by AVFoundation before drawing. SDR videos are
   unaffected.
+- Corrected playback descriptions: ordinary windows covering the desktop do not
+  pause playback, wallpaper changes are instant, and saved Space choices are not
+  applied automatically. The unused covered-desktop pause and transition code
+  was removed, and Settings > Effects no longer shows the Transition note.
+  Playback behavior is unchanged.
 
 ## [1.4.2] — 2026-09-24
 

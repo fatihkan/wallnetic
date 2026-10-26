@@ -17,16 +17,17 @@ change alone is not evidence that the renderer has stopped.
 ## Pause explanations
 
 The deterministic priority is manual pause, Calm Mode, thermal hold,
-inactive/locked session, sleeping display, screen saver, Low Power Mode, battery policy, fullscreen restriction,
-desktop coverage, then expiration of the playback timer. Additional active
-reasons remain in the detail. File failures take precedence so the recovery
+inactive/locked session, sleeping display, screen saver, Low Power Mode, battery
+policy, fullscreen restriction, then expiration of the playback timer.
+Additional active reasons remain in the detail. File failures take precedence so the recovery
 action remains visible, while pause reasons are retained alongside it.
 
 The menu's Play action is disabled while a displayed restriction blocks resume.
 The existing controller also checks restrictions for keyboard shortcuts, widgets,
 and other playback entry points. Clearing one reason does not clear another.
-The coverage reason reflects the existing visibility policy; this feature does
-not introduce a new coverage detector or change which windows pause playback.
+Ordinary windows covering the desktop do not pause playback, so no status
+reports a covered desktop. A frontmost fullscreen app is reported as the
+fullscreen restriction, on every display.
 
 ## Loading and recovery
 

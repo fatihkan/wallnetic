@@ -117,6 +117,8 @@ class DesktopWindowController {
         }
     }
 
+    private var reassertObservers: [NSObjectProtocol] = []
+
     private func setupReassertObservers() {
         // Only activation-policy flips need a re-pin. Observing become-active
         // or Space changes called `orderFront` on every click / Space switch
@@ -303,7 +305,8 @@ class DesktopWindowController {
 
     func wallpaperURL(on displayID: UInt32) -> URL? { screenWallpaperURLs[displayID] }
 
-    /// Sets the wallpaper video with animated transition
+    /// Sets the wallpaper video on one screen, or on every screen when
+    /// `screen` is nil. The change is instant.
     func setWallpaper(url: URL, for screen: NSScreen? = nil, forceReload: Bool = false) {
         // Resolve the optional target screen to a stable display id up front.
         // A target screen with no displayID can't be addressed — bail rather
@@ -363,7 +366,6 @@ class DesktopWindowController {
     /// Pauses playback on all screens
     func pause(manual: Bool = false) {
         durationPlayback.pause(manual: manual)
-        occlusionSuspended.removeAll()
     }
 
     private func refreshPlaybackLifecycle(preferences: PauseAfterSettings.Preferences? = nil) {
@@ -407,7 +409,6 @@ class DesktopWindowController {
             reasons.append(contentsOf: durationPlayback.holds.map(\.pauseReason))
             if durationPlayback.isManuallyPaused { reasons.append(.manual) }
             if durationPlayback.isExpired(on: id) { reasons.append(.timer) }
-            if occlusionSuspended.contains(id) { reasons.append(.covered) }
             return DisplayPlaybackStatus(id: id, displayName: screen.localizedName,
                 hasWallpaper: screenWallpaperURLs[id] != nil,
                 renderer: renderer.playbackMonitor.state, reasons: reasons)
@@ -474,27 +475,6 @@ class DesktopWindowController {
         }
     }
 
-    /// Pauses playback (used by power management)
-    func pausePlayback() {
-        pause()
-    }
-
-    /// Resumes playback if it was playing before
-    func resumePlayback() {
-        if WallpaperManager.shared.shouldAutoResume {
-            play()
-        }
-    }
-
-    /// Toggles play/pause state
-    func togglePlayback() {
-        if isCurrentlyPlaying {
-            pause(manual: true)
-        } else {
-            play(explicit: true)
-        }
-    }
-
     var isCurrentlyPlaying: Bool {
         return durationPlayback.hasActivePlayback
     }
@@ -502,110 +482,6 @@ class DesktopWindowController {
     /// Power pauses must still claim an intended session held by Calm/thermal
     /// policy; otherwise their resume path would strand that session.
     var hasPlaybackResumeIntent: Bool { durationPlayback.isRequested }
-
-    // MARK: - Occlusion
-
-    /// Displays whose renderer is paused purely because the desktop window is
-    /// fully covered. Deliberately separate from `isPlaying`, which must keep
-    /// meaning "the user intends the wallpaper to play" for the menu bar,
-    /// widget sync and the resume paths.
-    private var occlusionSuspended: Set<CGDirectDisplayID> = []
-    private var occlusionObservers: [CGDirectDisplayID: NSObjectProtocol] = [:]
-    private var occlusionDebounce: [CGDirectDisplayID: Timer] = [:]
-    private var occlusionAgreeCounts: [CGDirectDisplayID: Int] = [:]
-    private var reassertObservers: [NSObjectProtocol] = []
-
-    /// macOS delivers a burst of alternating occlusion notifications across a
-    /// single cover/uncover transition (21 within 360 ms when measured here),
-    /// so state is applied only once it settles. 1.0 s plus
-    /// ``WallpaperPlaybackPolicy/occlusionStableSamples`` extra agrees stops
-    /// the pause/resume twitch those bursts used to cause.
-    private static let occlusionDebounceInterval: TimeInterval = 1.0
-
-    private func observeOcclusion(of window: NSWindow, displayID: CGDirectDisplayID) {
-        // Scoped to this window: the process also owns overlay panels and two
-        // SwiftUI WindowGroups whose occlusion is none of our business.
-        let observer = NotificationCenter.default.addObserver(
-            forName: NSWindow.didChangeOcclusionStateNotification,
-            object: window,
-            queue: .main
-        ) { [weak self] _ in
-            self?.scheduleOcclusionUpdate(for: displayID)
-        }
-        occlusionObservers[displayID] = observer
-    }
-
-    private func scheduleOcclusionUpdate(for displayID: CGDirectDisplayID) {
-        occlusionDebounce[displayID]?.invalidate()
-        occlusionDebounce[displayID] = Timer.scheduledTimer(
-            withTimeInterval: Self.occlusionDebounceInterval,
-            repeats: false
-        ) { [weak self] _ in
-            self?.occlusionDebounce[displayID] = nil
-            self?.applyOcclusion(for: displayID)
-        }
-    }
-
-    /// Suspends or resumes one display's decoder from *live* window state.
-    /// Reading the state rather than trusting a notification payload is what
-    /// makes a missed notification self-correcting.
-    private func applyOcclusion(for displayID: CGDirectDisplayID) {
-        defer { refreshPlaybackStatuses() }
-        guard let window = desktopWindows[displayID],
-              let renderer = renderers[displayID] else { return }
-
-        // `.visible` is all-or-nothing — cleared only when the window is
-        // *fully* covered — so partial overlap never pauses the wallpaper.
-        // An un-revealed (alpha 0) window also reports not-visible; pausing
-        // then would freeze a black overlay before the first frame.
-        guard window.alphaValue >= 1 else { return }
-
-        let visible = window.occlusionState.contains(.visible)
-        // Windowed foreground apps must never pause decode. Occlusion of a
-        // desktop-level window flaps around ordinary windows and is the
-        // brief-pause / rate-wobble / keyframe-rollback chain.
-        let fullscreenCover = false
-        let wantSuspended = WallpaperVisibilityPolicy.shouldSuspendDecode(
-            intendedToPlay: isPlaying,
-            windowReportsVisible: visible,
-            hasPresentedFrame: renderer.hasPresentedFrame,
-            fullscreenAppCoversDisplay: fullscreenCover
-        )
-        let currentlySuspended = occlusionSuspended.contains(displayID)
-
-        if wantSuspended == currentlySuspended {
-            occlusionAgreeCounts[displayID] = 0
-            return
-        }
-
-        let agrees = (occlusionAgreeCounts[displayID] ?? 0) + 1
-        occlusionAgreeCounts[displayID] = agrees
-        guard WallpaperPlaybackPolicy.shouldCommitOcclusionChange(
-            currentlySuspended: currentlySuspended,
-            wantSuspended: wantSuspended,
-            consecutiveAgrees: agrees
-        ) else { return }
-
-        occlusionAgreeCounts[displayID] = 0
-        if wantSuspended {
-            occlusionSuspended.insert(displayID)
-            renderer.pause()
-            Log.window.debug("Display \(displayID, privacy: .public) fully occluded — decode suspended")
-        } else {
-            occlusionSuspended.remove(displayID)
-            if durationPlayback.shouldPlay(on: displayID) { renderer.play() }
-            Log.window.debug("Display \(displayID, privacy: .public) visible again — decode resumed")
-        }
-    }
-
-    private func removeOcclusionTracking(for displayID: CGDirectDisplayID) {
-        if let observer = occlusionObservers.removeValue(forKey: displayID) {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        occlusionDebounce.removeValue(forKey: displayID)?.invalidate()
-        occlusionSuspended.remove(displayID)
-        occlusionAgreeCounts.removeValue(forKey: displayID)
-    }
 
     // MARK: - Playback Watchdog (v1.4 Wave 1)
 
@@ -645,11 +521,12 @@ class DesktopWindowController {
         let shouldBePaused = PowerManager.shared.shouldBePaused
 
         for (id, renderer) in renderers {
-            if occlusionSuspended.contains(id) || !durationPlayback.shouldPlay(on: id) {
-                // A suspended renderer's clock is frozen *on purpose*. Letting
-                // the watchdog see that would restart the decode behind the
-                // cover permanently — the exact waste this pause exists to
-                // avoid — so reset the baseline instead.
+            if !durationPlayback.shouldPlay(on: id) {
+                // This display is meant to be paused (a manual or power pause,
+                // a Calm Mode or thermal hold, or an expired Pause After
+                // timer), so its clock is frozen *on purpose*. Recovering it
+                // would undo a pause another feature owns, so reset the
+                // baseline instead.
                 frozenSampleCounts[id] = 0
                 lastPlaybackTimes[id] = renderer.currentPlaybackTime
                 continue
@@ -701,7 +578,6 @@ class DesktopWindowController {
 
         // Remove windows for disconnected displays
         for id in knownIDs.subtracting(currentIDs) {
-            removeOcclusionTracking(for: id)
             renderers[id]?.playbackMonitor.onChange = nil
             renderers[id]?.stop()
             desktopWindows[id]?.close()
@@ -834,10 +710,6 @@ class DesktopWindowController {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
         reassertObservers.removeAll()
-
-        for id in Array(occlusionObservers.keys) {
-            removeOcclusionTracking(for: id)
-        }
 
         for renderer in renderers.values {
             renderer.playbackMonitor.onChange = nil
