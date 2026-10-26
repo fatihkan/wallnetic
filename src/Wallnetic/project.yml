@@ -29,6 +29,7 @@ targets:
       - path: Utils
       - path: Resources
       - path: ../WallneticWidget/Models/SharedWidgetModels.swift
+      - path: ../WallneticWidget/Models/WidgetClockFormat.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.app

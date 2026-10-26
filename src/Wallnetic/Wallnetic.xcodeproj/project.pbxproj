@@ -29,11 +29,13 @@
 		1CA1504E421EAE5C547DF122 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51A337D506233D372B7187D6 /* KeychainManager.swift */; };
 		1CFA00059D8A9C5B8DA54048 /* WallpaperPackMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFB0066F3581095CBB2F548 /* WallpaperPackMedia.swift */; };
 		1DD25625E7368FB04079A0F1 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 8BDE9B9E7D4139C79112E4EE /* LICENSE */; };
+		1E8BA79E2367478C0C415F5C /* WidgetClockFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F8110B5A4B07BA315971DFB /* WidgetClockFormat.swift */; };
 		1F756590D00246AFD943B61A /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA4D12B25631A66EDCB10593 /* PhotosLibraryService.swift */; };
 		2082CED0A15F59CAEEDB57F8 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 543E1B92A4536DE1415BD91E /* DownloadManager.swift */; };
 		2124DE0A8E8717475F30D34C /* WallpaperGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D76E5D0AB6B966E492D0342 /* WallpaperGridView.swift */; };
 		22E69E16DF549F3974E6E91A /* LibraryStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89AAE2DBB24A5EB8051484E5 /* LibraryStorage.swift */; };
 		2445819EF402088E3689C8CD /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2833332B3174CD94D7D62CBB /* DeepLinkHandler.swift */; };
+		24EB6E0D4D6D891F920DB2FC /* WidgetClockFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F8110B5A4B07BA315971DFB /* WidgetClockFormat.swift */; };
 		2509E976AE0675786B3C248A /* SmallWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134AA54986991D7480CC4CD8 /* SmallWidgetView.swift */; };
 		27E8C6194A802AD6C3726D0A /* AmbientStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA26B4DDB98EF77D98CE5821 /* AmbientStage.swift */; };
 		284D0925EA9AEC2B302910D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BF36E216B5F900C62E824B59 /* Assets.xcassets */; };
@@ -350,6 +352,7 @@
 		7A6CB7D49499EAF7DE2CFA8E /* LibraryStorageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStorageModel.swift; sourceTree = "<group>"; };
 		7BB04CF2E27DC75B29EE8A67 /* ErrorReporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorReporterTests.swift; sourceTree = "<group>"; };
 		7F557952B625823A2689EBE7 /* WallpaperLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperLibrary.swift; sourceTree = "<group>"; };
+		7F8110B5A4B07BA315971DFB /* WidgetClockFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetClockFormat.swift; sourceTree = "<group>"; };
 		7FDCF06E9A249E9D22603B65 /* OptimizedCopyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimizedCopyStore.swift; sourceTree = "<group>"; };
 		800451287F439529FF570B44 /* SlideshowGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideshowGenerator.swift; sourceTree = "<group>"; };
 		827D82693E294BC4A990BA10 /* pack-LICENSE-MIT.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "pack-LICENSE-MIT.txt"; sourceTree = "<group>"; };
@@ -851,6 +854,7 @@
 			isa = PBXGroup;
 			children = (
 				DDFCAB2A636011BB543DD1B5 /* SharedWidgetModels.swift */,
+				7F8110B5A4B07BA315971DFB /* WidgetClockFormat.swift */,
 			);
 			name = Models;
 			path = ../WallneticWidget/Models;
@@ -998,6 +1002,7 @@
 				2D30EDC8BD2E940365F05AB0 /* WallneticWidget.swift in Sources */,
 				DCAD65468ADF42075E87EF0B /* WallneticWidgetBundle.swift in Sources */,
 				C45BE528ECCD2D35E95ED1C4 /* WallpaperTimelineProvider.swift in Sources */,
+				1E8BA79E2367478C0C415F5C /* WidgetClockFormat.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1189,6 +1194,7 @@
 				9C7206924D126AE38A11DD51 /* WallpaperStoreManager.swift in Sources */,
 				427F812CFADEA6329FE19C64 /* WallpaperVisibilityPolicy.swift in Sources */,
 				F6107012989E9FC5810F350E /* WeatherWallpaperManager.swift in Sources */,
+				24EB6E0D4D6D891F920DB2FC /* WidgetClockFormat.swift in Sources */,
 				A978B328492C6EE503BC91E3 /* WidgetSyncService.swift in Sources */,
 				B58D37AE767BFCCAADD62CD7 /* WindowChrome.swift in Sources */,
 				88C6A7F9AD19AA876CEEC465 /* iCloudSyncManager.swift in Sources */,

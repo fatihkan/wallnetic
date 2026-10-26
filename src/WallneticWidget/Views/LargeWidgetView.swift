@@ -39,6 +39,8 @@ struct LargeWidgetView: View {
                         .foregroundColor(.white)
                         .shadow(color: .black.opacity(0.5), radius: 10, y: 3)
                         .tracking(1)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
 
                     Text(dayName)
                         .font(.system(size: 22, weight: .light, design: .rounded))
@@ -193,16 +195,8 @@ struct LargeWidgetView: View {
         }
     }
 
-    private var timeString: String {
-        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: entry.date)
-    }
-    private var dayNumber: String {
-        let f = DateFormatter(); f.dateFormat = "d"; return f.string(from: entry.date)
-    }
-    private var monthYear: String {
-        let f = DateFormatter(); f.dateFormat = "MMMM yyyy"; f.locale = Locale.current; return f.string(from: entry.date)
-    }
-    private var dayName: String {
-        let f = DateFormatter(); f.dateFormat = "EEEE"; f.locale = Locale.current; return f.string(from: entry.date).lowercased()
-    }
+    private var timeString: String { WidgetClockFormat.time(entry.date) }
+    private var dayNumber: String { WidgetClockFormat.dayNumber(entry.date) }
+    private var monthYear: String { WidgetClockFormat.monthYear(entry.date) }
+    private var dayName: String { WidgetClockFormat.dayName(entry.date) }
 }
