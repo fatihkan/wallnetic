@@ -35,3 +35,25 @@ enum WallpaperAspectFill {
         return delta > 0.02 && delta < 1.5
     }
 }
+
+/// The aspect-fill crop a Metal quad is built for. The crop belongs to the
+/// frame being drawn, not to the latest load: after a switch, the previous
+/// video's last frame stays on screen until the next video's first frame
+/// arrives, and it keeps its own video's crop meanwhile (#307).
+struct WallpaperFrameCrop: Equatable {
+    /// Display size of the video the drawn frame came from.
+    let videoSize: CGSize
+    let viewSize: CGSize
+
+    var textureRect: CGRect {
+        WallpaperAspectFill.textureRect(videoSize: videoSize, viewSize: viewSize)
+    }
+
+    /// The crop to build before drawing a frame of a `videoSize` video, or
+    /// nil when the quad built for `current` already matches.
+    static func rebuild(_ current: WallpaperFrameCrop?, forFrameOf videoSize: CGSize,
+                        viewSize: CGSize) -> WallpaperFrameCrop? {
+        let crop = WallpaperFrameCrop(videoSize: videoSize, viewSize: viewSize)
+        return crop == current ? nil : crop
+    }
+}

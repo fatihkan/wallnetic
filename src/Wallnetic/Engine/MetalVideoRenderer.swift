@@ -97,11 +97,16 @@ final class MetalVideoRenderer: NSObject {
     // backing to that cache, including on Metal's completion queue.
     private final class VideoFrame {
         let texture: MTLTexture
+        /// Display size of the video this frame came from. The crop follows
+        /// the frame, so a frame kept on screen across a reload keeps its own
+        /// crop until the next video's first frame replaces it (#307).
+        let videoSize: CGSize
         private var backing: CVMetalTexture?
         private let cache: CVMetalTextureCache
 
-        init(texture: MTLTexture, backing: CVMetalTexture, cache: CVMetalTextureCache) {
+        init(texture: MTLTexture, videoSize: CGSize, backing: CVMetalTexture, cache: CVMetalTextureCache) {
             self.texture = texture
+            self.videoSize = videoSize
             self.backing = backing
             self.cache = cache
         }
@@ -114,7 +119,10 @@ final class MetalVideoRenderer: NSObject {
     }
     private var currentFrame: VideoFrame?
     private var vertexBuffer: MTLBuffer?
-    private var videoSize: CGSize = .zero
+    /// The crop `vertexBuffer` was built for: always the drawn frame's.
+    private(set) var quadCrop: WallpaperFrameCrop?
+    /// Display size of the current player's video, given to its frames.
+    private(set) var playerVideoSize: CGSize = .zero
     private var lastPresentedSeconds: Double = -1
     private var hasLoggedFrameColorInfo = false
     private var loopObserver: NSObjectProtocol?
@@ -241,9 +249,6 @@ final class MetalVideoRenderer: NSObject {
 
         super.init()
 
-        // Setup vertex buffer for fullscreen quad
-        setupVertexBuffer()
-
         // Set delegate
         metalView.delegate = self
 
@@ -256,18 +261,21 @@ final class MetalVideoRenderer: NSObject {
 
     // MARK: - Setup
 
-    private func setupVertexBuffer() {
-        let viewSize: CGSize = {
-            let drawable = metalView.drawableSize
-            if drawable.width > 0, drawable.height > 0 { return drawable }
-            return metalView.bounds.size
-        }()
-        let source = (videoSize.width > 0 && videoSize.height > 0) ? videoSize : viewSize
-        let crop = WallpaperAspectFill.textureRect(videoSize: source, viewSize: viewSize)
-        let u0 = Float(crop.minX)
-        let u1 = Float(crop.maxX)
-        let v0 = Float(crop.minY)
-        let v1 = Float(crop.maxY)
+    private var viewSize: CGSize {
+        let drawable = metalView.drawableSize
+        if drawable.width > 0, drawable.height > 0 { return drawable }
+        return metalView.bounds.size
+    }
+
+    /// Rebuilds the fullscreen quad only when the frame about to be drawn
+    /// comes from a video of another size, or the view size changed.
+    private func prepareQuad(forFrameOf videoSize: CGSize, viewSize: CGSize) {
+        guard let crop = WallpaperFrameCrop.rebuild(quadCrop, forFrameOf: videoSize, viewSize: viewSize) else { return }
+        let rect = crop.textureRect
+        let u0 = Float(rect.minX)
+        let u1 = Float(rect.maxX)
+        let v0 = Float(rect.minY)
+        let v1 = Float(rect.maxY)
         // NDC y=-1 is the bottom of the screen; CV textures have v=0 at the top.
         let vertices: [Vertex] = [
             Vertex(position: SIMD4<Float>(-1, -1, 0, 1), texCoord: SIMD2<Float>(u0, v1)),
@@ -281,6 +289,7 @@ final class MetalVideoRenderer: NSObject {
             length: vertices.count * MemoryLayout<Vertex>.stride,
             options: .storageModeShared
         )
+        quadCrop = vertexBuffer == nil ? nil : crop
     }
 
     // MARK: - Video Loading
@@ -321,9 +330,8 @@ final class MetalVideoRenderer: NSObject {
                 let sdrComposition = isHDR ? await Self.makeSDRVideoComposition(for: asset) : nil
 
                 guard !Task.isCancelled, generation == self.loadGeneration else { return }
-                self.videoSize = videoSize
-                self.setupVertexBuffer()
-                self.setupPlayer(with: asset, videoComposition: sdrComposition, generation: generation)
+                self.setupPlayer(with: asset, videoComposition: sdrComposition,
+                                 videoSize: videoSize, generation: generation)
             } catch {
                 guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
                 self.failLoading(.loadFailed)
@@ -399,6 +407,7 @@ final class MetalVideoRenderer: NSObject {
     private func setupPlayer(
         with asset: AVURLAsset,
         videoComposition: AVVideoComposition? = nil,
+        videoSize: CGSize,
         generation: UInt64
     ) {
         guard generation == loadGeneration else { return }
@@ -426,6 +435,7 @@ final class MetalVideoRenderer: NSObject {
 
         let previousPlayer = player
         videoOutput = output
+        playerVideoSize = videoSize
         player = newPlayer
         playerGeneration = generation
         playbackMonitor.attach(newPlayer)
@@ -633,12 +643,12 @@ final class MetalVideoRenderer: NSObject {
 
         lastPresentedSeconds = seconds
         logFrameColorInfoOnce(pixelBuffer)
-        guard let frame = createTexture(from: pixelBuffer) else { return nil }
+        guard let frame = createTexture(from: pixelBuffer, videoSize: playerVideoSize) else { return nil }
         frameGeneration = playerGeneration
         return frame
     }
 
-    private func createTexture(from pixelBuffer: CVPixelBuffer) -> VideoFrame? {
+    private func createTexture(from pixelBuffer: CVPixelBuffer, videoSize: CGSize) -> VideoFrame? {
         guard let textureCache = textureCache else { return nil }
 
         let width = CVPixelBufferGetWidth(pixelBuffer)
@@ -662,7 +672,7 @@ final class MetalVideoRenderer: NSObject {
         }
 
         guard let texture = CVMetalTextureGetTexture(cvTexture) else { return nil }
-        return VideoFrame(texture: texture, backing: cvTexture, cache: textureCache)
+        return VideoFrame(texture: texture, videoSize: videoSize, backing: cvTexture, cache: textureCache)
     }
 }
 
@@ -670,7 +680,8 @@ final class MetalVideoRenderer: NSObject {
 
 extension MetalVideoRenderer: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        setupVertexBuffer()
+        guard let frame = currentFrame else { return }
+        prepareQuad(forFrameOf: frame.videoSize, viewSize: size)
     }
 
     func draw(in view: MTKView) {
@@ -683,8 +694,10 @@ extension MetalVideoRenderer: MTKViewDelegate {
 
         // Never present an empty drawable — that is a black frame covering
         // the real wallpaper. Keep the last texture on screen across pause
-        // and across a reload until the next frame arrives.
-        guard let frame = currentFrame,
+        // and across a reload until the next frame arrives, with its own crop.
+        guard let frame = currentFrame else { return }
+        prepareQuad(forFrameOf: frame.videoSize, viewSize: viewSize)
+        guard let vertexBuffer,
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer(),
