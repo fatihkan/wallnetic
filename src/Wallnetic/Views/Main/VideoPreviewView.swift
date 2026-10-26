@@ -71,7 +71,8 @@ struct VideoPreviewView: View {
                                 Label(wallpaper.formattedResolution, systemImage: "aspectratio")
                                 Label(LoopRangeStatus.durationText(
                                     LoopRangeStatus(trim: PlaybackTrimStore.shared.trim(for: wallpaper.url),
-                                                    fileAt: wallpaper.url, duration: wallpaper.duration),
+                                                    fileAt: wallpaper.url, duration: wallpaper.duration,
+                                                    unbuilt: PlaybackTrimStore.shared.isUnbuilt(wallpaper.url)),
                                     duration: wallpaper.duration), systemImage: "clock")
                                 Label(wallpaper.formattedFileSize, systemImage: "doc")
                             }

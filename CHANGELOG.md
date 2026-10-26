@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the original. Start and End move frame by frame with the keyboard and
   VoiceOver, both engines loop only the range, and an edit never resumes a
   paused wallpaper. A range that no longer matches its file is shown as not
-  applied, and the full video plays.
+  applied, and the full video plays. The system wallpaper still comes from
+  inside the range, and optimized copies keep it.
 
 ### Fixed
 - Corrected lock-screen capability descriptions: Wallnetic provides system

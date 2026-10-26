@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import Combine
 import CryptoKit
 import Foundation
 import SwiftUI
@@ -32,6 +33,9 @@ final class SystemWallpaperSync: ObservableObject {
     /// rapid changes — slideshow, per-Space switching).
     private var inFlight: Set<URL> = []
     private var started = false
+    /// Loop ranges as of the last sync, to resync only the edited videos.
+    private var syncedTrims: [String: PlaybackTrim] = [:]
+    private var trimObserver: AnyCancellable?
 
     private init() {}
 
@@ -81,6 +85,30 @@ final class SystemWallpaperSync: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in self?.reapplyIfNeeded() }
         })
+        // A loop-range edit changes which still belongs to that video. It is
+        // not a wallpaper change, so it does not repost .wallpaperDidChange.
+        syncedTrims = PlaybackTrimStore.shared.trims
+        trimObserver = PlaybackTrimStore.shared.$trims.dropFirst().sink { [weak self] trims in
+            Task { @MainActor [weak self] in self?.resyncEditedRanges(trims) }
+        }
+    }
+
+    /// Resyncs only the displays showing a video whose range was added,
+    /// edited or removed.
+    private func resyncEditedRanges(_ trims: [String: PlaybackTrim]) {
+        let changed = Set(trims.keys).union(syncedTrims.keys).filter { trims[$0] != syncedTrims[$0] }
+        syncedTrims = trims
+        guard isEnabled, !changed.isEmpty else { return }
+        let manager = WallpaperManager.shared
+        if manager.wallpaperMode == .different {
+            for screen in NSScreen.screens {
+                if let wp = manager.wallpaper(for: screen), changed.contains(wp.url.standardizedFileURL.path) {
+                    sync(videoURL: wp.url, to: [screen])
+                }
+            }
+        } else if let wp = manager.currentWallpaper, changed.contains(wp.url.standardizedFileURL.path) {
+            sync(videoURL: wp.url, to: NSScreen.screens)
+        }
     }
 
     /// Full sync of the current wallpaper(s) — used when the toggle flips on.
@@ -122,8 +150,10 @@ final class SystemWallpaperSync: ObservableObject {
     private func sync(videoURL: URL, to screens: [NSScreen]) {
         guard videoURL.isFileURL else { return }
 
+        // A trimmed video's still comes from inside its loop range.
+        let trim = TrimmedVideoAsset.usableTrim(PlaybackTrimStore.shared.trim(for: videoURL), for: videoURL)
         let frameURL = Self.framesDirectory()
-            .appendingPathComponent(Self.frameFileName(for: videoURL))
+            .appendingPathComponent(Self.frameFileName(for: videoURL, trim: trim))
 
         if FileManager.default.fileExists(atPath: frameURL.path) {
             apply(frameURL: frameURL, to: screens)
@@ -143,7 +173,7 @@ final class SystemWallpaperSync: ObservableObject {
         let targetIDs = screens.compactMap(\.displayID)
 
         Task { [weak self] in
-            let extracted = await Self.extractFrame(videoURL: videoURL, maxSize: maxSize, to: frameURL)
+            let extracted = await Self.extractFrame(videoURL: videoURL, trim: trim, maxSize: maxSize, to: frameURL)
             guard let self else { return }
             self.inFlight.remove(videoURL)
             guard extracted, self.isEnabled else { return }
@@ -207,7 +237,7 @@ final class SystemWallpaperSync: ObservableObject {
     /// Extracts a representative still and writes it as JPEG. Runs off the
     /// main actor; touches no shared state.
     nonisolated private static func extractFrame(
-        videoURL: URL, maxSize: CGSize, to destination: URL
+        videoURL: URL, trim: PlaybackTrim?, maxSize: CGSize, to destination: URL
     ) async -> Bool {
         let asset = AVURLAsset(url: videoURL)
         let generator = AVAssetImageGenerator(asset: asset)
@@ -216,8 +246,17 @@ final class SystemWallpaperSync: ObservableObject {
         // Default (loose) tolerances: keyframe-aligned and fast.
 
         do {
-            let duration = (try? await asset.load(.duration).seconds) ?? 0
-            let time = CMTime(seconds: frameTime(forDuration: duration), preferredTimescale: 600)
+            let time: CMTime
+            if let trim {
+                // Offset into the loop like an untrimmed video's still, with
+                // tolerances that keep the decoded frame inside the range.
+                time = trim.stillFrameTime(atOffset: frameTime(forDuration: (trim.end - trim.start).seconds))
+                generator.requestedTimeToleranceBefore = time - trim.start
+                generator.requestedTimeToleranceAfter = max(.zero, trim.end - time - CMTime(value: 1, timescale: 600))
+            } else {
+                let duration = (try? await asset.load(.duration).seconds) ?? 0
+                time = CMTime(seconds: frameTime(forDuration: duration), preferredTimescale: 600)
+            }
             let (cgImage, _) = try await generator.image(at: time)
 
             let rep = NSBitmapImageRep(cgImage: cgImage)
@@ -246,9 +285,13 @@ final class SystemWallpaperSync: ObservableObject {
 
     /// Stable per-video frame filename, so a video applied again later
     /// reuses its cached frame and the wallpaper agent sees a fresh URL
-    /// whenever the video actually changes.
-    nonisolated static func frameFileName(for videoURL: URL) -> String {
-        let digest = SHA256.hash(data: Data(videoURL.path.utf8))
+    /// whenever the video, or its loop range, actually changes.
+    nonisolated static func frameFileName(for videoURL: URL, trim: PlaybackTrim? = nil) -> String {
+        var key = videoURL.path
+        if let trim {
+            key += "|\(trim.start.value)/\(trim.start.timescale)-\(trim.end.value)/\(trim.end.timescale)"
+        }
+        let digest = SHA256.hash(data: Data(key.utf8))
         let hex = digest.map { String(format: "%02x", $0) }.joined().prefix(16)
         return "frame-\(hex).jpg"
     }

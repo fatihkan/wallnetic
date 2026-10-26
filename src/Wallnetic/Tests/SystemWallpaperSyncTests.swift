@@ -1,4 +1,5 @@
 import XCTest
+import CoreMedia
 @testable import Wallnetic
 
 final class SystemWallpaperSyncTests: XCTestCase {
@@ -20,6 +21,22 @@ final class SystemWallpaperSyncTests: XCTestCase {
             SystemWallpaperSync.frameFileName(for: a),
             SystemWallpaperSync.frameFileName(for: b)
         )
+    }
+
+    func testFrameFileNameFollowsTheLoopRange() {
+        let url = URL(fileURLWithPath: "/tmp/library/clip.mp4")
+        let fingerprint = VideoFileFingerprint(byteSize: 1, modificationDate: .distantPast)
+        let first = PlaybackTrim(start: CMTime(value: 1, timescale: 1), end: CMTime(value: 3, timescale: 1),
+                                 fingerprint: fingerprint)
+        let second = PlaybackTrim(start: CMTime(value: 2, timescale: 1), end: CMTime(value: 3, timescale: 1),
+                                  fingerprint: fingerprint)
+        XCTAssertEqual(SystemWallpaperSync.frameFileName(for: url, trim: nil), SystemWallpaperSync.frameFileName(for: url),
+                       "Untrimmed videos keep their cached stills")
+        XCTAssertNotEqual(SystemWallpaperSync.frameFileName(for: url, trim: first), SystemWallpaperSync.frameFileName(for: url))
+        XCTAssertNotEqual(SystemWallpaperSync.frameFileName(for: url, trim: first),
+                          SystemWallpaperSync.frameFileName(for: url, trim: second), "An edit gives a fresh still URL")
+        XCTAssertEqual(SystemWallpaperSync.frameFileName(for: url, trim: first),
+                       SystemWallpaperSync.frameFileName(for: url, trim: first))
     }
 
     func testFrameFileNameFormat() {

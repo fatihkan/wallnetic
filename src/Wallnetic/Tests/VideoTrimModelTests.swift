@@ -9,7 +9,7 @@ final class VideoTrimModelTests: XCTestCase {
     private func seconds(_ value: Double) -> CMTime { CMTime(seconds: value, preferredTimescale: 600) }
 
     func testEditsSnapToFramesAndKeepTheMinimumLength() async throws {
-        let fixture = try await Fixture(frames: 30)
+        let fixture = try await TrimFixture(frames: 30)
         defer { fixture.remove() }
         let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
         defer { model.stopPreview() }
@@ -37,7 +37,7 @@ final class VideoTrimModelTests: XCTestCase {
     }
 
     func testSaveStoresTheRangeAndAFullSelectionRemovesIt() async throws {
-        let fixture = try await Fixture(frames: 30)
+        let fixture = try await TrimFixture(frames: 30)
         defer { fixture.remove() }
         let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
         defer { model.stopPreview() }
@@ -63,7 +63,7 @@ final class VideoTrimModelTests: XCTestCase {
     }
 
     func testSavingAfterRemovalOrReplacementStoresNothing() async throws {
-        let fixture = try await Fixture(frames: 30)
+        let fixture = try await TrimFixture(frames: 30)
         defer { fixture.remove() }
         var inLibrary = true
         let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store,
@@ -78,14 +78,14 @@ final class VideoTrimModelTests: XCTestCase {
         XCTAssertNil(fixture.store.trim(for: fixture.video))
 
         inLibrary = true
-        try await Fixture.writeVideo(to: fixture.video, frames: 40)
+        try await TrimFixture.writeVideo(to: fixture.video, frames: 40)
         XCTAssertFalse(model.save())
         XCTAssertTrue(model.error?.contains("changed while the editor was open") == true)
         XCTAssertNil(fixture.store.trim(for: fixture.video))
     }
 
     func testARangeForADifferentFileIsReportedAndNotApplied() async throws {
-        let fixture = try await Fixture(frames: 30)
+        let fixture = try await TrimFixture(frames: 30)
         defer { fixture.remove() }
         let stale = PlaybackTrim(start: CMTime(value: 1, timescale: 1), end: CMTime(value: 2, timescale: 1),
                                  fingerprint: VideoFileFingerprint(byteSize: 1, modificationDate: .distantPast))
@@ -110,7 +110,7 @@ final class VideoTrimModelTests: XCTestCase {
     }
 
     func testAVideoShorterThanTheMinimumCanOnlyLoopInFull() async throws {
-        let fixture = try await Fixture(frames: 5)
+        let fixture = try await TrimFixture(frames: 5)
         defer { fixture.remove() }
         let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
         defer { model.stopPreview() }
@@ -147,7 +147,7 @@ final class VideoTrimModelTests: XCTestCase {
             times.append(CMTime(value: ticks, timescale: 600))
             ticks += [30, 60, 90][index % 3]
         }
-        let fixture = try await Fixture(times: times, end: CMTime(value: ticks, timescale: 600))
+        let fixture = try await TrimFixture(times: times, end: CMTime(value: ticks, timescale: 600))
         defer { fixture.remove() }
         let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
         defer { model.stopPreview() }
@@ -172,7 +172,7 @@ final class VideoTrimModelTests: XCTestCase {
     /// the track's start, is where the video begins, and frames map through
     /// the edit into the file's timeline.
     func testALeadingEmptyEditStartsTheVideoAtItsFirstFrame() async throws {
-        let fixture = try await Fixture(times: (5..<25).map { CMTime(value: Int64($0), timescale: 10) },
+        let fixture = try await TrimFixture(times: (5..<25).map { CMTime(value: Int64($0), timescale: 10) },
                                         end: CMTime(value: 25, timescale: 10))
         defer { fixture.remove() }
         let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
@@ -268,7 +268,7 @@ final class VideoTrimModelTests: XCTestCase {
     func testReopeningANanosecondTimescaleRangeKeepsItsExactEnd() async throws {
         let frame = CMTime(value: 33_333_333, timescale: 1_000_000_000)
         let times = (0..<121).map { CMTimeMultiply(frame, multiplier: Int32($0)) }
-        let fixture = try await Fixture(times: times, end: CMTimeMultiply(frame, multiplier: 121),
+        let fixture = try await TrimFixture(times: times, end: CMTimeMultiply(frame, multiplier: 121),
                                         mediaTimeScale: 1_000_000_000)
         defer { fixture.remove() }
         let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
@@ -324,8 +324,9 @@ final class VideoTrimModelTests: XCTestCase {
 }
 
 /// A short 10 fps video in its own directory, with an isolated range store.
+/// Also used by other tests that need a real video file.
 @MainActor
-private struct Fixture {
+struct TrimFixture {
     let directory: URL
     let video: URL
     let suite: String

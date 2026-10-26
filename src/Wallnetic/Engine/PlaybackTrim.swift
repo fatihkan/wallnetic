@@ -104,6 +104,31 @@ struct PlaybackTrim: Equatable {
         if rule == .up, boundary(frames) < time { frames += 1 }
         return boundary(frames)
     }
+
+    /// Where a still image of this range comes from: `offset` seconds after
+    /// Start, kept at least one 1/600 s tick before End so the still is
+    /// inside the range.
+    func stillFrameTime(atOffset offset: Double) -> CMTime {
+        let tick = CMTime(value: 1, timescale: 600)
+        let latest = max(0, (end - start - tick).seconds)
+        let seconds = offset.isFinite ? min(max(0, offset), latest) : 0
+        return start + CMTime(seconds: seconds, preferredTimescale: 600)
+    }
+
+    /// The range for a copy of this video (an optimized copy) whose video
+    /// track spans `trackRange` with frames of `frameDuration`: Start and End
+    /// move to the first copy frame at or after them, End is clamped to the
+    /// copy, and the copy's own fingerprint is recorded. Nil when nothing
+    /// shorter than the whole copy, and at least the minimum length, remains.
+    func inherited(byTrack trackRange: CMTimeRange, frameDuration: CMTime,
+                   fingerprint: VideoFileFingerprint) -> PlaybackTrim? {
+        guard trackRange.isValid, !trackRange.isEmpty, trackRange.end.isNumeric else { return nil }
+        let origin = trackRange.start
+        let copyStart = max(origin, Self.aligned(start, frameDuration: frameDuration, origin: origin, rule: .up))
+        var copyEnd = Self.aligned(end, frameDuration: frameDuration, origin: origin, rule: .up)
+        if copyEnd > trackRange.end - Self.endTolerance { copyEnd = trackRange.end }
+        return try? Self.selection(start: copyStart, end: copyEnd, duration: trackRange.end, fingerprint: fingerprint)
+    }
 }
 
 /// Stored as exact integer times. `CMTime` is not `Codable`, and a decoded

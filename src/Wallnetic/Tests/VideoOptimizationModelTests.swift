@@ -1,5 +1,6 @@
 import XCTest
 import AppKit
+import CoreMedia
 @testable import Wallnetic
 
 @MainActor
@@ -52,6 +53,34 @@ final class VideoOptimizationModelTests: XCTestCase {
         XCTAssertEqual(library.currentWallpaper?.url, source.url)
         XCTAssertEqual(library.userInitiated, [true, true])
     }
+    /// #309: a copy of a trimmed video loops the same part, on the copy's own
+    /// frames and with its own fingerprint; the original's range is unchanged.
+    func testCopyOfATrimmedVideoInheritsItsLoopRange() async throws {
+        let suite = "VideoOptimizationTrims.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let trims = PlaybackTrimStore(defaults: defaults)
+        try await TrimFixture.writeVideo(to: source.url, frames: 30)
+        try await TrimFixture.writeVideo(to: result.url, times: (0..<24).map { CMTime(value: Int64($0), timescale: 8) },
+                                         end: CMTime(value: 24, timescale: 8))
+        let sourceTrim = PlaybackTrim(start: CMTime(value: 11, timescale: 10), end: CMTime(value: 23, timescale: 10),
+                                      fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: source.url)))
+        try trims.setTrim(sourceTrim, for: source.url)
+
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library, trims: trims)
+        await model.load().value
+        let task = try XCTUnwrap(model.start())
+        await task.value
+        let copyTrim = try XCTUnwrap(trims.trim(for: result.url))
+        XCTAssertEqual(copyTrim.start, CMTime(value: 9, timescale: 8))
+        XCTAssertEqual(copyTrim.end, CMTime(value: 19, timescale: 8))
+        XCTAssertEqual(copyTrim.fingerprint, VideoFileFingerprint(fileAt: result.url))
+        XCTAssertEqual(trims.trim(for: source.url), sourceTrim)
+        XCTAssertEqual(model.message, "Copy added to Library with the same loop range. Your original is unchanged.")
+        try trims.setTrim(nil, for: result.url)
+        XCTAssertEqual(trims.trim(for: source.url), sourceTrim, "Each item's range is edited on its own")
+    }
+
     func testUnsupportedPresetAndInspectionFailureStayVisible() async {
         exporter.unavailable = [.hevc: "No hardware HEVC"]
         let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)

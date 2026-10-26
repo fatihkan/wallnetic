@@ -294,7 +294,8 @@ struct WallpaperCard: View {
     }
 
     private var loopStatus: LoopRangeStatus {
-        LoopRangeStatus(trim: trims.trim(for: wallpaper.url), fileAt: wallpaper.url, duration: wallpaper.duration)
+        LoopRangeStatus(trim: trims.trim(for: wallpaper.url), fileAt: wallpaper.url, duration: wallpaper.duration,
+                        unbuilt: trims.isUnbuilt(wallpaper.url))
     }
 
     /// Trimmed items show the loop length with scissors; a range that cannot
@@ -457,7 +458,8 @@ struct SelectedWallpaperBar: View {
                     Text(wallpaper.formattedResolution)
                     Text("·").foregroundColor(.primary.opacity(0.3))
                     Text(LoopRangeStatus.durationText(LoopRangeStatus(trim: trims.trim(for: wallpaper.url),
-                                                                      fileAt: wallpaper.url, duration: wallpaper.duration),
+                                                                      fileAt: wallpaper.url, duration: wallpaper.duration,
+                                                                      unbuilt: trims.isUnbuilt(wallpaper.url)),
                                                       duration: wallpaper.duration))
                 }
                 .font(Typo.data)

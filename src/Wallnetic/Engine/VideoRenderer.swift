@@ -32,6 +32,13 @@ class VideoRenderer: NSObject {
     private var playerGeneration: UInt64?
     /// The range the current player loops, or nil when it plays the full video.
     private(set) var appliedTrim: PlaybackTrim?
+    /// The range the latest load asked for, once it matched the file.
+    private var requestedTrim: PlaybackTrim?
+
+    var trimApplied: Bool? {
+        guard playerGeneration == loadGeneration, requestedTrim != nil else { return nil }
+        return appliedTrim != nil
+    }
 
     let playbackMonitor = RendererPlaybackMonitor()
     /// True once the layer has actually produced a frame. The overlay window
@@ -68,6 +75,7 @@ class VideoRenderer: NSObject {
         }
 
         let trim = TrimmedVideoAsset.usableTrim(trim, for: url)
+        requestedTrim = trim
         let asset = TrimmedVideoAsset.sourceAsset(url: url, trim: trim)
 
         loadTask = Task { @MainActor [weak self] in
@@ -98,6 +106,7 @@ class VideoRenderer: NSObject {
         if playerGeneration == loadGeneration, appliedTrim == nil,
            TrimmedVideoAsset.usableTrim(trim, for: loadedURL) == nil {
             loadedTrim = trim
+            requestedTrim = nil
             pendingTrimReload = nil
             return
         }
@@ -266,6 +275,7 @@ class VideoRenderer: NSObject {
         shouldPlayWhenReady = false
         loadedURL = nil
         loadedTrim = nil
+        requestedTrim = nil
         pendingTrimReload = nil
         trimReloadGeneration = nil
         playerGeneration = nil

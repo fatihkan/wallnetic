@@ -132,6 +132,13 @@ final class MetalVideoRenderer: NSObject {
     private var trimReloadGeneration: UInt64?
     /// The range the current player loops, or nil when it plays the full video.
     private(set) var appliedTrim: PlaybackTrim?
+    /// The range the latest load asked for, once it matched the file.
+    private var requestedTrim: PlaybackTrim?
+
+    var trimApplied: Bool? {
+        guard playerGeneration == loadGeneration, requestedTrim != nil else { return nil }
+        return appliedTrim != nil
+    }
 
     // MARK: - State
 
@@ -314,6 +321,7 @@ final class MetalVideoRenderer: NSObject {
         }
 
         let trim = TrimmedVideoAsset.usableTrim(trim, for: url)
+        requestedTrim = trim
         let asset = TrimmedVideoAsset.sourceAsset(url: url, trim: trim)
 
         loadTask = Task { @MainActor [weak self] in
@@ -362,6 +370,7 @@ final class MetalVideoRenderer: NSObject {
         if playerGeneration == loadGeneration, appliedTrim == nil,
            TrimmedVideoAsset.usableTrim(trim, for: loadedURL) == nil {
             loadedTrim = trim
+            requestedTrim = nil
             pendingTrimReload = nil
             return
         }
@@ -678,6 +687,7 @@ final class MetalVideoRenderer: NSObject {
         wantsToPlay = false
         loadedURL = nil
         loadedTrim = nil
+        requestedTrim = nil
         pendingTrimReload = nil
         trimReloadGeneration = nil
         stopDisplayLink()

@@ -120,6 +120,17 @@ final class TrimmedPlaybackTests: XCTestCase {
         try await assertUnappliedRangeRemovalKeepsPlayer(renderer, applied: { renderer.appliedTrim })
     }
 
+    @MainActor
+    func testAVFoundationReportsWhetherTheRangeApplied() async throws {
+        try await assertReportsTrimOutcome(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalReportsWhetherTheRangeApplied() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertReportsTrimOutcome(MetalVideoRenderer())
+    }
+
     // MARK: - Scenarios
 
     /// While a trim edit loads, no resume path may restart the previous range,
@@ -346,6 +357,31 @@ final class TrimmedPlaybackTests: XCTestCase {
         XCTAssertTrue(renderer.hasPresentedFrame, file: file, line: line)
         XCTAssertEqual(renderer.currentPlaybackTime ?? -1, time ?? -2, accuracy: 0.02, file: file, line: line)
         XCTAssertEqual(applied(), current, "The edit applies on the next resume", file: file, line: line)
+    }
+
+    /// The Library shows a range as not applied when the renderer had to play
+    /// the full video instead, including a range it could not build.
+    @MainActor
+    private func assertReportsTrimOutcome(_ renderer: WallpaperRenderer) async throws {
+        let video = temporaryVideoURL("outcome")
+        let window = host(renderer)
+        defer { cleanUp(renderer, window: window, video: video) }
+        try await writeNumberedVideo(to: video)
+        renderer.loadVideo(url: video, trim: nil)
+        renderer.play()
+        try await waitUntil("first frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
+        XCTAssertNil(renderer.trimApplied, "No range, nothing to report")
+
+        renderer.loadVideo(url: video, trim: try trimming(video, fromFrame: 10, toFrame: 20))
+        try await waitUntil("trimmed frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
+        XCTAssertEqual(renderer.trimApplied, true)
+
+        let fingerprint = try XCTUnwrap(VideoFileFingerprint(fileAt: video))
+        let outside = PlaybackTrim(start: CMTime(value: 25, timescale: 10), end: CMTime(value: 35, timescale: 10),
+                                   fingerprint: fingerprint)
+        renderer.loadVideo(url: video, trim: outside)
+        try await waitUntil("full-video frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
+        XCTAssertEqual(renderer.trimApplied, false, "The full video plays, and the Library is told")
     }
 
     // MARK: - Fixtures

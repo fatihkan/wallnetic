@@ -13,6 +13,9 @@ protocol WallpaperRenderer: AnyObject {
     /// Reloads the current video with an edited loop range without changing
     /// play/pause intent. A paused renderer applies it when it next resumes.
     func applyTrim(_ trim: PlaybackTrim?)
+    /// For the current player: whether its load's range applied (`true`) or
+    /// fell back to the full video (`false`); nil when there was no range.
+    var trimApplied: Bool? { get }
     func play()
     func pause()
     func stop()
@@ -44,6 +47,8 @@ extension WallpaperRenderer {
     func loadVideo(url: URL) {
         loadVideo(url: url, trim: nil)
     }
+
+    var trimApplied: Bool? { nil }
 }
 
 // Conform VideoRenderer to the protocol
@@ -305,6 +310,16 @@ class DesktopWindowController {
         }
     }
 
+    /// Tells the Library which ranges a renderer could not build (the full
+    /// video plays instead) and which it applied, once a load has its frame.
+    private func reportTrimOutcomes() {
+        for (id, url) in screenWallpaperURLs {
+            guard let renderer = renderers[id], renderer.playbackMonitor.hasFrameForCurrentLoad,
+                  let applied = renderer.trimApplied else { continue }
+            trimStore.noteTrim(applied: applied, for: url)
+        }
+    }
+
     /// A loop-range edit reloads only the displays showing that video,
     /// through the renderer's own reload; the others ignore an unchanged
     /// range. Not `setWallpaper`: it replaces the display's Pause After entry,
@@ -327,6 +342,7 @@ class DesktopWindowController {
 
     private func refreshPlaybackLifecycle(preferences: PauseAfterSettings.Preferences? = nil) {
         defer { refreshPlaybackStatuses() }
+        reportTrimOutcomes()
         if durationPlayback.hasActivePlayback {
             beginPlaybackActivity()
             startWatchdog()

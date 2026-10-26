@@ -78,6 +78,60 @@ final class PlaybackTrimTests: XCTestCase {
         XCTAssertLessThanOrEqual(fitted.end, trackEnd)
     }
 
+    func testStillFrameTimeStaysInsideTheRange() {
+        let trim = PlaybackTrim(start: CMTime(value: 2, timescale: 1), end: CMTime(value: 5, timescale: 1),
+                                fingerprint: fingerprint)
+        XCTAssertEqual(trim.stillFrameTime(atOffset: 0.5), CMTime(value: 25, timescale: 10))
+        XCTAssertEqual(trim.stillFrameTime(atOffset: -1), trim.start)
+        XCTAssertEqual(trim.stillFrameTime(atOffset: .nan), trim.start)
+        XCTAssertLessThan(trim.stillFrameTime(atOffset: 99), trim.end, "The still never comes from End or later")
+        XCTAssertGreaterThanOrEqual(trim.stillFrameTime(atOffset: 99), trim.end - CMTime(value: 2, timescale: 600))
+    }
+
+    func testOptimizedCopyInheritsTheRangeOnItsOwnFrames() throws {
+        let copyPrint = VideoFileFingerprint(byteSize: 5, modificationDate: Date(timeIntervalSinceReferenceDate: 1))
+        let eighth = CMTime(value: 1, timescale: 8)
+        let threeSeconds = CMTimeRange(start: .zero, duration: CMTime(value: 3, timescale: 1))
+        let source = PlaybackTrim(start: CMTime(value: 11, timescale: 10), end: CMTime(value: 23, timescale: 10),
+                                  fingerprint: fingerprint)
+        let copy = try XCTUnwrap(source.inherited(byTrack: threeSeconds, frameDuration: eighth, fingerprint: copyPrint))
+        XCTAssertEqual(copy.start, CMTime(value: 9, timescale: 8), "The first copy frame at or after Start")
+        XCTAssertEqual(copy.end, CMTime(value: 19, timescale: 8))
+        XCTAssertEqual(copy.fingerprint, copyPrint)
+
+        let toEnd = PlaybackTrim(start: CMTime(value: 1, timescale: 1), end: CMTime(value: 3, timescale: 1),
+                                 fingerprint: fingerprint)
+        let shorter = CMTimeRange(start: .zero, duration: CMTime(value: 2_995, timescale: 1_000))
+        XCTAssertEqual(toEnd.inherited(byTrack: shorter, frameDuration: eighth, fingerprint: copyPrint)?.end,
+                       shorter.end, "End is clamped to a slightly shorter copy")
+        let whole = PlaybackTrim(start: .zero, end: CMTime(value: 2_995, timescale: 1_000), fingerprint: fingerprint)
+        XCTAssertNil(whole.inherited(byTrack: threeSeconds, frameDuration: eighth, fingerprint: copyPrint),
+                     "A range covering the whole copy stores no trim")
+        let tight = PlaybackTrim(start: CMTime(value: 101, timescale: 100), end: CMTime(value: 2, timescale: 1),
+                                 fingerprint: fingerprint)
+        XCTAssertNil(tight.inherited(byTrack: threeSeconds, frameDuration: eighth, fingerprint: copyPrint),
+                     "Less than the minimum after snapping to the copy's frames")
+    }
+
+    func testUnbuiltMarksClearWhenTheRangeIsEdited() throws {
+        let suite = "PlaybackTrimStoreMarks.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = PlaybackTrimStore(defaults: defaults)
+        let url = URL(fileURLWithPath: "/tmp/library/a.mp4")
+        try store.setTrim(PlaybackTrim(start: .zero, end: CMTime(value: 2, timescale: 1), fingerprint: fingerprint),
+                          for: url)
+        store.noteTrim(applied: false, for: URL(fileURLWithPath: "/tmp/library/./a.mp4"))
+        XCTAssertTrue(store.isUnbuilt(url))
+        store.noteTrim(applied: true, for: url)
+        XCTAssertFalse(store.isUnbuilt(url))
+        store.noteTrim(applied: false, for: url)
+        try store.setTrim(nil, for: url)
+        XCTAssertFalse(store.isUnbuilt(url), "An edit clears the mark until the next load reports")
+        store.noteTrim(applied: false, for: url)
+        XCTAssertTrue(PlaybackTrimStore(defaults: defaults).unbuiltPaths.isEmpty, "Marks are not saved")
+    }
+
     func testFrameAlignmentUsesTheTracksOwnFrameTiming() {
         let ntsc = CMTime(value: 1001, timescale: 30000)
         XCTAssertEqual(PlaybackTrim.aligned(CMTime(value: 1, timescale: 1), frameDuration: ntsc),

@@ -11,6 +11,9 @@ final class PlaybackTrimStore: ObservableObject {
     private struct Document: Codable { var version = 1; var trims: [String: PlaybackTrim] }
 
     @Published private(set) var trims: [String: PlaybackTrim] = [:]
+    /// Paths whose range a renderer could not build, so the full video plays.
+    /// Not saved: the next load reports again, and an edit clears the mark.
+    @Published private(set) var unbuiltPaths: Set<String> = []
     private let defaults: UserDefaults
     /// Saved ranges that could not be read. They are kept as a recovery backup
     /// when the next edit replaces them, never silently discarded.
@@ -32,6 +35,17 @@ final class PlaybackTrimStore: ObservableObject {
 
     func trim(for url: URL) -> PlaybackTrim? {
         Self.trim(for: url, in: trims)
+    }
+
+    func isUnbuilt(_ url: URL) -> Bool {
+        unbuiltPaths.contains(url.standardizedFileURL.path)
+    }
+
+    /// Records whether a renderer applied the video's range after loading it.
+    func noteTrim(applied: Bool, for url: URL) {
+        let path = url.standardizedFileURL.path
+        guard unbuiltPaths.contains(path) == applied else { return }
+        if applied { unbuiltPaths.remove(path) } else { unbuiltPaths.insert(path) }
     }
 
     /// Stores a video's range; nil removes it.
@@ -60,6 +74,8 @@ final class PlaybackTrimStore: ObservableObject {
         try WallpaperSchedulePersistence.write(Document(trims: next), key: Self.key, defaults: defaults,
                                                backup: isUnreadable)
         isUnreadable = false
+        let edited = Set(next.keys).union(trims.keys).filter { next[$0] != trims[$0] }
         trims = next
+        if !unbuiltPaths.isDisjoint(with: edited) { unbuiltPaths.subtract(edited) }
     }
 }
