@@ -120,9 +120,11 @@ struct PlaybackTrim: Equatable {
     /// the first copy frame at or after them and End is clamped to the copy, so
     /// no copy frame after the original End is kept. Snapping can leave a
     /// minimum-length range up to a frame short; Start then moves back by the
-    /// least needed. Nil when the range does not overlap the copy.
+    /// least needed. Nil when the range does not overlap the copy, or the copy
+    /// is too short to keep a minimum-length range.
     func copyRange(inTrack trackRange: CMTimeRange, frameDuration: CMTime) -> (start: CMTime, end: CMTime)? {
-        guard trackRange.isValid, !trackRange.isEmpty, trackRange.start.isNumeric, trackRange.end.isNumeric else {
+        guard trackRange.isValid, !trackRange.isEmpty, trackRange.start.isNumeric, trackRange.end.isNumeric,
+              start < trackRange.end, end > trackRange.start else {
             return nil
         }
         let origin = trackRange.start
@@ -132,7 +134,7 @@ struct PlaybackTrim: Equatable {
             copyStart = max(origin, Self.aligned(copyEnd - Self.minimumLength, frameDuration: frameDuration,
                                                  origin: origin, rule: .down))
         }
-        guard copyStart < copyEnd else { return nil }
+        guard copyEnd - copyStart >= Self.minimumLength else { return nil }
         return (copyStart, copyEnd)
     }
 

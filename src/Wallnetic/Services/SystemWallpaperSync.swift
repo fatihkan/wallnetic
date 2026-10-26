@@ -92,6 +92,15 @@ final class SystemWallpaperSync: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in self?.reapplyIfNeeded() }
         })
+        // Switching to Different reloads each display without a still sync.
+        observers.append(center.addObserver(
+            forName: .applyScreenWallpapers, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.isEnabled else { return }
+                self.syncOutdatedDisplays()
+            }
+        })
         // A loop-range edit changes which still belongs to that video. It is
         // not a wallpaper change, so it does not repost .wallpaperDidChange.
         syncedTrims = PlaybackTrimStore.shared.trims
@@ -122,6 +131,21 @@ final class SystemWallpaperSync: ObservableObject {
             if let id = screen.displayID, let url = playback.playbackWallpaperURL(on: id) { videos[id] = url }
         }
         return videos
+    }
+
+    /// The still a display needs for the video it plays now.
+    private func expectedFrame(for video: URL) -> URL {
+        let trim = TrimmedVideoAsset.usableTrim(PlaybackTrimStore.shared.trim(for: video), for: video)
+        return Self.framesDirectory().appendingPathComponent(Self.frameFileName(for: video, trim: trim))
+    }
+
+    /// Syncs displays whose last requested still is not the one for what they
+    /// play now: a display connected or reconnected since, or one whose video
+    /// changed without a still sync. A still that failed to extract is tried
+    /// again only once its video or range changes.
+    private func syncOutdatedDisplays() {
+        guard let playing = playingVideos() else { return }
+        syncGrouped(playing.filter { requestedFrames[$0.key] != expectedFrame(for: $0.value) })
     }
 
     /// Syncs displays grouped by video, so each still is extracted once for
@@ -255,10 +279,7 @@ final class SystemWallpaperSync: ObservableObject {
     /// — push the last frame wherever the OS reports something else.
     private func reapplyIfNeeded() {
         guard isEnabled else { return }
-        // A display connected since the last sync has no still of its own yet.
-        if let playing = playingVideos() {
-            syncGrouped(playing.filter { appliedFrames[$0.key] == nil })
-        }
+        syncOutdatedDisplays()
         for screen in NSScreen.screens {
             guard let id = screen.displayID,
                   let frameURL = appliedFrames[id],

@@ -143,6 +143,12 @@ final class PlaybackTrimTests: XCTestCase {
         XCTAssertNil(lastSecond.inherited(byTrack: CMTimeRange(start: .zero, duration: CMTime(value: 1, timescale: 2)),
                                           frameDuration: tenths, fingerprint: copyPrint),
                      "A copy shorter than the minimum keeps no range")
+        XCTAssertNil(lastSecond.copyRange(inTrack: CMTimeRange(start: .zero, duration: CMTime(value: 1, timescale: 2)),
+                                          frameDuration: tenths), "Too short is not mistaken for the whole copy")
+        let late = PlaybackTrim(start: CMTime(value: 8, timescale: 1), end: CMTime(value: 9, timescale: 1),
+                                fingerprint: fingerprint)
+        XCTAssertNil(late.copyRange(inTrack: CMTimeRange(start: .zero, duration: CMTime(value: 5, timescale: 1)),
+                                    frameDuration: tenths), "A range outside the copy is not moved into it")
     }
 
     func testUnbuiltMarksClearWhenTheRangeIsEdited() throws {
