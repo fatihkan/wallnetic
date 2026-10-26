@@ -192,6 +192,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    // The wallpaper's only resign-active hook; the controller does not observe
+    // it as well. Resign-active, not every app switch: didActivateApplication
+    // fires while the user works in a windowed app, and poking the renderer
+    // then (like the old 4 Hz pulse) paused/unpaused Metal in a loop.
     func applicationWillResignActive(_ notification: Notification) {
         desktopWindowController?.maintainPlayback()
     }

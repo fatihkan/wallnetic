@@ -908,10 +908,6 @@ extension Notification.Name {
     static let screenWallpaperDidChange = Notification.Name("screenWallpaperDidChange")
     static let applyScreenWallpapers = Notification.Name("applyScreenWallpapers")
     static let openMainWindow = Notification.Name("openMainWindow")
-    /// Posted after `NSApp.setActivationPolicy` (and similar events) so the
-    /// desktop overlay can re-pin itself. Policy flips tear down window
-    /// backing stores and otherwise leave a black desktop.
-    static let desktopWindowsNeedReassert = Notification.Name("desktopWindowsNeedReassert")
 }
 
 // MARK: - Screen Wallpaper Info

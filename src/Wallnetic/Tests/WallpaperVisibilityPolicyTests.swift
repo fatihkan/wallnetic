@@ -18,24 +18,6 @@ final class WallpaperVisibilityPolicyTests: XCTestCase {
 
     // MARK: - Playback smoothness (stutter)
 
-    func testReassertSkippedWhenWindowAlreadyPinned() {
-        XCTAssertFalse(WallpaperPlaybackPolicy.shouldReassertWindow(
-            levelMatches: true,
-            overlayShouldShow: true,
-            isOrderedIn: true,
-            alphaIsFull: true
-        ))
-    }
-
-    func testReassertWhenLevelDropped() {
-        XCTAssertTrue(WallpaperPlaybackPolicy.shouldReassertWindow(
-            levelMatches: false,
-            overlayShouldShow: true,
-            isOrderedIn: true,
-            alphaIsFull: true
-        ))
-    }
-
     func testPlayNotReissuedAtRateOne() {
         XCTAssertFalse(WallpaperPlaybackPolicy.shouldIssuePlay(currentRate: 1))
         XCTAssertTrue(WallpaperPlaybackPolicy.shouldIssuePlay(currentRate: 0))
