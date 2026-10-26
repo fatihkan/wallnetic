@@ -188,17 +188,51 @@ final class VideoTrimModelTests: XCTestCase {
         XCTAssertEqual(fixture.store.trim(for: fixture.video)?.start, CMTime(value: 9, timescale: 10))
     }
 
-    func testFrameBoundariesMapThroughEditsAndFindNeighbours() {
+    func testFrameBoundariesMapThroughEditsAndFindNeighbours() throws {
         let media = (0..<4).map { CMTime(value: Int64($0), timescale: 10) }
         let shifted = CMTimeMapping(source: CMTimeRange(start: .zero, duration: CMTime(value: 4, timescale: 10)),
                                     target: CMTimeRange(start: CMTime(value: 5, timescale: 10),
                                                         duration: CMTime(value: 4, timescale: 10)))
-        XCTAssertEqual(FrameBoundaries.trackTimes(ofMediaTimes: media, edits: [shifted]),
-                       (5..<9).map { CMTime(value: Int64($0), timescale: 10) })
+        XCTAssertEqual(FrameBoundaries.layout(ofMediaTimes: media, edits: [.init(mapping: shifted, isEmpty: false)])?
+                        .frameStarts, (5..<9).map { CMTime(value: Int64($0), timescale: 10) })
         let slowed = CMTimeMapping(source: shifted.source,
                                    target: CMTimeRange(start: .zero, duration: CMTime(value: 8, timescale: 10)))
-        XCTAssertNil(FrameBoundaries.trackTimes(ofMediaTimes: media, edits: [slowed]), "A speed change is not exact")
-        XCTAssertEqual(FrameBoundaries.trackTimes(ofMediaTimes: media.reversed(), edits: []), media)
+        XCTAssertNil(FrameBoundaries.layout(ofMediaTimes: media, edits: [.init(mapping: slowed, isEmpty: false)]),
+                     "A speed change is not exact")
+        XCTAssertEqual(FrameBoundaries.layout(ofMediaTimes: media.reversed(), edits: [])?.frameStarts, media)
+
+        // A cut that keeps [0, 1 s) and [2.01 s, 4 s) of a 30 fps clip: the
+        // second edit starts inside frame 60, which is shown from 1 s.
+        let frame = { (index: Int64) in CMTime(value: index, timescale: 30) }
+        let clip = (0..<120).map { frame(Int64($0)) }
+        let cutPoint = CMTime(value: 201, timescale: 100)
+        let cut: [FrameBoundaries.Edit] = [
+            .init(mapping: CMTimeMapping(source: CMTimeRange(start: .zero, end: frame(30)),
+                                         target: CMTimeRange(start: .zero, end: frame(30))), isEmpty: false),
+            .init(mapping: CMTimeMapping(source: CMTimeRange(start: cutPoint, end: frame(120)),
+                                         target: CMTimeRange(start: frame(30), duration: frame(120) - cutPoint)),
+                  isEmpty: false),
+        ]
+        let cutLayout = try XCTUnwrap(FrameBoundaries.layout(ofMediaTimes: clip, edits: cut))
+        XCTAssertTrue(cutLayout.frameStarts.contains(frame(30)), "The second edit's start is a frame start")
+        XCTAssertTrue(cutLayout.frameStarts.contains(frame(30) + (frame(61) - cutPoint)))
+        XCTAssertTrue(cutLayout.gapStarts.isEmpty)
+
+        // An empty edit at 1 s: its start can end a loop, but no frame starts there.
+        let gapped: [FrameBoundaries.Edit] = [
+            .init(mapping: CMTimeMapping(source: CMTimeRange(start: .zero, end: frame(30)),
+                                         target: CMTimeRange(start: .zero, end: frame(30))), isEmpty: false),
+            .init(mapping: CMTimeMapping(source: .invalid,
+                                         target: CMTimeRange(start: frame(30), duration: CMTime(value: 1, timescale: 2))),
+                  isEmpty: true),
+            .init(mapping: CMTimeMapping(source: CMTimeRange(start: frame(30), end: frame(60)),
+                                         target: CMTimeRange(start: CMTime(value: 3, timescale: 2), duration: frame(30))),
+                  isEmpty: false),
+        ]
+        let gapLayout = try XCTUnwrap(FrameBoundaries.layout(ofMediaTimes: clip, edits: gapped))
+        XCTAssertEqual(gapLayout.gapStarts, [frame(30)])
+        XCTAssertFalse(gapLayout.frameStarts.contains(frame(30)))
+        XCTAssertTrue(gapLayout.frameStarts.contains(CMTime(value: 3, timescale: 2)))
 
         let sorted = [0, 5, 15, 30].map { CMTime(value: Int64($0), timescale: 100) }
         XCTAssertEqual(FrameBoundaries.nearest(to: CMTime(value: 9, timescale: 100), in: sorted), sorted[1])
@@ -229,6 +263,35 @@ final class VideoTrimModelTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(end - latest, PlaybackTrim.minimumLength)
     }
 
+    /// Frames timed in nanoseconds, a track that ends in 1/600 s units: a
+    /// reopened range keeps its exact End, so Save and a full-length reset work.
+    func testReopeningANanosecondTimescaleRangeKeepsItsExactEnd() async throws {
+        let frame = CMTime(value: 33_333_333, timescale: 1_000_000_000)
+        let times = (0..<121).map { CMTimeMultiply(frame, multiplier: Int32($0)) }
+        let fixture = try await Fixture(times: times, end: CMTimeMultiply(frame, multiplier: 121),
+                                        mediaTimeScale: 1_000_000_000)
+        defer { fixture.remove() }
+        let model = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
+        defer { model.stopPreview() }
+        await model.load()
+        model.stepStart(frames: 10)
+        XCTAssertTrue(model.save(), model.error ?? "")
+        let stored = try XCTUnwrap(fixture.store.trim(for: fixture.video))
+        XCTAssertEqual(stored.end, model.duration)
+
+        let reopened = VideoTrimModel(wallpaper: Wallpaper(url: fixture.video), store: fixture.store, isInLibrary: { _ in true })
+        defer { reopened.stopPreview() }
+        await reopened.load()
+        XCTAssertEqual(reopened.start, stored.start)
+        XCTAssertEqual(reopened.end, reopened.duration, "End reopens exactly at the end of the video")
+        reopened.stepStart(frames: 1)
+        XCTAssertTrue(reopened.save(), reopened.error ?? "")
+        reopened.resetToFullVideo()
+        XCTAssertTrue(reopened.isFullVideo)
+        XCTAssertTrue(reopened.save(), reopened.error ?? "")
+        XCTAssertNil(fixture.store.trim(for: fixture.video), "A full selection removes the trim")
+    }
+
     func testPreviewRangeStaysInsideTheItem() {
         let trackEnd = CMTime(value: 3_066_667, timescale: 1_000_000)
         let itemDuration = CMTime(value: 3_066, timescale: 1_000)
@@ -238,6 +301,12 @@ final class VideoTrimModelTests: XCTestCase {
                                                    itemDuration: itemDuration)?.end, CMTime(value: 2, timescale: 1))
         XCTAssertNil(VideoTrimModel.previewRange(start: itemDuration, end: trackEnd, itemDuration: itemDuration))
         XCTAssertNil(VideoTrimModel.previewRange(start: .zero, end: trackEnd, itemDuration: .invalid))
+        let nanoStart = CMTime(value: 333_333_330, timescale: 1_000_000_000)
+        let sixHundredths = CMTime(value: 2_419, timescale: 600)
+        let mixed = try? XCTUnwrap(VideoTrimModel.previewRange(start: nanoStart, end: sixHundredths,
+                                                               itemDuration: sixHundredths))
+        XCTAssertLessThanOrEqual(mixed?.end ?? .positiveInfinity, sixHundredths,
+                                 "A rounded duration must not end past the item")
     }
 
     func testTimeTextForDisplayAndVoiceOver() {
@@ -269,13 +338,13 @@ private struct Fixture {
 
     /// Frames at `times`, ending at `end`. A first frame after zero leaves an
     /// empty edit before it, as with a video that starts after its audio.
-    init(times: [CMTime], end: CMTime) async throws {
+    init(times: [CMTime], end: CMTime, mediaTimeScale: CMTimeScale? = nil) async throws {
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("trim-model-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         video = directory.appendingPathComponent("loop.mov")
         suite = "VideoTrimModel.\(UUID().uuidString)"
         store = PlaybackTrimStore(defaults: try XCTUnwrap(UserDefaults(suiteName: suite)))
-        try await Self.writeVideo(to: video, times: times, end: end)
+        try await Self.writeVideo(to: video, times: times, end: end, mediaTimeScale: mediaTimeScale)
     }
 
     func remove() {
@@ -288,7 +357,8 @@ private struct Fixture {
                              end: CMTime(value: Int64(frames), timescale: 10))
     }
 
-    static func writeVideo(to url: URL, times: [CMTime], end: CMTime) async throws {
+    static func writeVideo(to url: URL, times: [CMTime], end: CMTime,
+                           mediaTimeScale: CMTimeScale? = nil) async throws {
         try? FileManager.default.removeItem(at: url)
         let size = 32
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
@@ -299,6 +369,7 @@ private struct Fixture {
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferWidthKey as String: size, kCVPixelBufferHeightKey as String: size
         ])
+        if let mediaTimeScale { input.mediaTimeScale = mediaTimeScale }
         writer.add(input)
         guard writer.startWriting() else { throw writer.error ?? CocoaError(.fileWriteUnknown) }
         writer.startSession(atSourceTime: .zero)

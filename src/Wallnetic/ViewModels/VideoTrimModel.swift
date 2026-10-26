@@ -108,19 +108,25 @@ final class VideoTrimModel: ObservableObject {
                 frameDuration = CMTime(seconds: 1 / Double(frameRate), preferredTimescale: 600)
             }
             itemDuration = try await asset.load(.duration)
-            let starts = await FrameBoundaries.frameStarts(of: track)?.filter { $0 >= range.start && $0 < range.end }
+            let layout = await FrameBoundaries.layout(of: track)
+            let starts = layout?.frameStarts.filter { $0 >= range.start && $0 < range.end }
             frameStarts = starts?.isEmpty == false ? starts : nil
             self.asset = asset
             self.fingerprint = fingerprint
             origin = frameStarts?.first ?? range.start
             duration = range.end
-            endBoundaries = (frameStarts ?? []).filter { $0 > origin } + [duration]
+            // An empty edit's start ends the content before it, so it is a
+            // valid End even though no frame starts there.
+            let ends = ((frameStarts ?? []) + (layout?.gapStarts ?? [])).filter { $0 > origin && $0 < duration }
+            endBoundaries = FrameBoundaries.unique(ends.sorted()) + [duration]
             start = origin
             end = duration
             if let stored = store.trim(for: url) {
-                if stored.matches(fingerprint), let fitted = stored.timeRange(within: range) {
-                    start = fitted.start
-                    end = fitted.end
+                if stored.matches(fingerprint), stored.timeRange(within: range) != nil {
+                    // The stored times themselves: a range's computed end can
+                    // be rounded when the two timescales differ.
+                    start = stored.start
+                    end = min(stored.end, duration)
                 } else {
                     note = "The saved range does not match this file and is not applied. Saving replaces it."
                 }
@@ -254,7 +260,7 @@ final class VideoTrimModel: ObservableObject {
         looper?.disableLooping()
         player.removeAllItems()
         let looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(asset: asset), timeRange: range)
-        looperStatus = looper.observe(\.status, options: [.new]) { [weak self] looper, _ in
+        looperStatus = looper.observe(\.status, options: [.initial, .new]) { [weak self] looper, _ in
             guard looper.status == .failed else { return }
             Task { @MainActor [weak self] in self?.isPreviewPlaying = false }
         }
@@ -270,7 +276,7 @@ final class VideoTrimModel: ObservableObject {
         guard start.isNumeric, end.isNumeric, itemDuration.isNumeric else { return nil }
         let previewEnd = min(end, itemDuration)
         guard start >= .zero, start < previewEnd else { return nil }
-        return CMTimeRange(start: start, end: previewEnd)
+        return PlaybackTrim.range(from: start, to: previewEnd, notAfter: itemDuration)
     }
 
     // MARK: - Time text
@@ -301,11 +307,24 @@ final class VideoTrimModel: ObservableObject {
 
 /// Frame boundaries of a video track, and lookups over sorted times.
 enum FrameBoundaries {
-    /// Each frame's start in the track's timeline, in order: sample
-    /// presentation times from a sample cursor, mapped through the track's
-    /// edits. Nil when the track cannot provide cursors, has more than
-    /// `limit` frames, or uses an edit that changes speed.
-    static func frameStarts(of track: AVAssetTrack, limit: Int = 200_000) async -> [CMTime]? {
+    /// Where a track's frames start in its timeline, and where its empty
+    /// edits (gaps) start. A gap's start ends the content before it, so it is
+    /// a valid End but not a Start.
+    struct Layout: Equatable {
+        var frameStarts: [CMTime]
+        var gapStarts: [CMTime]
+    }
+
+    /// One edit of a track: how it maps media time into the track, or a gap.
+    struct Edit {
+        let mapping: CMTimeMapping
+        let isEmpty: Bool
+    }
+
+    /// The track's layout from a sample cursor and its edits. Nil when the
+    /// track cannot provide cursors, has more than `limit` frames, or uses an
+    /// edit that changes speed.
+    static func layout(of track: AVAssetTrack, limit: Int = 200_000) async -> Layout? {
         guard (try? await track.load(.canProvideSampleCursors)) == true,
               let segments = try? await track.load(.segments),
               let cursor = track.makeSampleCursor(presentationTimeStamp: .negativeInfinity) else { return nil }
@@ -314,27 +333,40 @@ enum FrameBoundaries {
             guard media.count < limit else { return nil }
             media.append(cursor.presentationTimeStamp)
         } while cursor.stepInPresentationOrder(byCount: 1) == 1
-        return trackTimes(ofMediaTimes: media, edits: segments.filter { !$0.isEmpty }.map(\.timeMapping))
+        return layout(ofMediaTimes: media, edits: segments.map { Edit(mapping: $0.timeMapping, isEmpty: $0.isEmpty) })
     }
 
-    /// Media times mapped into the track's timeline through its edits, sorted
-    /// and without duplicates. A frame outside every edit is not shown.
-    static func trackTimes(ofMediaTimes media: [CMTime], edits: [CMTimeMapping]) -> [CMTime]? {
-        var times: [CMTime] = []
-        if edits.isEmpty {
-            times = media.filter(\.isNumeric)
-        }
+    /// Media sample times mapped into the track's timeline through its edits.
+    /// An edit that starts partway through a sample shows that sample from the
+    /// edit's start, so the edit's start is a frame start too.
+    static func layout(ofMediaTimes media: [CMTime], edits: [Edit]) -> Layout? {
+        let samples = media.filter(\.isNumeric).sorted()
+        var starts: [CMTime] = []
+        var gaps: [CMTime] = []
+        if edits.isEmpty { starts = samples }
         for edit in edits {
+            let source = edit.mapping.source, target = edit.mapping.target
+            guard target.start.isNumeric else { continue }
+            if edit.isEmpty {
+                gaps.append(target.start)
+                continue
+            }
             // Only an edit that keeps speed maps a frame's start exactly.
-            guard edit.source.duration == edit.target.duration else { return nil }
-            for time in media where time.isNumeric && time >= edit.source.start && time < edit.source.end {
-                times.append(edit.target.start + (time - edit.source.start))
+            guard source.duration == target.duration else { return nil }
+            if let first = samples.first, first <= source.start { starts.append(target.start) }
+            for time in samples where time > source.start && time < source.end {
+                starts.append(target.start + (time - source.start))
             }
         }
-        times.sort()
-        var unique: [CMTime] = []
-        for time in times where unique.last.map({ $0 != time }) ?? true { unique.append(time) }
-        return unique.isEmpty ? nil : unique
+        let frameStarts = unique(starts.sorted())
+        guard let firstFrame = frameStarts.first else { return nil }
+        return Layout(frameStarts: frameStarts, gapStarts: unique(gaps.filter { $0 > firstFrame }.sorted()))
+    }
+
+    static func unique(_ sorted: [CMTime]) -> [CMTime] {
+        var result: [CMTime] = []
+        for time in sorted where result.last.map({ $0 != time }) ?? true { result.append(time) }
+        return result
     }
 
     static func nearestIndex(to time: CMTime, in sorted: [CMTime]) -> Int? {
