@@ -280,6 +280,39 @@ final class LibraryStorageTests: XCTestCase {
         XCTAssertEqual(after.ids, [current.id, reloaded.id])
     }
 
+    /// #308: a removed item's Pause After override must not carry over to a
+    /// different video imported later at the same path.
+    func testOnlySuccessfulRemovalPrunesPauseAfterOverrideBeforeReimport() throws {
+        let suite = "LibraryStoragePauseAfter.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = PauseAfterSettings(defaults: defaults)
+        let beach = try file(service.libraryURL.appendingPathComponent("beach.mp4"), bytes: 10)
+        let kept = try file(service.libraryURL.appendingPathComponent("kept.mp4"), bytes: 20)
+        settings.setDefault(seconds: 30)
+        settings.setOverride(seconds: 0, for: beach)
+        settings.setOverride(seconds: 47, for: kept)
+        let wallpapers = [Wallpaper(url: beach), Wallpaper(url: kept)]
+
+        let failed = LibraryRemovalState(result: StorageRemovalResult(failures: ["Permission denied"]),
+                                         wallpapers: wallpapers, current: nil, screenAssignments: [:])
+        settings.removeOverrides(for: failed.urls)
+        XCTAssertNil(settings.preferences.duration(for: beach), "A failed removal keeps Never Pause")
+
+        let item = try XCTUnwrap(service.scan().items.first { $0.url == beach })
+        let removed = LibraryRemovalState(result: service.remove([item]), wallpapers: wallpapers,
+                                          current: nil, screenAssignments: [:])
+        XCTAssertEqual(removed.urls, [beach])
+        settings.removeOverrides(for: removed.urls)
+        XCTAssertEqual(PauseAfterSettings(defaults: defaults).preferences.overrides,
+                       [kept.standardizedFileURL.path: 47], "Only the removed item's override is forgotten")
+
+        try file(beach, bytes: 30)
+        XCTAssertEqual(settings.preferences.duration(for: Wallpaper(url: beach).url), 30,
+                       "A different video at the same path follows the default interval")
+        XCTAssertEqual(settings.preferences.duration(for: kept), 47)
+    }
+
     @MainActor
     func testLateWidgetSyncCannotRestoreDeletedCurrentWallpaperOrFavorites() async throws {
         let removed = Wallpaper(url: service.libraryURL.appendingPathComponent("deleted.mp4"), isFavorite: true)

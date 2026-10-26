@@ -33,6 +33,24 @@ final class PauseAfterPlaybackTests: XCTestCase {
         XCTAssertEqual(PauseAfterSettings(defaults: defaults).preferences, .init())
     }
 
+    /// Removal URLs are plain `.path` values; overrides use standardized keys.
+    func testRemovingOverridesStandardizesPathsAndKeepsOtherFiles() throws {
+        let suite = "PauseAfterTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = PauseAfterSettings(defaults: defaults)
+        settings.setDefault(seconds: 15)
+        settings.setOverride(seconds: 0, for: firstURL)
+        settings.setOverride(seconds: 47, for: secondURL)
+        settings.removeOverrides(for: [URL(fileURLWithPath: "/fixtures/./other/../first.mp4"),
+                                       URL(fileURLWithPath: "/fixtures/missing.mp4")])
+        XCTAssertEqual(settings.preferences.duration(for: firstURL), 15)
+        XCTAssertEqual(settings.preferences.duration(for: secondURL), 47)
+        XCTAssertEqual(PauseAfterSettings(defaults: defaults).preferences.overrides, [secondURL.path: 47])
+        settings.removeOverrides(for: [])
+        XCTAssertEqual(PauseAfterSettings(defaults: defaults).preferences.overrides, [secondURL.path: 47])
+    }
+
     @MainActor
     func testExpirationWaitsForAFrameAndStopsAtTheBoundaryOnce() {
         var time = 0.0

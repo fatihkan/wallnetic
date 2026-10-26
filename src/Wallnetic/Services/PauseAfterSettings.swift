@@ -44,6 +44,15 @@ final class PauseAfterSettings: ObservableObject {
         save(next)
     }
 
+    /// Forgets the overrides of removed Library items, so a different video
+    /// imported later at the same path follows the default interval. Removal
+    /// URLs are standardized like the stored keys.
+    func removeOverrides(for urls: Set<URL>) {
+        var next = preferences
+        for url in urls { next.overrides[url.standardizedFileURL.path] = nil }
+        save(next)
+    }
+
     func setReplayWhenDesktopClears(_ enabled: Bool) {
         var next = preferences
         next.replayWhenDesktopClears = enabled

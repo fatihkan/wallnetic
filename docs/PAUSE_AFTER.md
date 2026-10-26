@@ -13,6 +13,9 @@ Choose a library item in Wallpaper override to change only that file:
 
 Preferences persist locally, with overrides keyed by the standardized file path
 like other library metadata. Changing a display title does not lose its override.
+Removing an item from the Library also removes its override, so a different video
+imported later under the same file name follows the default interval. A failed
+removal keeps it.
 
 ## Playback rules
 
