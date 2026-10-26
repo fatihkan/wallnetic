@@ -395,10 +395,18 @@ final class MetalVideoRenderer: NSObject {
 
     /// A trim edit that finishes loading while paused presents its first frame,
     /// as AVPlayerLayer does, instead of keeping the previous range's frame
-    /// and reporting Loading.
+    /// and reporting Loading. It waits at most two seconds, so a player that
+    /// never delivers a paused frame cannot keep the display link running.
     private var needsPausedTrimFrame: Bool {
         !wantsToPlay && trimReloadGeneration == loadGeneration && playerGeneration == loadGeneration
             && frameGeneration != loadGeneration && !playbackMonitor.state.isFailed
+            && ProcessInfo.processInfo.systemUptime < pausedTrimFrameDeadline
+    }
+    private var pausedTrimFrameDeadline: TimeInterval = 0
+
+    private func startPausedTrimFrame() {
+        pausedTrimFrameDeadline = ProcessInfo.processInfo.systemUptime + 2
+        if needsPausedTrimFrame { startDisplayLink() }
     }
 
     private func failLoading(_ failure: RendererPlaybackFailure) {
@@ -537,8 +545,8 @@ final class MetalVideoRenderer: NSObject {
             pinOrStart()
             metalView.isPaused = true
             startDisplayLink()
-        } else if needsPausedTrimFrame {
-            startDisplayLink()
+        } else {
+            startPausedTrimFrame()
         }
 
         logger.info("Player setup complete")
@@ -574,9 +582,7 @@ final class MetalVideoRenderer: NSObject {
             metalView.draw()
         }
         metalView.isPaused = true
-        if needsPausedTrimFrame {
-            startDisplayLink()
-        }
+        startPausedTrimFrame()
         logger.debug("Playback paused")
     }
 
