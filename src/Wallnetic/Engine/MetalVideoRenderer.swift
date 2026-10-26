@@ -83,8 +83,6 @@ final class MetalVideoRenderer: NSObject {
     // MARK: - Video Objects
 
     private var player: AVPlayer?
-    private var playerLooper: AVPlayerLooper?
-    private var queuePlayer: AVQueuePlayer?
     private var videoOutput: AVPlayerItemVideoOutput?
     private var displayLink: CVDisplayLink?
     private var frameScheduler: DisplayLinkFrameScheduler?
@@ -133,7 +131,6 @@ final class MetalVideoRenderer: NSObject {
     private var reportedFrameGeneration: UInt64?
     private var playerGeneration: UInt64?
     private var loadTask: Task<Void, Never>?
-    private var currentItemObserver: NSKeyValueObservation?
 
     let playbackMonitor = RendererPlaybackMonitor()
     var hasPresentedFrame = false
@@ -429,9 +426,6 @@ final class MetalVideoRenderer: NSObject {
         player = newPlayer
         playerGeneration = generation
         playbackMonitor.attach(newPlayer)
-        queuePlayer = nil
-        playerLooper?.disableLooping()
-        playerLooper = nil
         lastPresentedSeconds = -1
         hasLoggedFrameColorInfo = false
 
@@ -585,7 +579,6 @@ final class MetalVideoRenderer: NSObject {
         stopDisplayLink()
         metalView.isPaused = true
 
-        currentItemObserver = nil
         if let loopObserver {
             NotificationCenter.default.removeObserver(loopObserver)
             self.loopObserver = nil
@@ -593,11 +586,8 @@ final class MetalVideoRenderer: NSObject {
         lastPresentedSeconds = -1
         player?.pause()
         player?.replaceCurrentItem(with: nil)
-        playerLooper?.disableLooping()
 
         videoOutput = nil
-        playerLooper = nil
-        queuePlayer = nil
         player = nil
         currentFrame = nil
         hasPresentedFrame = false

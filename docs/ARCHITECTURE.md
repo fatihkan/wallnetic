@@ -99,7 +99,6 @@
 │  └── PerformanceMonitor.swift   # CPU    │
 │                                          │
 │  Integrations/                           │
-│  ├── ScreenSaverBridge.swift             │
 │  ├── DesktopWindowController.swift       │
 │  └── MenuBarController.swift             │
 │                                          │

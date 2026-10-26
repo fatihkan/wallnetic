@@ -85,11 +85,11 @@ from the feasible first scope; bundled original videos avoid that dependency.
 
 ## Current repository findings and preserved fallback
 
-- `ScreenSaverBridge.swift` is an **unwired placeholder**. No callers or shipped
-  `.saver` target exist. It writes wallpaper/library paths to
-  `UserDefaults(suiteName: "com.wallnetic.screensaver")`; this is not a verified
-  App Group channel and does not grant the host access. Its comments now make
-  that limitation explicit. No new caller or installer is added.
+- The unwired `ScreenSaverBridge.swift` placeholder has been removed (#306). It
+  had no callers and no shipped `.saver` target. It wrote wallpaper/library paths
+  to `UserDefaults(suiteName: "com.wallnetic.screensaver")`, which is not a
+  verified App Group channel and does not grant the host access. The bundled-media
+  candidate does not read that suite, and no caller or installer replaces it.
 - The Xcode app targets remain the main application, widget and tests. The probe
   is outside those targets and only built separately by a development script/CI.
 - `DesktopOverlayController` draws a clock/control panel at desktop level. It

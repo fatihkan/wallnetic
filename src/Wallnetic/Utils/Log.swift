@@ -43,7 +43,6 @@ enum Log {
     static let power        = Logger(subsystem: subsystem, category: "Power")
     static let render       = Logger(subsystem: subsystem, category: "Render")
     static let scheduler    = Logger(subsystem: subsystem, category: "Scheduler")
-    static let screenSaver  = Logger(subsystem: subsystem, category: "ScreenSaver")
     static let shared       = Logger(subsystem: subsystem, category: "SharedData")
     static let space        = Logger(subsystem: subsystem, category: "SpaceWallpaper")
     static let store        = Logger(subsystem: subsystem, category: "WallpaperStore")

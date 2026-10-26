@@ -55,12 +55,6 @@ struct EffectsSettingsView: View {
                 }
             }
 
-            // Transition
-            Section("Transition") {
-                Text("Wallpaper changes are currently instant.")
-                    .foregroundStyle(.secondary)
-            }
-
             // Reset
             Section {
                 HStack {

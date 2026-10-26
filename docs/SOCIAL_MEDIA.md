@@ -64,7 +64,7 @@ Key features:
 ✅ Multi-monitor support
 ✅ Auto-pause on battery
 ✅ Menu bar app
-✅ Stops decoding when nothing is visible
+✅ Pauses for screen lock, sleep and fullscreen apps
 
 3/4
 ```
@@ -123,7 +123,7 @@ Not with Wallnetic:
 - Metal GPU acceleration
 - Auto-pause on battery
 - Pause when fullscreen apps are active
-- Stops decoding when nothing is visible
+- Pauses when the Mac is locked or the display sleeps
 
 Mac users can finally have nice things.
 
@@ -152,7 +152,7 @@ Wallnetic is built from the ground up for macOS using:
 Key Features:
 ✅ Play any video file as your desktop background
 ✅ Multi-monitor support with per-display wallpapers
-✅ Stops decoding when the desktop is covered or the Mac is locked
+✅ Pauses when the Mac is locked, the display sleeps or a fullscreen app is in front
 ✅ Menu bar app for quick access
 
 The entire project is open source on GitHub. I'd love feedback from fellow developers!
@@ -175,7 +175,7 @@ Some interesting challenges I solved:
 Creating windows that sit behind all other content required diving into CGWindowLevel and careful NSWindow configuration.
 
 2️⃣ Video Performance
-Using AVFoundation with Metal rendering, and pausing decode entirely whenever the desktop is covered, the Mac is locked or the display is asleep.
+Using AVFoundation with Metal rendering, and pausing decode whenever the Mac is locked, the screen saver runs or the display is asleep.
 
 3️⃣ Smart Pause Detection
 Detecting fullscreen apps to auto-pause wallpapers without false positives from Finder, Dock, or Control Center.
@@ -337,7 +337,7 @@ For maximum engagement, include visuals:
 2. **Before/After** - Static vs animated desktop
 3. **Multi-Monitor Setup** - Different wallpapers on each display
 4. **Menu Bar** - Quick access controls
-5. **Performance** - the wallpaper pausing itself the moment a window covers the desktop
+5. **Performance** - the wallpaper pausing itself when a fullscreen app takes over
 
 ---
 

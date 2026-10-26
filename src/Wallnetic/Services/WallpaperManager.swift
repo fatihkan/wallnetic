@@ -140,8 +140,6 @@ class WallpaperManager: ObservableObject {
     @AppStorage("wallpaperModeRaw") private var wallpaperModeRaw: String = "same"
     @AppStorage("screenWallpapersData") private var screenWallpapersData: Data = Data()
     @AppStorage("useMetalRenderer") var useMetalRenderer: Bool = true
-    @AppStorage("transitionStyle") var transitionStyle: String = "crossfade"
-    @AppStorage("transitionDuration") var transitionDuration: Double = 0.5
     @AppStorage("lastWallpaperURL") private var lastWallpaperURL: String = ""
 
     // MARK: - Delegates & Services

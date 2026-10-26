@@ -15,10 +15,7 @@ class VideoRenderer: NSObject {
     private var playerLayer: AVPlayerLayer { (view as! PlayerHostView).playerLayer }
 
     private var player: AVPlayer?
-    private var playerLooper: AVPlayerLooper?
-    private var queuePlayer: AVQueuePlayer?
     private var itemStatusObserver: NSKeyValueObservation?
-    private var currentItemObserver: NSKeyValueObservation?
     private var readyObserver: NSKeyValueObservation?
     private var loadGeneration: UInt64 = 0
     private var loadTask: Task<Void, Never>?
@@ -124,11 +121,7 @@ class VideoRenderer: NSObject {
         guard player !== newPlayer else { return }
 
         let previousPlayer = player
-        let previousLooper = playerLooper
 
-        queuePlayer = nil
-        playerLooper?.disableLooping()
-        playerLooper = nil
         player = newPlayer
         itemStatusObserver = nil
 
@@ -176,7 +169,6 @@ class VideoRenderer: NSObject {
         }
 
         previousPlayer?.pause()
-        previousLooper?.disableLooping()
         previousPlayer?.replaceCurrentItem(with: nil)
 
         Log.video.debug("Attached player layer")
@@ -214,7 +206,6 @@ class VideoRenderer: NSObject {
         loadTask = nil
         shouldPlayWhenReady = false
         itemStatusObserver = nil
-        currentItemObserver = nil
         readyObserver = nil
         if let loopObserver {
             NotificationCenter.default.removeObserver(loopObserver)
@@ -222,9 +213,6 @@ class VideoRenderer: NSObject {
         }
         player?.pause()
         player?.replaceCurrentItem(with: nil)
-        playerLooper?.disableLooping()
-        playerLooper = nil
-        queuePlayer = nil
         player = nil
         playerLayer.player = nil
         hasPresentedFrame = false

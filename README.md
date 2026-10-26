@@ -67,10 +67,12 @@ the current version cannot be taken away from you regardless of what happens lat
 
 **Does it slow my Mac down?**
 Wallnetic suspends video decoding when the Mac is locked, the screen saver is running, the display
-is asleep, or another user is switched in. By default it also pauses while a fullscreen app is in
-front. Ordinary windows covering the desktop do not pause playback. We deliberately publish no
-single CPU percentage, because the figure varies widely with clip resolution, frame rate and
-state — measure it yourself in Activity Monitor.
+is asleep, another user is switched in, or Low Power Mode is on. By default it also pauses every
+display while a fullscreen app is in front. It can pause on battery power, and Calm Mode,
+thermal-aware playback and Pause After can hold wallpaper motion. Ordinary windows covering the
+desktop do not pause playback. We deliberately publish no single CPU percentage, because the figure
+varies widely with clip resolution, frame rate and state — measure it yourself in Activity Monitor,
+or follow the [benchmark protocol](docs/PLAYBACK_BENCHMARKS.md).
 
 **Where do the wallpapers come from?**
 From you. Drag in any video you own, or use the in-app browser to search Pexels, Pixabay,
@@ -210,8 +212,9 @@ later.
 - Frame-rate limits apply to Metal presentation at normal video speed; AVPlayer
   retains the video's original frame rate. See [playback profiles](docs/PLAYBACK_PROFILES.md)
   for engine policies and validation limits.
-- Stops decoding when the Mac is locked, the screen saver is running or the
-  display is asleep, and by default while a fullscreen app is in front
+- Stops decoding when the Mac is locked, the screen saver is running, the
+  display is asleep or Low Power Mode is on, and by default while a fullscreen
+  app is in front. Ordinary windows covering the desktop do not pause playback.
 - Async image caching
 
 ---
