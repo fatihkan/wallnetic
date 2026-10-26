@@ -26,6 +26,10 @@ class VideoRenderer: NSObject {
     private var loadedURL: URL?
     private var loadedTrim: PlaybackTrim?
     private var pendingTrimReload: PendingTrimReload?
+    /// The load started by a trim edit, while it is the latest load.
+    private var trimReloadGeneration: UInt64?
+    /// The load the current player came from.
+    private var playerGeneration: UInt64?
     /// The range the current player loops, or nil when it plays the full video.
     private(set) var appliedTrim: PlaybackTrim?
 
@@ -56,6 +60,7 @@ class VideoRenderer: NSObject {
         loadedURL = url
         loadedTrim = trim
         pendingTrimReload = nil
+        trimReloadGeneration = nil
         playbackMonitor.beginLoad()
         guard url.isFileURL, FileManager.default.isReadableFile(atPath: url.path) else {
             failLoading(.missingFile)
@@ -88,20 +93,39 @@ class VideoRenderer: NSObject {
     /// so a paused display keeps its frame and its Paused status.
     func applyTrim(_ trim: PlaybackTrim?) {
         guard let loadedURL else { return }
+        // The full video plays and still would: removing a range that does not
+        // apply keeps the current player instead of restarting it.
+        if playerGeneration == loadGeneration, appliedTrim == nil,
+           TrimmedVideoAsset.usableTrim(trim, for: loadedURL) == nil {
+            loadedTrim = trim
+            pendingTrimReload = nil
+            return
+        }
         guard shouldPlayWhenReady else {
             pendingTrimReload = trim == loadedTrim ? nil : PendingTrimReload(trim: trim)
             return
         }
         guard trim != loadedTrim else { return }
-        loadVideo(url: loadedURL, trim: trim)
+        loadTrimReload(url: loadedURL, trim: trim)
     }
 
     /// Loads a trim edit made while paused instead of resuming the old player
     /// outside the edited range. The new player starts once it is ready.
     private func startPendingTrimReload() -> Bool {
         guard let pending = pendingTrimReload, let loadedURL else { return false }
-        loadVideo(url: loadedURL, trim: pending.trim)
+        loadTrimReload(url: loadedURL, trim: pending.trim)
         return true
+    }
+
+    private func loadTrimReload(url: URL, trim: PlaybackTrim?) {
+        loadVideo(url: url, trim: trim)
+        trimReloadGeneration = loadGeneration
+    }
+
+    /// While a trim edit loads, the current player still plays the previous
+    /// range. Nothing may start it again before the edited player takes over.
+    private var isWaitingForTrimReload: Bool {
+        trimReloadGeneration == loadGeneration && playerGeneration != loadGeneration
     }
 
     private func failLoading(_ failure: RendererPlaybackFailure) {
@@ -155,6 +179,7 @@ class VideoRenderer: NSObject {
         let previousPlayer = player
 
         player = newPlayer
+        playerGeneration = generation
         appliedTrim = trim
         itemStatusObserver = nil
 
@@ -242,6 +267,8 @@ class VideoRenderer: NSObject {
         loadedURL = nil
         loadedTrim = nil
         pendingTrimReload = nil
+        trimReloadGeneration = nil
+        playerGeneration = nil
         itemStatusObserver = nil
         readyObserver = nil
         if let loopObserver {
@@ -303,7 +330,7 @@ class VideoRenderer: NSObject {
     /// Start from a stop, or pin a drifting rate back to 1. Never
     /// `playImmediately` — that seeks to the last keyframe.
     private func pinOrStart() {
-        guard let player else { return }
+        guard let player, !isWaitingForTrimReload else { return }
         if WallpaperPlaybackPolicy.shouldIssuePlay(currentRate: player.rate) {
             player.play()
         } else if WallpaperPlaybackPolicy.shouldCorrectRate(

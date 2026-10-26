@@ -94,7 +94,118 @@ final class TrimmedPlaybackTests: XCTestCase {
         try await assertTrimEditsKeepPauseOwnership(renderer, applied: { renderer.appliedTrim })
     }
 
+    @MainActor
+    func testAVFoundationTrimReloadNeverRestartsThePreviousRange() async throws {
+        let renderer = VideoRenderer()
+        try await assertTrimReloadIsExclusive(renderer, applied: { renderer.appliedTrim })
+    }
+
+    @MainActor
+    func testMetalTrimReloadNeverRestartsThePreviousRange() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        let renderer = MetalVideoRenderer()
+        try await assertTrimReloadIsExclusive(renderer, applied: { renderer.appliedTrim })
+    }
+
+    @MainActor
+    func testAVFoundationRemovingARangeThatDoesNotApplyKeepsPlaying() async throws {
+        let renderer = VideoRenderer()
+        try await assertUnappliedRangeRemovalKeepsPlayer(renderer, applied: { renderer.appliedTrim })
+    }
+
+    @MainActor
+    func testMetalRemovingARangeThatDoesNotApplyKeepsPlaying() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        let renderer = MetalVideoRenderer()
+        try await assertUnappliedRangeRemovalKeepsPlayer(renderer, applied: { renderer.appliedTrim })
+    }
+
     // MARK: - Scenarios
+
+    /// While a trim edit loads, no resume path may restart the previous range,
+    /// and a pause that arrives during the load ends Paused on the edited
+    /// range's first frame, never Loading.
+    @MainActor
+    private func assertTrimReloadIsExclusive(_ renderer: WallpaperRenderer,
+                                             applied: @escaping () -> PlaybackTrim?) async throws {
+        let video = temporaryVideoURL("exclusive")
+        let window = host(renderer)
+        defer { cleanUp(renderer, window: window, video: video) }
+        try await writeNumberedVideo(to: video)
+        let first = try trimming(video, fromFrame: 10, toFrame: 20)
+        let second = try trimming(video, fromFrame: 5, toFrame: 25)
+        renderer.loadVideo(url: video, trim: nil)
+        renderer.play()
+        try await waitUntil("first frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
+
+        // A pause right after an edit made while playing.
+        renderer.applyTrim(first)
+        renderer.pause()
+        try await waitUntil("edited frame while paused") {
+            applied() == first && renderer.playbackMonitor.hasFrameForCurrentLoad
+                && renderer.playbackMonitor.state == .paused
+        }
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertLessThanOrEqual(renderer.currentPlaybackTime ?? 99, 1.05)
+
+        // Resume calls that race the deferred reload cannot restart the old player.
+        renderer.applyTrim(second)
+        renderer.play()
+        renderer.maintainPlayback()
+        renderer.recoverPlayback()
+        renderer.play()
+        XCTAssertEqual(renderer.currentPlaybackRate, 0, "The previous range's player stays paused")
+        try await waitUntil("edited range after resume") {
+            applied() == second && renderer.playbackMonitor.hasFrameForCurrentLoad && renderer.currentPlaybackRate == 1
+        }
+
+        // Play then Pause within the deferred reload's load.
+        renderer.pause()
+        renderer.applyTrim(first)
+        renderer.play()
+        renderer.pause()
+        try await waitUntil("edited frame after a quick toggle") {
+            applied() == first && renderer.playbackMonitor.hasFrameForCurrentLoad
+                && renderer.playbackMonitor.state == .paused
+        }
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+    }
+
+    /// The full video plays for a range that does not apply. Removing that
+    /// range changes nothing that plays, so neither a playing nor a paused
+    /// display restarts from the beginning.
+    @MainActor
+    private func assertUnappliedRangeRemovalKeepsPlayer(_ renderer: WallpaperRenderer,
+                                                        applied: @escaping () -> PlaybackTrim?) async throws {
+        let video = temporaryVideoURL("unapplied")
+        let window = host(renderer)
+        defer { cleanUp(renderer, window: window, video: video) }
+        try await writeNumberedVideo(to: video)
+        let stale = PlaybackTrim(start: CMTime(value: 1, timescale: 1), end: CMTime(value: 2, timescale: 1),
+                                 fingerprint: VideoFileFingerprint(byteSize: 1, modificationDate: .distantPast))
+        renderer.loadVideo(url: video, trim: stale)
+        renderer.play()
+        try await waitUntil("first frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
+        try await waitUntil("playback underway") { (renderer.currentPlaybackTime ?? 0) > 0.4 }
+        XCTAssertNil(applied())
+
+        let playing = try XCTUnwrap(renderer.currentPlaybackTime)
+        renderer.applyTrim(nil)
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad, "Removing it does not reload")
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertGreaterThan(renderer.currentPlaybackTime ?? 0, playing, "Playback continues instead of restarting")
+
+        renderer.applyTrim(stale)
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        renderer.pause()
+        try await waitUntil("paused") { renderer.playbackMonitor.state == .paused }
+        let paused = try XCTUnwrap(renderer.currentPlaybackTime)
+        renderer.applyTrim(nil)
+        renderer.play()
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad, "Nothing was deferred for the resume")
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertGreaterThan(renderer.currentPlaybackTime ?? 0, paused, "The resume continues where it paused")
+    }
 
     @MainActor
     private func assertLoopsOnlyTheRange(_ renderer: WallpaperRenderer,
