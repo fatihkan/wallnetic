@@ -594,7 +594,8 @@ private final class DurationRendererSpy: WallpaperRenderer {
     func play() { plays += 1; currentPlaybackRate = 1 }
     func pause() { pauses += 1; currentPlaybackRate = 0 }
     func stop() { currentPlaybackRate = 0; hasPresentedFrame = false }
-    func loadVideo(url: URL) {}
+    func loadVideo(url: URL, trim: PlaybackTrim?) {}
+    func applyTrim(_ trim: PlaybackTrim?) {}
     func maintainPlayback() {}
     func recoverPlayback() { play() }
     func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode) {}

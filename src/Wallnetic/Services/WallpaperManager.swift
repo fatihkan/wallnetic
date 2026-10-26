@@ -519,6 +519,7 @@ class WallpaperManager: ObservableObject {
         // Clear persisted automation references in the same main-actor turn.
         OptimizedCopyStore.shared.removeCopies(at: paths)
         PauseAfterSettings.shared.removeOverrides(for: urls)
+        PlaybackTrimStore.shared.removeTrims(for: urls)
         CollectionManager.shared.removeWallpaperIDs(update.ids)
         TimeOfDayManager.shared.removeWallpaperPaths(paths)
         PlaylistManager.shared.removeWallpaperPaths(paths)
