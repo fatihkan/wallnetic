@@ -128,6 +128,8 @@ final class MetalVideoRenderer: NSObject {
     private var loadedURL: URL?
     private var loadedTrim: PlaybackTrim?
     private var pendingTrimReload: PendingTrimReload?
+    /// The load started by a trim edit, while it is the latest load.
+    private var trimReloadGeneration: UInt64?
     /// The range the current player loops, or nil when it plays the full video.
     private(set) var appliedTrim: PlaybackTrim?
 
@@ -304,6 +306,7 @@ final class MetalVideoRenderer: NSObject {
         loadedURL = url
         loadedTrim = trim
         pendingTrimReload = nil
+        trimReloadGeneration = nil
         playbackMonitor.beginLoad()
         guard url.isFileURL, FileManager.default.isReadableFile(atPath: url.path) else {
             failLoading(.missingFile)
@@ -354,12 +357,20 @@ final class MetalVideoRenderer: NSObject {
     /// the new range, and report "Loading" until playback resumes.
     func applyTrim(_ trim: PlaybackTrim?) {
         guard let loadedURL else { return }
+        // The full video plays and still would: removing a range that does not
+        // apply keeps the current player instead of restarting it.
+        if playerGeneration == loadGeneration, appliedTrim == nil,
+           TrimmedVideoAsset.usableTrim(trim, for: loadedURL) == nil {
+            loadedTrim = trim
+            pendingTrimReload = nil
+            return
+        }
         guard wantsToPlay else {
             pendingTrimReload = trim == loadedTrim ? nil : PendingTrimReload(trim: trim)
             return
         }
         guard trim != loadedTrim else { return }
-        loadVideo(url: loadedURL, trim: trim)
+        loadTrimReload(url: loadedURL, trim: trim)
     }
 
     /// Loads a trim edit made while paused instead of resuming the old player
@@ -367,8 +378,27 @@ final class MetalVideoRenderer: NSObject {
     /// display link; the retained frame stays on screen until then.
     private func startPendingTrimReload() -> Bool {
         guard let pending = pendingTrimReload, let loadedURL else { return false }
-        loadVideo(url: loadedURL, trim: pending.trim)
+        loadTrimReload(url: loadedURL, trim: pending.trim)
         return true
+    }
+
+    private func loadTrimReload(url: URL, trim: PlaybackTrim?) {
+        loadVideo(url: url, trim: trim)
+        trimReloadGeneration = loadGeneration
+    }
+
+    /// While a trim edit loads, the current player still plays the previous
+    /// range. Nothing may start it again before the edited player takes over.
+    private var isWaitingForTrimReload: Bool {
+        trimReloadGeneration == loadGeneration && playerGeneration != loadGeneration
+    }
+
+    /// A trim edit that finishes loading while paused presents its first frame,
+    /// as AVPlayerLayer does, instead of keeping the previous range's frame
+    /// and reporting Loading.
+    private var needsPausedTrimFrame: Bool {
+        !wantsToPlay && trimReloadGeneration == loadGeneration && playerGeneration == loadGeneration
+            && frameGeneration != loadGeneration && !playbackMonitor.state.isFailed
     }
 
     private func failLoading(_ failure: RendererPlaybackFailure) {
@@ -507,6 +537,8 @@ final class MetalVideoRenderer: NSObject {
             pinOrStart()
             metalView.isPaused = true
             startDisplayLink()
+        } else if needsPausedTrimFrame {
+            startDisplayLink()
         }
 
         logger.info("Player setup complete")
@@ -542,6 +574,9 @@ final class MetalVideoRenderer: NSObject {
             metalView.draw()
         }
         metalView.isPaused = true
+        if needsPausedTrimFrame {
+            startDisplayLink()
+        }
         logger.debug("Playback paused")
     }
 
@@ -585,7 +620,12 @@ final class MetalVideoRenderer: NSObject {
         guard CVDisplayLinkCreateWithActiveCGDisplays(&link) == kCVReturnSuccess,
               let link else { return }
         let scheduler = DisplayLinkFrameScheduler(maximumFramesPerSecond: performanceMode.maxFPS) { [weak self] in
-            guard let self, self.wantsToPlay else { return }
+            guard let self else { return }
+            guard self.wantsToPlay || self.needsPausedTrimFrame else {
+                // A paused trim reload has drawn its frame, or failed.
+                if !self.wantsToPlay { self.stopDisplayLink() }
+                return
+            }
             self.metalView.draw()
         }
         // The retained block owns only the gate, not an unretained renderer
@@ -612,7 +652,7 @@ final class MetalVideoRenderer: NSObject {
     }
 
     private func pinOrStart() {
-        guard let player else { return }
+        guard let player, !isWaitingForTrimReload else { return }
         if WallpaperPlaybackPolicy.shouldIssuePlay(currentRate: player.rate) {
             player.play()
         } else if WallpaperPlaybackPolicy.shouldCorrectRate(
@@ -633,6 +673,7 @@ final class MetalVideoRenderer: NSObject {
         loadedURL = nil
         loadedTrim = nil
         pendingTrimReload = nil
+        trimReloadGeneration = nil
         stopDisplayLink()
         metalView.isPaused = true
 
@@ -726,7 +767,7 @@ extension MetalVideoRenderer: MTKViewDelegate {
         renderLock.lock()
         defer { renderLock.unlock() }
 
-        if wantsToPlay, let frame = extractCurrentFrame() {
+        if wantsToPlay || needsPausedTrimFrame, let frame = extractCurrentFrame() {
             currentFrame = frame
         }
 
