@@ -118,14 +118,22 @@ final class PlaybackTrimTests: XCTestCase {
         XCTAssertEqual(keptCut.start, CMTime(value: 7, timescale: 15))
         XCTAssertEqual(keptCut.end, CMTime(value: 63, timescale: 15), "The cut frame's sliver is not kept")
 
-        // Snapping both ends up to a 0.3 s grid leaves a 1 s range 0.9 s long:
-        // End widens by one copy frame, or Start moves back at the copy's end.
+        // Snapping both ends up to a 0.3 s grid leaves a 1 s range 0.9 s long.
+        // Start moves back by the least needed; End never passes the original.
         let tenths = CMTime(value: 3, timescale: 10)
         let minimum = PlaybackTrim(start: CMTime(value: 1, timescale: 10), end: CMTime(value: 11, timescale: 10),
                                    fingerprint: fingerprint)
         let widened = try XCTUnwrap(minimum.inherited(byTrack: threeSeconds, frameDuration: tenths, fingerprint: copyPrint))
-        XCTAssertEqual(widened.start, CMTime(value: 3, timescale: 10))
-        XCTAssertEqual(widened.end, CMTime(value: 15, timescale: 10))
+        XCTAssertEqual(widened.start, .zero)
+        XCTAssertEqual(widened.end, CMTime(value: 12, timescale: 10))
+        // A copy grid that does not divide a second, ending in a short sample.
+        let oddGrid = CMTime(value: 2_037, timescale: 60_000)
+        let oddTrack = CMTimeRange(start: .zero, end: CMTime(value: 161_000, timescale: 60_000))
+        let oneSecond = PlaybackTrim(start: CMTime(value: 1_000, timescale: 600), end: CMTime(value: 1_600, timescale: 600),
+                                     fingerprint: fingerprint)
+        let odd = try XCTUnwrap(oneSecond.inherited(byTrack: oddTrack, frameDuration: oddGrid, fingerprint: copyPrint))
+        XCTAssertEqual(odd.start, CMTime(value: 99_813, timescale: 60_000))
+        XCTAssertEqual(odd.end, CMTime(value: 160_923, timescale: 60_000), "The copy's short last sample is not added")
         let lastSecond = PlaybackTrim(start: CMTime(value: 2, timescale: 1), end: CMTime(value: 3, timescale: 1),
                                       fingerprint: fingerprint)
         let movedBack = try XCTUnwrap(lastSecond.inherited(byTrack: threeSeconds, frameDuration: tenths,

@@ -73,6 +73,8 @@ protocol PlaybackDelegate: AnyObject {
     func playbackRetry(on displayID: UInt32)
     func playbackClearWallpaper(url: URL)
     func playbackApplyScreenWallpapers()
+    /// The video a display plays now, or nil when it shows none.
+    func playbackWallpaperURL(on displayID: UInt32) -> URL?
 }
 
 /// Central coordinator for wallpaper state and settings.

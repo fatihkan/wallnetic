@@ -79,7 +79,7 @@ final class VideoOptimizationModel: ObservableObject {
                 switch loopRange {
                 case .kept: message = "Copy added to Library with the same loop range. Your original is unchanged."
                 case .dropped: message = "Copy added to Library. Its loop range could not be kept, so the copy plays in full. Your original is unchanged."
-                case .none: message = "Copy added to Library. Your original is unchanged."
+                case .none, .wholeCopy: message = "Copy added to Library. Your original is unchanged."
                 }
             } catch is CancellationError {
                 message = "Cancelled. No partial copy was added to Library."
@@ -92,8 +92,9 @@ final class VideoOptimizationModel: ObservableObject {
         return task
     }
 
-    /// What became of the source's loop range on its copy.
-    private enum CopiedLoopRange { case kept, dropped, none }
+    /// What became of the source's loop range on its copy. `wholeCopy`: the
+    /// range spans the copy, which therefore loops exactly that part in full.
+    private enum CopiedLoopRange { case kept, wholeCopy, dropped, none }
 
     /// A copy of a trimmed video loops the same part: the source's range moved
     /// to the copy's frames and clamped to its length, with the copy's own
@@ -105,6 +106,8 @@ final class VideoOptimizationModel: ObservableObject {
         do {
             guard let track = try await asset.loadTracks(withMediaType: .video).first else { return .dropped }
             let (range, frameDuration) = try await track.load(.timeRange, .minFrameDuration)
+            guard let snapped = trim.copyRange(inTrack: range, frameDuration: frameDuration) else { return .dropped }
+            if snapped.start <= range.start && snapped.end >= range.end { return .wholeCopy }
             guard let copyTrim = trim.inherited(byTrack: range, frameDuration: frameDuration,
                                                 fingerprint: fingerprint) else { return .dropped }
             try trims.setTrim(copyTrim, for: copy)

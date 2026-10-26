@@ -81,6 +81,44 @@ final class VideoOptimizationModelTests: XCTestCase {
         XCTAssertEqual(trims.trim(for: source.url), sourceTrim, "Each item's range is edited on its own")
     }
 
+    /// A range that spans the copy loops exactly that part, so the copy needs
+    /// no range of its own and is not reported as having lost one.
+    func testCopySpannedByTheRangeIsNotReportedAsLost() async throws {
+        let suite = "VideoOptimizationWholeCopy.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let trims = PlaybackTrimStore(defaults: defaults)
+        try await TrimFixture.writeVideo(to: source.url, frames: 30)
+        try await TrimFixture.writeVideo(to: result.url, times: (0..<24).map { CMTime(value: Int64($0), timescale: 8) },
+                                         end: CMTime(value: 24, timescale: 8))
+        try trims.setTrim(PlaybackTrim(start: .zero, end: CMTime(value: 29, timescale: 10),
+                                       fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: source.url))),
+                          for: source.url)
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library, trims: trims)
+        await model.load().value
+        try await XCTUnwrap(model.start()).value
+        XCTAssertNil(trims.trim(for: result.url))
+        XCTAssertEqual(model.message, "Copy added to Library. Your original is unchanged.")
+    }
+
+    func testCopyThatCannotKeepTheRangeSaysSo() async throws {
+        let suite = "VideoOptimizationLostRange.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let trims = PlaybackTrimStore(defaults: defaults)
+        try await TrimFixture.writeVideo(to: source.url, frames: 30)
+        try trims.setTrim(PlaybackTrim(start: CMTime(value: 11, timescale: 10), end: CMTime(value: 23, timescale: 10),
+                                       fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: source.url))),
+                          for: source.url)
+        // The copy file from setUp is not a readable video.
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library, trims: trims)
+        await model.load().value
+        try await XCTUnwrap(model.start()).value
+        XCTAssertNil(trims.trim(for: result.url))
+        XCTAssertEqual(model.message,
+                       "Copy added to Library. Its loop range could not be kept, so the copy plays in full. Your original is unchanged.")
+    }
+
     func testUnsupportedPresetAndInspectionFailureStayVisible() async {
         exporter.unavailable = [.hevc: "No hardware HEVC"]
         let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)

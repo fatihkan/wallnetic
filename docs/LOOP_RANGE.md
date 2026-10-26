@@ -66,11 +66,11 @@ discarding it.
   not a wallpaper change: playlists, schedules and the rating prompt ignore it.
 - An optimized copy of a trimmed video gets the same range, moved to the copy's
   own frames, clamped to its length and checked against the copy's own file.
-  No copy frame after the original End is kept; a range left a fraction of a
-  frame under one second is widened by the least needed. If the range still
-  cannot be kept (a copy shorter than a second), the copy plays in full and the
-  completion message says so. After that, each video's range is edited or
-  removed on its own.
+  No copy frame after the original End is kept; when snapping leaves the range
+  a fraction of a frame under one second, its Start moves back by the least
+  needed. A range that spans the whole copy needs no range of its own. If the
+  range cannot be kept, the copy plays in full and the completion message says
+  so. After that, each video's range is edited or removed on its own.
 
 ## Not affected by a range
 

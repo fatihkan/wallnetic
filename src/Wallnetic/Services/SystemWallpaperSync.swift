@@ -106,12 +106,30 @@ final class SystemWallpaperSync: ObservableObject {
         let changed = Set(trims.keys).union(syncedTrims.keys).filter { trims[$0] != syncedTrims[$0] }
         syncedTrims = trims
         guard isEnabled, !changed.isEmpty else { return }
-        // The displays whose still came from an edited video, grouped so each
-        // video's new still is extracted once for all of them.
+        // The displays playing an edited video now. Cleared displays play
+        // nothing and keep their still.
+        let videos = (playingVideos() ?? syncedVideos).filter { changed.contains($0.value.standardizedFileURL.path) }
+        syncGrouped(videos)
+    }
+
+    /// What each connected display plays now, from the desktop windows. Nil
+    /// when playback is not connected; this service's own sync history is
+    /// then the best guess.
+    private func playingVideos() -> [CGDirectDisplayID: URL]? {
+        guard let playback = WallpaperManager.shared.playbackDelegate else { return nil }
+        var videos: [CGDirectDisplayID: URL] = [:]
+        for screen in NSScreen.screens {
+            if let id = screen.displayID, let url = playback.playbackWallpaperURL(on: id) { videos[id] = url }
+        }
+        return videos
+    }
+
+    /// Syncs displays grouped by video, so each still is extracted once for
+    /// all displays showing it.
+    private func syncGrouped(_ videos: [CGDirectDisplayID: URL]) {
         var screensByVideo: [URL: [NSScreen]] = [:]
         for screen in NSScreen.screens {
-            guard let id = screen.displayID, let video = syncedVideos[id],
-                  changed.contains(video.standardizedFileURL.path) else { continue }
+            guard let id = screen.displayID, let video = videos[id] else { continue }
             screensByVideo[video, default: []].append(screen)
         }
         for (video, screens) in screensByVideo {
@@ -121,6 +139,10 @@ final class SystemWallpaperSync: ObservableObject {
 
     /// Full sync of the current wallpaper(s) — used when the toggle flips on.
     func syncNow() {
+        if let playing = playingVideos() {
+            syncGrouped(playing)
+            return
+        }
         let manager = WallpaperManager.shared
         if manager.wallpaperMode == .different {
             for screen in NSScreen.screens {
@@ -203,8 +225,11 @@ final class SystemWallpaperSync: ObservableObject {
                 return waiting.contains(id) && self.requestedFrames[id] == frameURL
             }
             self.apply(frameURL: frameURL, to: targets)
-            Self.cleanupFrames(in: Self.framesDirectory(), keepingNewest: 8,
-                               protecting: Set(self.appliedFrames.values))
+            // Stills in use as any display's picture stay, including ones
+            // applied before this session.
+            let inUse = Set(self.appliedFrames.values)
+                .union(NSScreen.screens.compactMap { NSWorkspace.shared.desktopImageURL(for: $0) })
+            Self.cleanupFrames(in: Self.framesDirectory(), keepingNewest: 8, protecting: inUse)
         }
     }
 
@@ -230,6 +255,10 @@ final class SystemWallpaperSync: ObservableObject {
     /// — push the last frame wherever the OS reports something else.
     private func reapplyIfNeeded() {
         guard isEnabled else { return }
+        // A display connected since the last sync has no still of its own yet.
+        if let playing = playingVideos() {
+            syncGrouped(playing.filter { appliedFrames[$0.key] == nil })
+        }
         for screen in NSScreen.screens {
             guard let id = screen.displayID,
                   let frameURL = appliedFrames[id],
