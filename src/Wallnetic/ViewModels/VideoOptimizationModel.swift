@@ -72,13 +72,15 @@ final class VideoOptimizationModel: ObservableObject {
                 // is still valid if cancellation arrives immediately after that,
                 // so the range is copied in a task the cancellation cannot reach.
                 let source = self.source.url
-                let inherited = await Task { await self.inheritLoopRange(from: source, to: result.url) }.value
+                let loopRange = await Task { await self.inheritLoopRange(from: source, to: result.url) }.value
                 refreshLibrary()
                 self.result = result
                 progress = 1
-                message = inherited
-                    ? "Copy added to Library with the same loop range. Your original is unchanged."
-                    : "Copy added to Library. Your original is unchanged."
+                switch loopRange {
+                case .kept: message = "Copy added to Library with the same loop range. Your original is unchanged."
+                case .dropped: message = "Copy added to Library. Its loop range could not be kept, so the copy plays in full. Your original is unchanged."
+                case .none: message = "Copy added to Library. Your original is unchanged."
+                }
             } catch is CancellationError {
                 message = "Cancelled. No partial copy was added to Library."
             } catch { self.error = error.localizedDescription }
@@ -90,23 +92,26 @@ final class VideoOptimizationModel: ObservableObject {
         return task
     }
 
+    /// What became of the source's loop range on its copy.
+    private enum CopiedLoopRange { case kept, dropped, none }
+
     /// A copy of a trimmed video loops the same part: the source's range moved
     /// to the copy's frames and clamped to its length, with the copy's own
     /// fingerprint. From then on each item's range is edited on its own.
-    private func inheritLoopRange(from source: URL, to copy: URL) async -> Bool {
-        guard let trim = TrimmedVideoAsset.usableTrim(trims.trim(for: source), for: source),
-              let fingerprint = VideoFileFingerprint(fileAt: copy) else { return false }
+    private func inheritLoopRange(from source: URL, to copy: URL) async -> CopiedLoopRange {
+        guard let trim = TrimmedVideoAsset.usableTrim(trims.trim(for: source), for: source) else { return .none }
+        guard let fingerprint = VideoFileFingerprint(fileAt: copy) else { return .dropped }
         let asset = AVURLAsset(url: copy, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
         do {
-            guard let track = try await asset.loadTracks(withMediaType: .video).first else { return false }
+            guard let track = try await asset.loadTracks(withMediaType: .video).first else { return .dropped }
             let (range, frameDuration) = try await track.load(.timeRange, .minFrameDuration)
             guard let copyTrim = trim.inherited(byTrack: range, frameDuration: frameDuration,
-                                                fingerprint: fingerprint) else { return false }
+                                                fingerprint: fingerprint) else { return .dropped }
             try trims.setTrim(copyTrim, for: copy)
-            return true
+            return .kept
         } catch {
             Log.app.error("Optimized copy did not inherit the loop range: \(error.localizedDescription, privacy: .public)")
-            return false
+            return .dropped
         }
     }
 

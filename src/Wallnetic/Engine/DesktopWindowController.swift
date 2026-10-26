@@ -13,9 +13,10 @@ protocol WallpaperRenderer: AnyObject {
     /// Reloads the current video with an edited loop range without changing
     /// play/pause intent. A paused renderer applies it when it next resumes.
     func applyTrim(_ trim: PlaybackTrim?)
-    /// For the current player: whether its load's range applied (`true`) or
-    /// fell back to the full video (`false`); nil when there was no range.
-    var trimApplied: Bool? { get }
+    /// For the current player: the video it loaded, and whether that load's
+    /// range applied (`true`) or fell back to the full video (`false`). Nil
+    /// when there was no range, or while an edit waits for the next resume.
+    var trimOutcome: (url: URL, applied: Bool)? { get }
     func play()
     func pause()
     func stop()
@@ -48,7 +49,7 @@ extension WallpaperRenderer {
         loadVideo(url: url, trim: nil)
     }
 
-    var trimApplied: Bool? { nil }
+    var trimOutcome: (url: URL, applied: Bool)? { nil }
 }
 
 // Conform VideoRenderer to the protocol
@@ -312,11 +313,19 @@ class DesktopWindowController {
 
     /// Tells the Library which ranges a renderer could not build (the full
     /// video plays instead) and which it applied, once a load has its frame.
+    /// Each outcome counts for the video that renderer loaded; displays that
+    /// disagree about one video leave its mark unchanged.
     private func reportTrimOutcomes() {
-        for (id, url) in screenWallpaperURLs {
-            guard let renderer = renderers[id], renderer.playbackMonitor.hasFrameForCurrentLoad,
-                  let applied = renderer.trimApplied else { continue }
-            trimStore.noteTrim(applied: applied, for: url)
+        var outcomes: [String: (url: URL, applied: Bool)] = [:]
+        var conflicting: Set<String> = []
+        for renderer in renderers.values where renderer.playbackMonitor.hasFrameForCurrentLoad {
+            guard let outcome = renderer.trimOutcome else { continue }
+            let path = outcome.url.standardizedFileURL.path
+            if let known = outcomes[path], known.applied != outcome.applied { conflicting.insert(path) }
+            outcomes[path] = outcome
+        }
+        for (path, outcome) in outcomes where !conflicting.contains(path) {
+            trimStore.noteTrim(applied: outcome.applied, for: outcome.url)
         }
     }
 

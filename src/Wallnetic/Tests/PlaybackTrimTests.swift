@@ -107,10 +107,34 @@ final class PlaybackTrimTests: XCTestCase {
         let whole = PlaybackTrim(start: .zero, end: CMTime(value: 2_995, timescale: 1_000), fingerprint: fingerprint)
         XCTAssertNil(whole.inherited(byTrack: threeSeconds, frameDuration: eighth, fingerprint: copyPrint),
                      "A range covering the whole copy stores no trim")
-        let tight = PlaybackTrim(start: CMTime(value: 101, timescale: 100), end: CMTime(value: 2, timescale: 1),
-                                 fingerprint: fingerprint)
-        XCTAssertNil(tight.inherited(byTrack: threeSeconds, frameDuration: eighth, fingerprint: copyPrint),
-                     "Less than the minimum after snapping to the copy's frames")
+
+        // The user cut only the last source frame (24 fps x 101). The copy at
+        // 15 fps ends with a short sample showing that frame; End stays before it.
+        let lastCut = PlaybackTrim(start: CMTime(value: 10, timescale: 24), end: CMTime(value: 100, timescale: 24),
+                                   fingerprint: fingerprint)
+        let fifteenth = CMTime(value: 1, timescale: 15)
+        let copyTrack = CMTimeRange(start: .zero, duration: CMTime(value: 252_500, timescale: 60_000))
+        let keptCut = try XCTUnwrap(lastCut.inherited(byTrack: copyTrack, frameDuration: fifteenth, fingerprint: copyPrint))
+        XCTAssertEqual(keptCut.start, CMTime(value: 7, timescale: 15))
+        XCTAssertEqual(keptCut.end, CMTime(value: 63, timescale: 15), "The cut frame's sliver is not kept")
+
+        // Snapping both ends up to a 0.3 s grid leaves a 1 s range 0.9 s long:
+        // End widens by one copy frame, or Start moves back at the copy's end.
+        let tenths = CMTime(value: 3, timescale: 10)
+        let minimum = PlaybackTrim(start: CMTime(value: 1, timescale: 10), end: CMTime(value: 11, timescale: 10),
+                                   fingerprint: fingerprint)
+        let widened = try XCTUnwrap(minimum.inherited(byTrack: threeSeconds, frameDuration: tenths, fingerprint: copyPrint))
+        XCTAssertEqual(widened.start, CMTime(value: 3, timescale: 10))
+        XCTAssertEqual(widened.end, CMTime(value: 15, timescale: 10))
+        let lastSecond = PlaybackTrim(start: CMTime(value: 2, timescale: 1), end: CMTime(value: 3, timescale: 1),
+                                      fingerprint: fingerprint)
+        let movedBack = try XCTUnwrap(lastSecond.inherited(byTrack: threeSeconds, frameDuration: tenths,
+                                                           fingerprint: copyPrint))
+        XCTAssertEqual(movedBack.start, CMTime(value: 18, timescale: 10))
+        XCTAssertEqual(movedBack.end, CMTime(value: 3, timescale: 1))
+        XCTAssertNil(lastSecond.inherited(byTrack: CMTimeRange(start: .zero, duration: CMTime(value: 1, timescale: 2)),
+                                          frameDuration: tenths, fingerprint: copyPrint),
+                     "A copy shorter than the minimum keeps no range")
     }
 
     func testUnbuiltMarksClearWhenTheRangeIsEdited() throws {

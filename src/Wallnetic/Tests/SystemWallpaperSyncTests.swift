@@ -122,6 +122,28 @@ final class SystemWallpaperSyncTests: XCTestCase {
         XCTAssertEqual(remaining, ["frame-3.jpg", "frame-4.jpg"])
     }
 
+    /// Range edits add stills; one still in use by another display must not
+    /// be evicted just because it is the oldest file.
+    func testCleanupNeverRemovesStillsInUse() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SystemWallpaperSyncTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let base = Date(timeIntervalSinceNow: -3600)
+        for i in 0..<5 {
+            let file = dir.appendingPathComponent("frame-\(i).jpg")
+            try Data("x".utf8).write(to: file)
+            try FileManager.default.setAttributes([.modificationDate: base.addingTimeInterval(Double(i) * 60)],
+                                                  ofItemAtPath: file.path)
+        }
+
+        SystemWallpaperSync.cleanupFrames(in: dir, keepingNewest: 2,
+                                          protecting: [dir.appendingPathComponent("frame-0.jpg")])
+
+        let remaining = try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted()
+        XCTAssertEqual(remaining, ["frame-0.jpg", "frame-3.jpg", "frame-4.jpg"])
+    }
+
     func testCleanupNoopUnderLimit() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("SystemWallpaperSyncTests-\(UUID().uuidString)")

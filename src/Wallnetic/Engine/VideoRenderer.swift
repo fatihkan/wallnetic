@@ -35,9 +35,10 @@ class VideoRenderer: NSObject {
     /// The range the latest load asked for, once it matched the file.
     private var requestedTrim: PlaybackTrim?
 
-    var trimApplied: Bool? {
-        guard playerGeneration == loadGeneration, requestedTrim != nil else { return nil }
-        return appliedTrim != nil
+    var trimOutcome: (url: URL, applied: Bool)? {
+        guard pendingTrimReload == nil, playerGeneration == loadGeneration,
+              let loadedURL, requestedTrim != nil else { return nil }
+        return (loadedURL, appliedTrim != nil)
     }
 
     let playbackMonitor = RendererPlaybackMonitor()

@@ -370,18 +370,26 @@ final class TrimmedPlaybackTests: XCTestCase {
         renderer.loadVideo(url: video, trim: nil)
         renderer.play()
         try await waitUntil("first frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
-        XCTAssertNil(renderer.trimApplied, "No range, nothing to report")
+        XCTAssertNil(renderer.trimOutcome, "No range, nothing to report")
 
         renderer.loadVideo(url: video, trim: try trimming(video, fromFrame: 10, toFrame: 20))
         try await waitUntil("trimmed frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
-        XCTAssertEqual(renderer.trimApplied, true)
+        XCTAssertEqual(renderer.trimOutcome?.applied, true)
+        XCTAssertEqual(renderer.trimOutcome?.url, video)
 
         let fingerprint = try XCTUnwrap(VideoFileFingerprint(fileAt: video))
         let outside = PlaybackTrim(start: CMTime(value: 25, timescale: 10), end: CMTime(value: 35, timescale: 10),
                                    fingerprint: fingerprint)
         renderer.loadVideo(url: video, trim: outside)
         try await waitUntil("full-video frame") { renderer.playbackMonitor.hasFrameForCurrentLoad }
-        XCTAssertEqual(renderer.trimApplied, false, "The full video plays, and the Library is told")
+        XCTAssertEqual(renderer.trimOutcome?.applied, false, "The full video plays, and the Library is told")
+
+        renderer.pause()
+        try await waitUntil("paused") { renderer.playbackMonitor.state == .paused }
+        renderer.applyTrim(try trimming(video, fromFrame: 10, toFrame: 20))
+        XCTAssertNil(renderer.trimOutcome, "A deferred edit reports nothing until it loads")
+        renderer.play()
+        try await waitUntil("edited range applied") { renderer.trimOutcome?.applied == true }
     }
 
     // MARK: - Fixtures

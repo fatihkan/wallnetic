@@ -29,9 +29,16 @@ final class SystemWallpaperSync: ObservableObject {
     /// Last frame applied per display (CGDirectDisplayID → frame URL). Keyed
     /// by display id, not localizedName, so identical monitors don't collide.
     private var appliedFrames: [CGDirectDisplayID: URL] = [:]
-    /// Video URLs with an extraction currently in flight (dedup guard for
-    /// rapid changes — slideshow, per-Space switching).
-    private var inFlight: Set<URL> = []
+    /// Extractions in flight, by still file (video and loop range), with the
+    /// displays waiting for each. A later request for the same still joins
+    /// them instead of starting a second extraction (slideshow, per-Space
+    /// switching, two displays showing one video).
+    private var inFlight: [URL: Set<CGDirectDisplayID>] = [:]
+    /// The still each display asked for last, and the video it came from. A
+    /// finished extraction applies only to displays that still want it, and a
+    /// range edit resyncs the displays whose video it changed.
+    private var requestedFrames: [CGDirectDisplayID: URL] = [:]
+    private var syncedVideos: [CGDirectDisplayID: URL] = [:]
     private var started = false
     /// Loop ranges as of the last sync, to resync only the edited videos.
     private var syncedTrims: [String: PlaybackTrim] = [:]
@@ -99,15 +106,16 @@ final class SystemWallpaperSync: ObservableObject {
         let changed = Set(trims.keys).union(syncedTrims.keys).filter { trims[$0] != syncedTrims[$0] }
         syncedTrims = trims
         guard isEnabled, !changed.isEmpty else { return }
-        let manager = WallpaperManager.shared
-        if manager.wallpaperMode == .different {
-            for screen in NSScreen.screens {
-                if let wp = manager.wallpaper(for: screen), changed.contains(wp.url.standardizedFileURL.path) {
-                    sync(videoURL: wp.url, to: [screen])
-                }
-            }
-        } else if let wp = manager.currentWallpaper, changed.contains(wp.url.standardizedFileURL.path) {
-            sync(videoURL: wp.url, to: NSScreen.screens)
+        // The displays whose still came from an edited video, grouped so each
+        // video's new still is extracted once for all of them.
+        var screensByVideo: [URL: [NSScreen]] = [:]
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID, let video = syncedVideos[id],
+                  changed.contains(video.standardizedFileURL.path) else { continue }
+            screensByVideo[video, default: []].append(screen)
+        }
+        for (video, screens) in screensByVideo {
+            sync(videoURL: video, to: screens)
         }
     }
 
@@ -143,6 +151,8 @@ final class SystemWallpaperSync: ObservableObject {
         }
         originalsJSON = "{}"
         appliedFrames.removeAll()
+        requestedFrames.removeAll()
+        syncedVideos.removeAll()
     }
 
     // MARK: - Sync
@@ -154,34 +164,47 @@ final class SystemWallpaperSync: ObservableObject {
         let trim = TrimmedVideoAsset.usableTrim(PlaybackTrimStore.shared.trim(for: videoURL), for: videoURL)
         let frameURL = Self.framesDirectory()
             .appendingPathComponent(Self.frameFileName(for: videoURL, trim: trim))
+        let targetIDs = screens.compactMap(\.displayID)
+        for id in targetIDs {
+            requestedFrames[id] = frameURL
+            syncedVideos[id] = videoURL
+        }
 
         if FileManager.default.fileExists(atPath: frameURL.path) {
             apply(frameURL: frameURL, to: screens)
             return
         }
 
-        guard !inFlight.contains(videoURL) else { return }
-        inFlight.insert(videoURL)
+        if inFlight[frameURL] != nil {
+            inFlight[frameURL]?.formUnion(targetIDs)
+            return
+        }
+        inFlight[frameURL] = Set(targetIDs)
 
-        // Largest backing size among target screens bounds the extraction.
-        let maxSize = screens.reduce(CGSize(width: 1920, height: 1080)) { acc, screen in
+        // The largest connected display bounds the extraction, so displays
+        // that join while it runs get a large enough still too.
+        let maxSize = NSScreen.screens.reduce(CGSize(width: 1920, height: 1080)) { acc, screen in
             let px = CGSize(width: screen.frame.width * screen.backingScaleFactor,
                             height: screen.frame.height * screen.backingScaleFactor)
             return px.width * px.height > acc.width * acc.height ? px : acc
         }
-        // Only immutable Sendable values cross the await (Xcode 15.2 WMO).
-        let targetIDs = screens.compactMap(\.displayID)
 
+        // Only immutable Sendable values cross the await (Xcode 15.2 WMO).
         Task { [weak self] in
             let extracted = await Self.extractFrame(videoURL: videoURL, trim: trim, maxSize: maxSize, to: frameURL)
             guard let self else { return }
-            self.inFlight.remove(videoURL)
+            let waiting = self.inFlight.removeValue(forKey: frameURL) ?? []
             guard extracted, self.isEnabled else { return }
-            // Re-resolve screens at apply time — the set may have changed
-            // during extraction; match by stable display id.
-            let targets = NSScreen.screens.filter { ($0.displayID).map(targetIDs.contains) ?? false }
+            // Re-resolve screens at apply time, by stable display id. A display
+            // that asked for another still meanwhile (a newer range or
+            // wallpaper) keeps that one.
+            let targets = NSScreen.screens.filter { screen in
+                guard let id = screen.displayID else { return false }
+                return waiting.contains(id) && self.requestedFrames[id] == frameURL
+            }
             self.apply(frameURL: frameURL, to: targets)
-            Self.cleanupFrames(in: Self.framesDirectory(), keepingNewest: 8)
+            Self.cleanupFrames(in: Self.framesDirectory(), keepingNewest: 8,
+                               protecting: Set(self.appliedFrames.values))
         }
     }
 
@@ -303,7 +326,9 @@ final class SystemWallpaperSync: ObservableObject {
     }
 
     /// Caps the frame cache, dropping the oldest files first.
-    nonisolated static func cleanupFrames(in directory: URL, keepingNewest keep: Int) {
+    /// `protecting`: stills in use as a display's wallpaper are never removed,
+    /// however old, because Spaces and reconnected displays reapply them.
+    nonisolated static func cleanupFrames(in directory: URL, keepingNewest keep: Int, protecting: Set<URL> = []) {
         let fm = FileManager.default
         guard let urls = try? fm.contentsOfDirectory(
             at: directory,
@@ -318,7 +343,9 @@ final class SystemWallpaperSync: ObservableObject {
                 .contentModificationDate) ?? .distantPast
             return lhsDate > rhsDate
         }
-        for url in sorted.dropFirst(keep) {
+        let protectedPaths = Set(protecting.map { $0.standardizedFileURL.resolvingSymlinksInPath().path })
+        for url in sorted.dropFirst(keep)
+        where !protectedPaths.contains(url.standardizedFileURL.resolvingSymlinksInPath().path) {
             try? fm.removeItem(at: url)
         }
     }

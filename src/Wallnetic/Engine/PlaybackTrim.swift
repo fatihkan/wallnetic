@@ -117,16 +117,26 @@ struct PlaybackTrim: Equatable {
 
     /// The range for a copy of this video (an optimized copy) whose video
     /// track spans `trackRange` with frames of `frameDuration`: Start and End
-    /// move to the first copy frame at or after them, End is clamped to the
-    /// copy, and the copy's own fingerprint is recorded. Nil when nothing
-    /// shorter than the whole copy, and at least the minimum length, remains.
+    /// move to the first copy frame at or after them, and End is clamped to
+    /// the copy, so no copy frame after the original End is kept. Snapping
+    /// can leave a minimum-length range up to a frame short; it is then
+    /// widened by the least needed instead of dropped. The copy's own
+    /// fingerprint is recorded. Nil when no range shorter than the whole copy
+    /// remains.
     func inherited(byTrack trackRange: CMTimeRange, frameDuration: CMTime,
                    fingerprint: VideoFileFingerprint) -> PlaybackTrim? {
         guard trackRange.isValid, !trackRange.isEmpty, trackRange.end.isNumeric else { return nil }
         let origin = trackRange.start
-        let copyStart = max(origin, Self.aligned(start, frameDuration: frameDuration, origin: origin, rule: .up))
-        var copyEnd = Self.aligned(end, frameDuration: frameDuration, origin: origin, rule: .up)
-        if copyEnd > trackRange.end - Self.endTolerance { copyEnd = trackRange.end }
+        var copyStart = max(origin, Self.aligned(start, frameDuration: frameDuration, origin: origin, rule: .up))
+        var copyEnd = min(trackRange.end, Self.aligned(end, frameDuration: frameDuration, origin: origin, rule: .up))
+        if copyEnd - copyStart < Self.minimumLength {
+            copyEnd = min(trackRange.end, Self.aligned(copyStart + Self.minimumLength, frameDuration: frameDuration,
+                                                       origin: origin, rule: .up))
+        }
+        if copyEnd - copyStart < Self.minimumLength {
+            copyStart = max(origin, Self.aligned(copyEnd - Self.minimumLength, frameDuration: frameDuration,
+                                                 origin: origin, rule: .down))
+        }
         return try? Self.selection(start: copyStart, end: copyEnd, duration: trackRange.end, fingerprint: fingerprint)
     }
 }
