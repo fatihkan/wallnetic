@@ -1,4 +1,5 @@
 import XCTest
+import CoreMedia
 import Darwin
 @testable import Wallnetic
 
@@ -311,6 +312,40 @@ final class LibraryStorageTests: XCTestCase {
         XCTAssertEqual(settings.preferences.duration(for: Wallpaper(url: beach).url), 30,
                        "A different video at the same path follows the default interval")
         XCTAssertEqual(settings.preferences.duration(for: kept), 47)
+    }
+
+    func testOnlySuccessfulRemovalPrunesLoopRangeBeforeReimport() throws {
+        let suite = "LibraryStorageLoopRanges.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = PlaybackTrimStore(defaults: defaults)
+        let beach = try file(service.libraryURL.appendingPathComponent("beach.mp4"), bytes: 10)
+        let kept = try file(service.libraryURL.appendingPathComponent("kept.mp4"), bytes: 20)
+        let beachRange = PlaybackTrim(start: .zero, end: CMTime(value: 2, timescale: 1),
+                                      fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: beach)))
+        let keptRange = PlaybackTrim(start: .zero, end: CMTime(value: 3, timescale: 1),
+                                     fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: kept)))
+        try store.setTrim(beachRange, for: beach)
+        try store.setTrim(keptRange, for: kept)
+        let wallpapers = [Wallpaper(url: beach), Wallpaper(url: kept)]
+
+        let failed = LibraryRemovalState(result: StorageRemovalResult(failures: ["Permission denied"]),
+                                         wallpapers: wallpapers, current: nil, screenAssignments: [:])
+        store.removeTrims(for: failed.urls)
+        XCTAssertEqual(store.trim(for: beach), beachRange, "A failed removal keeps the loop range")
+
+        let item = try XCTUnwrap(service.scan().items.first { $0.url == beach })
+        let removed = LibraryRemovalState(result: service.remove([item]), wallpapers: wallpapers,
+                                          current: nil, screenAssignments: [:])
+        XCTAssertEqual(removed.urls, [beach])
+        store.removeTrims(for: removed.urls)
+        let relaunched = PlaybackTrimStore(defaults: defaults)
+        XCTAssertNil(relaunched.trim(for: beach))
+        XCTAssertEqual(relaunched.trim(for: kept), keptRange, "Only the removed item's range is forgotten")
+
+        try file(beach, bytes: 10)
+        XCTAssertNil(store.trim(for: Wallpaper(url: beach).url),
+                     "A different video imported at the same path plays in full")
     }
 
     @MainActor

@@ -7,7 +7,12 @@ import Combine
 protocol WallpaperRenderer: AnyObject {
     var playbackMonitor: RendererPlaybackMonitor { get }
     var rendererView: NSView { get }
-    func loadVideo(url: URL)
+    /// Loads a video and loops only `trim`'s range while it still applies to
+    /// the file; nil, or a range that cannot apply, plays the full video.
+    func loadVideo(url: URL, trim: PlaybackTrim?)
+    /// Reloads the current video with an edited loop range without changing
+    /// play/pause intent. A paused renderer applies it when it next resumes.
+    func applyTrim(_ trim: PlaybackTrim?)
     func play()
     func pause()
     func stop()
@@ -32,6 +37,13 @@ protocol WallpaperRenderer: AnyObject {
     /// window is occluded by a windowed (non-fullscreen) app. A restart when
     /// that app leaves the foreground is the remaining hitch.
     func maintainPlayback()
+}
+
+extension WallpaperRenderer {
+    /// The full video, for callers without a stored loop range.
+    func loadVideo(url: URL) {
+        loadVideo(url: url, trim: nil)
+    }
 }
 
 // Conform VideoRenderer to the protocol
@@ -83,11 +95,18 @@ class DesktopWindowController {
     private var useMetalRenderer: Bool
     /// Keeps App Nap from throttling decode while a foreground app is active.
     private var playbackActivity: NSObjectProtocol?
+    private let trimStore: PlaybackTrimStore
+    private var trimObserver: AnyCancellable?
 
-    init() {
+    init(trimStore: PlaybackTrimStore = .shared) {
         self.useMetalRenderer = WallpaperManager.shared.useMetalRenderer
+        self.trimStore = trimStore
         setupDesktopWindows()
         setupEffectsObserver()
+        // `@Published` emits before it stores, so use the emitted ranges.
+        trimObserver = trimStore.$trims.dropFirst().sink { [weak self] trims in
+            self?.applyTrimEdits(trims)
+        }
         durationPlayback.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
         calmSettingsObserver = CalmPlaybackSettings.shared.$state
             .map(\.holds).removeDuplicates().sink { [weak self] holds in
@@ -280,9 +299,19 @@ class DesktopWindowController {
             // frame (or every looper item swap) as a visible twitch.
             // The renderer keeps the previous player until the next item is
             // ready, which is the hitch-free swap.
-            renderer.loadVideo(url: url)
+            renderer.loadVideo(url: url, trim: trimStore.trim(for: url))
             durationPlayback.setWallpaper(url, renderer: renderer, on: s,
                                           preferences: PauseAfterSettings.shared.preferences)
+        }
+    }
+
+    /// A loop-range edit reloads only the displays showing that video,
+    /// through the renderer's own reload; the others ignore an unchanged
+    /// range. Not `setWallpaper`: it replaces the display's Pause After entry,
+    /// which would resume a pause and restart its interval.
+    private func applyTrimEdits(_ trims: [String: PlaybackTrim]) {
+        for (id, url) in screenWallpaperURLs {
+            renderers[id]?.applyTrim(PlaybackTrimStore.trim(for: url, in: trims))
         }
     }
 
@@ -529,7 +558,7 @@ class DesktopWindowController {
                 ? WallpaperManager.shared.wallpaper(for: screen)?.url : currentWallpaperURL
             if let url, let renderer = renderers[id] {
                 screenWallpaperURLs[id] = url
-                renderer.loadVideo(url: url)
+                renderer.loadVideo(url: url, trim: trimStore.trim(for: url))
                 durationPlayback.setWallpaper(url, renderer: renderer, on: id,
                                               preferences: PauseAfterSettings.shared.preferences)
             }
@@ -621,6 +650,7 @@ class DesktopWindowController {
 
     func cleanup() {
         statusObservers.removeAll()
+        trimObserver = nil
         onDisplayStatusesChanged = nil
         durationSettingsObserver = nil
         calmSettingsObserver = nil

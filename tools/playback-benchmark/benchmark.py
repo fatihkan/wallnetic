@@ -22,7 +22,8 @@ APP = ROOT / "src/Wallnetic"
 RENDERER_SOURCES = [
     "Engine/VideoRenderer.swift", "Engine/MetalVideoRenderer.swift",
     "Engine/RendererPlaybackMonitor.swift", "Engine/WallpaperVisibilityPolicy.swift",
-    "Engine/WallpaperAspectFill.swift", "Models/PlaybackStatus.swift",
+    "Engine/WallpaperAspectFill.swift", "Engine/PlaybackTrim.swift", "Engine/TrimmedVideoAsset.swift",
+    "Models/PlaybackStatus.swift",
     "Services/PerformanceManager.swift", "Utils/Log.swift",
 ]
 RECIPES = {"h264": (1920, 1080, 30, "avc1"), "hevc": (3840, 2160, 60, "hvc1")}

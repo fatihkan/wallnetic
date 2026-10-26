@@ -695,7 +695,8 @@ private final class ProfileRendererSpy: WallpaperRenderer {
     var onBecameReady: (() -> Void)?
     var filterLayer: CALayer? { nil }
     func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode) { modes.append(mode) }
-    func loadVideo(url: URL) { playbackMutations += 1 }
+    func loadVideo(url: URL, trim: PlaybackTrim?) { playbackMutations += 1 }
+    func applyTrim(_ trim: PlaybackTrim?) { playbackMutations += 1 }
     func play() { playbackMutations += 1 }
     func pause() { playbackMutations += 1 }
     func stop() { playbackMutations += 1 }
