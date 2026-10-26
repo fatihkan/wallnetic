@@ -244,27 +244,28 @@ final class PlaybackRendererTests: XCTestCase {
         XCTAssertFalse(renderer.hasPresentedFrame)
     }
 
-    private func writeShortVideo(to url: URL, frames: Int = 3, fps: Int32 = 10) async throws {
+    private func writeShortVideo(to url: URL, frames: Int = 3, fps: Int32 = 10,
+                                 width: Int = 64, height: Int = 64) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
             AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: 64,
-            AVVideoHeightKey: 64
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height
         ])
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String: 64,
-            kCVPixelBufferHeightKey as String: 64
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height
         ])
         writer.add(input)
         guard writer.startWriting() else { throw writer.error ?? FixtureError.encodingFailed }
         writer.startSession(atSourceTime: .zero)
         var pixelBuffer: CVPixelBuffer?
-        guard CVPixelBufferCreate(kCFAllocatorDefault, 64, 64, kCVPixelFormatType_32BGRA, nil, &pixelBuffer) == kCVReturnSuccess,
+        guard CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, nil, &pixelBuffer) == kCVReturnSuccess,
               let buffer = pixelBuffer else { throw FixtureError.encodingFailed }
         CVPixelBufferLockBaseAddress(buffer, [])
         if let base = CVPixelBufferGetBaseAddress(buffer) {
-            memset(base, 128, CVPixelBufferGetBytesPerRow(buffer) * 64)
+            memset(base, 128, CVPixelBufferGetBytesPerRow(buffer) * height)
         }
         CVPixelBufferUnlockBaseAddress(buffer, [])
         for frame in 0..<frames {
@@ -285,6 +286,67 @@ final class PlaybackRendererTests: XCTestCase {
         input.markAsFinished()
         await writer.finishWriting()
         guard writer.status == .completed else { throw writer.error ?? FixtureError.encodingFailed }
+    }
+
+    /// #307: after a switch to a video of another aspect ratio, the retained
+    /// frame keeps its own crop until the new video's first frame, also when
+    /// a pause request redraws it while paused. The new video then gets its crop.
+    @MainActor
+    func testMetalRetainedFrameKeepsItsCropAcrossAspectRatioChange() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        let renderer = MetalVideoRenderer()
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 160, height: 100), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("crop-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let landscapeSize = CGSize(width: 64, height: 36)
+        let portraitSize = CGSize(width: 36, height: 64)
+        let landscape = directory.appendingPathComponent("landscape.mov")
+        let portrait = directory.appendingPathComponent("portrait.mov")
+        try await writeShortVideo(to: landscape, frames: 40, fps: 10, width: 64, height: 36)
+        try await writeShortVideo(to: portrait, frames: 40, fps: 10, width: 36, height: 64)
+        window.contentView = renderer.metalView
+        window.orderFront(nil)
+
+        renderer.loadVideo(url: landscape)
+        renderer.play()
+        var deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertEqual(renderer.quadCrop?.videoSize, landscapeSize)
+
+        // Paused, as with a manual pause, Calm Mode or battery: load B. Lock,
+        // sleep or a power change then sends another pause request.
+        renderer.pause()
+        renderer.loadVideo(url: portrait)
+        deadline = Date().addingTimeInterval(5)
+        while renderer.playerVideoSize != portraitSize, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(renderer.playerVideoSize, portraitSize, "B's player must be attached")
+        renderer.pause()
+        XCTAssertTrue(renderer.hasPresentedFrame, "A's frame stays on screen")
+        XCTAssertFalse(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertEqual(renderer.quadCrop?.videoSize, landscapeSize, "A's frame must keep A's crop")
+        XCTAssertEqual(renderer.currentPlaybackRate, 0, "Redrawing must not start playback")
+
+        renderer.play()
+        deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertEqual(renderer.quadCrop?.videoSize, portraitSize)
+        let crop = try XCTUnwrap(renderer.quadCrop)
+        XCTAssertEqual(crop.textureRect, WallpaperAspectFill.textureRect(videoSize: portraitSize, viewSize: crop.viewSize))
     }
 
     @MainActor
