@@ -18,6 +18,8 @@ struct SmallWidgetView: View {
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
                     .tracking(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
 
                 // Date
                 Text(shortDateString)
@@ -87,12 +89,7 @@ struct SmallWidgetView: View {
         }
     }
 
-    private var timeString: String {
-        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: entry.date)
-    }
+    private var timeString: String { WidgetClockFormat.time(entry.date) }
 
-    private var shortDateString: String {
-        let f = DateFormatter(); f.dateFormat = "d MMM, EEE"; f.locale = Locale.current
-        return f.string(from: entry.date).uppercased()
-    }
+    private var shortDateString: String { WidgetClockFormat.shortDate(entry.date) }
 }
