@@ -120,6 +120,8 @@ later.
 ### Live Video Wallpapers
 - Play any video file (MP4, MOV, M4V, GIF, WebM) as your desktop background
 - Seamless looping with zero stuttering
+- [Trim](docs/LOOP_RANGE.md) (`dev`): loop only part of a Library video, set frame
+  by frame, without modifying or re-encoding the original
 - Drag & drop or file picker import
 
 ### Space Selection Recovery (`dev`)

@@ -12,6 +12,7 @@ struct WallpaperGridView: View {
     var filter: GridFilter = .all
     @State private var previewWallpaper: Wallpaper?
     @State private var optimizingWallpaper: Wallpaper?
+    @State private var trimmingWallpaper: Wallpaper?
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText: String = ""
 
@@ -67,6 +68,7 @@ struct WallpaperGridView: View {
                                     withAnimation { previewWallpaper = wallpaper }
                                 },
                                 onOptimize: { optimizingWallpaper = wallpaper },
+                                onTrim: { trimmingWallpaper = wallpaper },
                                 onRename: {
                                     renameText = wallpaper.displayName
                                     renamingWallpaper = wallpaper
@@ -105,6 +107,7 @@ struct WallpaperGridView: View {
             }
         }
         .sheet(item: $optimizingWallpaper) { VideoOptimizationSheet(wallpaper: $0) }
+        .sheet(item: $trimmingWallpaper) { VideoTrimSheet(wallpaper: $0) }
         .sheet(item: $renamingWallpaper) { wallpaper in
             RenameWallpaperSheet(
                 wallpaper: wallpaper,
@@ -144,6 +147,7 @@ struct WallpaperGridView: View {
 struct WallpaperCard: View {
     let wallpaper: Wallpaper
     let isSelected: Bool
+    @ObservedObject private var trims = PlaybackTrimStore.shared
     @State private var thumbnail: NSImage?
     @State private var isHovering = false
     @State private var isFlipped = false
@@ -217,7 +221,7 @@ struct WallpaperCard: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    Text(wallpaper.formattedDuration)
+                    durationBadge
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -267,7 +271,10 @@ struct WallpaperCard: View {
                 Divider().background(Surface.hairline)
 
                 metadataRow("Resolution", value: wallpaper.formattedResolution)
-                metadataRow("Duration", value: wallpaper.formattedDuration)
+                metadataRow("Duration", value: LoopRangeStatus.durationText(loopStatus, duration: wallpaper.duration))
+                if loopStatus == .notApplied {
+                    metadataRow("Loop", value: "Trim not applied")
+                }
                 metadataRow("File Size", value: wallpaper.formattedFileSize)
                 metadataRow("Added", value: wallpaper.dateAdded.formatted(.dateTime.month().day().year()))
 
@@ -283,6 +290,26 @@ struct WallpaperCard: View {
             }
             .padding(12)
             .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+        }
+    }
+
+    private var loopStatus: LoopRangeStatus {
+        LoopRangeStatus(trim: trims.trim(for: wallpaper.url), fileAt: wallpaper.url, duration: wallpaper.duration)
+    }
+
+    /// Trimmed items show the loop length with scissors; a range that cannot
+    /// apply says so, because the full video plays instead.
+    @ViewBuilder private var durationBadge: some View {
+        switch loopStatus {
+        case .none:
+            Text(wallpaper.formattedDuration)
+        case .applied:
+            Label(loopStatus.loopLengthText ?? "", systemImage: "scissors")
+                .accessibilityLabel("Trimmed loop, \(LoopRangeStatus.durationText(loopStatus, duration: wallpaper.duration))")
+        case .notApplied:
+            Label("Trim not applied", systemImage: "exclamationmark.triangle")
+                .foregroundColor(.orange)
+                .accessibilityLabel("Trim not applied, the full video plays")
         }
     }
 
@@ -306,9 +333,11 @@ struct WallpaperContextMenu: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     let wallpaper: Wallpaper
     @ObservedObject private var optimizedCopies = OptimizedCopyStore.shared
+    @ObservedObject private var trims = PlaybackTrimStore.shared
     @ObservedObject private var spaceManager = SpaceWallpaperManager.shared
     var onPreview: (() -> Void)? = nil
     var onOptimize: (() -> Void)? = nil
+    var onTrim: (() -> Void)? = nil
     var onRename: (() -> Void)? = nil
 
     var body: some View {
@@ -347,6 +376,20 @@ struct WallpaperContextMenu: View {
 
         if let onOptimize {
             Button(action: onOptimize) { Label("Create Optimized Copy…", systemImage: "arrow.down.right.and.arrow.up.left") }
+        }
+        if let onTrim {
+            if trims.trim(for: wallpaper.url) == nil {
+                Button(action: onTrim) { Label("Trim…", systemImage: "scissors") }
+            } else {
+                Button(action: onTrim) { Label("Edit Trim…", systemImage: "scissors") }
+                Button {
+                    do {
+                        try trims.setTrim(nil, for: wallpaper.url)
+                    } catch {
+                        Log.app.error("Could not remove loop range: \(error.localizedDescription, privacy: .public)")
+                    }
+                } label: { Label("Remove Trim", systemImage: "arrow.uturn.backward") }
+            }
         }
         if let path = optimizedCopies.originalPath(for: wallpaper.url) {
             if let original = wallpaperManager.wallpapers.first(where: { $0.url.standardizedFileURL == URL(fileURLWithPath: path).standardizedFileURL }) {
@@ -392,6 +435,7 @@ struct WallpaperContextMenu: View {
 
 struct SelectedWallpaperBar: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @ObservedObject private var trims = PlaybackTrimStore.shared
     let wallpaper: Wallpaper
 
     var body: some View {
@@ -412,7 +456,9 @@ struct SelectedWallpaperBar: View {
                 HStack(spacing: 6) {
                     Text(wallpaper.formattedResolution)
                     Text("·").foregroundColor(.primary.opacity(0.3))
-                    Text(wallpaper.formattedDuration)
+                    Text(LoopRangeStatus.durationText(LoopRangeStatus(trim: trims.trim(for: wallpaper.url),
+                                                                      fileAt: wallpaper.url, duration: wallpaper.duration),
+                                                      duration: wallpaper.duration))
                 }
                 .font(Typo.data)
                 .tracking(Typo.dataTracking)

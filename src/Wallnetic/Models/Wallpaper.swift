@@ -74,6 +74,10 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     }
 
     var formattedDuration: String {
+        Self.formattedDuration(duration)
+    }
+
+    static func formattedDuration(_ duration: Double?) -> String {
         guard let duration = duration, duration.isFinite,
               duration >= 0, duration < Double(Int.max) else { return "--:--" }
         let minutes = Int(duration) / 60
