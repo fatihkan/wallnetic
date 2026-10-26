@@ -68,7 +68,17 @@ struct PlaybackTrim: Equatable {
         guard start >= trackRange.start, end <= trackRange.end + Self.endTolerance else { return nil }
         let clampedEnd = min(end, trackRange.end)
         guard clampedEnd - start >= Self.minimumLength else { return nil }
-        return CMTimeRange(start: start, end: clampedEnd)
+        return Self.range(from: start, to: clampedEnd, notAfter: trackRange.end)
+    }
+
+    /// A range from `start` to `end`. `CMTimeRange` stores a duration, which
+    /// is rounded when the two timescales cannot be combined exactly (say
+    /// nanoseconds and 1/600 s), so the end can land a tick past `limit`;
+    /// then the range is shortened by that tick.
+    static func range(from start: CMTime, to end: CMTime, notAfter limit: CMTime) -> CMTimeRange {
+        let range = CMTimeRange(start: start, end: end)
+        guard range.end > limit, range.duration.value > 1 else { return range }
+        return CMTimeRange(start: start, duration: range.duration - CMTime(value: 1, timescale: range.duration.timescale))
     }
 
     /// `time` moved to the nearest frame boundary of a track whose frames
