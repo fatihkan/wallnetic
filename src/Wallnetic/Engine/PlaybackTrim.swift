@@ -71,13 +71,19 @@ struct PlaybackTrim: Equatable {
         return CMTimeRange(start: start, end: clampedEnd)
     }
 
-    /// `time` moved to the nearest frame boundary of a track whose frames
-    /// last `frameDuration`, counted from `origin` (the track start).
-    static func aligned(_ time: CMTime, frameDuration: CMTime, origin: CMTime = .zero) -> CMTime {
+    /// `time` moved to a frame boundary (the nearest one by default) of a
+    /// track whose frames last `frameDuration`, counted from `origin` (the
+    /// track start).
+    static func aligned(_ time: CMTime, frameDuration: CMTime, origin: CMTime = .zero,
+                        rule: FloatingPointRoundingRule = .toNearestOrAwayFromZero) -> CMTime {
         guard time.isNumeric, origin.isNumeric, frameDuration.isNumeric, frameDuration > .zero else {
             return time
         }
-        let frames = ((time - origin).seconds / frameDuration.seconds).rounded()
+        var position = (time - origin).seconds / frameDuration.seconds
+        // A time already on the grid stays there despite floating-point error,
+        // also when rounding up or down.
+        if abs(position - position.rounded()) < 1e-6 { position = position.rounded() }
+        let frames = position.rounded(rule)
         guard frames.isFinite, abs(frames) <= Double(Int32.max) else { return time }
         return origin + CMTimeMultiply(frameDuration, multiplier: Int32(frames))
     }

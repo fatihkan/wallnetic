@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional thermal-aware playback pauses during sustained serious or critical
   thermal pressure and waits for stable cooling before releasing its hold.
   Manual pauses, power restrictions and expired playback timers remain effective.
+- Trim loops a chosen part of a Library video without modifying or re-encoding
+  the original. Start and End move frame by frame with the keyboard and
+  VoiceOver, both engines loop only the range, and an edit never resumes a
+  paused wallpaper. A range that no longer matches its file is shown as not
+  applied, and the full video plays.
 
 ### Fixed
 - Corrected lock-screen capability descriptions: Wallnetic provides system

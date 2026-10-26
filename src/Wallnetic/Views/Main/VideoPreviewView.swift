@@ -69,7 +69,10 @@ struct VideoPreviewView: View {
 
                             HStack(spacing: 12) {
                                 Label(wallpaper.formattedResolution, systemImage: "aspectratio")
-                                Label(wallpaper.formattedDuration, systemImage: "clock")
+                                Label(LoopRangeStatus.durationText(
+                                    LoopRangeStatus(trim: PlaybackTrimStore.shared.trim(for: wallpaper.url),
+                                                    fileAt: wallpaper.url, duration: wallpaper.duration),
+                                    duration: wallpaper.duration), systemImage: "clock")
                                 Label(wallpaper.formattedFileSize, systemImage: "doc")
                             }
                             .font(.caption)
@@ -120,17 +123,24 @@ struct VideoPreviewView: View {
             }
         }
         .onAppear {
-            setupPlayer()
             withAnimation(.spring(response: Anim.expand, dampingFraction: 0.85)) {
                 appeared = true
             }
         }
+        .task { await setupPlayer() }
         .onDisappear { cleanupPlayer() }
         .onExitCommand { onDismiss() }
     }
 
-    private func setupPlayer() {
-        let item = AVPlayerItem(url: wallpaper.url)
+    /// A trimmed item previews only its loop range, so the player's controls
+    /// cannot move outside it.
+    private func setupPlayer() async {
+        let url = wallpaper.url
+        let trim = TrimmedVideoAsset.usableTrim(PlaybackTrimStore.shared.trim(for: url), for: url)
+        let playback = await TrimmedVideoAsset.playbackAsset(for: TrimmedVideoAsset.sourceAsset(url: url, trim: trim),
+                                                             trim: trim)
+        guard !Task.isCancelled else { return }
+        let item = AVPlayerItem(asset: playback.asset)
         let queuePlayer = AVQueuePlayer(playerItem: item)
         looper = AVPlayerLooper(player: queuePlayer, templateItem: item)
         queuePlayer.isMuted = true
