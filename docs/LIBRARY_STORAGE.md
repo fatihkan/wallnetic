@@ -5,7 +5,7 @@ Settings → Storage shows the sizes of app-managed videos, generated system-wal
 ## Ownership and accounting
 
 - Library videos are copies in Wallnetic's Library directory, including imports, downloads, and generated videos that were imported there. Source files outside that directory are excluded and never deleted by cleanup.
-- Generated still images are Wallnetic's system-wallpaper JPEGs. They remain protected because macOS and other Spaces may still use them. Separately retained optimized video copies are not currently produced; that feature remains #254.
+- Generated still images are Wallnetic's system-wallpaper JPEGs. They remain protected because macOS and other Spaces may still use them. Optimized copies (#254) become separate Library items, counted and removable like other Library videos; see [optimized video copies](OPTIMIZED_VIDEO_COPIES.md).
 - Caches include widget thumbnails and the SQLite search index (including WAL/SHM files). Cleanup removes only unused widget thumbnails. Current/library thumbnails and thumbnails referenced by widget data are protected; the live database is retained.
 - Totals use logical file sizes, not allocated blocks. APFS clones, compression, snapshots and files held open by another process can change the actual disk space recovered. Bundled resources, user defaults, external originals, and in-progress temporary exports/downloads are not part of the managed-media total.
 
@@ -15,7 +15,7 @@ Settings → Storage shows the sizes of app-managed videos, generated system-wal
 2. Require explicit confirmation, including for the existing single-item Delete command. Cancel leaves files and assignments unchanged.
 3. Restrict deletion to direct, regular files with expected names/extensions in known app-owned directories. Do not recurse into directories or follow symbolic links. Open the physical owned-directory anchor with `O_NOFOLLOW_ANY`, then use descriptor-relative file operations and `unlinkat`. The kernel rejects symbolic links anywhere in that directory lookup without requiring separate opens of sandbox-inaccessible ancestors.
 4. Recheck the directory device/inode and file device/inode/size/modification time at deletion. Changed or missing files fail individually; files added after confirmation are not included.
-5. Serialize removal with imports. Only successful removals update active playback, per-display and Space assignments, collection membership/playlist sources, time-of-day and weather paths, favorites, titles, tags, colors, search metadata and widget state. Failed removals retain their references.
+5. Serialize removal with imports. Only successful removals update active playback, per-display and Space assignments, collection membership/playlist sources, time-of-day and weather paths, optimized-copy records, Pause After overrides, favorites, titles, tags, colors, search metadata and widget state. Failed removals retain their references.
 6. Report individual failures and keep failed selections available for retry. Background scans support cancellation; filesystem work does not run on the main actor. Widget reference read failures disable cache deletion without disabling video cleanup.
 
 Library rescans retain the UUIDs of surviving entries so directory-watcher notifications do not detach collection/display references during cleanup. This does not migrate historical collection records whose identities were already lost before the update.
