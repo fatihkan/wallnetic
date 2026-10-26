@@ -399,7 +399,7 @@ final class MetalVideoRenderer: NSObject {
     /// never delivers a paused frame cannot keep the display link running.
     private var needsPausedTrimFrame: Bool {
         !wantsToPlay && trimReloadGeneration == loadGeneration && playerGeneration == loadGeneration
-            && frameGeneration != loadGeneration && !playbackMonitor.state.isFailed
+            && reportedFrameGeneration != loadGeneration && !playbackMonitor.state.isFailed
             && ProcessInfo.processInfo.systemUptime < pausedTrimFrameDeadline
     }
     private var pausedTrimFrameDeadline: TimeInterval = 0

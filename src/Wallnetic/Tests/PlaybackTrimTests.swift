@@ -63,6 +63,21 @@ final class PlaybackTrimTests: XCTestCase {
         XCTAssertNil(trim.timeRange(within: .invalid))
     }
 
+    /// A nanosecond Start and a 1/600 s track end cannot share a timescale, so
+    /// `CMTimeRange` rounds its duration. The range must still end inside the
+    /// track, or the composition insert and the preview looper reject it.
+    func testRangeEndsInsideTheTrackWithMixedTimescales() throws {
+        let start = CMTime(value: 333_333_330, timescale: 1_000_000_000)
+        let trackEnd = CMTime(value: 2_419, timescale: 600)
+        let range = PlaybackTrim.range(from: start, to: trackEnd, notAfter: trackEnd)
+        XCTAssertEqual(range.start, start)
+        XCTAssertLessThanOrEqual(range.end, trackEnd)
+        XCTAssertLessThan(trackEnd - range.end, CMTime(value: 2, timescale: 1_000_000_000))
+        let trim = PlaybackTrim(start: start, end: trackEnd, fingerprint: fingerprint)
+        let fitted = try XCTUnwrap(trim.timeRange(within: CMTimeRange(start: .zero, end: trackEnd)))
+        XCTAssertLessThanOrEqual(fitted.end, trackEnd)
+    }
+
     func testFrameAlignmentUsesTheTracksOwnFrameTiming() {
         let ntsc = CMTime(value: 1001, timescale: 30000)
         XCTAssertEqual(PlaybackTrim.aligned(CMTime(value: 1, timescale: 1), frameDuration: ntsc),
