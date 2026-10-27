@@ -53,7 +53,7 @@ struct OnboardingTourContent: View {
             icon: "rectangle.stack.fill.badge.person.crop",
             title: "Curate Effortlessly",
             kicker: "02 · ORGANIZE",
-            description: "Collections, favorites, color filters and search keep your library in order.",
+            description: "Favorites, color filters and search keep your library in order.",
             accent: Color(red: 1.00, green: 0.45, blue: 0.72),
             secondary: Color(red: 0.95, green: 0.65, blue: 0.30)
         ),

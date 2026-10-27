@@ -234,8 +234,11 @@ class WallpaperManager: ObservableObject {
 
     private func restoreLastWallpaper() {
         if wallpaperMode == .different, displayAssignments.hasAssignments {
+            // Nothing has applied a wallpaper yet at launch, so a display
+            // without its own choice inherits the last one instead of nothing.
+            let last = currentWallpaper ?? wallpapers.first { $0.url.path == lastWallpaperURL }
             for screen in NSScreen.screens {
-                if let wallpaper = wallpaper(for: screen) {
+                if let wallpaper = wallpaper(for: screen, inheriting: last) {
                     setWallpaper(wallpaper, for: screen, userInitiated: false)
                 }
             }
@@ -790,9 +793,24 @@ class WallpaperManager: ObservableObject {
 
     func wallpaper(for screen: NSScreen) -> Wallpaper? {
         if wallpaperMode == .same { return currentWallpaper }
-        return Self.displayWallpaper(selection: displayAssignments.selection(for: screen.wallpaperAssignmentKey),
-                                     legacyID: screenWallpapers[screen.localizedName],
-                                     wallpapers: wallpapers, current: currentWallpaper)
+        return wallpaper(for: screen, inheriting: currentWallpaper)
+    }
+
+    /// A display's wallpaper in Different per display mode, with `current`
+    /// for a display that has no choice of its own.
+    private func wallpaper(for screen: NSScreen, inheriting current: Wallpaper?) -> Wallpaper? {
+        Self.displayWallpaper(selection: displayAssignments.selection(for: screen.wallpaperAssignmentKey),
+                              legacyID: screenWallpapers[screen.localizedName],
+                              wallpapers: wallpapers, current: current)
+    }
+
+    /// Each connected display without a choice of its own keeps what it shows
+    /// as its choice, so a pick for another display or a restart does not
+    /// move it. Displays connected later still inherit.
+    static func keepInheritedChoices(_ shown: [(key: String, url: URL?)], in assignments: DisplayWallpaperAssignments) {
+        for (key, url) in shown where assignments.selection(for: key) == .inherit {
+            if let url { assignments.set(url, for: key) }
+        }
     }
 
     /// A display's wallpaper in Different per display mode. A choice saved by
@@ -823,6 +841,8 @@ class WallpaperManager: ObservableObject {
                 userInfo: ["userInitiated": true]
             )
         } else if mode == .different {
+            Self.keepInheritedChoices(NSScreen.screens.map { ($0.wallpaperAssignmentKey, wallpaper(for: $0)?.url) },
+                                      in: displayAssignments)
             playbackDelegate?.playbackApplyScreenWallpapers()
             NotificationCenter.default.post(name: .applyScreenWallpapers, object: nil)
         }

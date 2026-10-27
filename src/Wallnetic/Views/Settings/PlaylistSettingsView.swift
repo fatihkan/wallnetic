@@ -51,15 +51,19 @@ struct PlaylistScheduleContent: View {
                     }.disabled(playlist.items.count >= 500)
                 } else {
                     Form {
+                        // Collections cannot be created in this version, so the
+                        // source is offered only to a playlist that already uses it.
                         Picker("Source", selection: $playlist.sourceRaw) {
-                            ForEach(PlaylistManager.Source.allCases) { Text($0.label).tag($0.rawValue) }
+                            ForEach(PlaylistManager.Source.allCases.filter { $0 != .collection || playlist.source == .collection }) {
+                                Text($0.label).tag($0.rawValue)
+                            }
                         }
                         if playlist.source == .collection {
                             Picker("Collection", selection: $playlist.collectionIDString) {
                                 Text("Choose…").tag("")
                                 ForEach(collections) { Text($0.name).tag($0.id.uuidString) }
                             }
-                            if collections.isEmpty { Text("Create a collection from a wallpaper's context menu first.").font(.caption) }
+                            if collections.isEmpty { Text("Collections are no longer available. Choose another source.").font(.caption) }
                         }
                         Picker("Order", selection: $playlist.orderRaw) {
                             ForEach(PlaylistManager.Order.allCases) { Text($0.label).tag($0.rawValue) }
