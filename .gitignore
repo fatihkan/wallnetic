@@ -53,12 +53,20 @@ Thumbs.db
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
 *.xcconfig
 
-# Secrets
+# Secrets: tokens, signing keys and certificates never belong in this
+# public repository
 Secrets.swift
 secrets.json
+.cf_token
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
 
 # Archives
 *.xcarchive
