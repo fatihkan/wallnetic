@@ -15,10 +15,10 @@ final class WidgetSyncService {
     static let shared = WidgetSyncService()
 
     private let writer: () -> WidgetDataWriting
-    private let thumbnail: (URL, CGSize) async -> NSImage?
+    private let thumbnail: (URL, CGSize) async -> SendableImage?
 
     init(writer: @escaping () -> WidgetDataWriting = { SharedDataManager.shared },
-         thumbnail: @escaping (URL, CGSize) async -> NSImage? = { url, size in
+         thumbnail: @escaping (URL, CGSize) async -> SendableImage? = { url, size in
              await ThumbnailCache.shared.thumbnail(for: url, size: size)
          }) {
         self.writer = writer
@@ -59,7 +59,7 @@ final class WidgetSyncService {
         }
 
         var thumbnailPath: String?
-        if let thumbnail = await thumbnail(wallpaper.url, CGSize(width: 200, height: 120)) {
+        if let thumbnail = await thumbnail(wallpaper.url, CGSize(width: 200, height: 120))?.image {
             if let tiffData = thumbnail.tiffRepresentation,
                let bitmapRep = NSBitmapImageRep(data: tiffData),
                let jpegData = bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.7]) {
@@ -97,7 +97,7 @@ final class WidgetSyncService {
         for wallpaper in favorites.prefix(SharedConstants.maxFavorites) {
             guard favoritesRevision == revision else { return }
             var thumbnailPath: String?
-            if let thumbnail = await thumbnail(wallpaper.url, CGSize(width: 150, height: 90)) {
+            if let thumbnail = await thumbnail(wallpaper.url, CGSize(width: 150, height: 90))?.image {
                 if let tiffData = thumbnail.tiffRepresentation,
                    let bitmapRep = NSBitmapImageRep(data: tiffData),
                    let jpegData = bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: 0.6]) {

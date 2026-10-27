@@ -56,13 +56,13 @@ final class HomeGalleryReviewTests: XCTestCase {
         try await writeVideo(to: source, width: width, height: height)
         let boundingBox = CGSize(width: 320, height: 180)
         let result = await ThumbnailCache.shared.thumbnail(for: source, size: boundingBox)
-        let thumbnail = try XCTUnwrap(result)
+        let thumbnail = try XCTUnwrap(result?.image)
         XCTAssertEqual(thumbnail.size.width / thumbnail.size.height, CGFloat(width) / CGFloat(height), accuracy: 0.02)
         XCTAssertLessThanOrEqual(thumbnail.size.width, boundingBox.width)
         XCTAssertLessThanOrEqual(thumbnail.size.height, boundingBox.height)
         // Cache hits must retain the same aspect ratio as freshly decoded frames.
         let cachedResult = await ThumbnailCache.shared.thumbnail(for: source, size: boundingBox)
-        XCTAssertEqual(cachedResult?.size, thumbnail.size)
+        XCTAssertEqual(cachedResult?.image.size, thumbnail.size)
         ThumbnailCache.shared.removeThumbnail(for: source)
     }
 

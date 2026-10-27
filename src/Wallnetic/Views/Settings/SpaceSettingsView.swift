@@ -263,7 +263,7 @@ private struct PickerCard: View {
         .onHover { h in withAnimation(.easeOut(duration: 0.15)) { isHovering = h } }
         .onTapGesture { onTap() }
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 320, height: 180))
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 320, height: 180))?.image
         }
     }
 }

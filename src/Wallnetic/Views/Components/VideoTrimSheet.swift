@@ -54,8 +54,8 @@ struct VideoTrimSheet: View {
                 .cornerRadius(8)
                 .accessibilityLabel("Preview of the selected loop")
             Button(model.isPreviewPlaying ? "Pause Preview" : "Play Preview") { model.togglePreview() }
-            timeRow("Start", time: model.start, set: model.setStart, step: model.stepStart)
-            timeRow("End", time: model.end, set: model.setEnd, step: model.stepEnd)
+            timeRow("Start", time: model.start, set: { model.setStart($0) }, step: { model.stepStart(frames: $0) })
+            timeRow("End", time: model.end, set: { model.setEnd($0) }, step: { model.stepEnd(frames: $0) })
             Text("Loop length \(VideoTrimModel.clockText(model.length)) of \(VideoTrimModel.clockText(model.duration - model.origin))")
                 .font(.callout)
                 .accessibilityLabel("Loop length \(VideoTrimModel.spokenText(model.length)), of \(VideoTrimModel.spokenText(model.duration - model.origin))")

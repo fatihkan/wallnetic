@@ -427,7 +427,7 @@ struct ExploreCard: View {
             }, onCancel: { renamingWallpaper = nil })
         }
         .task {
-            thumbnail = await wallpaper.generateThumbnail()
+            thumbnail = await wallpaper.generateThumbnail()?.image
             isLoadingThumbnail = false
         }
     }
@@ -517,7 +517,7 @@ struct ExploreListRow: View {
             WallpaperContextMenu(wallpaper: wallpaper)
         }
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90))
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90))?.image
             isLoadingThumbnail = false
         }
     }

@@ -198,7 +198,7 @@ struct WallpaperPickerCard: View {
         .accessibilityLabel("Apply \(wallpaper.displayName) to \(displayName)")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 200, height: 112))
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 200, height: 112))?.image
         }
     }
 

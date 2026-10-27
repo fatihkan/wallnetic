@@ -415,7 +415,7 @@ struct DynamicIslandView: View {
             let next = await wallpaperManager.currentWallpaper?.generateThumbnail(
                 size: CGSize(width: 112, height: 112)
             )
-            await MainActor.run { thumbnail = next }
+            await MainActor.run { thumbnail = next?.image }
         }
     }
 

@@ -28,8 +28,9 @@ targets:
       - path: Engine
       - path: Utils
       - path: Resources
-      - path: ../WallneticWidget/Models/SharedWidgetModels.swift
-      - path: ../WallneticWidget/Models/WidgetClockFormat.swift
+      # The widget's models are shared with the app. Both targets list the
+      # folder on its own, so Xcode keeps it in one group.
+      - path: ../WallneticWidget/Models
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.app
@@ -70,6 +71,8 @@ targets:
     platform: macOS
     sources:
       - path: ../WallneticWidget
+        excludes: ["Models"]
+      - path: ../WallneticWidget/Models
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.app.WallneticWidget

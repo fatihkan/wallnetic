@@ -102,7 +102,7 @@ final class OllamaVisionTagger {
     /// Generates tags for a single wallpaper. Resolves to an empty array if
     /// Ollama is offline — distinguishable from "tagged with 0 results"
     /// because this method returns `nil` for the offline case.
-    func tags(for image: NSImage, config: Config = Config()) async -> [String]? {
+    func tags(for thumbnail: SendableImage, config: Config = Config()) async -> [String]? {
         // H1/M2: refuse to ship thumbnails to a non-allowlisted endpoint.
         // This is the second line of defense; the Settings UI rejects bad
         // input on entry, but a stale UserDefaults value could still reach
@@ -112,7 +112,7 @@ final class OllamaVisionTagger {
             return nil
         }
 
-        guard let base64 = base64Encode(image: image, maxDimension: 512) else {
+        guard let base64 = base64Encode(image: thumbnail.image, maxDimension: 512) else {
             Log.ollama.debug("Skipping — could not encode thumbnail to JPEG.")
             return nil
         }
