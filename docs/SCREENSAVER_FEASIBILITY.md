@@ -92,9 +92,12 @@ from the feasible first scope; bundled original videos avoid that dependency.
   candidate does not read that suite, and no caller or installer replaces it.
 - The Xcode app targets remain the main application, widget and tests. The probe
   is outside those targets and only built separately by a development script/CI.
-- `DesktopOverlayController` draws a clock/control panel at desktop level. It
-  is not a secure lock-screen video implementation. README's previous claim that
-  only the Store build lacks lock-screen video was unsupported and is corrected.
+- The unused `DesktopOverlayController` clock/control panel has been removed
+  (#311). It had no caller. The optional [desktop clock](DESKTOP_CLOCK.md) draws
+  inside each display's wallpaper window instead. Neither is a lock-screen
+  implementation, and the lock screen shows no clock. README's previous claim
+  that only the Store build lacks lock-screen video was unsupported and is
+  corrected.
 - `SystemWallpaperSync` continues to extract JPEG stills, apply them via the
   public NSWorkspace API, and attempt original-image restoration when disabled.
   Only its explanation and the Settings copy change; its runtime logic,

@@ -16,6 +16,7 @@
 		0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */; };
 		0D0FFA07C32604C5448D9BD6 /* SpaceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2958EEAF2DA16543DBA9453F /* SpaceSettingsView.swift */; };
 		0D161367E2348177677DEAD0 /* AppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E4D58C6269978E4994C7CE /* AppShortcuts.swift */; };
+		10DD2986A7E5B39A5CAB931A /* DesktopClockFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2954A99CA636BFDEBED1E6A6 /* DesktopClockFormat.swift */; };
 		131EDF3DA15DA0EEA84918A4 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A9F2E051E3DDAA18ACAC9D /* HomeView.swift */; };
 		147CC96E7447673896138CA7 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48513382BB8B61A6DD8431DC /* UpdateChecker.swift */; };
 		14C57185714738A1DAE96E17 /* WallpaperVisibilityPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F445C733089982D2231472D9 /* WallpaperVisibilityPolicyTests.swift */; };
@@ -77,8 +78,8 @@
 		5757FFA4649F150BA2C4BAFC /* SystemWallpaperSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EAB85A6C2E41710E89A2319 /* SystemWallpaperSync.swift */; };
 		5C0AAD3B25B3DCB797AF2959 /* ExploreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67C4A956B32F37A83450264 /* ExploreView.swift */; };
 		5DE60ED4B06B970FBB55F4A3 /* PlaybackStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64729A01C00BA044744ED844 /* PlaybackStatusView.swift */; };
-		5E298128B4AE9AB89B656E86 /* DesktopOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D726427A9199C4D93B9E93F2 /* DesktopOverlayController.swift */; };
 		5E4FA6F4B401A6423B03CE06 /* WallpaperPackCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CAC5DB1E7180F47ECF8613A /* WallpaperPackCatalog.swift */; };
+		5F477321E8C58E730D3C2A9B /* DesktopClockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F59789E2346DB63361FBCF4 /* DesktopClockTests.swift */; };
 		61773D343F4EBEEB12FF8AFB /* BatteryPromptService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0187521E8CC2C0BB29CE90D /* BatteryPromptService.swift */; };
 		61B1EC0DBC85801311FA1F2F /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B106464A071BF6E736C3272 /* MenuBarView.swift */; };
 		61B8431DE4EA724F4E55C7B2 /* OllamaVisionTagger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD3DFBD42A5D9B294784C5F /* OllamaVisionTagger.swift */; };
@@ -102,6 +103,7 @@
 		76D84A562F38F8BB6BEB521B /* OptimizedCopyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FDCF06E9A249E9D22603B65 /* OptimizedCopyStore.swift */; };
 		77C249855157E8D5632190EF /* PlaybackRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E1AC0A6B451E500552CA50 /* PlaybackRendererTests.swift */; };
 		782ADAB3D0278AD8028A151C /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD359DF3443AB6E3242CA90 /* LiquidGlass.swift */; };
+		78FA0267B492566F244D80E6 /* DesktopClockCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A9808E1506ACDEF2607AE4 /* DesktopClockCoordinator.swift */; };
 		7B8DE2A0443E6DC55D750FCB /* WallpaperManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532FE0E3069C64B6236A343C /* WallpaperManager.swift */; };
 		7CB0D6C70AC6586289801B6C /* DisplaySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658D24C439FCC30FFDEBC73C /* DisplaySettingsView.swift */; };
 		7CD2350BE3D4A9216B849C69 /* MediumWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */; };
@@ -140,6 +142,7 @@
 		A2FD8BF6EF09FC0B086E2261 /* EffectsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2392B868E0D5B6994FF657 /* EffectsSettingsView.swift */; };
 		A32F6B39A4F02F8417A78266 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250C1B481393050C099266A2 /* SettingsView.swift */; };
 		A4E3657A35D188C789CBFF4B /* VideoTrimSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A3491F66F741B2CEEDC638 /* VideoTrimSheet.swift */; };
+		A5425B6633202EB97D1F1294 /* DesktopClockScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B079692BC2563307EE355C /* DesktopClockScheduler.swift */; };
 		A547D9A03C6D92826A5C634A /* ErrorReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A3E9458476683E0230677D /* ErrorReporter.swift */; };
 		A74CD0829F14F2D6C93CFC88 /* WallpaperPacksModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 843C55436ABE5ECC593E364C /* WallpaperPacksModel.swift */; };
 		A873F6AB011A07A98FF34F6A /* PlaylistManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B9765656604317F3C804094 /* PlaylistManagerTests.swift */; };
@@ -171,6 +174,7 @@
 		C703D713F68746183202C7DE /* AIStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B98ABE56A3B186B1C7AFA43 /* AIStyle.swift */; };
 		C7F8E15BC3BB122E6CC92634 /* WallpaperManagerProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251ADAE767CEEF99C8A61261 /* WallpaperManagerProtocols.swift */; };
 		C9CA3FC5F05E5F2D2D02FCF9 /* LibraryStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602F922B007A2109D23855CF /* LibraryStorageTests.swift */; };
+		CD6B851494EA99260ACAE005 /* DesktopClockSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5D5C726DAA0657FF91803E /* DesktopClockSettings.swift */; };
 		CE93C5919FE1E7FAC086C58E /* FavoriteStylesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0F02714B57C6B710BFA04 /* FavoriteStylesManager.swift */; };
 		CEA5294DF54296DD19286EB6 /* VideoTrimModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4570437967C55162812A069 /* VideoTrimModelTests.swift */; };
 		CFE70EBD5E6BEF465C9B5A3D /* VideoOptimizationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57D3F1D07DD43BF6E6E424FC /* VideoOptimizationSheet.swift */; };
@@ -183,6 +187,7 @@
 		D58F0514476E2A717318ED5E /* BrowserDownloadMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAF1A168D0AFB1A8443BBF6 /* BrowserDownloadMetadata.swift */; };
 		D729B636A0E78713E53C77FD /* PerformanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CFBA173095D37D5702C5C18 /* PerformanceManager.swift */; };
 		D72AB7DA85F7CAD4474A0FFB /* WallpaperSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8B2898EBEA15EF341D7B97 /* WallpaperSchedule.swift */; };
+		D772889062A5F6991830C990 /* DesktopClockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E8268396D1CEA678F2DA4E6 /* DesktopClockView.swift */; };
 		D812BECBE0458A174EF2696E /* SlideshowGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C428B5A76D12B2D39EB866E /* SlideshowGeneratorTests.swift */; };
 		D95869079F717BD8B2BB26D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA19F4DBD0636536454696F3 /* ContentView.swift */; };
 		DCAD65468ADF42075E87EF0B /* WallneticWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */; };
@@ -201,6 +206,7 @@
 		EA0AA7318BCBE3C944FF48ED /* MLWDecryptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D290998483830980DF7E2CD5 /* MLWDecryptor.swift */; };
 		EAB040DBE1DBA4A2060A349D /* DynamicIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB1C25115998357CDFF95EB /* DynamicIslandView.swift */; };
 		ED316D38B53FDD55FF7D71F2 /* OnboardingDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = E197E951C55E76BE8FFB2537 /* OnboardingDemo.swift */; };
+		EE0320926304A6082C213F07 /* DesktopClockPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE72CB11845EEB82A60CF8FD /* DesktopClockPolicy.swift */; };
 		EFB2FACA7CFF8C61C6DED49E /* VideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C36C5B8FAAEBFAB779FBBB39 /* VideoRenderer.swift */; };
 		F027822B09B941CAA5E0910E /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11FC204622DAABAAA4F064B4 /* ThumbnailCache.swift */; };
 		F0B870008E76BED67341368B /* DailyScheduleTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = B572C36EE73138780A4CB813 /* DailyScheduleTimeline.swift */; };
@@ -271,11 +277,14 @@
 		22D4CC2AF93849AB8C429D52 /* NowPlayingOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingOverlayController.swift; sourceTree = "<group>"; };
 		250C1B481393050C099266A2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		251ADAE767CEEF99C8A61261 /* WallpaperManagerProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperManagerProtocols.swift; sourceTree = "<group>"; };
+		27A9808E1506ACDEF2607AE4 /* DesktopClockCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopClockCoordinator.swift; sourceTree = "<group>"; };
 		2833332B3174CD94D7D62CBB /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
+		2954A99CA636BFDEBED1E6A6 /* DesktopClockFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopClockFormat.swift; sourceTree = "<group>"; };
 		2958EEAF2DA16543DBA9453F /* SpaceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSettingsView.swift; sourceTree = "<group>"; };
 		2A3CC73608BAFA155E615F1B /* SchedulerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerService.swift; sourceTree = "<group>"; };
 		2A9660F71829E6C2D5F2B5E6 /* DeepLinkHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandlerTests.swift; sourceTree = "<group>"; };
 		2D709F3F20160782C077CAF5 /* OllamaVisionTaggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaVisionTaggerTests.swift; sourceTree = "<group>"; };
+		2E8268396D1CEA678F2DA4E6 /* DesktopClockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopClockView.swift; sourceTree = "<group>"; };
 		2F48518E41B9C56DFE5EB099 /* MusicReactiveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicReactiveManager.swift; sourceTree = "<group>"; };
 		31C51D17BDBBADCDF4D5CB43 /* CollectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsView.swift; sourceTree = "<group>"; };
 		327CE683A592B2965B2534C7 /* PauseAfterPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PauseAfterPlayback.swift; sourceTree = "<group>"; };
@@ -316,6 +325,7 @@
 		57E1AC0A6B451E500552CA50 /* PlaybackRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackRendererTests.swift; sourceTree = "<group>"; };
 		58476278C192D425D261FE53 /* SystemWallpaperSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemWallpaperSyncTests.swift; sourceTree = "<group>"; };
 		585BFEEC0C8B2AF4168BD91A /* Wallnetic-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Wallnetic-Bridging-Header.h"; sourceTree = "<group>"; };
+		58B079692BC2563307EE355C /* DesktopClockScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopClockScheduler.swift; sourceTree = "<group>"; };
 		594B87C7E7B68A1E23F136C4 /* WallneticWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WallneticWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B106464A071BF6E736C3272 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		5B7028D3EA5A514573B5B23F /* WallneticWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticWidgetBundle.swift; sourceTree = "<group>"; };
@@ -343,6 +353,7 @@
 		689367BF56D29B65CDDB02F2 /* PixabayService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixabayService.swift; sourceTree = "<group>"; };
 		69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncManager.swift; sourceTree = "<group>"; };
 		69A7F21804AB5D266A239578 /* WallneticWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallneticWidget.swift; sourceTree = "<group>"; };
+		6C5D5C726DAA0657FF91803E /* DesktopClockSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopClockSettings.swift; sourceTree = "<group>"; };
 		6CAC5DB1E7180F47ECF8613A /* WallpaperPackCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperPackCatalog.swift; sourceTree = "<group>"; };
 		6DE7C9C529B80C5AF3DE63C4 /* WallpaperPackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperPackTests.swift; sourceTree = "<group>"; };
 		6E8B2898EBEA15EF341D7B97 /* WallpaperSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperSchedule.swift; sourceTree = "<group>"; };
@@ -362,6 +373,7 @@
 		7A6CB7D49499EAF7DE2CFA8E /* LibraryStorageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStorageModel.swift; sourceTree = "<group>"; };
 		7BB04CF2E27DC75B29EE8A67 /* ErrorReporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorReporterTests.swift; sourceTree = "<group>"; };
 		7F557952B625823A2689EBE7 /* WallpaperLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperLibrary.swift; sourceTree = "<group>"; };
+		7F59789E2346DB63361FBCF4 /* DesktopClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopClockTests.swift; sourceTree = "<group>"; };
 		7F8110B5A4B07BA315971DFB /* WidgetClockFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetClockFormat.swift; sourceTree = "<group>"; };
 		7FDCF06E9A249E9D22603B65 /* OptimizedCopyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimizedCopyStore.swift; sourceTree = "<group>"; };
 		800451287F439529FF570B44 /* SlideshowGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideshowGenerator.swift; sourceTree = "<group>"; };
@@ -427,7 +439,6 @@
 		D290998483830980DF7E2CD5 /* MLWDecryptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLWDecryptor.swift; sourceTree = "<group>"; };
 		D67C4A956B32F37A83450264 /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
 		D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
-		D726427A9199C4D93B9E93F2 /* DesktopOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopOverlayController.swift; sourceTree = "<group>"; };
 		D78258413C6E41B4A9C95516 /* PlaybackTrimStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackTrimStore.swift; sourceTree = "<group>"; };
 		D897DB76AC3168D36AA4E383 /* PlaybackStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStatusTests.swift; sourceTree = "<group>"; };
 		DA18283F2FD8E99F3FFDC805 /* FuzzySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzySearchTests.swift; sourceTree = "<group>"; };
@@ -459,6 +470,7 @@
 		FA8E25061D17472552507DF7 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		FE3320FF526E744247F3B5BE /* SpaceWallpaperManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceWallpaperManager.swift; sourceTree = "<group>"; };
 		FE414F5FC0D738D8D7593A2E /* GenerationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationHistory.swift; sourceTree = "<group>"; };
+		FE72CB11845EEB82A60CF8FD /* DesktopClockPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopClockPolicy.swift; sourceTree = "<group>"; };
 		FEDE8BF7174378FA90E6B1B9 /* VideoOptimizationModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoOptimizationModelTests.swift; sourceTree = "<group>"; };
 		FFD329195A86A0398FB6B4D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -491,7 +503,10 @@
 			children = (
 				C649839F5BB66D43BA4A499A /* AudioVisualizerOverlayController.swift */,
 				659698F59F072B98915E2371 /* DesktopClearMonitor.swift */,
-				D726427A9199C4D93B9E93F2 /* DesktopOverlayController.swift */,
+				27A9808E1506ACDEF2607AE4 /* DesktopClockCoordinator.swift */,
+				2954A99CA636BFDEBED1E6A6 /* DesktopClockFormat.swift */,
+				FE72CB11845EEB82A60CF8FD /* DesktopClockPolicy.swift */,
+				58B079692BC2563307EE355C /* DesktopClockScheduler.swift */,
 				5EBFA2EC8B70298D0B7975E3 /* DesktopWindowController.swift */,
 				8F02815851C30DCFA0A4ACA3 /* DynamicIslandController.swift */,
 				ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */,
@@ -556,6 +571,7 @@
 				69A21A2E89BAFCD9A8FE5DA8 /* CloudSyncManager.swift */,
 				1849D0D4B8C207540818A7E8 /* CollectionManager.swift */,
 				2833332B3174CD94D7D62CBB /* DeepLinkHandler.swift */,
+				6C5D5C726DAA0657FF91803E /* DesktopClockSettings.swift */,
 				73F97FFDFD0EB2E7E20DF17F /* DisplayWallpaperAssignments.swift */,
 				543E1B92A4536DE1415BD91E /* DownloadManager.swift */,
 				6581C17705CF0F9650F91F07 /* DynamicAccent.swift */,
@@ -719,6 +735,7 @@
 				BA26B4DDB98EF77D98CE5821 /* AmbientStage.swift */,
 				1237CAB7A69BEAF67CE09AD3 /* CalmModeButton.swift */,
 				DFF460340111975F4DA40C32 /* DesignTokens.swift */,
+				2E8268396D1CEA678F2DA4E6 /* DesktopClockView.swift */,
 				F6E13A8C8EF384BF16EDF962 /* FocusHalo.swift */,
 				10E68AD45A1FAF11457CDB94 /* GrainOverlay.swift */,
 				4BD359DF3443AB6E3242CA90 /* LiquidGlass.swift */,
@@ -810,6 +827,7 @@
 				5F91DC6D3456885E1555F352 /* BrowserDownloadMetadataTests.swift */,
 				56F59C3C7AB56348DA1D9D45 /* ColorCategoryTests.swift */,
 				2A9660F71829E6C2D5F2B5E6 /* DeepLinkHandlerTests.swift */,
+				7F59789E2346DB63361FBCF4 /* DesktopClockTests.swift */,
 				7BB04CF2E27DC75B29EE8A67 /* ErrorReporterTests.swift */,
 				DA18283F2FD8E99F3FFDC805 /* FuzzySearchTests.swift */,
 				C8C5850D48A81E1207129722 /* HomeGalleryReviewTests.swift */,
@@ -1035,6 +1053,7 @@
 				7432243BFF546DDDF46DB2A2 /* BrowserDownloadMetadataTests.swift in Sources */,
 				4DC3D57FC37765D6CEABF304 /* ColorCategoryTests.swift in Sources */,
 				BAC40D45BA2B2C148C66259E /* DeepLinkHandlerTests.swift in Sources */,
+				5F477321E8C58E730D3C2A9B /* DesktopClockTests.swift in Sources */,
 				1AEF59FC27860B386A6D7049 /* ErrorReporterTests.swift in Sources */,
 				82F024AE9E99C4A77098AD9B /* FuzzySearchTests.swift in Sources */,
 				F5B7D5F414E3C3EA1DEAA3AD /* HomeGalleryReviewTests.swift in Sources */,
@@ -1106,7 +1125,12 @@
 				2445819EF402088E3689C8CD /* DeepLinkHandler.swift in Sources */,
 				6ACA2AC7AD0702CFEFA50E1B /* DesignTokens.swift in Sources */,
 				927F6F503388C8CDF828753D /* DesktopClearMonitor.swift in Sources */,
-				5E298128B4AE9AB89B656E86 /* DesktopOverlayController.swift in Sources */,
+				78FA0267B492566F244D80E6 /* DesktopClockCoordinator.swift in Sources */,
+				10DD2986A7E5B39A5CAB931A /* DesktopClockFormat.swift in Sources */,
+				EE0320926304A6082C213F07 /* DesktopClockPolicy.swift in Sources */,
+				A5425B6633202EB97D1F1294 /* DesktopClockScheduler.swift in Sources */,
+				CD6B851494EA99260ACAE005 /* DesktopClockSettings.swift in Sources */,
+				D772889062A5F6991830C990 /* DesktopClockView.swift in Sources */,
 				0BDACCA44A26C7459739D96B /* DesktopWindowController.swift in Sources */,
 				8EFAE3E67407537EC1B9A705 /* DiscoverView.swift in Sources */,
 				7CB0D6C70AC6586289801B6C /* DisplaySettingsView.swift in Sources */,
