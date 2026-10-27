@@ -83,3 +83,6 @@ daily-notes/
 
 # Agent session scratch — contains raw prompt text, never publish
 .qwen/
+
+# Cloudflare wrangler state (account details); never commit
+.wrangler/
