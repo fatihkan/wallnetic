@@ -42,6 +42,14 @@ CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… \
 
 The token needs Cloudflare Pages edit access on the account. Never commit it.
 
+Link to `wallnetic.app`, never to `wallnetic.pages.dev`: some Turkish internet
+providers answer `*.pages.dev` lookups with a block page, while the custom
+domain resolves normally.
+
+Everything used is on Cloudflare's free plan: Pages direct uploads (no builds),
+DNS, Email Routing, and the `_redirects` and `_headers` files. The site uses no
+Workers, Functions or paid add-ons.
+
 ## Content rules
 
 The site follows the same rules as the release text: describe what the App
