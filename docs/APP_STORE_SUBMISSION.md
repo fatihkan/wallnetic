@@ -281,8 +281,11 @@ screencapture -w screenshot.png
 Wallnetic:
 - Does not collect personal information
 - Does not track usage or analytics
-- Does not connect to external servers
-- Works entirely offline
+- Has no first-party server, analytics SDK or tracking identifier
+- Plays and imports local videos offline; it connects only for features the
+  user starts (wallpaper packs from GitHub, websites opened in Discover and
+  their downloads, confirmed `wallnetic://import` links, iCloud Photos through
+  Create from Photos, and App Store links). See PRIVACY.md.
 
 ### 8.2 Privacy Policy URL
 

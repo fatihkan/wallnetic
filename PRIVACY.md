@@ -27,6 +27,8 @@ Your imported wallpaper videos are stored in:
 ```
 ~/Library/Application Support/Wallnetic/Library
 ```
+In the App Store version this folder is inside Wallnetic's app container,
+`~/Library/Containers/com.wallnetic.app/Data/`.
 
 ### App Preferences
 Your settings are stored using macOS standard preferences (UserDefaults):
@@ -62,9 +64,17 @@ Opening a wallpaper website in Discover loads that site in Wallnetic's built-in 
 
 If you open a `wallnetic://import` link and confirm the import, Wallnetic downloads the file from the HTTPS address in the link. That server receives ordinary connection information, such as your IP address and the requested address.
 
-### Other optional connections
+### Create from Photos
 
-Opening external wallpaper sources or using optional network/AI integrations contacts the websites or providers you choose. Those services have their own privacy policies and may receive the requests and inputs needed for the selected action. You can continue using local wallpapers without using these features.
+Create from Photos reads the photos you select, after you allow access to your Photos library, and builds a slideshow wallpaper from them on your Mac. If a selected photo is stored in iCloud Photos, macOS may download it from iCloud for Wallnetic. The slideshow is saved to your Wallnetic library; nothing is uploaded.
+
+### App Store
+
+**Rate Wallnetic** opens Wallnetic's App Store page, and macOS may show Apple's rating prompt. Apple handles these under its own privacy policy.
+
+### No other connections
+
+This version has no other network features, such as AI services or update checks. You can keep using local wallpapers without any of the features above.
 
 ## App Permissions
 
@@ -73,22 +83,24 @@ Wallnetic requests the following macOS permissions:
 | Permission | Purpose |
 |------------|---------|
 | File Access | To import and play video files you select |
-| Screen Access | To display wallpapers on your desktop |
+| Photos | Optional - to build a slideshow from photos you select (Create from Photos) |
+| Notifications | Optional - only if you turn on notifications |
+| Accessibility | Optional - only if you turn on global keyboard shortcuts, so they work while another app is active; Wallnetic looks only for its own shortcuts |
 | Login Items | Optional - to launch at system startup |
 
-These permissions are used solely for the app's core functionality.
+Showing wallpapers on your desktop needs no permission. These permissions are used solely for the features listed.
 
 ## Data Security
 
 Your data is protected by macOS security features:
 
-- **App Sandbox:** Wallnetic runs in a sandboxed environment, isolated from other apps
+- **App Sandbox:** the App Store version runs in a sandboxed environment, isolated from other apps. The direct-download version from GitHub is ad-hoc signed and not sandboxed
 - **Secure Storage:** All data is stored using macOS secure storage mechanisms
 - **Local Library:** Wallnetic does not upload your imported videos or library metadata
 
 ## Third-Party Services
 
-Optional wallpaper packs use GitHub hosting. Wallnetic does not include analytics platforms, advertising networks or tracking tools. Websites you open in Discover and other optional providers are separate services with their own privacy policies.
+Optional wallpaper packs use GitHub hosting. Wallnetic does not include analytics platforms, advertising networks or tracking tools. Websites you open in Discover, iCloud Photos and the App Store are separate services with their own privacy policies.
 
 ## Children's Privacy
 
