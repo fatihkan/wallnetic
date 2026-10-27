@@ -7,6 +7,29 @@ import MetalKit
 private let missing = NSNull()
 private struct BenchmarkError: Error, CustomStringConvertible { let description: String }
 
+/// The "clock" run condition (#311): static text composited above the video,
+/// as a sibling of the renderer view so wallpaper effects could not reach it.
+/// It never changes during a run. This approximates the cost of drawing a layer
+/// over the video; it does not run the app's clock code.
+private func clockOverlayContainer(_ rendererView: NSView, size: NSSize, scale: CGFloat) -> NSView {
+    let container = NSView(frame: NSRect(origin: .zero, size: size))
+    container.wantsLayer = true
+    rendererView.frame = container.bounds
+    rendererView.autoresizingMask = [.width, .height]
+    container.addSubview(rendererView)
+    let text = CATextLayer()
+    text.string = "10:09"
+    text.font = NSFont.monospacedDigitSystemFont(ofSize: 0, weight: .semibold)
+    text.fontSize = max(12, min(size.width, size.height) / 5)
+    text.foregroundColor = NSColor.white.cgColor
+    text.alignmentMode = .center
+    text.contentsScale = scale
+    text.frame = CGRect(x: 0, y: (size.height - text.fontSize * 1.3) / 2, width: size.width, height: text.fontSize * 1.3)
+    text.actions = ["contents": NSNull(), "bounds": NSNull(), "position": NSNull()]
+    container.layer?.addSublayer(text)
+    return container
+}
+
 // These are delegate invocations, NOT presented/unique frames. No GPU readback.
 private final class DrawCounter: NSObject, MTKViewDelegate {
     let renderer: MetalVideoRenderer
@@ -87,7 +110,7 @@ private final class DrawCounter: NSObject, MTKViewDelegate {
             return
         }
         // CLI validation is repeated here so direct invocation also fails safely.
-        guard args.count == 9, ["metal", "avplayer"].contains(args[1]),
+        guard args.count == 10, ["metal", "avplayer"].contains(args[1]), ["none", "clock"].contains(args[9]),
               let mode = ["quality": PerformanceManager.PerformanceMode.quality, "balanced": .balanced, "battery": .battery][args[2]],
               let warmup = Double(args[4]), warmup.isFinite, (0...300).contains(warmup),
               let duration = Double(args[5]), duration.isFinite, (1...600).contains(duration),
@@ -130,7 +153,9 @@ private final class DrawCounter: NSObject, MTKViewDelegate {
             let window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.title = "Wallnetic isolated renderer benchmark"
-            window.contentView = renderer.rendererView
+            window.contentView = args[9] == "clock"
+                ? clockOverlayContainer(renderer.rendererView, size: frame.size, scale: screen.backingScaleFactor)
+                : renderer.rendererView
             window.orderFrontRegardless()
             windows.append(window); renderers.append(renderer); counters.append(counter)
             renderer.applyPerformanceMode(mode)
@@ -203,7 +228,7 @@ private final class DrawCounter: NSObject, MTKViewDelegate {
                 "gpu_names": MTLCopyAllDevices().map(\.name),
                 "logical_cpus": ProcessInfo.processInfo.activeProcessorCount, "memory_bytes": ProcessInfo.processInfo.physicalMemory],
             "os": ["version": ProcessInfo.processInfo.operatingSystemVersionString, "build": systemValue("kern.osversion")],
-            "engine": args[1], "profile": args[2], "warmup_seconds": warmup, "requested_seconds": duration,
+            "engine": args[1], "profile": args[2], "overlay": args[9], "warmup_seconds": warmup, "requested_seconds": duration,
             "elapsed_seconds": elapsed, "window_points": [width, height], "screen_indices": indices, "connected_screens": connected,
             "fixture": fixture, "power_start": initialState, "power_end": state(), "samples": samples,
             "invalid_reasons": invalid.sorted(), "eligible_for_baseline": invalid.isEmpty && warmup >= 30 && duration >= 60,
