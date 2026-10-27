@@ -195,9 +195,11 @@ Bu doküman Wallnetic projesinin tüm geliştirme aşamalarını, task'larını 
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 3.3.1 | Video trimming/cropping | P1 | ⬜ |
-| 3.3.2 | Video loop noktası ayarlama | P1 | ⬜ |
+| 3.3.1 | Video trimming: loop aralığı, orijinal dosya değişmeden (`dev`, #309, [LOOP_RANGE](LOOP_RANGE.md)) | P1 | ✅ |
+| 3.3.2 | Video loop noktası ayarlama: Start/End kare kare (`dev`, #309) | P1 | ✅ |
 | 3.3.3 | Video export (paylaşım için) | P2 | ⬜ |
+| 3.3.4 | Cropping/framing: ekran başına zoom + anchor (trim'den ayrı özellik) | P2 | ⬜ |
+| 3.3.5 | Trim devamı: crossfade'li kesintisiz döngü kopyası, kırpılmış thumbnail ve süreler, import sırasında kırpma | P2 | ⬜ |
 
 ---
 

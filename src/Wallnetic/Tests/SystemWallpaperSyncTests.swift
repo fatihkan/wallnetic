@@ -1,4 +1,5 @@
 import XCTest
+import CoreMedia
 @testable import Wallnetic
 
 final class SystemWallpaperSyncTests: XCTestCase {
@@ -20,6 +21,22 @@ final class SystemWallpaperSyncTests: XCTestCase {
             SystemWallpaperSync.frameFileName(for: a),
             SystemWallpaperSync.frameFileName(for: b)
         )
+    }
+
+    func testFrameFileNameFollowsTheLoopRange() {
+        let url = URL(fileURLWithPath: "/tmp/library/clip.mp4")
+        let fingerprint = VideoFileFingerprint(byteSize: 1, modificationDate: .distantPast)
+        let first = PlaybackTrim(start: CMTime(value: 1, timescale: 1), end: CMTime(value: 3, timescale: 1),
+                                 fingerprint: fingerprint)
+        let second = PlaybackTrim(start: CMTime(value: 2, timescale: 1), end: CMTime(value: 3, timescale: 1),
+                                  fingerprint: fingerprint)
+        XCTAssertEqual(SystemWallpaperSync.frameFileName(for: url, trim: nil), SystemWallpaperSync.frameFileName(for: url),
+                       "Untrimmed videos keep their cached stills")
+        XCTAssertNotEqual(SystemWallpaperSync.frameFileName(for: url, trim: first), SystemWallpaperSync.frameFileName(for: url))
+        XCTAssertNotEqual(SystemWallpaperSync.frameFileName(for: url, trim: first),
+                          SystemWallpaperSync.frameFileName(for: url, trim: second), "An edit gives a fresh still URL")
+        XCTAssertEqual(SystemWallpaperSync.frameFileName(for: url, trim: first),
+                       SystemWallpaperSync.frameFileName(for: url, trim: first))
     }
 
     func testFrameFileNameFormat() {
@@ -103,6 +120,28 @@ final class SystemWallpaperSyncTests: XCTestCase {
 
         let remaining = try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted()
         XCTAssertEqual(remaining, ["frame-3.jpg", "frame-4.jpg"])
+    }
+
+    /// Range edits add stills; one still in use by another display must not
+    /// be evicted just because it is the oldest file.
+    func testCleanupNeverRemovesStillsInUse() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SystemWallpaperSyncTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let base = Date(timeIntervalSinceNow: -3600)
+        for i in 0..<5 {
+            let file = dir.appendingPathComponent("frame-\(i).jpg")
+            try Data("x".utf8).write(to: file)
+            try FileManager.default.setAttributes([.modificationDate: base.addingTimeInterval(Double(i) * 60)],
+                                                  ofItemAtPath: file.path)
+        }
+
+        SystemWallpaperSync.cleanupFrames(in: dir, keepingNewest: 2,
+                                          protecting: [dir.appendingPathComponent("frame-0.jpg")])
+
+        let remaining = try FileManager.default.contentsOfDirectory(atPath: dir.path).sorted()
+        XCTAssertEqual(remaining, ["frame-0.jpg", "frame-3.jpg", "frame-4.jpg"])
     }
 
     func testCleanupNoopUnderLimit() throws {

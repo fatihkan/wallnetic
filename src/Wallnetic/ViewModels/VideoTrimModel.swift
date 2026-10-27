@@ -8,10 +8,11 @@ enum LoopRangeStatus: Equatable {
     /// The file changed, or the range no longer fits it. The full video plays.
     case notApplied
 
-    init(trim: PlaybackTrim?, fileAt url: URL, duration: Double?) {
+    /// `unbuilt`: a renderer could not build the range when it loaded the video.
+    init(trim: PlaybackTrim?, fileAt url: URL, duration: Double?, unbuilt: Bool = false) {
         guard let trim else { self = .none; return }
         let fits = duration.map { trim.end.seconds <= $0 + PlaybackTrim.endTolerance.seconds } ?? true
-        self = trim.matches(VideoFileFingerprint(fileAt: url)) && fits ? .applied(trim) : .notApplied
+        self = !unbuilt && trim.matches(VideoFileFingerprint(fileAt: url)) && fits ? .applied(trim) : .notApplied
     }
 
     /// "0:42", the length of one loop, for a trimmed item.

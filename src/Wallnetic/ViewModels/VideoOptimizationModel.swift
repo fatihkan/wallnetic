@@ -1,3 +1,4 @@
+import AVFoundation
 import Combine
 import Foundation
 
@@ -16,15 +17,17 @@ final class VideoOptimizationModel: ObservableObject {
     private let optimizer: VideoOptimizing
     private let library: WallpaperReading & WallpaperWriting
     private let refreshLibrary: () -> Void
+    private let trims: PlaybackTrimStore
     private var inspection: Task<Void, Never>?
     private var conversion: Task<Void, Never>?
 
     init(source: Wallpaper, optimizer: VideoOptimizing, library: WallpaperReading & WallpaperWriting,
-         refreshLibrary: @escaping () -> Void = {}) {
+         refreshLibrary: @escaping () -> Void = {}, trims: PlaybackTrimStore = .shared) {
         self.source = source
         self.optimizer = optimizer
         self.library = library
         self.refreshLibrary = refreshLibrary
+        self.trims = trims
     }
     var unavailableReason: String? { info?.unavailable[preset] }
     var canStart: Bool { info != nil && unavailableReason == nil && !isLoading && !isWorking && result == nil }
@@ -66,11 +69,18 @@ final class VideoOptimizationModel: ObservableObject {
                     self?.progress = value.isFinite ? min(1, max(0, value)) : 0
                 }
                 // The service's final rename is its commit point. A completed copy
-                // is still valid if cancellation arrives immediately after that.
+                // is still valid if cancellation arrives immediately after that,
+                // so the range is copied in a task the cancellation cannot reach.
+                let source = self.source.url
+                let loopRange = await Task { await self.inheritLoopRange(from: source, to: result.url) }.value
                 refreshLibrary()
                 self.result = result
                 progress = 1
-                message = "Copy added to Library. Your original is unchanged."
+                switch loopRange {
+                case .kept: message = "Copy added to Library with the same loop range. Your original is unchanged."
+                case .dropped: message = "Copy added to Library. Its loop range could not be kept, so the copy plays in full. Your original is unchanged."
+                case .none, .wholeCopy: message = "Copy added to Library. Your original is unchanged."
+                }
             } catch is CancellationError {
                 message = "Cancelled. No partial copy was added to Library."
             } catch { self.error = error.localizedDescription }
@@ -80,6 +90,32 @@ final class VideoOptimizationModel: ObservableObject {
         }
         conversion = task
         return task
+    }
+
+    /// What became of the source's loop range on its copy. `wholeCopy`: the
+    /// range spans the copy, which therefore loops exactly that part in full.
+    private enum CopiedLoopRange { case kept, wholeCopy, dropped, none }
+
+    /// A copy of a trimmed video loops the same part: the source's range moved
+    /// to the copy's frames and clamped to its length, with the copy's own
+    /// fingerprint. From then on each item's range is edited on its own.
+    private func inheritLoopRange(from source: URL, to copy: URL) async -> CopiedLoopRange {
+        guard let trim = TrimmedVideoAsset.usableTrim(trims.trim(for: source), for: source) else { return .none }
+        guard let fingerprint = VideoFileFingerprint(fileAt: copy) else { return .dropped }
+        let asset = AVURLAsset(url: copy, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        do {
+            guard let track = try await asset.loadTracks(withMediaType: .video).first else { return .dropped }
+            let (range, frameDuration) = try await track.load(.timeRange, .minFrameDuration)
+            guard let snapped = trim.copyRange(inTrack: range, frameDuration: frameDuration) else { return .dropped }
+            if snapped.start <= range.start && snapped.end >= range.end { return .wholeCopy }
+            guard let copyTrim = trim.inherited(byTrack: range, frameDuration: frameDuration,
+                                                fingerprint: fingerprint) else { return .dropped }
+            try trims.setTrim(copyTrim, for: copy)
+            return .kept
+        } catch {
+            Log.app.error("Optimized copy did not inherit the loop range: \(error.localizedDescription, privacy: .public)")
+            return .dropped
+        }
     }
 
     func cancel() {

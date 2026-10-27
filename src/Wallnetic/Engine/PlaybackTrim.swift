@@ -104,6 +104,47 @@ struct PlaybackTrim: Equatable {
         if rule == .up, boundary(frames) < time { frames += 1 }
         return boundary(frames)
     }
+
+    /// Where a still image of this range comes from: `offset` seconds after
+    /// Start, kept at least one 1/600 s tick before End so the still is
+    /// inside the range.
+    func stillFrameTime(atOffset offset: Double) -> CMTime {
+        let tick = CMTime(value: 1, timescale: 600)
+        let latest = max(0, (end - start - tick).seconds)
+        let seconds = offset.isFinite ? min(max(0, offset), latest) : 0
+        return start + CMTime(seconds: seconds, preferredTimescale: 600)
+    }
+
+    /// This range on a copy of the video (an optimized copy) whose video track
+    /// spans `trackRange` with frames of `frameDuration`. Start and End move to
+    /// the first copy frame at or after them and End is clamped to the copy, so
+    /// no copy frame after the original End is kept. Snapping can leave a
+    /// minimum-length range up to a frame short; Start then moves back by the
+    /// least needed. Nil when the range does not overlap the copy, or the copy
+    /// is too short to keep a minimum-length range.
+    func copyRange(inTrack trackRange: CMTimeRange, frameDuration: CMTime) -> (start: CMTime, end: CMTime)? {
+        guard trackRange.isValid, !trackRange.isEmpty, trackRange.start.isNumeric, trackRange.end.isNumeric,
+              start < trackRange.end, end > trackRange.start else {
+            return nil
+        }
+        let origin = trackRange.start
+        var copyStart = max(origin, Self.aligned(start, frameDuration: frameDuration, origin: origin, rule: .up))
+        let copyEnd = min(trackRange.end, Self.aligned(end, frameDuration: frameDuration, origin: origin, rule: .up))
+        if copyEnd - copyStart < Self.minimumLength {
+            copyStart = max(origin, Self.aligned(copyEnd - Self.minimumLength, frameDuration: frameDuration,
+                                                 origin: origin, rule: .down))
+        }
+        guard copyEnd - copyStart >= Self.minimumLength else { return nil }
+        return (copyStart, copyEnd)
+    }
+
+    /// The trim to store for such a copy, with the copy's own fingerprint. Nil
+    /// when the copy range is the whole copy or shorter than the minimum.
+    func inherited(byTrack trackRange: CMTimeRange, frameDuration: CMTime,
+                   fingerprint: VideoFileFingerprint) -> PlaybackTrim? {
+        guard let range = copyRange(inTrack: trackRange, frameDuration: frameDuration) else { return nil }
+        return try? Self.selection(start: range.start, end: range.end, duration: trackRange.end, fingerprint: fingerprint)
+    }
 }
 
 /// Stored as exact integer times. `CMTime` is not `Codable`, and a decoded

@@ -45,7 +45,9 @@ card reads **Trim not applied**, when:
   date), for example a different video imported under the same name; or
 - the range no longer fits the video's length.
 
-The engines also play the full video when a trimmed asset cannot be built.
+The engines also play the full video when a trimmed asset cannot be built; the
+card then reads **Trim not applied** too, until the range is edited or the video
+loads again.
 
 ## Storage
 
@@ -56,6 +58,20 @@ removes its range; a failed removal keeps it. If saved ranges cannot be read,
 none apply, and the next edit keeps the unreadable data as a backup instead of
 discarding it.
 
+## System wallpaper and optimized copies
+
+- With [System Wallpaper Sync](../README.md#system-wallpaper-still-frame-sync) on,
+  the still image macOS shows on the lock screen and in Mission Control comes
+  from inside the range, and it is refreshed when the range is edited. An edit is
+  not a wallpaper change: playlists, schedules and the rating prompt ignore it.
+- An optimized copy of a trimmed video gets the same range, moved to the copy's
+  own frames, clamped to its length and checked against the copy's own file.
+  No copy frame after the original End is kept; when snapping leaves the range
+  a fraction of a frame under one second, its Start moves back by the least
+  needed. A range that spans the whole copy needs no range of its own. If the
+  range cannot be kept, the copy plays in full and the completion message says
+  so. After that, each video's range is edited or removed on its own.
+
 ## Not affected by a range
 
 - Library and widget thumbnails and the dominant color still come from the start
@@ -63,7 +79,5 @@ discarding it.
 - Duration labels, filters and sorting outside the Library (Home, Explore,
   Popular and Dynamic Island) still use the full length. Library cards, details
   and the preview show the trimmed length, for example "0:42 of 1:10".
-- The system wallpaper still image and optimized copies do not follow the range
-  yet.
 - Trim does not crop or reframe the picture. Wallpapers always fill the display
   with a centered crop.
