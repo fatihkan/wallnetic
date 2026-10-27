@@ -439,72 +439,28 @@ final class DesktopClockTests: XCTestCase {
         }
     }
 
-    func testTheClockUsesTheSystemLanguageInWallneticsRegion() throws {
-        // Wallnetic's text is English only, so its own locale is English for
-        // the region. The menu bar uses the first preferred language there.
-        func text(_ current: String, _ languages: [String]) -> (time: String, date: String) {
-            let locale = DesktopClockFormat.systemLocale(current: Locale(identifier: current),
-                                                         preferredLanguages: languages)
-            return (DesktopClockFormat.time(date, locale: locale, timeZone: utc),
-                    DesktopClockFormat.date(date, locale: locale, timeZone: utc))
-        }
-        let turkish = text("en_TR", ["tr-TR", "en-US"])
-        XCTAssertEqual(turkish.time, "21:41")
-        XCTAssertTrue(turkish.date.contains("Pazartesi") && turkish.date.contains("Ekim"), turkish.date)
-        XCTAssertLessThan(try start(of: "26", in: turkish.date), try start(of: "Ekim", in: turkish.date), turkish.date)
-        // French (Canada) uses 24-hour time by default; English there does not.
-        let french = text("en_CA", ["fr-CA"])
-        XCTAssertEqual(french.time, "21:41")
-        XCTAssertTrue(french.date.contains("lundi") && french.date.contains("octobre"), french.date)
-        // An explicit 12/24-hour choice carries over.
-        let twelveHour = text("en_CA@hours=h12", ["fr-CA"]).time
+    func testTheClockUsesEnglishForTheRegion() {
+        // Wallnetic's text is English only, so macOS gives it English for the
+        // user's region; the clock uses that locale's names, order and hours.
+        let turkey = Locale(identifier: "en_TR")
+        XCTAssertEqual(DesktopClockFormat.time(date, locale: turkey, timeZone: utc), "21:41")
+        let turkishDate = DesktopClockFormat.date(date, locale: turkey, timeZone: utc)
+        XCTAssertTrue(turkishDate.contains("Monday") && turkishDate.contains("October"), turkishDate)
+        // English in Canada counts 12 hours, unlike French there.
+        let canadian = DesktopClockFormat.time(date, locale: Locale(identifier: "en_CA"), timeZone: utc)
+        XCTAssertTrue(canadian.hasPrefix("9:41"), canadian)
+        // English in Egypt keeps Latin digits.
+        let egypt = Locale(identifier: "en_EG")
+        let egyptian = DesktopClockFormat.time(date, locale: egypt, timeZone: utc) + " "
+            + DesktopClockFormat.date(date, locale: egypt, timeZone: utc)
+        XCTAssertTrue(egyptian.contains("9:41") && egyptian.contains("26"), egyptian)
+        // An explicit 12/24-hour choice applies.
+        XCTAssertEqual(DesktopClockFormat.time(date, locale: Locale(identifier: "en_CA@hours=h23"), timeZone: utc), "21:41")
+        let twelveHour = DesktopClockFormat.time(date, locale: Locale(identifier: "en_TR@hours=h12"), timeZone: utc)
         XCTAssertTrue(twelveHour.hasPrefix("9:41"), twelveHour)
-        XCTAssertEqual(text("en_US@hours=h23", ["en-US"]).time, "21:41")
-        // The region is Wallnetic's, also for a language listed without one.
-        let german = text("en_DE", ["de"]).date
-        XCTAssertTrue(german.contains("Montag") && german.contains("26. Oktober"), german)
-        let american = text("en_US", ["en-GB"]).date
-        XCTAssertLessThan(try start(of: "October", in: american), try start(of: "26", in: american), american)
-        // An Arabic system gets its own digits.
-        let arabic = text("en_EG", ["ar-EG"])
-        XCTAssertFalse((arabic.time + arabic.date).contains { $0.isASCII && $0.isNumber }, arabic.time + arabic.date)
-        // A Japanese calendar chosen in Language & Region stays.
-        let japanese = DesktopClockFormat.systemLocale(current: Locale(identifier: "en_JP@calendar=japanese"),
-                                                       preferredLanguages: ["ja-JP"])
-        XCTAssertEqual(japanese.calendar.identifier, .japanese)
-        // An English system, or no preferred language, keeps Wallnetic's locale.
-        XCTAssertEqual(DesktopClockFormat.systemLocale(current: Locale(identifier: "en_TR"),
-                                                       preferredLanguages: ["en-TR", "tr-TR"]).identifier, "en_TR")
-        XCTAssertEqual(DesktopClockFormat.systemLocale(current: Locale(identifier: "en_TR"),
-                                                       preferredLanguages: []).identifier, "en_TR")
-    }
-
-    func testAnExplicitHourChoiceComesFromTheHourPatternOrTheLocale() {
-        // macOS applies a 12/24-hour choice to the current locale's patterns
-        // only, so a pattern that differs from the identifier's default is one.
-        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "h a", regional: "HH", recorded: nil), false)
-        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "HH", regional: "h a", recorded: nil), true)
-        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "a K", regional: "H", recorded: nil), false)
-        // Otherwise only a choice recorded in the locale counts, and without one
-        // the clock's language keeps its own default.
-        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "h a", regional: "h a", recorded: .oneToTwelve),
-                       false)
-        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "HH", regional: "HH", recorded: .zeroToTwentyThree),
-                       true)
-        XCTAssertNil(DesktopClockFormat.choosesTwentyFourHour(chosen: "h a", regional: "h a", recorded: nil))
-    }
-
-    func testAChoiceUsesTheLanguagesOwnHourCount() {
-        // Japanese 12-hour time runs from 0 to 11, English from 1 to 12.
-        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: false, in: Locale(identifier: "ja_JP")), .zeroToEleven)
-        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: false, in: us), .oneToTwelve)
-        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: true, in: Locale(identifier: "ja_JP")),
-                       .zeroToTwentyThree)
-        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: true, in: us), .zeroToTwentyThree)
-        let japanese = DesktopClockFormat.systemLocale(current: Locale(identifier: "en_JP@hours=h12"),
-                                                       preferredLanguages: ["ja-JP"])
-        let afterMidnight = Date(timeIntervalSince1970: 1_792_975_260) // Monday 26 October 2026, 00:41 UTC
-        XCTAssertEqual(DesktopClockFormat.time(afterMidnight, locale: japanese, timeZone: utc), "午前0:41")
+        // A calendar chosen in Language & Region stays.
+        let persian = DesktopClockFormat.date(date, locale: Locale(identifier: "en_TR@calendar=persian"), timeZone: utc)
+        XCTAssertTrue(persian.contains("Aban"), persian)
     }
 
     func testWidestTextHasTheLongestHourWeekdayAndMonth() {

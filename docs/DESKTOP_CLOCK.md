@@ -59,14 +59,14 @@ wallpaper, and never moves, orders or reveals a window.
 
 ## Time and date
 
-- The clock uses your first preferred language and your region, with your
-  12/24-hour choice and calendar from Language & Region. Wallnetic's own text
-  is English only, so macOS gives the app English formats for the region (for
-  example English for Turkey on a Turkish system); the clock formats in the
-  preferred language instead. App copy stays English.
+- The clock is in English, like the rest of Wallnetic. macOS gives an
+  English-only app English formats for the user's region (for example English
+  for Turkey on a Turkish system), and the clock uses them: English weekday and
+  month names, with the date order and the default 12/24-hour time that English
+  uses in that region. The calendar from Language & Region and an explicit
+  12/24-hour choice in System Settings apply.
 - The time shows hours and minutes, never seconds, even when a custom time
-  format includes them. The date shows the weekday, day and month in that
-  language's order and digits.
+  format includes them. The date shows the weekday, day and month.
 - One timer serves every display and fires at each minute boundary. The clock
   also updates at once after the Mac or a display wakes, and after the system
   clock, time zone, day or region changes. While no display shows a clock, there
@@ -95,15 +95,11 @@ control has a text label for VoiceOver.
 
 - When the Dock or the menu bar changes without macOS reporting a display
   change, the clock moves at the next minute change.
-- The menu bar clock can look different. It has its own options, and it uses
-  another language when macOS has no interface in your first preferred
-  language.
-- A numbering system chosen in Language & Region (for example Latin digits for
-  Arabic) does not reach Wallnetic, so the clock uses the language's usual
-  digits.
-- A 12/24-hour choice that matches English's default for the region but not
-  the language's (12-hour time on a French (Canada) system) applies only on
-  macOS versions that record it in the app's locale. macOS 26 does.
+- On a system in another language, the clock can differ from the menu bar
+  clock, which uses the system language and its own options. Weekday and month
+  names stay English, and digits stay Latin. Without an explicit 12/24-hour
+  choice, the time follows English's default for the region: a French (Canada)
+  system shows 12-hour time until 24-hour time is chosen in System Settings.
 - Resource use is not measured yet. No CPU, GPU or energy figure, and no savings
   claim, is made. Measurement follows the [benchmark protocol](PLAYBACK_BENCHMARKS.md):
   isolated-host sessions with `--overlay clock` and without, for Metal and
@@ -121,11 +117,8 @@ control has a text label for VoiceOver.
 - minute boundaries, including midnight and DST transitions;
 - time and date text for 12- and 24-hour locales, date order, non-Latin digits,
   time zones, day rollover and DST, with injected locales and time zones;
-- the clock's locale from Wallnetic's English locale and the preferred
-  languages: Turkish, French (Canada), German, Arabic, Japanese-calendar and
-  English systems, and an explicit 12/24-hour choice, detected from the hour
-  pattern or recorded in the locale and counted the language's own way (0 to
-  11 for Japanese 12-hour time);
+- English for the regions of Turkish, French (Canada) and Arabic (Egypt)
+  systems, an explicit 12/24-hour choice and a Persian calendar;
 - the widest time and date a locale shows, including leap months;
 - settings defaults, persistence and the fallback for missing or corrupt data,
   with injected `UserDefaults`;
@@ -160,9 +153,8 @@ None of these has been performed yet:
   time zone or the system clock while Wallnetic is inactive. Any change that
   waits until Wallnetic becomes active is to be recorded here as a limit.
 - On a system whose primary language is not English, on macOS 13 and on a later
-  version: the weekday and month language, the date order and digits, and the
-  time with the 24-hour setting on and off, with any difference from the menu
-  bar recorded under Limits.
+  version: English weekday and month names, the date order, and the time with
+  the 24-hour setting on and off.
 - At least ten minute changes, each logged within one second after its boundary,
   for a playing and a paused wallpaper with Wallnetic in the background.
 - The current time on first appearance after waking, unlocking, returning from

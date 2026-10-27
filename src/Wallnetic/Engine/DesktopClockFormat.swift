@@ -1,20 +1,23 @@
 import CoreGraphics
 import Foundation
 
-/// Time and date text for the desktop clock, in the user's first preferred
-/// language and region, with their 12/24-hour choice. Formatters are made per
-/// call, at most once per update of all displays, so a changed language,
-/// region, time zone or clock setting applies at the next update.
+/// Time and date text for the desktop clock, in Wallnetic's language, English,
+/// with the region's formats and the user's 12/24-hour choice. macOS gives an
+/// English-only app an English locale for the user's region (en_TR on a
+/// Turkish system), and `Locale.autoupdatingCurrent` carries the 12/24-hour
+/// choice. Formatters are made per call, at most once per update of all
+/// displays, so a changed region, time zone or clock setting applies at the
+/// next update.
 enum DesktopClockFormat {
     /// Hours and minutes in the locale's hour cycle. Never seconds, even from
     /// a custom short time format, because the clock changes once a minute.
-    static func time(_ date: Date, locale: Locale = DesktopClockFormat.systemLocale(),
+    static func time(_ date: Date, locale: Locale = .autoupdatingCurrent,
                      timeZone: TimeZone = .autoupdatingCurrent) -> String {
         formatter("jmm", locale: locale, timeZone: timeZone).string(from: date)
     }
 
     /// Weekday, day and month in the locale's own order, e.g. "Monday 26 October".
-    static func date(_ date: Date, locale: Locale = DesktopClockFormat.systemLocale(),
+    static func date(_ date: Date, locale: Locale = .autoupdatingCurrent,
                      timeZone: TimeZone = .autoupdatingCurrent) -> String {
         formatter("EEEEdMMMM", locale: locale, timeZone: timeZone).string(from: date)
     }
@@ -63,50 +66,10 @@ enum DesktopClockFormat {
         return (minute?.text ?? "", date?.text)
     }
 
-    /// The clock's locale. Wallnetic's text is English only, so macOS gives it
-    /// an English locale for the user's region (en_TR on a Turkish system).
-    /// This keeps that locale's region and calendar and the user's 12/24-hour
-    /// choice, in the user's first preferred language.
-    static func systemLocale(current: Locale = .autoupdatingCurrent,
-                             preferredLanguages: [String] = Locale.preferredLanguages) -> Locale {
-        guard let language = preferredLanguages.first else { return current }
-        var components = Locale.Components(locale: current)
-        var languageComponents = Locale.Language.Components(identifier: language)
-        languageComponents.region = current.region
-        components.languageComponents = languageComponents
-        let twentyFourHour = choosesTwentyFourHour(chosen: hourPattern(current),
-                                                   regional: hourPattern(Locale(identifier: current.identifier)),
-                                                   recorded: components.hourCycle)
-        components.hourCycle = nil
-        if let twentyFourHour {
-            components.hourCycle = hourCycle(twentyFourHour: twentyFourHour, in: Locale(components: components))
-        }
-        return Locale(components: components)
-    }
-
-    /// The user's 12/24-hour choice: true for 24-hour, false for 12-hour, nil
-    /// for none, which leaves the language's own default. A choice changes
-    /// the current locale's hour pattern (`chosen`) from the region's default
-    /// for Wallnetic's language (`regional`). A choice that matches that
-    /// default shows only where macOS records it in the locale.
-    static func choosesTwentyFourHour(chosen: String, regional: String, recorded: Locale.HourCycle?) -> Bool? {
-        guard chosen != regional else {
-            return recorded.map { $0 == .zeroToTwentyThree || $0 == .oneToTwentyFour }
-        }
-        return chosen.contains { $0 == "H" || $0 == "k" }
-    }
-
-    /// How the clock's language counts a 12- or 24-hour day: Japanese 12-hour
-    /// time runs from 0 to 11, English from 1 to 12.
-    static func hourCycle(twentyFourHour: Bool, in locale: Locale) -> Locale.HourCycle {
-        let pattern = DateFormatter.dateFormat(fromTemplate: twentyFourHour ? "Hmm" : "hmm", options: 0,
-                                               locale: locale) ?? ""
-        if twentyFourHour { return pattern.contains("k") ? .oneToTwentyFour : .zeroToTwentyThree }
-        return pattern.contains("K") ? .zeroToEleven : .oneToTwelve
-    }
-
-    private static func hourPattern(_ locale: Locale) -> String {
-        DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: locale) ?? ""
+    /// The time pattern, which changes with the 12/24-hour choice even when
+    /// the locale's identifier does not.
+    static func timePattern(locale: Locale) -> String {
+        formatter("jmm", locale: locale, timeZone: TimeZone(identifier: "UTC")!).dateFormat
     }
 
     private static func formatter(_ template: String, locale: Locale, timeZone: TimeZone) -> DateFormatter {

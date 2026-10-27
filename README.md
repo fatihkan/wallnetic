@@ -148,8 +148,8 @@ later.
 - 8 presets: None, Dim, Vivid, Moody, Film, B&W, Dreamy, Focus
 - Real-time CIFilter effects on video layer
 - [Desktop clock](docs/DESKTOP_CLOCK.md) (`dev`): an optional clock and date on
-  each display's wallpaper, below desktop icons, in your preferred language and
-  region
+  each display's wallpaper, below desktop icons, in English with your region's
+  date and time format
 
 ### Time-of-Day Auto Switch
 - 4 time slots: Morning, Afternoon, Evening, Night

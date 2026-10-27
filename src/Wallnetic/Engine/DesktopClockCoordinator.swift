@@ -51,13 +51,14 @@ final class DesktopClockCoordinator {
         let requested: CGFloat
         let backdrop: Bool
         let locale: String
+        let timePattern: String
         let showsDate: Bool
     }
 
     init(settings: DesktopClockSettings = .shared,
          scheduler: DesktopClockScheduler = DesktopClockScheduler(),
          now: @escaping () -> Date = Date.init,
-         locale: @escaping () -> Locale = { DesktopClockFormat.systemLocale() },
+         locale: @escaping () -> Locale = { .autoupdatingCurrent },
          timeZone: @escaping () -> TimeZone = { .autoupdatingCurrent },
          geometry: @escaping (CGDirectDisplayID) -> Geometry? = DesktopClockCoordinator.screenGeometry,
          wantsBackdrop: @escaping () -> Bool = DesktopClockCoordinator.accessibilityWantsBackdrop) {
@@ -175,7 +176,7 @@ final class DesktopClockCoordinator {
     private func fittedFontSize(for content: DesktopClockView.Content, locale: Locale) -> CGFloat {
         let key = FitKey(width: content.visibleRect.width, height: content.visibleRect.height,
                          requested: content.fontSize, backdrop: content.backdrop, locale: locale.identifier,
-                         showsDate: content.date != nil)
+                         timePattern: DesktopClockFormat.timePattern(locale: locale), showsDate: content.date != nil)
         if let fontSize = fittedFontSizes[key] { return fontSize }
         func width(_ text: String, _ field: DesktopClockFormat.Field) -> CGFloat {
             DesktopClockView.width(of: text, field, fontSize: content.fontSize)
