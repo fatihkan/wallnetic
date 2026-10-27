@@ -45,7 +45,7 @@ struct OnboardingTourContent: View {
             icon: "tray.and.arrow.down.fill",
             title: "Bring Anything In",
             kicker: "01 · IMPORT",
-            description: "Drop video files, link from the browser, or generate with AI — Wallnetic accepts it all.",
+            description: "Drop video files, download from the built-in browser, or try a wallpaper pack — Wallnetic accepts it all.",
             accent: Color(red: 0.30, green: 0.85, blue: 0.92),
             secondary: Color(red: 0.28, green: 0.55, blue: 1.00)
         ),
@@ -53,7 +53,7 @@ struct OnboardingTourContent: View {
             icon: "rectangle.stack.fill.badge.person.crop",
             title: "Curate Effortlessly",
             kicker: "02 · ORGANIZE",
-            description: "Collections, favorites, color filters and now smart auto-tags via local Ollama Vision.",
+            description: "Favorites, color filters and search keep your library in order.",
             accent: Color(red: 1.00, green: 0.45, blue: 0.72),
             secondary: Color(red: 0.95, green: 0.65, blue: 0.30)
         ),

@@ -205,7 +205,6 @@ struct SettingsView: View {
         case .playlist:   PlaylistSettingsView()
         case .spaces:     SpaceSettingsView()
         case .display:    DisplaySettingsView()
-        case .notifications: NotificationSettingsView()
         case .about:      AboutSettingsView()
         }
     }
@@ -217,10 +216,12 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     // smartTags (Ollama Vision auto-tagging) gizlendi — App Store
     // submission disinda tutuluyor. View + service kodu intact;
     // case'i geri eklemek yeterli.
-    case general, storage, appearance, playback, effects, schedule, playlist, spaces, display, notifications, about
+    // notifications da ayni sekilde gizlendi (#312): bu surumde bildirim
+    // gonderen bir ozellik yok, sayfa yalnizca izin istiyordu.
+    case general, storage, appearance, playback, effects, schedule, playlist, spaces, display, about
 
     var id: String { rawValue }
-    var isFooter: Bool { self == .notifications || self == .about }
+    var isFooter: Bool { self == .about }
 
     var title: String {
         switch self {
@@ -233,7 +234,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playlist:      return "Playlist"
         case .spaces:        return "Spaces"
         case .display:       return "Display"
-        case .notifications: return "Notifications"
         case .about:         return "About"
         }
     }
@@ -249,7 +249,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playlist:      return "Rotate with individual durations."
         case .spaces:        return "Saved choices and desktop recovery."
         case .display:       return "Per-monitor mode and tracking."
-        case .notifications: return "Toggle alert categories."
         case .about:         return "Version, credits, and links."
         }
     }
@@ -265,7 +264,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playlist:      return "shuffle"
         case .spaces:        return "square.stack.3d.up.fill"
         case .display:       return "display"
-        case .notifications: return "bell.fill"
         case .about:         return "info.circle.fill"
         }
     }
@@ -281,7 +279,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .playlist:      return Color(red: 0.40, green: 0.85, blue: 0.85)
         case .spaces:        return Color(red: 0.55, green: 0.80, blue: 1.00)
         case .display:       return Color(red: 0.65, green: 0.85, blue: 0.50)
-        case .notifications: return Color(red: 1.00, green: 0.60, blue: 0.45)
         case .about:         return Color.primary.opacity(0.85)
         }
     }

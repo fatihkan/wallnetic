@@ -201,6 +201,41 @@ final class OnboardingDemoTests: XCTestCase {
         XCTAssertEqual(restored.selection(for: "screen-c"), .file(b))
     }
 
+    func testAChoiceSavedBy142ThatNoLongerResolvesShowsTheCurrentWallpaper() {
+        // 1.4.2 keyed per-display choices by wallpaper IDs that change on every
+        // launch. After an upgrade such a display must not go empty.
+        let a = Wallpaper(url: URL(fileURLWithPath: "/Library/a.mp4"))
+        let b = Wallpaper(url: URL(fileURLWithPath: "/Library/b.mp4"))
+        let library = [a, b]
+        func shown(_ selection: DisplayWallpaperAssignments.Selection, legacy: UUID?) -> URL? {
+            WallpaperManager.displayWallpaper(selection: selection, legacyID: legacy, wallpapers: library,
+                                              current: a)?.url
+        }
+        XCTAssertEqual(shown(.inherit, legacy: UUID()), a.url, "An unresolved 1.4.2 choice inherits")
+        XCTAssertEqual(shown(.inherit, legacy: nil), a.url)
+        XCTAssertEqual(shown(.inherit, legacy: b.id), b.url, "A choice from this launch still applies")
+        XCTAssertNil(shown(.empty, legacy: b.id), "An intentionally empty display stays empty")
+        XCTAssertEqual(shown(.file(b.url), legacy: nil), b.url)
+        XCTAssertNil(shown(.file(URL(fileURLWithPath: "/Library/gone.mp4")), legacy: nil))
+        // At launch nothing is current yet; the restore passes the last wallpaper.
+        XCTAssertNil(WallpaperManager.displayWallpaper(selection: .inherit, legacyID: UUID(), wallpapers: library,
+                                                       current: nil))
+    }
+
+    func testSwitchingToDifferentPerDisplayKeepsWhatEachDisplayShows() {
+        let a = URL(fileURLWithPath: "/Library/a.mp4"), b = URL(fileURLWithPath: "/Library/b.mp4")
+        let store = DisplayWallpaperAssignments(defaults: defaults)
+        store.set(b, for: "chosen")
+        store.set(nil, for: "emptied")
+        WallpaperManager.keepInheritedChoices([("inheriting", a), ("chosen", a), ("emptied", a), ("showing-nothing", nil)],
+                                              in: store)
+        XCTAssertEqual(store.selection(for: "inheriting"), .file(a), "A display keeps what it showed")
+        XCTAssertEqual(store.selection(for: "chosen"), .file(b), "An own choice is unchanged")
+        XCTAssertEqual(store.selection(for: "emptied"), .empty, "An intentionally empty display stays empty")
+        XCTAssertEqual(store.selection(for: "showing-nothing"), .inherit, "Nothing is not saved as a choice")
+        XCTAssertEqual(store.selection(for: "connected-later"), .inherit)
+    }
+
     func testBundledSampleIsSmallPlayableAndHasNoAudio() async throws {
         let url = try XCTUnwrap(Bundle.main.url(forResource: "AuroraSample", withExtension: "mp4"))
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
