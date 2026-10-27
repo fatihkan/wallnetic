@@ -32,8 +32,32 @@ enum DesktopClockLayout {
     /// Space from the visible area's edges, as a share of its height.
     static let marginFraction: CGFloat = 0.04
 
+    static func margin(in visible: CGRect) -> CGFloat {
+        (visible.height * marginFraction).rounded()
+    }
+
+    /// The font size, at most `requested` and at least `minimum`, at which
+    /// the clock fits inside the visible area's margins; `size` measures the
+    /// clock at a font size. Sizes are a share of the visible height, so a
+    /// narrow (portrait) display can need a smaller one.
+    static func fittedFontSize(_ requested: CGFloat, in visible: CGRect, minimum: CGFloat = 12,
+                               size: (CGFloat) -> CGSize) -> CGFloat {
+        let margin = Self.margin(in: visible)
+        let available = CGSize(width: visible.width - 2 * margin, height: visible.height - 2 * margin)
+        var fontSize = requested
+        // The clock grows almost linearly with its font, so one pass is
+        // usually enough; rounding can leave a point or two for another.
+        for _ in 0..<3 {
+            let measured = size(fontSize)
+            let scale = min(available.width / measured.width, available.height / measured.height)
+            guard scale < 1, fontSize > minimum else { break }
+            fontSize = max(minimum, (fontSize * scale).rounded(.down))
+        }
+        return fontSize
+    }
+
     static func origin(for size: CGSize, in visible: CGRect, position: DesktopClockSettings.Position) -> CGPoint {
-        let margin = (visible.height * marginFraction).rounded()
+        let margin = Self.margin(in: visible)
         let x: CGFloat
         switch position {
         case .topLeading, .bottomLeading: x = visible.minX + margin
@@ -46,7 +70,8 @@ enum DesktopClockLayout {
         case .center: y = visible.midY - size.height / 2
         case .bottomLeading, .bottomCenter, .bottomTrailing: y = visible.minY + margin
         }
-        // A clock larger than the area stays anchored to its top-left corner.
+        // A clock larger than the area even at the smallest font stays
+        // anchored to its top-left corner.
         let clampedX = max(visible.minX, min(x, visible.maxX - size.width))
         let clampedY = min(visible.maxY - size.height, max(y, visible.minY))
         return CGPoint(x: clampedX.rounded(), y: clampedY.rounded())

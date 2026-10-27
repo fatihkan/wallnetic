@@ -38,7 +38,7 @@ final class DesktopClockCoordinator {
     init(settings: DesktopClockSettings = .shared,
          scheduler: DesktopClockScheduler = DesktopClockScheduler(),
          now: @escaping () -> Date = Date.init,
-         locale: @escaping () -> Locale = { .autoupdatingCurrent },
+         locale: @escaping () -> Locale = { DesktopClockFormat.systemLocale() },
          timeZone: @escaping () -> TimeZone = { .autoupdatingCurrent },
          geometry: @escaping (CGDirectDisplayID) -> Geometry? = DesktopClockCoordinator.screenGeometry,
          wantsBackdrop: @escaping () -> Bool = DesktopClockCoordinator.accessibilityWantsBackdrop) {
@@ -103,6 +103,8 @@ final class DesktopClockCoordinator {
     }
 
     private func refresh() {
+        // One read per refresh: the text and the next boundary come from it.
+        let instant = now()
         var text: (time: String, date: String?)?
         var anyVisible = false
         for (id, view) in views {
@@ -111,13 +113,13 @@ final class DesktopClockCoordinator {
                 continue
             }
             // Formatted once per refresh, for every display that shows it.
-            let shown = text ?? format(now())
+            let shown = text ?? format(instant)
             text = shown
             view.show(content(time: shown.time, date: shown.date, geometry: geometry))
             anyVisible = true
         }
         if anyVisible {
-            scheduler.start { [weak self] in self?.refresh() }
+            scheduler.start(from: instant) { [weak self] in self?.refresh() }
             observeChanges()
         } else {
             scheduler.stop()
@@ -139,10 +141,16 @@ final class DesktopClockCoordinator {
 
     private func content(time: String, date: String?, geometry: Geometry) -> DesktopClockView.Content {
         let visible = DesktopClockLayout.visibleRect(screenFrame: geometry.frame, visibleFrame: geometry.visibleFrame)
-        return DesktopClockView.Content(
+        var content = DesktopClockView.Content(
             time: time, date: date,
             fontSize: max(12, (visible.height * CGFloat(preferences.size.timeFraction)).rounded()),
             position: preferences.position, visibleRect: visible, scale: geometry.scale, backdrop: wantsBackdrop())
+        content.fontSize = DesktopClockLayout.fittedFontSize(content.fontSize, in: visible) { fontSize in
+            var measured = content
+            measured.fontSize = fontSize
+            return DesktopClockView.image(for: measured).size
+        }
+        return content
     }
 
     private func observeChanges() {

@@ -68,7 +68,7 @@ struct EffectsSettingsView: View {
                         ForEach(DesktopClockSettings.Size.allCases) { Text($0.title).tag($0) }
                     }
                 }
-                Text("Drawn on the live wallpaper of every display, below desktop icons, in your region's time format. The lock screen and Mission Control do not show it.")
+                Text("Drawn on the live wallpaper of every display, below desktop icons, in your Mac's language and time format, as in the menu bar. The lock screen and Mission Control do not show it.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

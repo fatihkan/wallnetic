@@ -171,6 +171,47 @@ final class DesktopClockTests: XCTestCase {
         XCTAssertEqual(layer.contentsScale, 2)
     }
 
+    func testALargeClockFitsANarrowDisplayAtEveryPosition() throws {
+        // A 1080 × 1920 portrait display with the menu bar, without and with a
+        // left Dock. Sized by height alone, a 12-hour Large clock would be wider.
+        let visibleFrames = [CGRect(x: 0, y: 0, width: 1080, height: 1895),
+                             CGRect(x: 64, y: 0, width: 1016, height: 1895)]
+        let tenAM = Date(timeIntervalSince1970: 1_793_008_800), tenPM = Date(timeIntervalSince1970: 1_793_052_000)
+        for backdrop in [false, true] {
+            let clock = try makeClock(displays: [1], locale: us, backdrop: backdrop)
+            for visibleFrame in visibleFrames {
+                clock.screens.geometry[1] = .init(frame: CGRect(x: 0, y: 0, width: 1080, height: 1920),
+                                                  visibleFrame: visibleFrame, scale: 2)
+                for time in [tenAM, tenPM] {
+                    clock.time.now = time
+                    for position in DesktopClockSettings.Position.allCases {
+                        clock.settings.update { $0.size = .large; $0.position = position }
+                        clock.coordinator.update(framed([1]))
+                        let view = try XCTUnwrap(clock.coordinator.view(for: 1))
+                        let content = try XCTUnwrap(view.content)
+                        let frame = try XCTUnwrap(view.layer?.sublayers?.first).frame
+                        let label = "\(content.time) \(position) backdrop \(backdrop) in \(visibleFrame)"
+                        XCTAssertTrue(content.visibleRect.contains(frame), "\(frame) \(label)")
+                        XCTAssertLessThan(content.fontSize, (1895 * 0.13).rounded(), label)
+                    }
+                }
+            }
+        }
+    }
+
+    func testFittingKeepsTheRequestedSizeWhenItFits() {
+        let visible = CGRect(x: 0, y: 70, width: 1440, height: 805)
+        let fitted = DesktopClockLayout.fittedFontSize(105, in: visible) { CGSize(width: $0 * 4, height: $0 * 2) }
+        XCTAssertEqual(fitted, 105)
+        // Too wide: the largest size that fits inside the margins.
+        let margin = DesktopClockLayout.margin(in: visible)
+        let narrow = DesktopClockLayout.fittedFontSize(105, in: visible) { CGSize(width: $0 * 20, height: $0 * 2) }
+        XCTAssertLessThanOrEqual(narrow * 20, visible.width - 2 * margin)
+        XCTAssertGreaterThan((narrow + 1) * 20, visible.width - 2 * margin)
+        // Never below the minimum.
+        XCTAssertEqual(DesktopClockLayout.fittedFontSize(105, in: visible) { CGSize(width: $0 * 1_000, height: $0) }, 12)
+    }
+
     func testEachMinuteReadsTheCurrentDisplayGeometry() throws {
         let clock = try makeClock(displays: [1])
         clock.coordinator.update(framed([1]))
@@ -227,33 +268,81 @@ final class DesktopClockTests: XCTestCase {
         XCTAssertEqual(clock.scheduler.observerCount, 0)
     }
 
-    func testTheClockNeverCallsARenderer() throws {
-        let renderers = [ClockRendererSpy(), ClockRendererSpy(hasPresentedFrame: false)]
-        let clock = try makeClock(showClock: false)
-        func report(_ reasons: [PlaybackPauseReason] = []) {
-            clock.coordinator.update(zip([1, 2] as [CGDirectDisplayID], renderers).map { id, renderer in
-                DesktopClockCoordinator.Display(id: id, hasPresentedFrame: renderer.hasPresentedFrame, reasons: reasons)
-            })
+    /// The real controller, with spy renderers on every connected display:
+    /// revealing windows, turning the clock on and off, minute ticks, setting
+    /// changes and status refreshes call no renderer method and change no
+    /// pause reason, renderer state or playback state.
+    func testTheClockNeverChangesPlayback() throws {
+        let clock = try makeClock(showClock: false, displays: [])
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID else { continue }
+            clock.screens.geometry[id] = .init(frame: screen.frame, visibleFrame: screen.visibleFrame,
+                                               scale: screen.backingScaleFactor)
         }
-        report()
-        clock.settings.update { $0.showClock = true }
-        report([.manual])
-        clock.time.fire(at: boundary)
-        renderers[1].hasPresentedFrame = true
-        report([.battery, .timer])
-        clock.settings.update { $0.position = .center; $0.size = .small; $0.showDate = false }
-        let next = try XCTUnwrap(clock.scheduler.scheduledFireDate)
-        clock.time.fire(at: next)
-        report([.sleeping])
-        report()
-        clock.settings.update { $0.showClock = false }
-        clock.coordinator.removeView(for: 2)
-        clock.coordinator.cleanup()
+        var spies: [ClockRendererSpy] = []
+        let controller = DesktopWindowController(clock: clock.coordinator) { _ in
+            let spy = ClockRendererSpy(hasPresentedFrame: false)
+            spies.append(spy)
+            return spy
+        }
+        defer { controller.cleanup() }
+        let ids = Array(clock.screens.geometry.keys)
+        XCTAssertEqual(spies.count, ids.count)
+        // Each display's first frame reveals its window.
+        for spy in spies {
+            spy.hasPresentedFrame = true
+            spy.onBecameReady?()
+        }
+        var statusReports = 0, stateReports = 0
+        controller.onDisplayStatusesChanged = { _ in statusReports += 1 }
+        controller.onPlaybackStateChanged = { _, _ in stateReports += 1 }
+        XCTAssertEqual(statusReports, 1, "Setting the observer reports the current statuses")
+        let calls = spies.map(\.calls)
+        // A locked session or a running screen saver hides the clock here too.
+        let canShow = DesktopClockPolicy.sessionHidingReasons.isDisjoint(with: PowerManager.shared.pauseReasons)
 
-        for renderer in renderers {
-            XCTAssertEqual(renderer.calls, [])
-            XCTAssertNil(renderer.onBecameReady)
+        clock.settings.update { $0.showClock = true }
+        XCTAssertEqual(ids.allSatisfy(clock.isShowing), canShow)
+        if canShow {
+            for _ in 0..<3 { clock.time.fire(at: try XCTUnwrap(clock.scheduler.scheduledFireDate)) }
         }
+        clock.settings.update { $0.position = .bottomLeading; $0.size = .large; $0.showDate = false }
+        spies.forEach { $0.onBecameReady?() }
+        controller.refreshPlaybackStatuses()
+        clock.settings.update { $0.showClock = false }
+        XCTAssertFalse(ids.contains(where: clock.isShowing))
+        clock.settings.update { $0.showClock = true }
+        controller.refreshPlaybackStatuses()
+
+        XCTAssertEqual(spies.map(\.calls), calls, "The clock calls no renderer method")
+        XCTAssertEqual(statusReports, 1, "Pause reasons and renderer states are unchanged")
+        XCTAssertEqual(stateReports, 0, "Playback and Pause After states are unchanged")
+    }
+
+    func testAnUpdateThatEndsAfterAMinuteBoundaryStillUpdatesAtIt() throws {
+        // Each read of the time comes 4 ms after the last, as when drawing is
+        // slow. The timer must never be armed past the end of the minute shown.
+        let clock = try makeClock(displays: [1])
+        clock.time.readStep = 0.004
+        let minuteEnds = ["21:41": boundary, "21:42": boundary.addingTimeInterval(60),
+                          "21:43": boundary.addingTimeInterval(120)]
+        func assertArmedByTheEndOfTheShownMinute(file: StaticString = #filePath, line: UInt = #line) throws {
+            let shown = try XCTUnwrap(clock.coordinator.view(for: 1)?.content?.time, file: file, line: line)
+            let end = try XCTUnwrap(minuteEnds[shown], shown, file: file, line: line)
+            let armed = try XCTUnwrap(clock.scheduler.scheduledFireDate, file: file, line: line)
+            XCTAssertLessThanOrEqual(armed, end, shown, file: file, line: line)
+        }
+
+        // The clock appears 3 ms before a boundary.
+        clock.time.now = boundary.addingTimeInterval(-0.003)
+        clock.coordinator.update(framed([1]))
+        XCTAssertEqual(clock.coordinator.view(for: 1)?.content?.time, "21:41")
+        XCTAssertEqual(clock.scheduler.scheduledFireDate, boundary)
+        // A tick on time, then one 2 ms before the next boundary.
+        clock.time.fire(at: boundary)
+        try assertArmedByTheEndOfTheShownMinute()
+        clock.time.fire(at: boundary.addingTimeInterval(59.998))
+        try assertArmedByTheEndOfTheShownMinute()
     }
 
     // MARK: - Minute boundaries
@@ -288,7 +377,7 @@ final class DesktopClockTests: XCTestCase {
 
     // MARK: - Text
 
-    func testTimeFollowsTheRegionsHourCycle() {
+    func testTimeFollowsTheLocalesHourCycle() {
         let american = DesktopClockFormat.time(date, locale: us, timeZone: utc)
         XCTAssertTrue(american.hasPrefix("9:41"), american)
         XCTAssertTrue(american.contains("PM"), american)
@@ -296,7 +385,7 @@ final class DesktopClockTests: XCTestCase {
         XCTAssertEqual(DesktopClockFormat.time(date, locale: german, timeZone: utc), "21:41")
     }
 
-    func testDateFollowsTheRegionsOrder() throws {
+    func testDateFollowsTheLocalesOrder() throws {
         let american = DesktopClockFormat.date(date, locale: us, timeZone: utc)
         let british = DesktopClockFormat.date(date, locale: uk, timeZone: utc)
         let germanDate = DesktopClockFormat.date(date, locale: german, timeZone: utc)
@@ -311,7 +400,7 @@ final class DesktopClockTests: XCTestCase {
         XCTAssertLessThan(try start(of: "26", in: germanDate), try start(of: "Oktober", in: germanDate), germanDate)
     }
 
-    func testNonLatinDigitsFollowTheRegion() {
+    func testNonLatinDigitsFollowTheLocale() {
         let arabic = Locale(identifier: "ar_EG@numbers=arab")
         let time = DesktopClockFormat.time(date, locale: arabic, timeZone: utc)
         let day = DesktopClockFormat.date(date, locale: arabic, timeZone: utc)
@@ -320,6 +409,42 @@ final class DesktopClockTests: XCTestCase {
         for text in [time, day] {
             XCTAssertFalse(text.contains { $0.isASCII && $0.isNumber }, text)
         }
+    }
+
+    func testTheClockUsesTheSystemLanguageInWallneticsRegion() throws {
+        // Wallnetic's text is English only, so its own locale is English for
+        // the region. The menu bar uses the first preferred language there.
+        func text(_ current: String, _ languages: [String]) -> (time: String, date: String) {
+            let locale = DesktopClockFormat.systemLocale(current: Locale(identifier: current),
+                                                         preferredLanguages: languages)
+            return (DesktopClockFormat.time(date, locale: locale, timeZone: utc),
+                    DesktopClockFormat.date(date, locale: locale, timeZone: utc))
+        }
+        let turkish = text("en_TR", ["tr-TR", "en-US"])
+        XCTAssertEqual(turkish.time, "21:41")
+        XCTAssertTrue(turkish.date.contains("Pazartesi") && turkish.date.contains("Ekim"), turkish.date)
+        XCTAssertLessThan(try start(of: "26", in: turkish.date), try start(of: "Ekim", in: turkish.date), turkish.date)
+        // French (Canada) uses 24-hour time by default; English there does not.
+        let french = text("en_CA", ["fr-CA"])
+        XCTAssertEqual(french.time, "21:41")
+        XCTAssertTrue(french.date.contains("lundi") && french.date.contains("octobre"), french.date)
+        // An explicit 12/24-hour choice carries over.
+        let twelveHour = text("en_CA@hours=h12", ["fr-CA"]).time
+        XCTAssertTrue(twelveHour.hasPrefix("9:41"), twelveHour)
+        XCTAssertEqual(text("en_US@hours=h23", ["en-US"]).time, "21:41")
+        // The region is Wallnetic's, also for a language listed without one.
+        let german = text("en_DE", ["de"]).date
+        XCTAssertTrue(german.contains("Montag") && german.contains("26. Oktober"), german)
+        let american = text("en_US", ["en-GB"]).date
+        XCTAssertLessThan(try start(of: "October", in: american), try start(of: "26", in: american), american)
+        // An Arabic system gets its own digits.
+        let arabic = text("en_EG", ["ar-EG"])
+        XCTAssertFalse((arabic.time + arabic.date).contains { $0.isASCII && $0.isNumber }, arabic.time + arabic.date)
+        // An English system, or no preferred language, keeps Wallnetic's locale.
+        XCTAssertEqual(DesktopClockFormat.systemLocale(current: Locale(identifier: "en_TR"),
+                                                       preferredLanguages: ["en-TR", "tr-TR"]).identifier, "en_TR")
+        XCTAssertEqual(DesktopClockFormat.systemLocale(current: Locale(identifier: "en_TR"),
+                                                       preferredLanguages: []).identifier, "en_TR")
     }
 
     func testMidnightRollsTheTimeAndTheDayOver() {
@@ -412,7 +537,7 @@ final class DesktopClockTests: XCTestCase {
         let time = ManualTime(date)
         let scheduler = makeScheduler(time)
         var ticks = 0
-        scheduler.start { ticks += 1 }
+        scheduler.start(from: time.now) { ticks += 1 }
         XCTAssertEqual(ticks, 0, "Starting does not tick; the caller shows the current time")
         for minute in 1...3 {
             let expected = boundary.addingTimeInterval(TimeInterval(minute - 1) * 60)
@@ -433,7 +558,7 @@ final class DesktopClockTests: XCTestCase {
         let time = ManualTime(date)
         let scheduler = makeScheduler(time, center: center, workspace: workspace)
         var ticks = 0
-        scheduler.start { ticks += 1 }
+        scheduler.start(from: time.now) { ticks += 1 }
         XCTAssertEqual(scheduler.observerCount, 6)
         let changes: [(center: NotificationCenter, name: Notification.Name, clockMoves: TimeInterval)] = [
             (workspace, NSWorkspace.didWakeNotification, 3_600.25),
@@ -463,8 +588,8 @@ final class DesktopClockTests: XCTestCase {
         XCTAssertFalse(scheduler.hasPendingTimer)
 
         var ticks = 0
-        scheduler.start { ticks += 1 }
-        scheduler.start { ticks += 10 }
+        scheduler.start(from: time.now) { ticks += 1 }
+        scheduler.start(from: time.now) { ticks += 10 }
         XCTAssertEqual(scheduler.observerCount, 6, "A second start keeps one schedule")
         XCTAssertEqual(time.pendingCount, 1)
         time.fire(at: boundary)
@@ -490,7 +615,7 @@ final class DesktopClockTests: XCTestCase {
     func testATickThatHidesEveryClockLeavesNoTimer() {
         let time = ManualTime(date)
         let scheduler = makeScheduler(time)
-        scheduler.start { [unowned scheduler] in scheduler.stop() }
+        scheduler.start(from: time.now) { [unowned scheduler] in scheduler.stop() }
         time.fire(at: boundary)
         XCTAssertFalse(scheduler.isRunning)
         XCTAssertFalse(scheduler.hasPendingTimer)
@@ -682,8 +807,10 @@ final class DesktopClockTests: XCTestCase {
     }
 
     /// Display 1: a 1440 × 900 Retina display with the menu bar and a bottom
-    /// Dock. Display 2: a 1920 × 1080 display below and to its right.
-    private func makeClock(showClock: Bool = true, displays: [CGDirectDisplayID] = [1, 2]) throws -> Clock {
+    /// Dock. Display 2: a 1920 × 1080 display below and to its right. British
+    /// English in UTC unless `locale` is given.
+    private func makeClock(showClock: Bool = true, displays: [CGDirectDisplayID] = [1, 2],
+                           locale: Locale? = nil, backdrop: Bool = false) throws -> Clock {
         let settings = DesktopClockSettings(defaults: defaults)
         settings.update { $0.showClock = showClock }
         let time = ManualTime(date)
@@ -695,10 +822,10 @@ final class DesktopClockTests: XCTestCase {
                      visibleFrame: CGRect(x: 1440, y: -200, width: 1920, height: 1055), scale: 1),
         ]
         let scheduler = makeScheduler(time)
-        let uk = self.uk, utc = self.utc
-        let coordinator = DesktopClockCoordinator(settings: settings, scheduler: scheduler, now: { time.now },
-                                                  locale: { uk }, timeZone: { utc },
-                                                  geometry: { screens.geometry[$0] }, wantsBackdrop: { false })
+        let locale = locale ?? uk, utc = self.utc
+        let coordinator = DesktopClockCoordinator(settings: settings, scheduler: scheduler, now: { time.read() },
+                                                  locale: { locale }, timeZone: { utc },
+                                                  geometry: { screens.geometry[$0] }, wantsBackdrop: { backdrop })
         for id in displays {
             let size = screens.geometry[id]?.frame.size ?? NSSize(width: 800, height: 600)
             _ = coordinator.makeView(for: id, frame: NSRect(origin: .zero, size: size))
@@ -709,7 +836,7 @@ final class DesktopClockTests: XCTestCase {
     private func makeScheduler(_ time: ManualTime, center: NotificationCenter = NotificationCenter(),
                                workspace: NotificationCenter = NotificationCenter()) -> DesktopClockScheduler {
         let calendar = calendar(in: utc)
-        return DesktopClockScheduler(now: { time.now }, calendar: { calendar }, schedule: time.schedule,
+        return DesktopClockScheduler(now: { time.read() }, calendar: { calendar }, schedule: time.schedule,
                                      notificationCenter: center, workspaceCenter: workspace)
     }
 
@@ -748,6 +875,8 @@ final class DesktopClockTests: XCTestCase {
 /// A settable clock and timers that fire only when a test says so.
 private final class ManualTime {
     var now: Date
+    /// How far the time moves on after each read, as while drawing.
+    var readStep: TimeInterval = 0
     private(set) var armedDates: [Date] = []
     private var pending: [Int: () -> Void] = [:]
     private var nextID = 0
@@ -755,6 +884,12 @@ private final class ManualTime {
     init(_ now: Date) { self.now = now }
 
     var pendingCount: Int { pending.count }
+
+    /// The time, as the clock reads it.
+    func read() -> Date {
+        defer { now.addTimeInterval(readStep) }
+        return now
+    }
 
     var schedule: DesktopClockScheduler.Schedule {
         { date, action in

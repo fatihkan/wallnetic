@@ -244,6 +244,70 @@ final class PlaybackRendererTests: XCTestCase {
         XCTAssertFalse(renderer.hasPresentedFrame)
     }
 
+    @MainActor
+    func testAVFoundationPresentsAndResizesInsideTheWallpaperContent() async throws {
+        try await assertPresentsAndResizesInsideTheWallpaperContent(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalPresentsAndResizesInsideTheWallpaperContent() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertPresentsAndResizesInsideTheWallpaperContent(MetalVideoRenderer())
+    }
+
+    /// #311: the renderer view sits in a container with the clock, not as the
+    /// window's content view. It still reveals its first frame in a window
+    /// kept at alpha 0 and follows the window's size, as on a display change.
+    @MainActor
+    private func assertPresentsAndResizesInsideTheWallpaperContent(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("container-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 160, height: 100), styleMask: .borderless,
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 20)
+        let clock = DesktopClockView(frame: .zero)
+        let content = DesktopWindowController.wallpaperContent(rendererView: renderer.rendererView,
+                                                               size: NSSize(width: 160, height: 100), clockView: clock)
+        window.contentView = content
+        let effectOverlay = NSView(frame: renderer.rendererView.bounds)
+        effectOverlay.autoresizingMask = [.width, .height]
+        effectOverlay.wantsLayer = true
+        renderer.rendererView.addSubview(effectOverlay)
+        window.alphaValue = 0
+        window.orderFront(nil)
+        var revealed = false
+        renderer.onBecameReady = { revealed = true }
+
+        renderer.loadVideo(url: video)
+        renderer.play()
+        let deadline = Date().addingTimeInterval(5)
+        while !(revealed && renderer.hasPresentedFrame), Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        XCTAssertTrue(revealed, "The first frame asks for the window to be revealed")
+
+        window.setFrame(NSRect(x: 0, y: 0, width: 320, height: 200), display: false)
+        window.layoutIfNeeded()
+        XCTAssertEqual(content.frame.size, NSSize(width: 320, height: 200))
+        XCTAssertEqual(renderer.rendererView.frame, content.bounds)
+        XCTAssertEqual(effectOverlay.frame, renderer.rendererView.bounds)
+        XCTAssertEqual(clock.frame, content.bounds)
+        XCTAssertTrue(content.subviews.last === clock, "The clock stays above the video")
+        if let metal = renderer as? MetalVideoRenderer {
+            let scale = window.backingScaleFactor
+            XCTAssertEqual(metal.metalView.drawableSize, CGSize(width: 320 * scale, height: 200 * scale))
+        } else {
+            XCTAssertEqual(renderer.filterLayer?.frame, renderer.rendererView.bounds)
+        }
+    }
+
     private func writeShortVideo(to url: URL, frames: Int = 3, fps: Int32 = 10,
                                  width: Int = 64, height: Int = 64) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)

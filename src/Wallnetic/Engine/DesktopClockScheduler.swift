@@ -43,9 +43,10 @@ final class DesktopClockScheduler {
     var observerCount: Int { observers.count }
     var hasPendingTimer: Bool { cancelTimer != nil }
 
-    /// Starts calling `onTick` at every minute boundary; keeps a running
-    /// schedule and only replaces the callback.
-    func start(_ onTick: @escaping () -> Void) {
+    /// Starts calling `onTick` at every minute boundary after `instant`, the
+    /// time the caller just showed; keeps a running schedule and only
+    /// replaces the callback.
+    func start(from instant: Date, _ onTick: @escaping () -> Void) {
         let wasRunning = isRunning
         self.onTick = onTick
         guard !wasRunning else { return }
@@ -62,7 +63,7 @@ final class DesktopClockScheduler {
                 observers.append((center, observer))
             }
         }
-        arm()
+        arm(after: instant)
     }
 
     func stop() {
@@ -77,15 +78,19 @@ final class DesktopClockScheduler {
     /// Updates now and re-arms, so the time shown is current at once.
     func refresh() {
         guard let onTick else { return }
+        // Read before the tick draws: arming from a later read would skip a
+        // boundary that passed while drawing.
+        let instant = now()
         onTick()
         // The tick may have hidden every clock and stopped the schedule.
         guard isRunning else { return }
-        arm()
+        arm(after: instant)
     }
 
-    private func arm() {
+    /// A boundary that already passed fires at once and draws the new minute.
+    private func arm(after instant: Date) {
         cancelTimer?()
-        let fireDate = DesktopClockPolicy.nextMinuteBoundary(after: now(), calendar: calendar())
+        let fireDate = DesktopClockPolicy.nextMinuteBoundary(after: instant, calendar: calendar())
         scheduledFireDate = fireDate
         cancelTimer = schedule(fireDate) { [weak self] in self?.refresh() }
     }

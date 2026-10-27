@@ -105,11 +105,15 @@ class DesktopWindowController {
     private var trimObserver: AnyCancellable?
     /// The optional desktop clock (#311). It only receives values.
     private let clock: DesktopClockCoordinator
+    /// Makes a display's renderer; tests pass spies.
+    private let makeRenderer: (_ useMetal: Bool) -> WallpaperRenderer
 
-    init(trimStore: PlaybackTrimStore = .shared, clock: DesktopClockCoordinator = DesktopClockCoordinator()) {
+    init(trimStore: PlaybackTrimStore = .shared, clock: DesktopClockCoordinator = DesktopClockCoordinator(),
+         makeRenderer: @escaping (_ useMetal: Bool) -> WallpaperRenderer = DesktopWindowController.defaultRenderer) {
         self.useMetalRenderer = WallpaperManager.shared.useMetalRenderer
         self.trimStore = trimStore
         self.clock = clock
+        self.makeRenderer = makeRenderer
         setupDesktopWindows()
         setupEffectsObserver()
         // `@Published` emits before it stores, so use the emitted ranges.
@@ -196,12 +200,7 @@ class DesktopWindowController {
         window.styleMask.remove(.miniaturizable)
 
         // Create and attach video renderer (Metal or AVFoundation based)
-        let renderer: WallpaperRenderer
-        if useMetalRenderer && MetalVideoRenderer.isSupported {
-            renderer = MetalVideoRenderer()
-        } else {
-            renderer = VideoRenderer()
-        }
+        let renderer = makeRenderer(useMetalRenderer)
 
         window.contentView = Self.wallpaperContent(rendererView: renderer.rendererView, size: screen.frame.size,
                                                    clockView: clock.makeView(for: displayID, frame: NSRect(origin: .zero, size: screen.frame.size)))
@@ -236,6 +235,10 @@ class DesktopWindowController {
 
         let rendererName = useMetalRenderer ? "Metal" : "AVFoundation"
         Log.window.debug("Created window for: \(screen.localizedName, privacy: .public) using \(rendererName, privacy: .public) renderer")
+    }
+
+    static func defaultRenderer(useMetal: Bool) -> WallpaperRenderer {
+        useMetal && MetalVideoRenderer.isSupported ? MetalVideoRenderer() : VideoRenderer()
     }
 
     /// A wallpaper window's content: the renderer view, with the clock as its

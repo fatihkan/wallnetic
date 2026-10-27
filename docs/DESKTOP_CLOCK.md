@@ -12,7 +12,8 @@ Settings > Effects > **Desktop Clock**:
 - **Position**: Top Left, Top Center (the default), Center, Bottom Left, Bottom
   Center or Bottom Right, inside the display's visible area.
 - **Size**: Small, Medium (the default) or Large, relative to the height of each
-  display's visible area.
+  display's visible area. On a display too narrow for that size, such as a
+  portrait display, the clock gets the largest size that fits.
 
 Changes apply to every display at once and persist across launches. Reset All
 Effects does not change them. If the saved preferences cannot be read, the
@@ -57,9 +58,15 @@ wallpaper, and never moves, orders or reveals a window.
 
 ## Time and date
 
-- The time uses the region's short time format and follows the 12/24-hour
-  setting. The date shows the weekday, day and month in the region's order and
-  digits. App copy stays English.
+- The clock uses the Mac's language, region and 12/24-hour setting, as the menu
+  bar clock does. Wallnetic's own text is English only, so macOS gives the app
+  English formats for the region (for example English for Turkey on a Turkish
+  system). The clock instead formats in the first preferred language, in that
+  region, keeping an explicit 12/24-hour choice and the calendar. App copy
+  stays English.
+- The time shows hours and minutes, never seconds, even when a custom time
+  format includes them. The date shows the weekday, day and month in that
+  language's order and digits.
 - One timer serves every display and fires at each minute boundary. The clock
   also updates at once after the Mac or a display wakes, and after the system
   clock, time zone, day or region changes. While no display shows a clock, there
@@ -103,18 +110,30 @@ control has a text label for VoiceOver.
 - the visibility rule for every pause reason, with and without a presented
   frame, on one display and on two;
 - minute boundaries, including midnight and DST transitions;
-- time and date text for 12- and 24-hour regions, date order, non-Latin digits,
+- time and date text for 12- and 24-hour locales, date order, non-Latin digits,
   time zones, day rollover and DST, with injected locales and time zones;
+- the clock's locale from Wallnetic's English locale and the preferred
+  languages: Turkish, French (Canada), German, Arabic and English systems, and
+  an explicit 12/24-hour choice;
 - settings defaults, persistence and the fallback for missing or corrupt data,
   with injected `UserDefaults`;
 - the scheduler, with an injected clock, timer and notification centers:
   re-arming after each tick, wake, screen wake, system clock, time zone, day and
-  locale changes, and no timer or observer after it stops or after cleanup;
-- placement inside the visible area for every position and size;
-- the coordinator with spy renderers: ticks, showing, hiding and setting changes
-  call no renderer method;
+  locale changes; arming from the time shown, so an update that ends after a
+  minute boundary still updates at it; and no timer or observer after it stops
+  or after cleanup;
+- placement inside the visible area for every position, including a Large
+  12-hour clock, with and without the backdrop, on a portrait display with and
+  without a side Dock;
+- the real window controller with spy renderers on every connected display:
+  revealing windows, ticks, showing, hiding, setting changes and status
+  refreshes call no renderer method and change no pause reason or playback
+  state;
 - the view hierarchy: the clock is the last sibling of the renderer view, outside
-  it and its filtered layer.
+  it and its filtered layer;
+- both engines inside that container: the first frame shows in a window kept at
+  alpha 0, and the video follows a window resize (Metal drawable size, AVPlayer
+  layer frame).
 
 ### Pending physical and VoiceOver checks
 
@@ -126,12 +145,16 @@ None of these has been performed yet:
 - Updates within one minute after changing the region, the 24-hour setting, the
   time zone or the system clock while Wallnetic is inactive. Any change that
   waits until Wallnetic becomes active is to be recorded here as a limit.
-- The language of weekday and month names on a system whose primary language is
-  not English.
+- On a system whose primary language is not English, on macOS 13 and on a later
+  version: the weekday and month language, the date order and digits, and the
+  time with the 24-hour setting on and off, each compared with the menu bar.
 - At least ten minute changes, each logged within one second after its boundary,
   for a playing and a paused wallpaper with Wallnetic in the background.
 - The current time on first appearance after waking, unlocking, returning from
   fast user switching and leaving the screen saver.
+- The first frame and full-screen video on both engines inside the new window
+  content: no empty or black window before the first frame, and correct video
+  size after a resolution change and a scale change.
 - Effects on both engines; readability over light and dark videos with Increase
   Contrast and Reduce Transparency each on and off; no animation with Reduce
   Motion on and off.
