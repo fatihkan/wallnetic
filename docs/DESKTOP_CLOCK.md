@@ -13,7 +13,8 @@ Settings > Effects > **Desktop Clock**:
   Center or Bottom Right, inside the display's visible area.
 - **Size**: Small, Medium (the default) or Large, relative to the height of each
   display's visible area. On a display too narrow for that size, such as a
-  portrait display, the clock gets the largest size that fits.
+  portrait display, the clock gets the largest size at which its widest time
+  and date fit, so it keeps one size through the day and the year.
 
 Changes apply to every display at once and persist across launches. Reset All
 Effects does not change them. If the saved preferences cannot be read, the
@@ -58,12 +59,11 @@ wallpaper, and never moves, orders or reveals a window.
 
 ## Time and date
 
-- The clock uses the Mac's language, region and 12/24-hour setting, as the menu
-  bar clock does. Wallnetic's own text is English only, so macOS gives the app
-  English formats for the region (for example English for Turkey on a Turkish
-  system). The clock instead formats in the first preferred language, in that
-  region, keeping an explicit 12/24-hour choice and the calendar. App copy
-  stays English.
+- The clock uses your first preferred language and your region, with your
+  12/24-hour choice and calendar from Language & Region. Wallnetic's own text
+  is English only, so macOS gives the app English formats for the region (for
+  example English for Turkey on a Turkish system); the clock formats in the
+  preferred language instead. App copy stays English.
 - The time shows hours and minutes, never seconds, even when a custom time
   format includes them. The date shows the weekday, day and month in that
   language's order and digits.
@@ -95,6 +95,15 @@ control has a text label for VoiceOver.
 
 - When the Dock or the menu bar changes without macOS reporting a display
   change, the clock moves at the next minute change.
+- The menu bar clock can look different. It has its own options, and it uses
+  another language when macOS has no interface in your first preferred
+  language.
+- A numbering system chosen in Language & Region (for example Latin digits for
+  Arabic) does not reach Wallnetic, so the clock uses the language's usual
+  digits.
+- A 12/24-hour choice that matches English's default for the region but not
+  the language's (12-hour time on a French (Canada) system) applies only on
+  macOS versions that record it in the app's locale. macOS 26 does.
 - Resource use is not measured yet. No CPU, GPU or energy figure, and no savings
   claim, is made. Measurement follows the [benchmark protocol](PLAYBACK_BENCHMARKS.md):
   isolated-host sessions with `--overlay clock` and without, for Metal and
@@ -113,8 +122,9 @@ control has a text label for VoiceOver.
 - time and date text for 12- and 24-hour locales, date order, non-Latin digits,
   time zones, day rollover and DST, with injected locales and time zones;
 - the clock's locale from Wallnetic's English locale and the preferred
-  languages: Turkish, French (Canada), German, Arabic and English systems, and
-  an explicit 12/24-hour choice;
+  languages: Turkish, French (Canada), German, Arabic, Japanese-calendar and
+  English systems, and an explicit 12/24-hour choice, detected from the hour
+  pattern or recorded in the locale;
 - settings defaults, persistence and the fallback for missing or corrupt data,
   with injected `UserDefaults`;
 - the scheduler, with an injected clock, timer and notification centers:
@@ -124,16 +134,18 @@ control has a text label for VoiceOver.
   or after cleanup;
 - placement inside the visible area for every position, including a Large
   12-hour clock, with and without the backdrop, on a portrait display with and
-  without a side Dock;
+  without a side Dock, and one font size there through a week of times and
+  dates;
 - the real window controller with spy renderers on every connected display:
   revealing windows, ticks, showing, hiding, setting changes and status
   refreshes call no renderer method and change no pause reason or playback
   state;
 - the view hierarchy: the clock is the last sibling of the renderer view, outside
-  it and its filtered layer;
-- both engines inside that container: the first frame shows in a window kept at
-  alpha 0, and the video follows a window resize (Metal drawable size, AVPlayer
-  layer frame).
+  it and its filtered layer.
+
+`PlaybackRendererTests` covers both engines inside that container: the first
+frame shows in a window kept at alpha 0, and the video and the clock follow a
+window resize (Metal drawable size, AVPlayer layer frame).
 
 ### Pending physical and VoiceOver checks
 
@@ -147,7 +159,8 @@ None of these has been performed yet:
   waits until Wallnetic becomes active is to be recorded here as a limit.
 - On a system whose primary language is not English, on macOS 13 and on a later
   version: the weekday and month language, the date order and digits, and the
-  time with the 24-hour setting on and off, each compared with the menu bar.
+  time with the 24-hour setting on and off, with any difference from the menu
+  bar recorded under Limits.
 - At least ten minute changes, each logged within one second after its boundary,
   for a playing and a paused wallpaper with Wallnetic in the background.
 - The current time on first appearance after waking, unlocking, returning from

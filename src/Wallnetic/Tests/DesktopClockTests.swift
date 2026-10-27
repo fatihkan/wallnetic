@@ -199,6 +199,28 @@ final class DesktopClockTests: XCTestCase {
         }
     }
 
+    func testAFittedClockKeepsItsSizeAsTheTimeAndDateChange() throws {
+        // Fitted to its current text, a 12-hour Large clock on a portrait
+        // display would shrink at 10:00 and grow at 1:00.
+        let clock = try makeClock(displays: [1], locale: us)
+        clock.screens.geometry[1] = .init(frame: CGRect(x: 0, y: 0, width: 1080, height: 1920),
+                                          visibleFrame: CGRect(x: 0, y: 0, width: 1080, height: 1895), scale: 2)
+        clock.settings.update { $0.size = .large }
+        var sizes: Set<CGFloat> = []
+        // Every half hour for a week, from Monday 26 October 2026, 00:00 UTC.
+        let monday = Date(timeIntervalSince1970: 1_792_972_800)
+        for step in 0..<(7 * 48) {
+            clock.time.now = monday.addingTimeInterval(TimeInterval(step) * 1_800)
+            clock.coordinator.update(framed([1]))
+            let content = try XCTUnwrap(clock.coordinator.view(for: 1)?.content)
+            sizes.insert(content.fontSize)
+            let frame = try XCTUnwrap(clock.coordinator.view(for: 1)?.layer?.sublayers?.first).frame
+            XCTAssertTrue(content.visibleRect.contains(frame), "\(content.time) \(frame)")
+        }
+        XCTAssertEqual(sizes.count, 1, "\(sizes)")
+        XCTAssertLessThan(try XCTUnwrap(sizes.first), (1895 * 0.13).rounded())
+    }
+
     func testFittingKeepsTheRequestedSizeWhenItFits() {
         let visible = CGRect(x: 0, y: 70, width: 1440, height: 805)
         let fitted = DesktopClockLayout.fittedFontSize(105, in: visible) { CGSize(width: $0 * 4, height: $0 * 2) }
@@ -442,11 +464,42 @@ final class DesktopClockTests: XCTestCase {
         // An Arabic system gets its own digits.
         let arabic = text("en_EG", ["ar-EG"])
         XCTAssertFalse((arabic.time + arabic.date).contains { $0.isASCII && $0.isNumber }, arabic.time + arabic.date)
+        // A Japanese calendar chosen in Language & Region stays.
+        let japanese = DesktopClockFormat.systemLocale(current: Locale(identifier: "en_JP@calendar=japanese"),
+                                                       preferredLanguages: ["ja-JP"])
+        XCTAssertEqual(japanese.calendar.identifier, .japanese)
         // An English system, or no preferred language, keeps Wallnetic's locale.
         XCTAssertEqual(DesktopClockFormat.systemLocale(current: Locale(identifier: "en_TR"),
                                                        preferredLanguages: ["en-TR", "tr-TR"]).identifier, "en_TR")
         XCTAssertEqual(DesktopClockFormat.systemLocale(current: Locale(identifier: "en_TR"),
                                                        preferredLanguages: []).identifier, "en_TR")
+    }
+
+    func testAnExplicitHourChoiceComesFromTheHourPatternOrTheLocale() {
+        // macOS applies a 12/24-hour choice to the current locale's patterns
+        // only, so a pattern that differs from the identifier's default is one.
+        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "h a", regional: "HH", recorded: nil), .oneToTwelve)
+        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "HH", regional: "h a", recorded: nil),
+                       .zeroToTwentyThree)
+        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "a h", regional: "H", recorded: nil), .oneToTwelve)
+        // Otherwise only a choice recorded in the locale counts, and without one
+        // the clock's language keeps its own default.
+        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "h a", regional: "h a", recorded: .oneToTwelve),
+                       .oneToTwelve)
+        XCTAssertNil(DesktopClockFormat.explicitHourCycle(chosen: "h a", regional: "h a", recorded: nil))
+    }
+
+    func testSamplesCoverEveryHourWeekdayAndMonth() {
+        let samples = DesktopClockFormat.samples(locale: uk)
+        XCTAssertEqual(samples.times.count, 24)
+        XCTAssertTrue(samples.times.contains("00:00") && samples.times.contains("23:00"), "\(samples.times)")
+        XCTAssertEqual(samples.dates.count, 12 * 7)
+        for name in ["Monday", "Sunday", "Wednesday", "January", "September", "December"] {
+            XCTAssertTrue(samples.dates.contains { $0.contains(name) }, name)
+        }
+        let american = DesktopClockFormat.samples(locale: us).times
+        XCTAssertTrue(american.contains { $0.hasPrefix("10:00") && $0.contains("AM") }, "\(american)")
+        XCTAssertTrue(american.contains { $0.hasPrefix("10:00") && $0.contains("PM") }, "\(american)")
     }
 
     func testMidnightRollsTheTimeAndTheDayOver() {

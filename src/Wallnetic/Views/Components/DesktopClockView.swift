@@ -76,14 +76,12 @@ final class DesktopClockView: NSView {
         case .topCenter, .center, .bottomCenter: paragraph.alignment = .center
         case .bottomTrailing: paragraph.alignment = .right
         }
-        func attributes(size: CGFloat, monospaced: Bool) -> [NSAttributedString.Key: Any] {
-            let font = monospaced ? NSFont.monospacedDigitSystemFont(ofSize: size, weight: .medium)
-                : NSFont.systemFont(ofSize: size, weight: .medium)
-            return [.font: font, .foregroundColor: NSColor.white, .shadow: shadow, .paragraphStyle: paragraph]
+        func attributes(font: NSFont) -> [NSAttributedString.Key: Any] {
+            [.font: font, .foregroundColor: NSColor.white, .shadow: shadow, .paragraphStyle: paragraph]
         }
-        let time = NSAttributedString(string: content.time, attributes: attributes(size: content.fontSize, monospaced: true))
+        let time = NSAttributedString(string: content.time, attributes: attributes(font: timeFont(content.fontSize)))
         let date = content.date.map {
-            NSAttributedString(string: $0, attributes: attributes(size: (content.fontSize * 0.3).rounded(), monospaced: false))
+            NSAttributedString(string: $0, attributes: attributes(font: dateFont(content.fontSize)))
         }
         let timeSize = time.size()
         let dateSize = date?.size() ?? .zero
@@ -104,5 +102,22 @@ final class DesktopClockView: NSView {
             date?.draw(in: NSRect(x: inner.minX, y: inner.minY, width: inner.width, height: ceil(dateSize.height)))
             return true
         }
+    }
+
+    /// The widest of `times` and of `dates` in the clock's fonts.
+    static func widest(times: [String], dates: [String], fontSize: CGFloat) -> (time: String, date: String?) {
+        func widest(_ texts: [String], font: NSFont) -> String? {
+            texts.map { ($0, NSAttributedString(string: $0, attributes: [.font: font]).size().width) }
+                .max { $0.1 < $1.1 }?.0
+        }
+        return (widest(times, font: timeFont(fontSize)) ?? "", widest(dates, font: dateFont(fontSize)))
+    }
+
+    private static func timeFont(_ fontSize: CGFloat) -> NSFont {
+        .monospacedDigitSystemFont(ofSize: fontSize, weight: .medium)
+    }
+
+    private static func dateFont(_ fontSize: CGFloat) -> NSFont {
+        .systemFont(ofSize: (fontSize * 0.3).rounded(), weight: .medium)
     }
 }

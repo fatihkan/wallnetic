@@ -34,6 +34,25 @@ final class DesktopClockCoordinator {
     private var settingsObserver: AnyCancellable?
     /// Backing-scale and contrast changes, observed only while a clock shows.
     private var changeObservers: [(NotificationCenter, NSObjectProtocol)] = []
+    /// Font sizes fitted to a visible area, by everything the widest text
+    /// depends on, so the clock keeps its size as the time and date change.
+    private var fittedFontSizes: [FitKey: CGFloat] = [:]
+
+    /// What one refresh shows, and the locale it comes from.
+    private struct Text {
+        let time: String
+        let date: String?
+        let locale: Locale
+    }
+
+    private struct FitKey: Hashable {
+        let width: CGFloat
+        let height: CGFloat
+        let requested: CGFloat
+        let backdrop: Bool
+        let locale: String
+        let showsDate: Bool
+    }
 
     init(settings: DesktopClockSettings = .shared,
          scheduler: DesktopClockScheduler = DesktopClockScheduler(),
@@ -100,12 +119,13 @@ final class DesktopClockCoordinator {
         views.values.forEach { $0.hide() }
         views.removeAll()
         displays.removeAll()
+        fittedFontSizes.removeAll()
     }
 
     private func refresh() {
         // One read per refresh: the text and the next boundary come from it.
         let instant = now()
-        var text: (time: String, date: String?)?
+        var text: Text?
         var anyVisible = false
         for (id, view) in views {
             guard isVisible(id), let geometry = geometry(id) else {
@@ -115,7 +135,7 @@ final class DesktopClockCoordinator {
             // Formatted once per refresh, for every display that shows it.
             let shown = text ?? format(instant)
             text = shown
-            view.show(content(time: shown.time, date: shown.date, geometry: geometry))
+            view.show(content(shown, geometry: geometry))
             anyVisible = true
         }
         if anyVisible {
@@ -133,24 +153,45 @@ final class DesktopClockCoordinator {
                                             reasons: display.reasons)
     }
 
-    private func format(_ date: Date) -> (time: String, date: String?) {
+    private func format(_ date: Date) -> Text {
         let locale = locale(), timeZone = timeZone()
-        return (DesktopClockFormat.time(date, locale: locale, timeZone: timeZone),
-                preferences.showDate ? DesktopClockFormat.date(date, locale: locale, timeZone: timeZone) : nil)
+        return Text(time: DesktopClockFormat.time(date, locale: locale, timeZone: timeZone),
+                    date: preferences.showDate ? DesktopClockFormat.date(date, locale: locale, timeZone: timeZone) : nil,
+                    locale: locale)
     }
 
-    private func content(time: String, date: String?, geometry: Geometry) -> DesktopClockView.Content {
+    private func content(_ text: Text, geometry: Geometry) -> DesktopClockView.Content {
         let visible = DesktopClockLayout.visibleRect(screenFrame: geometry.frame, visibleFrame: geometry.visibleFrame)
         var content = DesktopClockView.Content(
-            time: time, date: date,
+            time: text.time, date: text.date,
             fontSize: max(12, (visible.height * CGFloat(preferences.size.timeFraction)).rounded()),
             position: preferences.position, visibleRect: visible, scale: geometry.scale, backdrop: wantsBackdrop())
-        content.fontSize = DesktopClockLayout.fittedFontSize(content.fontSize, in: visible) { fontSize in
-            var measured = content
+        content.fontSize = fittedFontSize(for: content, locale: text.locale)
+        return content
+    }
+
+    /// The largest font, up to the chosen size, at which the widest time and
+    /// date of this locale fit the visible area.
+    private func fittedFontSize(for content: DesktopClockView.Content, locale: Locale) -> CGFloat {
+        let key = FitKey(width: content.visibleRect.width, height: content.visibleRect.height,
+                         requested: content.fontSize, backdrop: content.backdrop, locale: locale.identifier,
+                         showsDate: content.date != nil)
+        if let fontSize = fittedFontSizes[key] { return fontSize }
+        let samples = DesktopClockFormat.samples(locale: locale)
+        let widest = DesktopClockView.widest(times: samples.times + [content.time],
+                                             dates: samples.dates + (content.date.map { [$0] } ?? []),
+                                             fontSize: content.fontSize)
+        var measured = content
+        measured.time = widest.time
+        measured.date = content.date == nil ? nil : widest.date
+        let fontSize = DesktopClockLayout.fittedFontSize(content.fontSize, in: content.visibleRect) { fontSize in
             measured.fontSize = fontSize
             return DesktopClockView.image(for: measured).size
         }
-        return content
+        // Areas and settings change rarely; this only bounds a long session.
+        if fittedFontSizes.count >= 64 { fittedFontSizes.removeAll() }
+        fittedFontSizes[key] = fontSize
+        return fontSize
     }
 
     private func observeChanges() {
