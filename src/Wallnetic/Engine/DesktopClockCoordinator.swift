@@ -177,13 +177,16 @@ final class DesktopClockCoordinator {
                          requested: content.fontSize, backdrop: content.backdrop, locale: locale.identifier,
                          showsDate: content.date != nil)
         if let fontSize = fittedFontSizes[key] { return fontSize }
-        let samples = DesktopClockFormat.samples(locale: locale)
-        let widest = DesktopClockView.widest(times: samples.times + [content.time],
-                                             dates: samples.dates + (content.date.map { [$0] } ?? []),
-                                             fontSize: content.fontSize)
+        func width(_ text: String, _ field: DesktopClockFormat.Field) -> CGFloat {
+            DesktopClockView.width(of: text, field, fontSize: content.fontSize)
+        }
+        let widest = DesktopClockFormat.widest(locale: locale, showsDate: content.date != nil, width: width)
+        // The current text counts too, in case it is wider than every sample.
         var measured = content
-        measured.time = widest.time
-        measured.date = content.date == nil ? nil : widest.date
+        if width(widest.time, .time) > width(content.time, .time) { measured.time = widest.time }
+        if let sample = widest.date, let date = content.date, width(sample, .date) > width(date, .date) {
+            measured.date = sample
+        }
         let fontSize = DesktopClockLayout.fittedFontSize(content.fontSize, in: content.visibleRect) { fontSize in
             measured.fontSize = fontSize
             return DesktopClockView.image(for: measured).size

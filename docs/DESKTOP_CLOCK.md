@@ -124,7 +124,9 @@ control has a text label for VoiceOver.
 - the clock's locale from Wallnetic's English locale and the preferred
   languages: Turkish, French (Canada), German, Arabic, Japanese-calendar and
   English systems, and an explicit 12/24-hour choice, detected from the hour
-  pattern or recorded in the locale;
+  pattern or recorded in the locale and counted the language's own way (0 to
+  11 for Japanese 12-hour time);
+- the widest time and date a locale shows, including leap months;
 - settings defaults, persistence and the fallback for missing or corrupt data,
   with injected `UserDefaults`;
 - the scheduler, with an injected clock, timer and notification centers:

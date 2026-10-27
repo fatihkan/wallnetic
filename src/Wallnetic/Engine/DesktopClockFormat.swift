@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Time and date text for the desktop clock, in the user's first preferred
@@ -18,28 +19,48 @@ enum DesktopClockFormat {
         formatter("EEEEdMMMM", locale: locale, timeZone: timeZone).string(from: date)
     }
 
-    /// Every hour of a day, and every weekday in every month of a year, as
-    /// the clock shows them. Sized for the widest, the clock keeps its size
-    /// when the hour gains a digit or the date a longer name.
-    static func samples(locale: Locale) -> (times: [String], dates: [String]) {
+    enum Field { case time, date }
+
+    /// The widest time and date the clock can show in `locale`, by `width`:
+    /// the widest hour of a day with its widest minutes, and the widest
+    /// weekday in the month whose name is widest over four years, so leap
+    /// and short months count. Sized for these, the clock keeps one size
+    /// through the day and the year.
+    static func widest(locale: Locale, showsDate: Bool,
+                       width: (String, Field) -> CGFloat) -> (time: String, date: String?) {
         let utc = TimeZone(identifier: "UTC")!
         var calendar = locale.calendar
         calendar.timeZone = utc
-        // Any year will do; this one is 2026 in the Gregorian calendar.
-        guard let year = calendar.dateInterval(of: .year, for: Date(timeIntervalSince1970: 1_780_000_000)) else {
-            return ([], [])
+        // Any start will do; this year is 2026 in the Gregorian calendar.
+        guard let start = calendar.dateInterval(of: .year, for: Date(timeIntervalSince1970: 1_780_000_000))?.start,
+              let end = calendar.date(byAdding: .year, value: 4, to: start) else { return ("", nil) }
+        func widest(_ dates: [Date], _ formatter: DateFormatter, _ field: Field) -> (date: Date, text: String)? {
+            dates.map { ($0, formatter.string(from: $0)) }
+                .map { (date: $0.0, text: $0.1, width: width($0.1, field)) }
+                .max { $0.width < $1.width }
+                .map { ($0.date, $0.text) }
         }
-        let timeFormatter = formatter("jmm", locale: locale, timeZone: utc)
-        let dateFormatter = formatter("EEEEdMMMM", locale: locale, timeZone: utc)
-        let times = (0..<24).map { timeFormatter.string(from: year.start.addingTimeInterval(TimeInterval($0) * 3_600)) }
-        let months = calendar.range(of: .month, in: .year, for: year.start)?.count ?? 12
-        let dates = (0..<months).flatMap { month -> [String] in
-            guard let first = calendar.date(byAdding: .month, value: month, to: year.start) else { return [] }
-            // The 22nd to the 28th: each weekday once, with a two-digit day.
-            return (21..<28).compactMap { calendar.date(byAdding: .day, value: $0, to: first) }
-                .map(dateFormatter.string(from:))
+        let time = formatter("jmm", locale: locale, timeZone: utc)
+        let hour = widest((0..<24).map { start.addingTimeInterval(TimeInterval($0) * 3_600) }, time, .time)
+        let minute = hour.flatMap { hour in
+            widest((0..<60).map { hour.date.addingTimeInterval(TimeInterval($0) * 60) }, time, .time)
         }
-        return (times, dates)
+        guard showsDate else { return (minute?.text ?? "", nil) }
+        // Month names, each with its last day.
+        var lastDays: [Date] = []
+        var month = start
+        while month < end, let interval = calendar.dateInterval(of: .month, for: month) {
+            lastDays.append(interval.end.addingTimeInterval(-43_200))
+            month = interval.end
+        }
+        let longestMonth = widest(lastDays, formatter("dMMMM", locale: locale, timeZone: utc), .date)
+        // Weekdays: the last seven days of that month, or all of a shorter one.
+        let days = longestMonth.map { last in
+            (0..<7).map { last.date.addingTimeInterval(-TimeInterval($0) * 86_400) }
+                .filter { calendar.isDate($0, equalTo: last.date, toGranularity: .month) }
+        } ?? []
+        let date = widest(days, formatter("EEEEdMMMM", locale: locale, timeZone: utc), .date)
+        return (minute?.text ?? "", date?.text)
     }
 
     /// The clock's locale. Wallnetic's text is English only, so macOS gives it
@@ -53,20 +74,35 @@ enum DesktopClockFormat {
         var languageComponents = Locale.Language.Components(identifier: language)
         languageComponents.region = current.region
         components.languageComponents = languageComponents
-        components.hourCycle = explicitHourCycle(chosen: hourPattern(current),
-                                                 regional: hourPattern(Locale(identifier: current.identifier)),
-                                                 recorded: components.hourCycle)
+        let twentyFourHour = choosesTwentyFourHour(chosen: hourPattern(current),
+                                                   regional: hourPattern(Locale(identifier: current.identifier)),
+                                                   recorded: components.hourCycle)
+        components.hourCycle = nil
+        if let twentyFourHour {
+            components.hourCycle = hourCycle(twentyFourHour: twentyFourHour, in: Locale(components: components))
+        }
         return Locale(components: components)
     }
 
-    /// The user's 12/24-hour choice, or nil for the language's own default.
-    /// A choice changes the current locale's hour pattern (`chosen`) from the
-    /// region's default for Wallnetic's language (`regional`). A choice that
-    /// matches that default shows only where macOS records it in the locale.
-    static func explicitHourCycle(chosen: String, regional: String,
-                                  recorded: Locale.HourCycle?) -> Locale.HourCycle? {
-        guard chosen != regional else { return recorded }
-        return chosen.contains(where: { $0 == "H" || $0 == "k" }) ? .zeroToTwentyThree : .oneToTwelve
+    /// The user's 12/24-hour choice: true for 24-hour, false for 12-hour, nil
+    /// for none, which leaves the language's own default. A choice changes
+    /// the current locale's hour pattern (`chosen`) from the region's default
+    /// for Wallnetic's language (`regional`). A choice that matches that
+    /// default shows only where macOS records it in the locale.
+    static func choosesTwentyFourHour(chosen: String, regional: String, recorded: Locale.HourCycle?) -> Bool? {
+        guard chosen != regional else {
+            return recorded.map { $0 == .zeroToTwentyThree || $0 == .oneToTwentyFour }
+        }
+        return chosen.contains { $0 == "H" || $0 == "k" }
+    }
+
+    /// How the clock's language counts a 12- or 24-hour day: Japanese 12-hour
+    /// time runs from 0 to 11, English from 1 to 12.
+    static func hourCycle(twentyFourHour: Bool, in locale: Locale) -> Locale.HourCycle {
+        let pattern = DateFormatter.dateFormat(fromTemplate: twentyFourHour ? "Hmm" : "hmm", options: 0,
+                                               locale: locale) ?? ""
+        if twentyFourHour { return pattern.contains("k") ? .oneToTwentyFour : .zeroToTwentyThree }
+        return pattern.contains("K") ? .zeroToEleven : .oneToTwelve
     }
 
     private static func hourPattern(_ locale: Locale) -> String {

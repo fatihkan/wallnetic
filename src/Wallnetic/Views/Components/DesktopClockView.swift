@@ -104,20 +104,18 @@ final class DesktopClockView: NSView {
         }
     }
 
-    /// The widest of `times` and of `dates` in the clock's fonts.
-    static func widest(times: [String], dates: [String], fontSize: CGFloat) -> (time: String, date: String?) {
-        func widest(_ texts: [String], font: NSFont) -> String? {
-            texts.map { ($0, NSAttributedString(string: $0, attributes: [.font: font]).size().width) }
-                .max { $0.1 < $1.1 }?.0
-        }
-        return (widest(times, font: timeFont(fontSize)) ?? "", widest(dates, font: dateFont(fontSize)))
+    /// A time's or a date's width in the clock's fonts.
+    static func width(of text: String, _ field: DesktopClockFormat.Field, fontSize: CGFloat) -> CGFloat {
+        let font = field == .time ? timeFont(fontSize) : dateFont(fontSize)
+        return NSAttributedString(string: text, attributes: [.font: font]).size().width
     }
 
     private static func timeFont(_ fontSize: CGFloat) -> NSFont {
         .monospacedDigitSystemFont(ofSize: fontSize, weight: .medium)
     }
 
+    /// Monospaced digits here too, so no day of the month is wider than another.
     private static func dateFont(_ fontSize: CGFloat) -> NSFont {
-        .systemFont(ofSize: (fontSize * 0.3).rounded(), weight: .medium)
+        .monospacedDigitSystemFont(ofSize: (fontSize * 0.3).rounded(), weight: .medium)
     }
 }

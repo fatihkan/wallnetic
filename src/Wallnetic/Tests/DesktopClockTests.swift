@@ -207,15 +207,19 @@ final class DesktopClockTests: XCTestCase {
                                           visibleFrame: CGRect(x: 0, y: 0, width: 1080, height: 1895), scale: 2)
         clock.settings.update { $0.size = .large }
         var sizes: Set<CGFloat> = []
-        // Every half hour for a week, from Monday 26 October 2026, 00:00 UTC.
-        let monday = Date(timeIntervalSince1970: 1_792_972_800)
+        // Every half hour for a week, from Monday 26 October 2026, 01:00 UTC,
+        // a narrow time: the first fit must already allow for "10:00 PM".
+        let monday = Date(timeIntervalSince1970: 1_792_976_400)
         for step in 0..<(7 * 48) {
             clock.time.now = monday.addingTimeInterval(TimeInterval(step) * 1_800)
             clock.coordinator.update(framed([1]))
             let content = try XCTUnwrap(clock.coordinator.view(for: 1)?.content)
             sizes.insert(content.fontSize)
             let frame = try XCTUnwrap(clock.coordinator.view(for: 1)?.layer?.sublayers?.first).frame
-            XCTAssertTrue(content.visibleRect.contains(frame), "\(content.time) \(frame)")
+            // Inside the margins, allowing for the half point of rounding.
+            let margin = DesktopClockLayout.margin(in: content.visibleRect) - 1
+            XCTAssertTrue(content.visibleRect.insetBy(dx: margin, dy: margin).contains(frame),
+                          "\(content.time) \(frame)")
         }
         XCTAssertEqual(sizes.count, 1, "\(sizes)")
         XCTAssertLessThan(try XCTUnwrap(sizes.first), (1895 * 0.13).rounded())
@@ -478,28 +482,46 @@ final class DesktopClockTests: XCTestCase {
     func testAnExplicitHourChoiceComesFromTheHourPatternOrTheLocale() {
         // macOS applies a 12/24-hour choice to the current locale's patterns
         // only, so a pattern that differs from the identifier's default is one.
-        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "h a", regional: "HH", recorded: nil), .oneToTwelve)
-        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "HH", regional: "h a", recorded: nil),
-                       .zeroToTwentyThree)
-        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "a h", regional: "H", recorded: nil), .oneToTwelve)
+        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "h a", regional: "HH", recorded: nil), false)
+        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "HH", regional: "h a", recorded: nil), true)
+        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "a K", regional: "H", recorded: nil), false)
         // Otherwise only a choice recorded in the locale counts, and without one
         // the clock's language keeps its own default.
-        XCTAssertEqual(DesktopClockFormat.explicitHourCycle(chosen: "h a", regional: "h a", recorded: .oneToTwelve),
-                       .oneToTwelve)
-        XCTAssertNil(DesktopClockFormat.explicitHourCycle(chosen: "h a", regional: "h a", recorded: nil))
+        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "h a", regional: "h a", recorded: .oneToTwelve),
+                       false)
+        XCTAssertEqual(DesktopClockFormat.choosesTwentyFourHour(chosen: "HH", regional: "HH", recorded: .zeroToTwentyThree),
+                       true)
+        XCTAssertNil(DesktopClockFormat.choosesTwentyFourHour(chosen: "h a", regional: "h a", recorded: nil))
     }
 
-    func testSamplesCoverEveryHourWeekdayAndMonth() {
-        let samples = DesktopClockFormat.samples(locale: uk)
-        XCTAssertEqual(samples.times.count, 24)
-        XCTAssertTrue(samples.times.contains("00:00") && samples.times.contains("23:00"), "\(samples.times)")
-        XCTAssertEqual(samples.dates.count, 12 * 7)
-        for name in ["Monday", "Sunday", "Wednesday", "January", "September", "December"] {
-            XCTAssertTrue(samples.dates.contains { $0.contains(name) }, name)
+    func testAChoiceUsesTheLanguagesOwnHourCount() {
+        // Japanese 12-hour time runs from 0 to 11, English from 1 to 12.
+        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: false, in: Locale(identifier: "ja_JP")), .zeroToEleven)
+        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: false, in: us), .oneToTwelve)
+        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: true, in: Locale(identifier: "ja_JP")),
+                       .zeroToTwentyThree)
+        XCTAssertEqual(DesktopClockFormat.hourCycle(twentyFourHour: true, in: us), .zeroToTwentyThree)
+        let japanese = DesktopClockFormat.systemLocale(current: Locale(identifier: "en_JP@hours=h12"),
+                                                       preferredLanguages: ["ja-JP"])
+        let afterMidnight = Date(timeIntervalSince1970: 1_792_975_260) // Monday 26 October 2026, 00:41 UTC
+        XCTAssertEqual(DesktopClockFormat.time(afterMidnight, locale: japanese, timeZone: utc), "午前0:41")
+    }
+
+    func testWidestTextHasTheLongestHourWeekdayAndMonth() {
+        // Characters stand in for widths: the result is the longest hour with
+        // the longest weekday and month names.
+        let british = DesktopClockFormat.widest(locale: uk, showsDate: true) { text, _ in CGFloat(text.count) }
+        XCTAssertEqual(british.time.count, 5, british.time)
+        let date = british.date ?? ""
+        XCTAssertTrue(date.contains("Wednesday") && date.contains("September"), date)
+        let american = DesktopClockFormat.widest(locale: us, showsDate: false) { text, _ in CGFloat(text.count) }
+        XCTAssertTrue(american.time.hasPrefix("1") && american.time.count >= 8, american.time)
+        XCTAssertNil(american.date)
+        // A leap month counts: Adar I appears only in a 13-month Hebrew year.
+        let hebrew = DesktopClockFormat.widest(locale: Locale(identifier: "en_IL@calendar=hebrew"), showsDate: true) {
+            text, field in field == .date && text.contains("Adar I") ? 1_000 : CGFloat(text.count)
         }
-        let american = DesktopClockFormat.samples(locale: us).times
-        XCTAssertTrue(american.contains { $0.hasPrefix("10:00") && $0.contains("AM") }, "\(american)")
-        XCTAssertTrue(american.contains { $0.hasPrefix("10:00") && $0.contains("PM") }, "\(american)")
+        XCTAssertTrue(hebrew.date?.contains("Adar I") == true, hebrew.date ?? "")
     }
 
     func testMidnightRollsTheTimeAndTheDayOver() {
