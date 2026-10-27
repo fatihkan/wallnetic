@@ -631,6 +631,16 @@ final class DesktopClockTests: XCTestCase {
             let effectOverlay = NSView(frame: renderer.rendererView.bounds)
             effectOverlay.wantsLayer = true
             renderer.rendererView.addSubview(effectOverlay)
+            // AppKit attaches sibling views' layers when their window displays.
+            let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: .borderless,
+                                  backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer {
+                window.contentView = nil
+                window.close()
+            }
+            window.contentView = content
+            window.displayIfNeeded()
 
             XCTAssertEqual(content.subviews.map { ObjectIdentifier($0) },
                            [ObjectIdentifier(renderer.rendererView), ObjectIdentifier(clock)], name)
