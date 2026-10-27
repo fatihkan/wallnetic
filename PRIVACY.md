@@ -58,7 +58,7 @@ These requests disclose ordinary connection information to GitHub, including you
 
 ### Discover (in-app browser)
 
-Opening a wallpaper website in Discover loads that site in Wallnetic's built-in browser, as any web browser would. The site receives ordinary connection information, such as your IP address and the pages you request, and it can store cookies and other website data in Wallnetic's app container on your Mac. Videos you choose to download are saved to your Wallnetic library. Each website has its own privacy policy.
+Opening a wallpaper website in Discover loads that site in Wallnetic's built-in browser, as any web browser would. The site receives ordinary connection information, such as your IP address and the pages you request, and it can store cookies and other website data on your Mac: inside Wallnetic's app container in the App Store version, and in the `com.wallnetic.app` folders of `~/Library/WebKit`, `~/Library/HTTPStorages` and `~/Library/Caches` in the direct-download version. Videos you choose to download are saved to your Wallnetic library. Each website has its own privacy policy.
 
 ### Importing from a link
 
@@ -66,7 +66,7 @@ If you open a `wallnetic://import` link and confirm the import, Wallnetic downlo
 
 ### Create from Photos
 
-Create from Photos reads the photos you select, after you allow access to your Photos library, and builds a slideshow wallpaper from them on your Mac. If a selected photo is stored in iCloud Photos, macOS may download it from iCloud for Wallnetic. The slideshow is saved to your Wallnetic library; nothing is uploaded.
+Create from Photos asks for access to your Photos library, shows thumbnails of the albums you browse, and builds a slideshow wallpaper on your Mac from the photos you select. For photos stored in iCloud Photos, macOS may download them from iCloud for Wallnetic. The slideshow is saved to your Wallnetic library; nothing is uploaded.
 
 ### App Store
 
@@ -84,7 +84,6 @@ Wallnetic requests the following macOS permissions:
 |------------|---------|
 | File Access | To import and play video files you select |
 | Photos | Optional - to build a slideshow from photos you select (Create from Photos) |
-| Notifications | Optional - only if you turn on notifications |
 | Accessibility | Optional - only if you turn on global keyboard shortcuts, so they work while another app is active; Wallnetic looks only for its own shortcuts |
 | Login Items | Optional - to launch at system startup |
 
@@ -110,8 +109,8 @@ Wallnetic does not collect any information from anyone, including children under
 
 Since we don't collect any data, there is no personal data to access, modify, or delete. You can:
 
-- Delete all local data by uninstalling the app
-- Clear your wallpaper library through the app
+- Remove wallpapers in the Library or in Settings > Storage
+- Delete all local data: deleting the app does not remove it. Also delete `~/Library/Containers/com.wallnetic.app` and `~/Library/Group Containers/group.com.wallnetic.shared` (App Store version), or `~/Library/Application Support/Wallnetic`, `~/Library/Preferences/com.wallnetic.app.plist`, the `com.wallnetic.app` folders in `~/Library/WebKit`, `~/Library/HTTPStorages` and `~/Library/Caches`, and the group container (direct-download version)
 - Remove app permissions in System Settings > Privacy & Security
 
 ## Changes to This Policy

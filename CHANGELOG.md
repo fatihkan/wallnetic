@@ -173,6 +173,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never applied automatically. To use one, make sure Enable Space recovery is on
   in Settings > Spaces and choose Apply next to it; it sets that wallpaper on
   all displays and Spaces (docs/SPACE_RECOVERY.md).
+- Settings > Notifications is gone: no feature in this version sends a
+  notification, so the page only asked for a permission.
+- Settings > Playlist no longer offers Collection as a source, because
+  collections cannot be created in this version; a playlist that already uses
+  one keeps it.
 - The Transition section is gone from Settings > Effects; it only said that
   wallpaper changes are instant, which they still are.
 
@@ -185,9 +190,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the last wallpaper. Choosing one wallpaper for all displays after per-display
   choices now updates every display, and switching back to Different per display
   no longer leaves the old video on a display whose wallpaper was deleted.
-  Per-display choices made in 1.4.2 are not carried over: after upgrading, every
-  display starts with the last wallpaper and Wallpaper Mode reads Same on all
-  displays, so choose per-display wallpapers again.
+  Switching to Different per display keeps what each display shows as its own
+  choice, and after a restart a display without its own choice shows the last
+  wallpaper. Per-display choices made in 1.4.2 are not carried over: after
+  upgrading, every display starts with the last wallpaper and Wallpaper Mode
+  reads Same on all displays, so choose per-display wallpapers again.
 - With the Metal renderer, switching between videos of different shapes, such as
   landscape and portrait, no longer shows the previous video's last frame
   stretched while the next one loads, including while the wallpaper is paused.
