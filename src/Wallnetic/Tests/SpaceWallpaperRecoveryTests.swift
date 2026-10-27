@@ -130,7 +130,9 @@ final class SpaceWallpaperRecoveryTests: XCTestCase {
     func testObserversDoNotKeepManagerAlive() {
         var value: SpaceWallpaperManager? = manager()
         value?.start()
-        weak var weakValue = value
+        // Assigned separately: Swift 5.9 has no `weak let`.
+        weak var weakValue: SpaceWallpaperManager?
+        weakValue = value
         value = nil
         XCTAssertNil(weakValue)
         workspace.post(name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)

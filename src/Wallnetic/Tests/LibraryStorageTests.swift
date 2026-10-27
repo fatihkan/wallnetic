@@ -352,7 +352,7 @@ final class LibraryStorageTests: XCTestCase {
     func testLateWidgetSyncCannotRestoreDeletedCurrentWallpaperOrFavorites() async throws {
         let removed = Wallpaper(url: service.libraryURL.appendingPathComponent("deleted.mp4"), isFavorite: true)
         let sink = StorageWidgetSink()
-        var continuation: CheckedContinuation<NSImage?, Never>?
+        var continuation: CheckedContinuation<SendableImage?, Never>?
         let sync = WidgetSyncService(writer: { sink }, thumbnail: { _, _ in
             await withCheckedContinuation { continuation = $0 }
         })
@@ -371,7 +371,7 @@ final class LibraryStorageTests: XCTestCase {
     func testLateFavoriteThumbnailCannotRestoreRemovedFavorites() async {
         let removed = Wallpaper(url: service.libraryURL.appendingPathComponent("deleted.mp4"), isFavorite: true)
         let sink = StorageWidgetSink()
-        var continuation: CheckedContinuation<NSImage?, Never>?
+        var continuation: CheckedContinuation<SendableImage?, Never>?
         let sync = WidgetSyncService(writer: { sink }, thumbnail: { _, _ in
             await withCheckedContinuation { continuation = $0 }
         })

@@ -66,7 +66,9 @@ final class PlaybackRendererTests: XCTestCase {
         window.orderFront(nil)
         for _ in 0..<6 {
             var renderer: MetalVideoRenderer? = MetalVideoRenderer()
-            weak var releasedRenderer = renderer
+            // Assigned separately: Swift 5.9 has no `weak let`.
+            weak var releasedRenderer: MetalVideoRenderer?
+            releasedRenderer = renderer
             window.contentView = renderer?.metalView
             renderer?.loadVideo(url: video)
             renderer?.play()

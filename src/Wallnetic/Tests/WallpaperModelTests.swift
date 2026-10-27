@@ -39,7 +39,7 @@ final class WallpaperModelTests: XCTestCase {
     // MARK: - Equatable
 
     func testEqualityIncludesCustomTitle() {
-        var wp1 = Wallpaper(url: URL(fileURLWithPath: "/tmp/test.mp4"))
+        let wp1 = Wallpaper(url: URL(fileURLWithPath: "/tmp/test.mp4"))
         var wp2 = wp1
         wp2.customTitle = "Renamed"
 
@@ -48,7 +48,7 @@ final class WallpaperModelTests: XCTestCase {
     }
 
     func testEqualityIncludesFavorite() {
-        var wp1 = Wallpaper(url: URL(fileURLWithPath: "/tmp/test.mp4"))
+        let wp1 = Wallpaper(url: URL(fileURLWithPath: "/tmp/test.mp4"))
         var wp2 = wp1
         wp2.isFavorite = true
 

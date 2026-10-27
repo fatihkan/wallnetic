@@ -100,7 +100,9 @@ final class BrowserDownloadMetadataTests: XCTestCase {
     }
 }
 
-@MainActor
+/// Not marked @MainActor: the macOS 14 SDK's WKNavigationDelegate methods are
+/// nonisolated, and newer SDKs isolate the protocol, and so this class, to
+/// the main actor. WebKit calls it on the main thread either way.
 private final class FixtureNavigationObserver: NSObject, WKNavigationDelegate {
     let loaded: XCTestExpectation
     var error: Error?

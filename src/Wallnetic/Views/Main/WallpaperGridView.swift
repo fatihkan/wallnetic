@@ -196,7 +196,7 @@ struct WallpaperCard: View {
             }
         }
         .task {
-            thumbnail = await wallpaper.generateThumbnail()
+            thumbnail = await wallpaper.generateThumbnail()?.image
         }
     }
 
@@ -510,7 +510,7 @@ struct AsyncThumbnailView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: size)
+            thumbnail = await wallpaper.generateThumbnail(size: size)?.image
         }
     }
 }

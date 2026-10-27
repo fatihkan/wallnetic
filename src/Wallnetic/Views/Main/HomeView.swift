@@ -357,7 +357,7 @@ struct HeroBannerCard: View {
         .task(id: wallpaper.id) {
             thumbnail = nil
             isLoadingThumbnail = true
-            let image = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
+            let image = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))?.image
             guard !Task.isCancelled else { return }
             thumbnail = image
             isLoadingThumbnail = false
@@ -607,7 +607,7 @@ struct CarouselCard: View {
         .task(id: wallpaper.id) {
             thumbnail = nil
             isLoadingThumbnail = true
-            let image = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))
+            let image = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))?.image
             guard !Task.isCancelled else { return }
             thumbnail = image
             isLoadingThumbnail = false

@@ -122,9 +122,10 @@ final class PhotosLibraryService: ObservableObject {
         imageManager.stopCachingImagesForAllAssets()
     }
 
-    /// Loads a full-size image for slideshow rendering.
-    func requestFullImage(for asset: PHAsset) async -> NSImage? {
-        await withCheckedContinuation { (cont: CheckedContinuation<NSImage?, Never>) in
+    /// Loads a full-size image for slideshow rendering, which happens off the
+    /// main actor. Nothing changes the image afterwards.
+    func requestFullImage(for asset: PHAsset) async -> SendableImage? {
+        await withCheckedContinuation { (cont: CheckedContinuation<SendableImage?, Never>) in
             let options = PHImageRequestOptions()
             options.deliveryMode = .highQualityFormat
             options.resizeMode = .exact
@@ -154,7 +155,7 @@ final class PhotosLibraryService: ObservableObject {
                     return  // wait for the final hi-res callback
                 }
                 if resumed.tryConsume() {
-                    cont.resume(returning: image)
+                    cont.resume(returning: image.map(SendableImage.init))
                 }
             }
         }

@@ -107,14 +107,15 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
 
     // MARK: - Thumbnail Generation
 
-    /// Generates or retrieves cached thumbnail
-    func generateThumbnail(size: CGSize = CGSize(width: 320, height: 180)) async -> NSImage? {
+    /// Generates or retrieves cached thumbnail, made off the main thread.
+    /// Callers take `.image` where they use it.
+    func generateThumbnail(size: CGSize = CGSize(width: 320, height: 180)) async -> SendableImage? {
         return await ThumbnailCache.shared.thumbnail(for: url, size: size)
     }
 
     /// Extract dominant color from thumbnail
     func extractDominantColor() async -> String? {
-        guard let thumbnail = await generateThumbnail(size: CGSize(width: 64, height: 36)) else { return nil }
+        guard let thumbnail = await generateThumbnail(size: CGSize(width: 64, height: 36))?.image else { return nil }
         guard let tiffData = thumbnail.tiffRepresentation,
               let ciImage = CIImage(data: tiffData) else { return nil }
 

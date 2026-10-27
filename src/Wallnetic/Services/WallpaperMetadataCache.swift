@@ -11,12 +11,14 @@ import SQLite3
 /// on next launch — losing the cache is never user-visible data loss.
 ///
 /// **Threading:** uses an internal serial queue so callers can fire writes
-/// from any thread without races. All sqlite3 calls happen on that queue.
+/// from any thread without races. All sqlite3 calls happen on that queue,
+/// and the only mutable state, the database handle, is used only there, so
+/// the cache is `@unchecked Sendable`.
 ///
 /// **Failure policy:** every write is wrapped in do-or-log. If SQLite is in
 /// a bad state the in-memory `WallpaperManager.wallpapers` array still
 /// works; the next library reload will rebuild the cache.
-final class WallpaperMetadataCache {
+final class WallpaperMetadataCache: @unchecked Sendable {
     static let shared = WallpaperMetadataCache()
 
     private let queue = DispatchQueue(label: "com.wallnetic.metadata-cache", qos: .utility)

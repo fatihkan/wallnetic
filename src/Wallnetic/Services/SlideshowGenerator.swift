@@ -85,10 +85,15 @@ final class SlideshowGenerator {
     /// canvas, `coverPad` keeps a safety margin around the cropped area.
     private let coverPad: CGFloat = 1.12
 
-    private let library: PhotosLibraryService
+    /// Loads a full-size photo: from the Photos library unless a test passes
+    /// its own. The library is main-actor isolated, so it is reached inside
+    /// the loader rather than as a default argument.
+    private let loadImage: @Sendable (PHAsset) async -> SendableImage?
 
-    init(library: PhotosLibraryService = .shared) {
-        self.library = library
+    init(loadImage: @escaping @Sendable (PHAsset) async -> SendableImage? = { asset in
+        await PhotosLibraryService.shared.requestFullImage(for: asset)
+    }) {
+        self.loadImage = loadImage
     }
 
     // MARK: - Public
@@ -114,7 +119,7 @@ final class SlideshowGenerator {
         var images: [NSImage] = []
         for (idx, asset) in assets.enumerated() {
             try Task.checkCancellation()
-            if let img = await library.requestFullImage(for: asset) {
+            if let img = await loadImage(asset)?.image {
                 images.append(img)
             }
             progress(Double(idx + 1) / Double(assets.count) * 0.2)

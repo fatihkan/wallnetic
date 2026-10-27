@@ -216,6 +216,6 @@ struct PopularCard: View {
                 renamingWallpaper = nil
             }, onCancel: { renamingWallpaper = nil })
         }
-        .task { thumbnail = await wallpaper.generateThumbnail() }
+        .task { thumbnail = await wallpaper.generateThumbnail()?.image }
     }
 }
