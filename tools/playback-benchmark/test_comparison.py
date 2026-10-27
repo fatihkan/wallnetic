@@ -126,6 +126,35 @@ class ComparisonTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Missing|invalid"):
                 benchmark.compare(self.session("baseline", change=change), self.session("candidate", change=change))
 
+    def test_overlay_is_the_compared_treatment_and_is_reported(self):
+        report = benchmark.compare(self.session("baseline"),
+                                   self.session("candidate", change=lambda record: record.update(overlay="clock")))
+        self.assertEqual(report["treatment"], {"overlay": {"baseline": "none", "candidate": "clock"}})
+        self.assertTrue(report["eligible_for_comparison"])
+
+    def test_records_from_before_the_overlay_condition_count_as_none(self):
+        baseline = self.session("baseline", change=lambda record: record.pop("overlay", None))
+        report = benchmark.compare(baseline, self.session("candidate"))
+        self.assertEqual(report["treatment"]["overlay"], {"baseline": "none", "candidate": "none"})
+
+    def test_one_session_cannot_mix_overlay_conditions(self):
+        paths = self.session("baseline")
+        self.mutate(paths[0], lambda record: record.update(overlay="clock"))
+        with self.assertRaisesRegex(ValueError, "Incompatible runs"):
+            benchmark.summarize(paths)
+        self.mutate(paths[0], lambda record: record.update(overlay="sparkles"))
+        with self.assertRaisesRegex(ValueError, "Invalid overlay condition"):
+            benchmark.summarize(paths)
+
+    def test_one_collector_builds_the_baseline_and_later_revisions(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(benchmark, "APP", Path(directory)):
+            self.assertEqual(benchmark.renderer_sources(), benchmark.RENDERER_SOURCES)
+            for name in benchmark.OPTIONAL_RENDERER_SOURCES:
+                (Path(directory) / name).parent.mkdir(parents=True, exist_ok=True)
+                (Path(directory) / name).write_text("// later revision")
+            self.assertEqual(benchmark.renderer_sources(),
+                             benchmark.RENDERER_SOURCES + benchmark.OPTIONAL_RENDERER_SOURCES)
+
     def test_overlapping_run_ids_are_not_independent_comparisons(self):
         baseline, candidate = self.session("baseline"), self.session("candidate")
         self.mutate(candidate[-1], lambda record: record.update(id="baseline-0"))

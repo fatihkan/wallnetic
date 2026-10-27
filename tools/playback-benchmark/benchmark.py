@@ -25,12 +25,19 @@ RENDERER_SOURCES = [
     "Engine/WallpaperAspectFill.swift", "Models/PlaybackStatus.swift",
     "Services/PerformanceManager.swift", "Utils/Log.swift",
 ]
+# Renderer dependencies added after the pre-wave baseline revision (#309).
+# They compile when the checkout has them, so one unchanged collector measures
+# the baseline revision and later candidates alike.
+OPTIONAL_RENDERER_SOURCES = ["Engine/PlaybackTrim.swift", "Engine/TrimmedVideoAsset.swift"]
+OVERLAYS = ("none", "clock")
 RECIPES = {"h264": (1920, 1080, 30, "avc1"), "hevc": (3840, 2160, 60, "hvc1")}
 COMPARISON_FIELDS = (
     "schema_version", "scope", "hardware", "os", "engine", "profile", "warmup_seconds", "requested_seconds",
     "window_points", "screen_indices", "connected_screens", "fixture", "power_start", "build", "git_revision",
-    "compiled_inputs_dirty", "activity_policy", "sampling_interval_seconds", "context",
+    "compiled_inputs_dirty", "activity_policy", "sampling_interval_seconds", "context", "overlay",
 )
+# Allowed to differ between compared sessions: the condition under test.
+TREATMENT_FIELDS = ("overlay",)
 SUMMARY_METRICS = ("cpu_percent_one_core", "footprint_peak_sampled_bytes", "footprint_mean_sampled_bytes",
                    "package_idle_wakeups_per_second", "interrupt_wakeups_per_second")
 METRIC_UNITS = {"cpu_percent_one_core": "percent_of_one_logical_core",
@@ -60,8 +67,12 @@ def save(path, value):
         stream.write("\n")
 
 
+def renderer_sources():
+    return RENDERER_SOURCES + [name for name in OPTIONAL_RENDERER_SOURCES if (APP / name).exists()]
+
+
 def inputs():
-    files = [APP / item for item in RENDERER_SOURCES]
+    files = [APP / item for item in renderer_sources()]
     files += [APP / "Engine/DesktopWindowController.swift", APP / "project.yml", ROOT / "LICENSE"]
     files += [HERE / name for name in ("Runner.swift", "Generate.swift", "Metrics.c", "Metrics.h", "benchmark.py")]
     return {str(path.relative_to(ROOT)): digest(path) for path in files}
@@ -88,7 +99,7 @@ def build():
     execute(["xcrun", "clang", "-O2", "-Wall", "-Wextra", "-Werror", "-isysroot", sdk,
              "-arch", arch, "-mmacosx-version-min=13.0", "-c", HERE / "Metrics.c", "-o", BUILD / "Metrics.o"])
     execute(["xcrun", "swiftc", *flags, "-import-objc-header", HERE / "Metrics.h",
-             *[APP / name for name in RENDERER_SOURCES], BUILD / "Bridge.swift", HERE / "Runner.swift",
+             *[APP / name for name in renderer_sources()], BUILD / "Bridge.swift", HERE / "Runner.swift",
              BUILD / "Metrics.o", "-framework", "IOKit", "-o", BUILD / "PlaybackBenchmark"])
     execute(["xcrun", "swiftc", *flags, "-parse-as-library", HERE / "Generate.swift", "-o", BUILD / "Generate"])
     project = (APP / "project.yml").read_text()
@@ -156,9 +167,11 @@ def run(args):
         record_id = str(uuid.uuid4())
         with (args.output / f"{repetition:02d}.stderr.log").open("x") as log:
             result = execute([BUILD / "PlaybackBenchmark", args.engine, args.profile, path,
-                              args.warmup, args.seconds, args.screens, args.width, args.height],
+                              args.warmup, args.seconds, args.screens, args.width, args.height, args.overlay],
                              stdout=subprocess.PIPE, stderr=log, timeout=args.warmup + args.seconds + 90)
         record = json.loads(result.stdout)
+        if record.get("overlay") != args.overlay:
+            raise ValueError("The host did not report the requested overlay")
         record.update({"id": record_id, "repetition": repetition, "build": metadata, "git_revision": revision,
                        "compiled_inputs_dirty": bool(dirty), "fixture_recipe": args.fixture,
                        "fixture_recipe_version": manifest["recipe_version"], "context": args.context})
@@ -226,6 +239,8 @@ def validate_record(record):
             raise ValueError(f"Invalid configuration object: {name}")
     if record["engine"] not in ("metal", "avplayer") or record["profile"] not in ("quality", "balanced", "battery"):
         raise ValueError("Invalid renderer or playback profile")
+    if record["overlay"] not in OVERLAYS:
+        raise ValueError("Invalid overlay condition")
     reasons = record["invalid_reasons"]
     if not isinstance(reasons, list) or any(not isinstance(reason, str) or not reason.strip() for reason in reasons):
         raise ValueError("Invalid failure reasons; expected an array of nonempty strings")
@@ -270,6 +285,9 @@ def summarize(paths):
         raise ValueError("No run records provided")
     records = [read_record(path) for path in paths]
     for record in records:
+        # Records from before the overlay condition existed had none.
+        if isinstance(record, dict):
+            record.setdefault("overlay", "none")
         validate_record(record)
     key = comparable(records[0])
     ids = set()
@@ -321,7 +339,7 @@ def compare(baseline_paths, candidate_paths):
     before, after = baseline["configuration"], candidate["configuration"]
     changed = []
     for name in COMPARISON_FIELDS:
-        if name in ("build", "git_revision", "compiled_inputs_dirty"):
+        if name in ("build", "git_revision", "compiled_inputs_dirty") or name in TREATMENT_FIELDS:
             continue
         # Preserve JSON types too: true is not interchangeable with numeric 1.
         if json.dumps(before[name], sort_keys=True) != json.dumps(after[name], sort_keys=True):
@@ -357,6 +375,7 @@ def compare(baseline_paths, candidate_paths):
             issues.append(f"{label} contains uncommitted compiled inputs")
     return {"schema_version": 1, "scope": "isolated_renderer_comparison",
             "baseline": baseline, "candidate": candidate, "metrics": metrics,
+            "treatment": {name: {"baseline": before[name], "candidate": after[name]} for name in TREATMENT_FIELDS},
             "eligible_for_comparison": not issues, "eligibility_issues": issues,
             "regression_thresholds": None, "performance_conclusion": "not_assessed",
             "full_app_device_validation": "not_performed",
@@ -392,6 +411,8 @@ def main():
     collect.add_argument("--width", type=finite_range(64, 8192), default=960)
     collect.add_argument("--height", type=finite_range(64, 8192), default=540)
     collect.add_argument("--context", required=True, help="Machine label, background apps, brightness, ambient conditions; no private information")
+    collect.add_argument("--overlay", choices=OVERLAYS, default="none",
+                         help="clock: static text above the video (the #311 desktop clock condition)")
     report = commands.add_parser("summarize", help="Summarize compatible raw JSON records; reject mixed configurations")
     report.add_argument("records", nargs="+", type=Path)
     comparison = commands.add_parser("compare", help="Compare independent raw sessions under identical measurement conditions")
