@@ -790,15 +790,24 @@ class WallpaperManager: ObservableObject {
 
     func wallpaper(for screen: NSScreen) -> Wallpaper? {
         if wallpaperMode == .same { return currentWallpaper }
-        switch displayAssignments.selection(for: screen.wallpaperAssignmentKey) {
+        return Self.displayWallpaper(selection: displayAssignments.selection(for: screen.wallpaperAssignmentKey),
+                                     legacyID: screenWallpapers[screen.localizedName],
+                                     wallpapers: wallpapers, current: currentWallpaper)
+    }
+
+    /// A display's wallpaper in Different per display mode. A choice saved by
+    /// 1.4.2 or earlier is keyed by a wallpaper ID that changes on every
+    /// launch, so one that no longer resolves inherits like no choice at all;
+    /// only an empty selection leaves a display intentionally empty.
+    static func displayWallpaper(selection: DisplayWallpaperAssignments.Selection, legacyID: UUID?,
+                                 wallpapers: [Wallpaper], current: Wallpaper?) -> Wallpaper? {
+        switch selection {
         case .empty: return nil
         case .file(let url): return wallpapers.first { $0.url.standardizedFileURL == url }
-        case .inherit: break
+        case .inherit:
+            guard let legacyID, let chosen = wallpapers.first(where: { $0.id == legacyID }) else { return current }
+            return chosen
         }
-        guard let wallpaperID = screenWallpapers[screen.localizedName] else {
-            return currentWallpaper
-        }
-        return wallpapers.first { $0.id == wallpaperID }
     }
 
     func setWallpaperMode(_ mode: WallpaperMode) {
