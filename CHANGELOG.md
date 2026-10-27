@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   paused wallpaper. A range that no longer matches its file is shown as not
   applied, and the full video plays. The system wallpaper still comes from
   inside the range, and optimized copies keep it.
+- An optional desktop clock, with an optional date, on each display's live
+  wallpaper: Settings > Effects > Desktop Clock, off by default. It sits below
+  desktop icons, follows the region's time format and 12/24-hour setting, and
+  updates at each minute change, also over a paused wallpaper. It hides while
+  displays sleep, the session is locked or a screen saver runs, and it never
+  changes playback. Wallpaper effects do not alter it, and the lock screen does
+  not show it. The unused desktop overlay panel was removed.
 
 ### Fixed
 - Corrected lock-screen capability descriptions: Wallnetic provides system

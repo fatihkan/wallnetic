@@ -103,10 +103,13 @@ class DesktopWindowController {
     private var playbackActivity: NSObjectProtocol?
     private let trimStore: PlaybackTrimStore
     private var trimObserver: AnyCancellable?
+    /// The optional desktop clock (#311). It only receives values.
+    private let clock: DesktopClockCoordinator
 
-    init(trimStore: PlaybackTrimStore = .shared) {
+    init(trimStore: PlaybackTrimStore = .shared, clock: DesktopClockCoordinator = DesktopClockCoordinator()) {
         self.useMetalRenderer = WallpaperManager.shared.useMetalRenderer
         self.trimStore = trimStore
+        self.clock = clock
         setupDesktopWindows()
         setupEffectsObserver()
         // `@Published` emits before it stores, so use the emitted ranges.
@@ -200,10 +203,8 @@ class DesktopWindowController {
             renderer = VideoRenderer()
         }
 
-        renderer.rendererView.frame = NSRect(origin: .zero, size: screen.frame.size)
-        renderer.rendererView.autoresizingMask = [.width, .height]
-        renderer.rendererView.wantsLayer = true
-        window.contentView = renderer.rendererView
+        window.contentView = Self.wallpaperContent(rendererView: renderer.rendererView, size: screen.frame.size,
+                                                   clockView: clock.makeView(for: displayID, frame: NSRect(origin: .zero, size: screen.frame.size)))
         renderer.onBecameReady = { [weak self] in
             self?.revealDesktopWindow(for: displayID)
         }
@@ -237,6 +238,23 @@ class DesktopWindowController {
         Log.window.debug("Created window for: \(screen.localizedName, privacy: .public) using \(rendererName, privacy: .public) renderer")
     }
 
+    /// A wallpaper window's content: the renderer view, with the clock as its
+    /// last sibling. The clock then sits above the video and the effect
+    /// overlay (a subview of the renderer view), outside the renderer's
+    /// filtered layer, so wallpaper effects never alter it.
+    static func wallpaperContent(rendererView: NSView, size: NSSize, clockView: NSView) -> NSView {
+        let container = NSView(frame: NSRect(origin: .zero, size: size))
+        container.autoresizingMask = [.width, .height]
+        container.wantsLayer = true
+        rendererView.frame = container.bounds
+        rendererView.autoresizingMask = [.width, .height]
+        rendererView.wantsLayer = true
+        container.addSubview(rendererView)
+        clockView.frame = container.bounds
+        container.addSubview(clockView)
+        return container
+    }
+
     /// Makes the overlay visible only after the renderer has a frame.
     private func revealDesktopWindow(for displayID: CGDirectDisplayID) {
         guard let window = desktopWindows[displayID],
@@ -252,6 +270,8 @@ class DesktopWindowController {
         window.orderFront(nil)
         CATransaction.commit()
         Log.window.debug("Revealed desktop window for display \(displayID, privacy: .public)")
+        // The clock may show once the window shows a frame.
+        refreshPlaybackStatuses()
     }
 
     // MARK: - Playback Control
@@ -385,16 +405,20 @@ class DesktopWindowController {
 
     func refreshPlaybackStatuses() {
         let restrictions = PowerManager.shared.pauseReasons
+        var clockDisplays: [DesktopClockCoordinator.Display] = []
         let statuses = NSScreen.screens.compactMap { screen -> DisplayPlaybackStatus? in
             guard let id = screen.displayID, let renderer = renderers[id] else { return nil }
             var reasons = restrictions
             reasons.append(contentsOf: durationPlayback.holds.map(\.pauseReason))
             if durationPlayback.isManuallyPaused { reasons.append(.manual) }
             if durationPlayback.isExpired(on: id) { reasons.append(.timer) }
+            clockDisplays.append(.init(id: id, hasPresentedFrame: renderer.hasPresentedFrame, reasons: reasons))
             return DisplayPlaybackStatus(id: id, displayName: screen.localizedName,
                 hasWallpaper: screenWallpaperURLs[id] != nil,
                 renderer: renderer.playbackMonitor.state, reasons: reasons)
         }
+        // The clock reads the same reasons, plus whether a frame is shown.
+        clock.update(clockDisplays)
         guard statuses != reportedStatuses else { return }
         reportedStatuses = statuses
         onDisplayStatusesChanged?(statuses)
@@ -567,6 +591,7 @@ class DesktopWindowController {
             renderers.removeValue(forKey: id)
             performanceBindings.removeValue(forKey: id)
             effectOverlays.removeValue(forKey: id)
+            clock.removeView(for: id)
             screenWallpaperURLs.removeValue(forKey: id)
             lastPlaybackTimes.removeValue(forKey: id)
             frozenSampleCounts.removeValue(forKey: id)
@@ -674,6 +699,7 @@ class DesktopWindowController {
     // MARK: - Cleanup
 
     func cleanup() {
+        clock.cleanup()
         statusObservers.removeAll()
         trimObserver = nil
         onDisplayStatusesChanged = nil
