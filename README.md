@@ -187,11 +187,8 @@ later.
 - Animated gradient backgrounds
 
 ### Audio Visualizer
-- Real-time FFT spectrum overlay rendered on the desktop
-- 64-column center-out horizontal burst with accent-to-white color gradient
-- Captures microphone or system audio (ScreenCaptureKit)
-- Pre-allocated vDSP buffers for near-zero allocation on the hot path
-- Configurable sensitivity and placement
+- Disabled since 1.3.1 and not reachable in the app: it no longer captures
+  microphone or system audio, and no audio permission is requested.
 
 ### Smart Power Management
 - [Calm Mode and thermal-aware playback](docs/CALM_MODE.md): hold wallpaper motion
