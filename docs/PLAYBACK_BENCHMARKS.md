@@ -73,6 +73,13 @@ each intended display/power configuration. `--screens 0,1` selects two **physica
 connected screens**, not two windows on one screen. Default content size is
 960 × 540 points. `--width`/`--height` select another size; it must fit every
 selected screen. Native-resolution and scaled workloads are separate cases.
+
+`--overlay clock` draws static text above the video in each window, as a
+sibling of the renderer view, and records `"overlay": "clock"` in every run.
+It approximates the cost of compositing the desktop clock (#311) over a playing
+wallpaper; it does not run the app's clock code. The default is `none`. Collect
+clock-off and clock-on sessions of the same build with otherwise identical
+conditions, for Metal and AVPlayer, on one display and on two.
 AVPlayer keeps source cadence across profiles; Metal draw targets are not decoder limits.
 
 Each repetition stores raw JSON and stderr in a new directory, followed by a
@@ -191,7 +198,16 @@ architecture, optimization and deployment target must also match, along with the
 recorded source hashes for `Runner.swift`, `Metrics.c`, `Metrics.h` and
 `benchmark.py`. Build/revision and renderer/app source changes are allowed. A
 collector or toolchain change requires new matching sessions; do not edit old
-metadata to force a comparison. JSON checks do not authenticate measurements or
+metadata to force a comparison. Renderer dependencies added after the pre-wave
+baseline revision are listed as optional sources, compiled when a checkout has
+them, so the same collector builds both sides. The pre-wave baseline is
+therefore collected from a branch that keeps that revision's app sources and
+carries the current collector.
+
+The overlay is the one condition allowed to differ: it is the treatment in a
+clock-off/clock-on comparison, and the report states it under `treatment`.
+Records collected before the condition existed count as `none`. One session
+cannot mix overlay conditions. JSON checks do not authenticate measurements or
 prove that unrecorded physical conditions were identical.
 
 The report retains both summaries, run IDs and build metadata. For every CPU,
