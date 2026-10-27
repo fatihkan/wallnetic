@@ -254,6 +254,7 @@ class DesktopWindowController {
         rendererView.wantsLayer = true
         container.addSubview(rendererView)
         clockView.frame = container.bounds
+        clockView.autoresizingMask = [.width, .height]
         container.addSubview(clockView)
         return container
     }

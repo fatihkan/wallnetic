@@ -274,6 +274,8 @@ final class DesktopClockTests: XCTestCase {
     /// pause reason, renderer state or playback state.
     func testTheClockNeverChangesPlayback() throws {
         let clock = try makeClock(showClock: false, displays: [])
+        // Only the connected screens; a real display id can equal a test one.
+        clock.screens.geometry = [:]
         for screen in NSScreen.screens {
             guard let id = screen.displayID else { continue }
             clock.screens.geometry[id] = .init(frame: screen.frame, visibleFrame: screen.visibleFrame,
@@ -773,6 +775,8 @@ final class DesktopClockTests: XCTestCase {
             XCTAssertEqual(content.frame, NSRect(origin: .zero, size: size), name)
             XCTAssertEqual(renderer.rendererView.frame, content.bounds, name)
             XCTAssertEqual(clock.frame, content.bounds, name)
+            XCTAssertEqual(renderer.rendererView.autoresizingMask, [.width, .height], name)
+            XCTAssertEqual(clock.autoresizingMask, [.width, .height], name)
 
             let clockLayer = try XCTUnwrap(clock.layer, name)
             let rendererLayer = try XCTUnwrap(renderer.rendererView.layer, name)
