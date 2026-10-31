@@ -22,7 +22,9 @@ env:
 jobs:
   build:
     name: Build & Test
-    runs-on: macos-14
+    # GitHub retires macos-14 on 2026-11-02 (#334). macos-26 carries Xcode 26.4.1,
+    # the toolchain of the App Store archive, so CI, DMGs and the App Store build agree.
+    runs-on: macos-26
 
     steps:
       - name: Checkout code
@@ -31,7 +33,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '15.2'
+          xcode-version: '26.4.1'
 
       # project.yml is the XcodeGen source of truth and README tells
       # contributors to run `xcodegen generate`. When the two drift, that

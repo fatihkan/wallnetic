@@ -61,6 +61,11 @@ final class BrowserDownloadMetadataTests: XCTestCase {
         XCTAssertEqual(videos.map(\.url.absoluteString), ["https://example.invalid/ocean.mp4",
             "https://example.invalid/forest.webm", "https://example.invalid/random-id.mov",
             "https://cdn.example.invalid/media?id=42"])
+        // macOS 26's WebKit can update `title` after didFinish. The app reads it
+        // when a link is clicked, long after the page loaded, so wait for it here.
+        let titled = XCTKVOExpectation(keyPath: "title", object: webView,
+                                       expectedValue: "Night & Stars", options: [.initial, .new])
+        await fulfillment(of: [titled], timeout: 5)
         XCTAssertEqual(BrowserDownloadMetadata.name(pageTitle: webView.title, filename: "random.zip"), "Night & Stars")
     }
 
