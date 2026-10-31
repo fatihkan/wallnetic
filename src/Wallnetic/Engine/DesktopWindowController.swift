@@ -1,14 +1,26 @@
 import Cocoa
 import AVFoundation
 import QuartzCore
+import Combine
 
 /// Protocol for video renderers (supports both AVFoundation and Metal-based renderers)
 protocol WallpaperRenderer: AnyObject {
+    var playbackMonitor: RendererPlaybackMonitor { get }
     var rendererView: NSView { get }
-    func loadVideo(url: URL)
+    /// Loads a video and loops only `trim`'s range while it still applies to
+    /// the file; nil, or a range that cannot apply, plays the full video.
+    func loadVideo(url: URL, trim: PlaybackTrim?)
+    /// Reloads the current video with an edited loop range without changing
+    /// play/pause intent. A paused renderer applies it when it next resumes.
+    func applyTrim(_ trim: PlaybackTrim?)
+    /// For the current player: the video it loaded, and whether that load's
+    /// range applied (`true`) or fell back to the full video (`false`). Nil
+    /// when there was no range, or while an edit waits for the next resume.
+    var trimOutcome: (url: URL, applied: Bool)? { get }
     func play()
     func pause()
     func stop()
+    func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode)
     /// Current playback position in seconds, or `nil` when no player is loaded.
     /// The watchdog samples this to detect a frozen player (time not advancing).
     var currentPlaybackTime: TimeInterval? { get }
@@ -31,6 +43,15 @@ protocol WallpaperRenderer: AnyObject {
     func maintainPlayback()
 }
 
+extension WallpaperRenderer {
+    /// The full video, for callers without a stored loop range.
+    func loadVideo(url: URL) {
+        loadVideo(url: url, trim: nil)
+    }
+
+    var trimOutcome: (url: URL, applied: Bool)? { nil }
+}
+
 // Conform VideoRenderer to the protocol
 extension VideoRenderer: WallpaperRenderer {
     var rendererView: NSView { return view }
@@ -51,8 +72,25 @@ class DesktopWindowController {
     // different mode" bug. displayID is stable across those events.
     private var desktopWindows: [CGDirectDisplayID: NSWindow] = [:]
     private var renderers: [CGDirectDisplayID: WallpaperRenderer] = [:]
+    private var performanceBindings: [CGDirectDisplayID: AnyCancellable] = [:]
     private var effectOverlays: [CGDirectDisplayID: NSView] = [:]
-    private var isPlaying = false
+    private let durationPlayback = PauseAfterPlayback(canPlay: { !PowerManager.shared.shouldBePaused })
+    private var isPlaying: Bool { durationPlayback.isRequested }
+    private var durationTimer: Timer?
+    private var durationSettingsObserver: AnyCancellable?
+    private var calmSettingsObserver: AnyCancellable?
+    private let desktopClearMonitor = DesktopClearMonitor()
+    private var reportedPlaying: Bool?
+    private var reportedDurationPause: Bool?
+    var onPlaybackStateChanged: ((Bool, Bool) -> Void)?
+    var onDisplayStatusesChanged: (([DisplayPlaybackStatus]) -> Void)? {
+        didSet {
+            reportedStatuses = []
+            refreshPlaybackStatuses()
+        }
+    }
+    private var reportedStatuses: [DisplayPlaybackStatus] = []
+    private var statusObservers: [AnyCancellable] = []
     /// Last URL applied to *all* screens (uniform mode). Used to restore
     /// new screens on hot-plug and to skip redundant uniform reapplies.
     private var currentWallpaperURL: URL?
@@ -63,12 +101,41 @@ class DesktopWindowController {
     private var useMetalRenderer: Bool
     /// Keeps App Nap from throttling decode while a foreground app is active.
     private var playbackActivity: NSObjectProtocol?
+    private let trimStore: PlaybackTrimStore
+    private var trimObserver: AnyCancellable?
+    /// The optional desktop clock (#311). It only receives values.
+    private let clock: DesktopClockCoordinator
+    /// Makes a display's renderer; tests pass spies.
+    private let makeRenderer: (_ useMetal: Bool) -> WallpaperRenderer
 
-    init() {
+    init(trimStore: PlaybackTrimStore = .shared, clock: DesktopClockCoordinator = DesktopClockCoordinator(),
+         makeRenderer: @escaping (_ useMetal: Bool) -> WallpaperRenderer = DesktopWindowController.defaultRenderer) {
         self.useMetalRenderer = WallpaperManager.shared.useMetalRenderer
+        self.trimStore = trimStore
+        self.clock = clock
+        self.makeRenderer = makeRenderer
         setupDesktopWindows()
         setupEffectsObserver()
-        setupReassertObservers()
+        // `@Published` emits before it stores, so use the emitted ranges.
+        trimObserver = trimStore.$trims.dropFirst().sink { [weak self] trims in
+            self?.applyTrimEdits(trims)
+        }
+        durationPlayback.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
+        calmSettingsObserver = CalmPlaybackSettings.shared.$state
+            .map(\.holds).removeDuplicates().sink { [weak self] holds in
+                self?.durationPlayback.setHolds(holds)
+            }
+        durationSettingsObserver = PauseAfterSettings.shared.$preferences.sink { [weak self] preferences in
+            self?.durationPlayback.updatePreferences(preferences)
+            self?.refreshPlaybackLifecycle(preferences: preferences)
+        }
+        desktopClearMonitor.onDesktopCleared = { [weak self] id in
+            self?.durationPlayback.replayExpiredDisplay(id)
+        }
+        for name in [Notification.Name.playbackRestrictionsDidChange, UserDefaults.didChangeNotification] {
+            statusObservers.append(NotificationCenter.default.publisher(for: name)
+                .receive(on: RunLoop.main).sink { [weak self] _ in self?.refreshPlaybackStatuses() })
+        }
     }
 
     private func setupEffectsObserver() {
@@ -79,25 +146,6 @@ class DesktopWindowController {
         ) { [weak self] _ in
             self?.applyEffects()
         }
-    }
-
-    private func setupReassertObservers() {
-        // Only activation-policy flips need a re-pin. Observing become-active
-        // or Space changes called `orderFront` on every click / Space switch
-        // and presented as a twitch in the playing wallpaper.
-        reassertObservers.append(NotificationCenter.default.addObserver(
-            forName: .desktopWindowsNeedReassert, object: nil, queue: .main
-        ) { [weak self] _ in
-            self?.scheduleReassert()
-        })
-        // Only resign-active — not every app-switch. didActivateApplication
-        // fires while the user works in a windowed app; poking the renderer
-        // then (and the old 4 Hz pulse) paused/unpaused Metal in a loop.
-        reassertObservers.append(NotificationCenter.default.addObserver(
-            forName: NSApplication.willResignActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            self?.maintainPlayback()
-        })
     }
 
     // MARK: - Window Setup
@@ -152,20 +200,16 @@ class DesktopWindowController {
         window.styleMask.remove(.miniaturizable)
 
         // Create and attach video renderer (Metal or AVFoundation based)
-        let renderer: WallpaperRenderer
-        if useMetalRenderer && MetalVideoRenderer.isSupported {
-            renderer = MetalVideoRenderer()
-        } else {
-            renderer = VideoRenderer()
-        }
+        let renderer = makeRenderer(useMetalRenderer)
 
-        renderer.rendererView.frame = NSRect(origin: .zero, size: screen.frame.size)
-        renderer.rendererView.autoresizingMask = [.width, .height]
-        renderer.rendererView.wantsLayer = true
-        window.contentView = renderer.rendererView
+        window.contentView = Self.wallpaperContent(rendererView: renderer.rendererView, size: screen.frame.size,
+                                                   clockView: clock.makeView(for: displayID, frame: NSRect(origin: .zero, size: screen.frame.size)))
         renderer.onBecameReady = { [weak self] in
             self?.revealDesktopWindow(for: displayID)
         }
+        // Readiness can change while an old frame remains visible. Start/stop
+        // the duration timer on those events instead of polling a pending load.
+        renderer.playbackMonitor.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
 
         // Create effect overlay view
         let effectOverlay = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
@@ -178,6 +222,7 @@ class DesktopWindowController {
         // Store references
         desktopWindows[displayID] = window
         renderers[displayID] = renderer
+        performanceBindings[displayID] = PerformanceManager.shared.bind(to: renderer)
 
         // Apply current effects
         applyEffectsToOverlay(effectOverlay)
@@ -190,6 +235,28 @@ class DesktopWindowController {
 
         let rendererName = useMetalRenderer ? "Metal" : "AVFoundation"
         Log.window.debug("Created window for: \(screen.localizedName, privacy: .public) using \(rendererName, privacy: .public) renderer")
+    }
+
+    static func defaultRenderer(useMetal: Bool) -> WallpaperRenderer {
+        useMetal && MetalVideoRenderer.isSupported ? MetalVideoRenderer() : VideoRenderer()
+    }
+
+    /// A wallpaper window's content: the renderer view, with the clock as its
+    /// last sibling. The clock then sits above the video and the effect
+    /// overlay (a subview of the renderer view), outside the renderer's
+    /// filtered layer, so wallpaper effects never alter it.
+    static func wallpaperContent(rendererView: NSView, size: NSSize, clockView: NSView) -> NSView {
+        let container = NSView(frame: NSRect(origin: .zero, size: size))
+        container.autoresizingMask = [.width, .height]
+        container.wantsLayer = true
+        rendererView.frame = container.bounds
+        rendererView.autoresizingMask = [.width, .height]
+        rendererView.wantsLayer = true
+        container.addSubview(rendererView)
+        clockView.frame = container.bounds
+        clockView.autoresizingMask = [.width, .height]
+        container.addSubview(clockView)
+        return container
     }
 
     /// Makes the overlay visible only after the renderer has a frame.
@@ -207,62 +274,17 @@ class DesktopWindowController {
         window.orderFront(nil)
         CATransaction.commit()
         Log.window.debug("Revealed desktop window for display \(displayID, privacy: .public)")
-    }
-
-    private var reassertDebounce: Timer?
-
-    private func scheduleReassert() {
-        reassertDebounce?.invalidate()
-        reassertDebounce = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
-            self?.reassertDebounce = nil
-            self?.reassertDesktopWindows()
-        }
-    }
-
-    /// Re-pins a desktop window only when it actually dropped (level, alpha,
-    /// or ordered-out). Rewriting collectionBehavior / orderFront on an
-    /// already-correct window hitches the compositor — the playback twitch.
-    func reassertDesktopWindows() {
-        let desktopIconLevel = Int(CGWindowLevelForKey(.desktopIconWindow))
-        let expectedLevel = NSWindow.Level(rawValue: desktopIconLevel - 1)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        defer { CATransaction.commit() }
-
-        for (id, window) in desktopWindows {
-            let renderer = renderers[id]
-            let shouldShow = renderer.map {
-                WallpaperVisibilityPolicy.shouldShowOverlay(hasPresentedFrame: $0.hasPresentedFrame)
-            } ?? false
-            let needsReassert = WallpaperPlaybackPolicy.shouldReassertWindow(
-                levelMatches: window.level == expectedLevel,
-                overlayShouldShow: shouldShow,
-                isOrderedIn: window.isVisible,
-                alphaIsFull: window.alphaValue >= 1
-            )
-            guard needsReassert else { continue }
-
-            window.collectionBehavior = [
-                .canJoinAllSpaces,
-                .stationary,
-                .ignoresCycle,
-                .fullScreenNone
-            ]
-            window.level = expectedLevel
-            window.alphaValue = 1
-            window.isOpaque = true
-            window.orderFront(nil)
-        }
-
-        if isPlaying {
-            maintainPlayback()
-        }
+        // The clock may show once the window shows a frame.
+        refreshPlaybackStatuses()
     }
 
     // MARK: - Playback Control
 
-    /// Sets the wallpaper video with animated transition
-    func setWallpaper(url: URL, for screen: NSScreen? = nil) {
+    func wallpaperURL(on displayID: UInt32) -> URL? { screenWallpaperURLs[displayID] }
+
+    /// Sets the wallpaper video on one screen, or on every screen when
+    /// `screen` is nil. The change is instant.
+    func setWallpaper(url: URL, for screen: NSScreen? = nil, forceReload: Bool = false) {
         // Resolve the optional target screen to a stable display id up front.
         // A target screen with no displayID can't be addressed — bail rather
         // than silently apply to the wrong display.
@@ -282,10 +304,11 @@ class DesktopWindowController {
         // mode keys the skip check on the target display so two displays
         // can share the same source URL without one being silently dropped.
         if let targetID {
-            guard screenWallpaperURLs[targetID] != url else { return }
+            guard forceReload || screenWallpaperURLs[targetID] != url else { return }
             screenWallpaperURLs[targetID] = url
         } else {
-            guard currentWallpaperURL != url else { return }
+            guard forceReload || currentWallpaperURL != url ||
+                    renderers.keys.contains(where: { screenWallpaperURLs[$0] != url }) else { return }
             currentWallpaperURL = url
             // Uniform reapply: reset per-display state so hot-plug and
             // mode transitions see a consistent picture.
@@ -306,31 +329,130 @@ class DesktopWindowController {
             // frame (or every looper item swap) as a visible twitch.
             // The renderer keeps the previous player until the next item is
             // ready, which is the hitch-free swap.
-            renderer.loadVideo(url: url)
+            renderer.loadVideo(url: url, trim: trimStore.trim(for: url))
+            durationPlayback.setWallpaper(url, renderer: renderer, on: s,
+                                          preferences: PauseAfterSettings.shared.preferences)
+        }
+    }
+
+    /// Tells the Library which ranges a renderer could not build (the full
+    /// video plays instead) and which it applied, once a load has its frame.
+    /// Each outcome counts for the video that renderer loaded; displays that
+    /// disagree about one video leave its mark unchanged.
+    private func reportTrimOutcomes() {
+        var outcomes: [String: (url: URL, applied: Bool)] = [:]
+        var conflicting: Set<String> = []
+        for renderer in renderers.values where renderer.playbackMonitor.hasFrameForCurrentLoad {
+            guard let outcome = renderer.trimOutcome else { continue }
+            let path = outcome.url.standardizedFileURL.path
+            if let known = outcomes[path], known.applied != outcome.applied { conflicting.insert(path) }
+            outcomes[path] = outcome
+        }
+        for (path, outcome) in outcomes where !conflicting.contains(path) {
+            trimStore.noteTrim(applied: outcome.applied, for: outcome.url)
+        }
+    }
+
+    /// A loop-range edit reloads only the displays showing that video,
+    /// through the renderer's own reload; the others ignore an unchanged
+    /// range. Not `setWallpaper`: it replaces the display's Pause After entry,
+    /// which would resume a pause and restart its interval.
+    private func applyTrimEdits(_ trims: [String: PlaybackTrim]) {
+        for (id, url) in screenWallpaperURLs {
+            renderers[id]?.applyTrim(PlaybackTrimStore.trim(for: url, in: trims))
         }
     }
 
     /// Starts playback on all screens
-    func play() {
-        isPlaying = true
-        beginPlaybackActivity()
-        for renderer in renderers.values {
-            renderer.play()
-        }
-        startWatchdog()
+    func play(explicit: Bool = false) {
+        durationPlayback.play(explicit: explicit)
     }
 
     /// Pauses playback on all screens
-    func pause() {
-        guard isPlaying else { return }
+    func pause(manual: Bool = false) {
+        durationPlayback.pause(manual: manual)
+    }
 
-        isPlaying = false
-        for renderer in renderers.values {
-            renderer.pause()
+    private func refreshPlaybackLifecycle(preferences: PauseAfterSettings.Preferences? = nil) {
+        defer { refreshPlaybackStatuses() }
+        reportTrimOutcomes()
+        if durationPlayback.hasActivePlayback {
+            beginPlaybackActivity()
+            startWatchdog()
+        } else {
+            stopWatchdog()
+            endPlaybackActivity()
         }
-        occlusionSuspended.removeAll()
-        stopWatchdog()
-        endPlaybackActivity()
+        if durationPlayback.needsTimer {
+            if durationTimer == nil {
+                let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+                    self?.durationPlayback.tick()
+                }
+                timer.tolerance = 0.05
+                RunLoop.main.add(timer, forMode: .common)
+                durationTimer = timer
+            }
+        } else {
+            durationTimer?.invalidate()
+            durationTimer = nil
+        }
+        let preferences = preferences ?? PauseAfterSettings.shared.preferences
+        desktopClearMonitor.setEnabled(isPlaying && durationPlayback.holds.isEmpty && durationPlayback.hasTimedWallpapers && preferences.replayWhenDesktopClears)
+        let playing = durationPlayback.hasActivePlayback
+        let held = durationPlayback.isPausedAfterDuration
+        if reportedPlaying != playing || reportedDurationPause != held {
+            reportedPlaying = playing
+            reportedDurationPause = held
+            onPlaybackStateChanged?(playing, held)
+        }
+    }
+
+    func refreshPlaybackStatuses() {
+        let restrictions = PowerManager.shared.pauseReasons
+        var clockDisplays: [DesktopClockCoordinator.Display] = []
+        let statuses = NSScreen.screens.compactMap { screen -> DisplayPlaybackStatus? in
+            guard let id = screen.displayID, let renderer = renderers[id] else { return nil }
+            var reasons = restrictions
+            reasons.append(contentsOf: durationPlayback.holds.map(\.pauseReason))
+            if durationPlayback.isManuallyPaused { reasons.append(.manual) }
+            if durationPlayback.isExpired(on: id) { reasons.append(.timer) }
+            clockDisplays.append(.init(id: id, hasPresentedFrame: renderer.hasPresentedFrame, reasons: reasons))
+            return DisplayPlaybackStatus(id: id, displayName: screen.localizedName,
+                hasWallpaper: screenWallpaperURLs[id] != nil,
+                renderer: renderer.playbackMonitor.state, reasons: reasons)
+        }
+        // The clock reads the same reasons, plus whether a frame is shown.
+        clock.update(clockDisplays)
+        guard statuses != reportedStatuses else { return }
+        reportedStatuses = statuses
+        onDisplayStatusesChanged?(statuses)
+    }
+
+    func retryWallpaper(on displayID: UInt32) {
+        guard let screen = NSScreen.screens.first(where: { $0.displayID == displayID }),
+              let url = screenWallpaperURLs[displayID],
+              renderers[displayID]?.playbackMonitor.state.isFailed == true else { return }
+        setWallpaper(url: url, for: screen, forceReload: true)
+        // setWallpaper resumes only an already requested session. Retry must
+        // also preserve a power pause whose automatic resume was disabled.
+    }
+
+    func clearWallpaper(url: URL) {
+        for id in Array(screenWallpaperURLs.keys) where screenWallpaperURLs[id] == url {
+            clearWallpaper(on: id)
+        }
+        if currentWallpaperURL == url { currentWallpaperURL = nil }
+        refreshPlaybackStatuses()
+    }
+
+    func clearWallpaper(on displayID: UInt32) {
+        guard screenWallpaperURLs[displayID] != nil else { return }
+        renderers[displayID]?.stop()
+        screenWallpaperURLs.removeValue(forKey: displayID)
+        desktopWindows[displayID]?.alphaValue = 0
+        durationPlayback.remove(displayID)
+        if screenWallpaperURLs.isEmpty { currentWallpaperURL = nil }
+        refreshPlaybackStatuses()
     }
 
     /// Keep decode running when we resign active. Do not `orderFront` or
@@ -339,7 +461,7 @@ class DesktopWindowController {
         guard isPlaying,
               WallpaperPlaybackPolicy.shouldKeepPresentingWhileInactive(intendedToPlay: true)
         else { return }
-        for renderer in renderers.values {
+        for (id, renderer) in renderers where durationPlayback.shouldPlay(on: id) {
             renderer.maintainPlayback()
         }
     }
@@ -363,133 +485,13 @@ class DesktopWindowController {
         }
     }
 
-    /// Pauses playback (used by power management)
-    func pausePlayback() {
-        pause()
-    }
-
-    /// Resumes playback if it was playing before
-    func resumePlayback() {
-        if WallpaperManager.shared.shouldAutoResume {
-            play()
-        }
-    }
-
-    /// Toggles play/pause state
-    func togglePlayback() {
-        if isPlaying {
-            pause()
-        } else {
-            play()
-        }
-    }
-
     var isCurrentlyPlaying: Bool {
-        return isPlaying
+        return durationPlayback.hasActivePlayback
     }
 
-    // MARK: - Occlusion
-
-    /// Displays whose renderer is paused purely because the desktop window is
-    /// fully covered. Deliberately separate from `isPlaying`, which must keep
-    /// meaning "the user intends the wallpaper to play" for the menu bar,
-    /// widget sync and the resume paths.
-    private var occlusionSuspended: Set<CGDirectDisplayID> = []
-    private var occlusionObservers: [CGDirectDisplayID: NSObjectProtocol] = [:]
-    private var occlusionDebounce: [CGDirectDisplayID: Timer] = [:]
-    private var occlusionAgreeCounts: [CGDirectDisplayID: Int] = [:]
-    private var reassertObservers: [NSObjectProtocol] = []
-
-    /// macOS delivers a burst of alternating occlusion notifications across a
-    /// single cover/uncover transition (21 within 360 ms when measured here),
-    /// so state is applied only once it settles. 1.0 s plus
-    /// ``WallpaperPlaybackPolicy/occlusionStableSamples`` extra agrees stops
-    /// the pause/resume twitch those bursts used to cause.
-    private static let occlusionDebounceInterval: TimeInterval = 1.0
-
-    private func observeOcclusion(of window: NSWindow, displayID: CGDirectDisplayID) {
-        // Scoped to this window: the process also owns overlay panels and two
-        // SwiftUI WindowGroups whose occlusion is none of our business.
-        let observer = NotificationCenter.default.addObserver(
-            forName: NSWindow.didChangeOcclusionStateNotification,
-            object: window,
-            queue: .main
-        ) { [weak self] _ in
-            self?.scheduleOcclusionUpdate(for: displayID)
-        }
-        occlusionObservers[displayID] = observer
-    }
-
-    private func scheduleOcclusionUpdate(for displayID: CGDirectDisplayID) {
-        occlusionDebounce[displayID]?.invalidate()
-        occlusionDebounce[displayID] = Timer.scheduledTimer(
-            withTimeInterval: Self.occlusionDebounceInterval,
-            repeats: false
-        ) { [weak self] _ in
-            self?.occlusionDebounce[displayID] = nil
-            self?.applyOcclusion(for: displayID)
-        }
-    }
-
-    /// Suspends or resumes one display's decoder from *live* window state.
-    /// Reading the state rather than trusting a notification payload is what
-    /// makes a missed notification self-correcting.
-    private func applyOcclusion(for displayID: CGDirectDisplayID) {
-        guard let window = desktopWindows[displayID],
-              let renderer = renderers[displayID] else { return }
-
-        // `.visible` is all-or-nothing — cleared only when the window is
-        // *fully* covered — so partial overlap never pauses the wallpaper.
-        // An un-revealed (alpha 0) window also reports not-visible; pausing
-        // then would freeze a black overlay before the first frame.
-        guard window.alphaValue >= 1 else { return }
-
-        let visible = window.occlusionState.contains(.visible)
-        // Windowed foreground apps must never pause decode. Occlusion of a
-        // desktop-level window flaps around ordinary windows and is the
-        // brief-pause / rate-wobble / keyframe-rollback chain.
-        let fullscreenCover = false
-        let wantSuspended = WallpaperVisibilityPolicy.shouldSuspendDecode(
-            intendedToPlay: isPlaying,
-            windowReportsVisible: visible,
-            hasPresentedFrame: renderer.hasPresentedFrame,
-            fullscreenAppCoversDisplay: fullscreenCover
-        )
-        let currentlySuspended = occlusionSuspended.contains(displayID)
-
-        if wantSuspended == currentlySuspended {
-            occlusionAgreeCounts[displayID] = 0
-            return
-        }
-
-        let agrees = (occlusionAgreeCounts[displayID] ?? 0) + 1
-        occlusionAgreeCounts[displayID] = agrees
-        guard WallpaperPlaybackPolicy.shouldCommitOcclusionChange(
-            currentlySuspended: currentlySuspended,
-            wantSuspended: wantSuspended,
-            consecutiveAgrees: agrees
-        ) else { return }
-
-        occlusionAgreeCounts[displayID] = 0
-        if wantSuspended {
-            occlusionSuspended.insert(displayID)
-            renderer.pause()
-            Log.window.debug("Display \(displayID, privacy: .public) fully occluded — decode suspended")
-        } else {
-            occlusionSuspended.remove(displayID)
-            if isPlaying { renderer.play() }
-            Log.window.debug("Display \(displayID, privacy: .public) visible again — decode resumed")
-        }
-    }
-
-    private func removeOcclusionTracking(for displayID: CGDirectDisplayID) {
-        if let observer = occlusionObservers.removeValue(forKey: displayID) {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        occlusionDebounce.removeValue(forKey: displayID)?.invalidate()
-        occlusionSuspended.remove(displayID)
-        occlusionAgreeCounts.removeValue(forKey: displayID)
-    }
+    /// Power pauses must still claim an intended session held by Calm/thermal
+    /// policy; otherwise their resume path would strand that session.
+    var hasPlaybackResumeIntent: Bool { durationPlayback.isRequested }
 
     // MARK: - Playback Watchdog (v1.4 Wave 1)
 
@@ -529,11 +531,12 @@ class DesktopWindowController {
         let shouldBePaused = PowerManager.shared.shouldBePaused
 
         for (id, renderer) in renderers {
-            if occlusionSuspended.contains(id) {
-                // A suspended renderer's clock is frozen *on purpose*. Letting
-                // the watchdog see that would restart the decode behind the
-                // cover permanently — the exact waste this pause exists to
-                // avoid — so reset the baseline instead.
+            if !durationPlayback.shouldPlay(on: id) {
+                // This display is meant to be paused (a manual or power pause,
+                // a Calm Mode or thermal hold, or an expired Pause After
+                // timer), so its clock is frozen *on purpose*. Recovering it
+                // would undo a pause another feature owns, so reset the
+                // baseline instead.
                 frozenSampleCounts[id] = 0
                 lastPlaybackTimes[id] = renderer.currentPlaybackTime
                 continue
@@ -579,20 +582,24 @@ class DesktopWindowController {
 
     /// Handles display configuration changes (connect/disconnect monitors)
     func handleDisplayChange() {
+        defer { refreshPlaybackStatuses() }
         let currentIDs = Set(NSScreen.screens.compactMap { $0.displayID })
         let knownIDs = Set(desktopWindows.keys)
 
         // Remove windows for disconnected displays
         for id in knownIDs.subtracting(currentIDs) {
-            removeOcclusionTracking(for: id)
+            renderers[id]?.playbackMonitor.onChange = nil
             renderers[id]?.stop()
             desktopWindows[id]?.close()
             desktopWindows.removeValue(forKey: id)
             renderers.removeValue(forKey: id)
+            performanceBindings.removeValue(forKey: id)
             effectOverlays.removeValue(forKey: id)
+            clock.removeView(for: id)
             screenWallpaperURLs.removeValue(forKey: id)
             lastPlaybackTimes.removeValue(forKey: id)
             frozenSampleCounts.removeValue(forKey: id)
+            durationPlayback.remove(id)
         }
 
         // Add windows for newly connected displays
@@ -601,11 +608,13 @@ class DesktopWindowController {
             createDesktopWindow(for: screen)
 
             // Load current wallpaper on the new display
-            if let url = currentWallpaperURL {
-                renderers[id]?.loadVideo(url: url)
-                if isPlaying {
-                    renderers[id]?.play()
-                }
+            let url = WallpaperManager.shared.wallpaperMode == .different
+                ? WallpaperManager.shared.wallpaper(for: screen)?.url : currentWallpaperURL
+            if let url, let renderer = renderers[id] {
+                screenWallpaperURLs[id] = url
+                renderer.loadVideo(url: url, trim: trimStore.trim(for: url))
+                durationPlayback.setWallpaper(url, renderer: renderer, on: id,
+                                              preferences: PauseAfterSettings.shared.preferences)
             }
             if renderers[id]?.hasPresentedFrame == true {
                 revealDesktopWindow(for: id)
@@ -694,21 +703,22 @@ class DesktopWindowController {
     // MARK: - Cleanup
 
     func cleanup() {
+        clock.cleanup()
+        statusObservers.removeAll()
+        trimObserver = nil
+        onDisplayStatusesChanged = nil
+        durationSettingsObserver = nil
+        calmSettingsObserver = nil
+        durationTimer?.invalidate()
+        durationTimer = nil
+        desktopClearMonitor.stop()
+        durationPlayback.onChange = nil
+        durationPlayback.removeAll()
         stopWatchdog()
         endPlaybackActivity()
-        reassertDebounce?.invalidate()
-        reassertDebounce = nil
-        for observer in reassertObservers {
-            NotificationCenter.default.removeObserver(observer)
-            NSWorkspace.shared.notificationCenter.removeObserver(observer)
-        }
-        reassertObservers.removeAll()
-
-        for id in Array(occlusionObservers.keys) {
-            removeOcclusionTracking(for: id)
-        }
 
         for renderer in renderers.values {
+            renderer.playbackMonitor.onChange = nil
             renderer.stop()
         }
 
@@ -718,5 +728,6 @@ class DesktopWindowController {
 
         desktopWindows.removeAll()
         renderers.removeAll()
+        performanceBindings.removeAll()
     }
 }

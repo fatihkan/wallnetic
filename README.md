@@ -49,13 +49,15 @@ share of Workshop items that are plain video, once you have the file locally.
 | **Built-in library** | **None — by design** | Yes | 4,000+ | Yes | Via Wallpaper Engine |
 | **In-app source browsing** | **8 sources** | Community library | Own library | Own library | — |
 | **Per-display wallpaper** | Yes | Yes | Yes | Yes | Yes |
-| **Per-Space wallpaper** | **Yes** | — | — | — | — |
+| **Per-Space wallpaper** | Manual recovery choices¹ | — | — | — | — |
 | **Photo slideshow generator** | **Yes** | — | — | — | — |
 | **Renders WE `.scene` files** | No | No | No | No | **Yes** |
 | **Distribution** | Mac App Store | Direct | Direct | Direct · Homebrew | Direct |
 
 *Competitor pricing and features as published on their own sites, September 2026. Corrections
 welcome via issue or PR.*
+
+¹ On `dev`, Space selections are saved for manual recovery. Automatic per-Space switching is disabled because reliable desktop identity is unavailable; applying a choice affects all displays and Spaces. See [Space recovery](docs/SPACE_RECOVERY.md).
 
 ## Frequently asked questions
 
@@ -65,10 +67,12 @@ the current version cannot be taken away from you regardless of what happens lat
 
 **Does it slow my Mac down?**
 Wallnetic suspends video decoding when the Mac is locked, the screen saver is running, the display
-is asleep, or another user is switched in. By default it also pauses while a fullscreen app is in
-front. Ordinary windows covering the desktop do not pause playback. We deliberately publish no
-single CPU percentage, because the figure varies widely with clip resolution, frame rate and
-state — measure it yourself in Activity Monitor.
+is asleep, another user is switched in, or Low Power Mode is on. By default it also pauses every
+display while a fullscreen app is in front. It can pause on battery power, and Calm Mode,
+thermal-aware playback and Pause After can hold wallpaper motion. Ordinary windows covering the
+desktop do not pause playback. We deliberately publish no single CPU percentage, because the figure
+varies widely with clip resolution, frame rate and state — measure it yourself in Activity Monitor,
+or follow the [benchmark protocol](docs/PLAYBACK_BENCHMARKS.md).
 
 **Where do the wallpapers come from?**
 From you. Drag in any video you own, or use the in-app browser to search Pexels, Pixabay,
@@ -77,7 +81,8 @@ Wallhaven, MyLiveWallpapers, DesktopHut, MoeWalls and MotionBGs.
 **Can it play video on the lock screen?**
 Wallnetic does not provide live lock-screen playback in either distribution. It can apply a
 still frame from your current video as the system wallpaper; macOS controls its appearance
-on the lock screen and in Mission Control.
+on the lock screen and in Mission Control. A screen saver is a separate integration.
+See the [screen saver and lock-screen feasibility findings](docs/SCREENSAVER_FEASIBILITY.md).
 
 **Does it work on Intel Macs?**
 Yes. Wallnetic ships a universal binary supporting both Apple Silicon and Intel, on macOS 13 or
@@ -115,17 +120,23 @@ later.
 ### Live Video Wallpapers
 - Play any video file (MP4, MOV, M4V, GIF, WebM) as your desktop background
 - Seamless looping with zero stuttering
+- [Trim](docs/LOOP_RANGE.md) (`dev`): loop only part of a Library video, set frame
+  by frame, without modifying or re-encoding the original
 - Drag & drop or file picker import
 
-### Per-Space Wallpapers
-- Set different wallpapers for each macOS Space (virtual desktop)
-- Auto-switches when changing Spaces via Mission Control
-- Right-click any wallpaper > "Set for This Space"
+### Space Selection Recovery (`dev`)
+- Preserve previous Space wallpaper choices after relaunch or display changes
+- Name, edit and manually apply saved choices without reimporting Library media
+- Settings > Spaces, or right-click a wallpaper > "Save for Space Recovery"
+- Automatic Space matching is unavailable. Applying a saved choice affects all displays and Spaces, without binding it to an individual desktop. [Behavior and limits](docs/SPACE_RECOVERY.md)
 
 ### System Wallpaper Still-Frame Sync
 - Apply a still frame of the selected video to the system wallpaper
 - Settings > Spaces > "Sync video frame to system wallpaper"
-- Live lock-screen playback is not available in either distribution
+- Disabling sync attempts to restore the previously recorded image for each connected display
+- Live lock-screen playback and an installable Wallnetic screen saver have not shipped.
+  A separate [screen saver development candidate](docs/STANDALONE_SCREEN_SAVER.md)
+  uses bundled original videos; system-host and signed distribution checks remain open.
 
 ### Multi-Monitor Support
 - Set different wallpapers for each display
@@ -136,6 +147,9 @@ later.
 - Brightness, contrast, saturation, blur, tint, and vignette
 - 8 presets: None, Dim, Vivid, Moody, Film, B&W, Dreamy, Focus
 - Real-time CIFilter effects on video layer
+- [Desktop clock](docs/DESKTOP_CLOCK.md) (`dev`): an optional clock and date on
+  each display's wallpaper, below desktop icons, in English with your region's
+  date and time format
 
 ### Time-of-Day Auto Switch
 - 4 time slots: Morning, Afternoon, Evening, Night
@@ -173,13 +187,15 @@ later.
 - Animated gradient backgrounds
 
 ### Audio Visualizer
-- Real-time FFT spectrum overlay rendered on the desktop
-- 64-column center-out horizontal burst with accent-to-white color gradient
-- Captures microphone or system audio (ScreenCaptureKit)
-- Pre-allocated vDSP buffers for near-zero allocation on the hot path
-- Configurable sensitivity and placement
+- Disabled since 1.3.1 and not reachable in the app: it no longer captures
+  microphone or system audio, and no audio permission is requested.
 
 ### Smart Power Management
+- [Calm Mode and thermal-aware playback](docs/CALM_MODE.md): hold wallpaper motion
+  from the menu bar or Shortcuts, with optional pausing during sustained heat.
+  Manual pauses, power restrictions and expired playback timers remain effective.
+- Optional [Pause After](docs/PAUSE_AFTER.md): global or per-wallpaper intervals,
+  a retained still frame after expiry, and optional desktop-clear replay
 - Auto-pause on battery power with opt-in prompt
 - "Always play on battery" toggle in Settings for users who prefer live playback
 - "Bir daha sorma" / remember-choice checkbox in the prompt
@@ -188,14 +204,19 @@ later.
 - `CGWindowListCopyWindowInfo` runs off the main thread (no UI stalls)
 
 ### Apple Shortcuts & Siri
-- Set Wallpaper, Next Wallpaper, Toggle Playback, Random Wallpaper
+- Set Wallpaper, Next Wallpaper, Toggle Playback, Random Wallpaper, Toggle Calm Mode, Set Calm Mode
 - Siri: "Change wallpaper in Wallnetic"
 - macOS 14+ required
 
 ### Performance
 - **Metal GPU acceleration** for smooth playback
-- Stops decoding when the Mac is locked, the screen saver is running or the
-  display is asleep, and by default while a fullscreen app is in front
+- 3 performance modes: Quality (up to 60 FPS), Balanced (30 FPS), Battery Saver (15 FPS)
+- Frame-rate limits apply to Metal presentation at normal video speed; AVPlayer
+  retains the video's original frame rate. See [playback profiles](docs/PLAYBACK_PROFILES.md)
+  for engine policies and validation limits.
+- Stops decoding when the Mac is locked, the screen saver is running, the
+  display is asleep or Low Power Mode is on, and by default while a fullscreen
+  app is in front. Ordinary windows covering the desktop do not pause playback.
 - Async image caching
 
 ---
@@ -270,6 +291,7 @@ open Wallnetic.xcodeproj
 |----------|--------|
 | `Cmd + I` | Import videos |
 | `Cmd + P` | Toggle play/pause |
+| `Cmd + Shift + M` | Toggle Calm Mode (while Wallnetic is active) |
 | `Cmd + N` | Next wallpaper |
 | `Cmd + F` | Search |
 | `Cmd + O` | Open main window |
@@ -301,7 +323,7 @@ open Wallnetic.xcodeproj
 ### v1.1
 - [x] Netflix-style UI redesign
 - [x] Discover wallpaper sources (Pixabay, Pexels, web browser)
-- [x] Per-Space wallpapers
+- [x] Space wallpaper selections (now manual recovery on `dev`; automatic matching is unavailable)
 - [x] System wallpaper still-frame sync (live lock-screen playback is unavailable)
 - [x] Wallpaper effects (blur, brightness, tint, vignette)
 - [x] Time-of-day auto switch

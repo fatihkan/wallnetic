@@ -52,6 +52,7 @@ struct WebViewWrapper: NSViewRepresentable {
         /// Tracks pending WKDownload info: destination, display name, and DownloadManager tracking ID
         private var pendingDownloads: [WKDownload: (dest: URL, name: String, trackingID: UUID)] = [:]
         private var progressObservations: [WKDownload: NSKeyValueObservation] = [:]
+        private var downloadPageTitles: [WKDownload: String] = [:]
 
         // Saved-file extension allowlist. Anything not in this set is rewritten to
         // ".zip" so a hostile server cannot land a binary like `video.mp4.dylib`.
@@ -134,7 +135,7 @@ struct WebViewWrapper: NSViewRepresentable {
             // If user clicked a video file link, intercept and download
             if WebViewWrapper.videoExtensions.contains(ext) {
                 decisionHandler(.cancel)
-                let name = url.deletingPathExtension().lastPathComponent
+                let name = BrowserDownloadMetadata.name(pageTitle: webView.title, filename: url.lastPathComponent)
                 Log.browser.info("Intercepted video: \(url.absoluteString, privacy: .public)")
                 DownloadManager.shared.downloadAndImport(name: name, from: url)
                 return
@@ -190,13 +191,20 @@ struct WebViewWrapper: NSViewRepresentable {
         func webView(_ webView: WKWebView,
                      navigationResponse: WKNavigationResponse,
                      didBecome download: WKDownload) {
-            download.delegate = self
+            captureTitle(for: download, from: webView)
         }
 
         /// Called when a navigation action becomes a WKDownload
         func webView(_ webView: WKWebView,
                      navigationAction: WKNavigationAction,
                      didBecome download: WKDownload) {
+            captureTitle(for: download, from: webView)
+        }
+
+        private func captureTitle(for download: WKDownload, from webView: WKWebView) {
+            // Capture now, not at completion: other downloads/navigation can
+            // change the web view title while this transfer is in flight.
+            downloadPageTitles[download] = WallpaperMetadataStore.normalizedImportedTitle(webView.title)
             download.delegate = self
         }
 
@@ -206,7 +214,8 @@ struct WebViewWrapper: NSViewRepresentable {
                       decideDestinationUsing response: URLResponse,
                       suggestedFilename: String,
                       completionHandler: @escaping (URL?) -> Void) {
-            let name = (suggestedFilename as NSString).deletingPathExtension
+            let name = BrowserDownloadMetadata.name(pageTitle: downloadPageTitles.removeValue(forKey: download),
+                                                     filename: suggestedFilename)
             let rawExt = (suggestedFilename as NSString).pathExtension.lowercased()
             // Lock the saved file's extension to the allowlist so a hostile
             // server cannot land a binary like `video.mp4.dylib` on disk via
@@ -233,6 +242,7 @@ struct WebViewWrapper: NSViewRepresentable {
         }
 
         func downloadDidFinish(_ download: WKDownload) {
+            downloadPageTitles.removeValue(forKey: download)
             guard let info = pendingDownloads.removeValue(forKey: download) else { return }
             progressObservations.removeValue(forKey: download)
 
@@ -245,7 +255,7 @@ struct WebViewWrapper: NSViewRepresentable {
             Task {
                 do {
                     let importURL = try processDownloadedFile(at: info.dest, name: info.name)
-                    _ = try await WallpaperManager.shared.importVideo(from: importURL)
+                    _ = try await WallpaperManager.shared.importVideo(from: importURL, displayName: info.name)
                     try? FileManager.default.removeItem(at: importURL)
                     if importURL != info.dest {
                         try? FileManager.default.removeItem(at: info.dest)
@@ -265,6 +275,7 @@ struct WebViewWrapper: NSViewRepresentable {
         }
 
         func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+            downloadPageTitles.removeValue(forKey: download)
             let info = pendingDownloads.removeValue(forKey: download)
             progressObservations.removeValue(forKey: download)
             if let info {

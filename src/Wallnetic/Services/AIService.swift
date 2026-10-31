@@ -459,7 +459,7 @@ class AIService {
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIServiceError.invalidResponse

@@ -1,0 +1,461 @@
+import XCTest
+import CoreMedia
+import Darwin
+@testable import Wallnetic
+
+final class LibraryStorageTests: XCTestCase {
+    private var root: URL!
+    private var service: LibraryStorage!
+
+    override func setUpWithError() throws {
+        root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+            .appendingPathComponent(UUID().uuidString)
+        service = LibraryStorage(libraryURL: root.appendingPathComponent("Library"),
+                                 framesURL: root.appendingPathComponent("Frames"),
+                                 thumbnailsURL: root.appendingPathComponent("Thumbnails"),
+                                 metadataURL: root.appendingPathComponent("metadata.sqlite"))
+        try FileManager.default.createDirectory(at: service.libraryURL, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        if let root, FileManager.default.fileExists(atPath: root.path) {
+            try FileManager.default.removeItem(at: root)
+        }
+    }
+
+    @discardableResult
+    private func file(_ url: URL, bytes: Int) throws -> URL {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(repeating: 7, count: bytes).write(to: url)
+        return url
+    }
+
+    func testBreakdownCountsOnlyOwnedContentAndProtectsRequiredCaches() throws {
+        try file(service.libraryURL.appendingPathComponent("video.mp4"), bytes: 100)
+        try file(service.framesURL.appendingPathComponent("frame-0123456789abcdef.jpg"), bytes: 20)
+        let protected = UUID().uuidString + ".jpg"
+        try file(service.thumbnailsURL!.appendingPathComponent(protected), bytes: 30)
+        try file(service.thumbnailsURL!.appendingPathComponent(UUID().uuidString + ".jpg"), bytes: 40)
+        try file(service.metadataURL, bytes: 50)
+        try file(root.appendingPathComponent("original.mp4"), bytes: 900)
+        try file(service.libraryURL.appendingPathComponent("notes.txt"), bytes: 900)
+        let scan = try service.scan(protectedThumbnailNames: [protected])
+        XCTAssertEqual(scan.totalBytes, 240)
+        XCTAssertEqual(scan.bytes(in: .videos), 100)
+        XCTAssertEqual(scan.bytes(in: .generated), 20)
+        XCTAssertEqual(scan.bytes(in: .caches), 120)
+        XCTAssertEqual(scan.items.filter(\.canRemove).count, 2)
+        XCTAssertTrue(scan.failures.isEmpty, scan.failures.joined(separator: "; "))
+    }
+
+    /// Run with the app's development signing and sandbox entitlements enabled
+    /// to catch ancestor-directory opens denied outside the app container.
+    func testApplicationSupportStorageCanScanInstallVerifyAndRemove() throws {
+        let support = try XCTUnwrap(FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first)
+        let probe = support.appendingPathComponent("WallneticStorageTests-\(UUID().uuidString)")
+        let library = probe.appendingPathComponent("Library")
+        try FileManager.default.createDirectory(at: library, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: probe) }
+        let storage = LibraryStorage(libraryURL: library, framesURL: probe.appendingPathComponent("Frames"),
+                                     thumbnailsURL: nil, metadataURL: probe.appendingPathComponent("metadata.sqlite"))
+        let original = try file(library.appendingPathComponent("keep.mp4"), bytes: 13)
+        let initial = try storage.scan()
+        XCTAssertTrue(initial.failures.isEmpty, initial.failures.joined(separator: "; "))
+        XCTAssertEqual(initial.items.map(\.url), [original])
+
+        let data = Data("verified pack fixture".utf8)
+        let installed = try storage.installPackData(data)
+        let receipt = PackReceipt(packID: "test-pack", itemID: "test-item", sha256: WallpaperPackCatalog.digest(data),
+                                  filename: installed.url.lastPathComponent, identity: installed.identity,
+                                  directoryIdentity: installed.directoryIdentity)
+        XCTAssertNotNil(try storage.verifiedPackItem(receipt))
+        let result = storage.remove([installed])
+        XCTAssertTrue(result.failures.isEmpty, result.failures.joined(separator: "; "))
+        XCTAssertEqual(result.removed.map(\.url), [installed.url])
+        XCTAssertNil(try storage.verifiedPackItem(receipt))
+        XCTAssertEqual(try Data(contentsOf: original), Data(repeating: 7, count: 13))
+        XCTAssertEqual(try storage.scan().items.map(\.url), [original])
+    }
+
+    func testBulkRemovalPreservesOriginalsAndOnlyRemovesSelectedCopiesOnce() throws {
+        let original = try file(root.appendingPathComponent("original.mp4"), bytes: 40)
+        let copy = service.libraryURL.appendingPathComponent("copy.mp4")
+        try FileManager.default.copyItem(at: original, to: copy)
+        let kept = try file(service.libraryURL.appendingPathComponent("keep.mov"), bytes: 30)
+        let item = try XCTUnwrap(service.scan().items.first { $0.url == copy })
+        let result = service.remove([item, item])
+        XCTAssertEqual(result.removed.count, 1)
+        XCTAssertTrue(result.failures.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: original).count, 40)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: kept.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: copy.path))
+    }
+
+    func testSymlinksAndDirectoriesAreReportedAndNeverFollowed() throws {
+        let original = try file(root.appendingPathComponent("original.mp4"), bytes: 50)
+        try FileManager.default.createSymbolicLink(at: service.libraryURL.appendingPathComponent("link.mp4"), withDestinationURL: original)
+        let nested = service.libraryURL.appendingPathComponent("folder.mp4")
+        try file(nested.appendingPathComponent("private.mp4"), bytes: 60)
+        let scan = try service.scan()
+        XCTAssertTrue(scan.items.isEmpty)
+        XCTAssertEqual(scan.failures.count, 2)
+        XCTAssertEqual(try Data(contentsOf: original).count, 50)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: nested.appendingPathComponent("private.mp4").path))
+    }
+
+    func testChangedAndMissingFilesFailIndividuallyWithoutDeletingOtherData() throws {
+        let changed = try file(service.libraryURL.appendingPathComponent("changed.mp4"), bytes: 10)
+        let missing = try file(service.libraryURL.appendingPathComponent("missing.mp4"), bytes: 20)
+        try file(service.libraryURL.appendingPathComponent("remove.mp4"), bytes: 30)
+        let scan = try service.scan()
+        try Data(repeating: 9, count: 50).write(to: changed)
+        try FileManager.default.removeItem(at: missing)
+        let result = service.remove(scan.items)
+        XCTAssertEqual(result.removed.count, 1)
+        XCTAssertEqual(result.failures.count, 2)
+        XCTAssertEqual(try Data(contentsOf: changed).count, 50)
+    }
+
+    func testSameSizeReplacementAndSymlinkSwapAfterConfirmationAreRejected() throws {
+        let target = try file(service.libraryURL.appendingPathComponent("copy.mp4"), bytes: 12)
+        let original = try file(root.appendingPathComponent("original.mp4"), bytes: 12)
+        let item = try XCTUnwrap(service.scan().items.first)
+        // Keep the old inode alive so replacement cannot reuse it.
+        try FileManager.default.moveItem(at: target, to: root.appendingPathComponent("old.mp4"))
+        try FileManager.default.copyItem(at: original, to: target)
+        XCTAssertEqual(service.remove([item]).failures.count, 1)
+        try FileManager.default.removeItem(at: target)
+        try FileManager.default.createSymbolicLink(at: target, withDestinationURL: original)
+        XCTAssertEqual(service.remove([item]).failures.count, 1)
+        XCTAssertEqual(try Data(contentsOf: original).count, 12)
+    }
+
+    func testReplacedOwnedDirectoryCannotRedirectDeletion() throws {
+        try file(service.libraryURL.appendingPathComponent("copy.mp4"), bytes: 12)
+        let item = try XCTUnwrap(service.scan().items.first)
+        let old = root.appendingPathComponent("OldLibrary")
+        try FileManager.default.moveItem(at: service.libraryURL, to: old)
+        try FileManager.default.createSymbolicLink(at: service.libraryURL, withDestinationURL: old)
+        XCTAssertEqual(service.remove([item]).failures.count, 1)
+        XCTAssertTrue(try service.scan().items.isEmpty)
+        try FileManager.default.removeItem(at: service.libraryURL)
+        try file(service.libraryURL.appendingPathComponent("copy.mp4"), bytes: 12)
+        XCTAssertEqual(service.remove([item]).failures.count, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: old.appendingPathComponent("copy.mp4").path))
+    }
+
+    func testReplacedAncestorCannotRedirectScanInstallationOrRemoval() throws {
+        let parent = root.appendingPathComponent("OwnedParent")
+        let library = parent.appendingPathComponent("Library")
+        let original = try file(library.appendingPathComponent("copy.mp4"), bytes: 12)
+        let storage = LibraryStorage(libraryURL: library, framesURL: service.framesURL,
+                                     thumbnailsURL: nil, metadataURL: service.metadataURL)
+        let item = try XCTUnwrap(storage.scan().items.first { $0.url == original })
+        let moved = root.appendingPathComponent("MovedParent")
+        try FileManager.default.moveItem(at: parent, to: moved)
+        try FileManager.default.createSymbolicLink(at: parent, withDestinationURL: moved)
+
+        let scan = try storage.scan()
+        XCTAssertTrue(scan.items.isEmpty)
+        XCTAssertFalse(scan.failures.isEmpty)
+        XCTAssertThrowsError(try storage.installPackData(Data("pack bytes".utf8)))
+        let removal = storage.remove([item])
+        XCTAssertTrue(removal.removed.isEmpty)
+        XCTAssertEqual(removal.failures.count, 1)
+        let retained = moved.appendingPathComponent("Library/copy.mp4")
+        XCTAssertEqual(try Data(contentsOf: retained), Data(repeating: 7, count: 12))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: retained.deletingLastPathComponent().path), ["copy.mp4"])
+    }
+
+    func testForeignSnapshotCannotDeleteOutsideThisLibrary() throws {
+        let other = LibraryStorage(libraryURL: root.appendingPathComponent("Other"), framesURL: service.framesURL,
+                                   thumbnailsURL: nil, metadataURL: service.metadataURL)
+        let original = try file(other.libraryURL.appendingPathComponent("original.mp4"), bytes: 70)
+        let item = try XCTUnwrap(other.scan().items.first { $0.category == .videos })
+        XCTAssertEqual(service.remove([item]).failures.count, 1)
+        XCTAssertEqual(try Data(contentsOf: original).count, 70)
+    }
+
+    func testContainerParentAliasKeepsAssignmentPathsAndRejectsRetargeting() throws {
+        let physical = root.appendingPathComponent("Physical")
+        let copy = try file(physical.appendingPathComponent("Library/copy.mp4"), bytes: 15)
+        let alias = root.appendingPathComponent("ContainerAlias")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: physical)
+        let logicalLibrary = alias.appendingPathComponent("Library")
+        let storage = LibraryStorage(libraryURL: logicalLibrary, framesURL: service.framesURL,
+                                     thumbnailsURL: nil, metadataURL: service.metadataURL)
+        let wallpaper = Wallpaper(url: logicalLibrary.appendingPathComponent("copy.mp4"))
+        let item = try XCTUnwrap(storage.scan().items.first { $0.category == .videos })
+        XCTAssertEqual(item.url, wallpaper.url)
+        try FileManager.default.removeItem(at: alias)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: root)
+        XCTAssertEqual(storage.remove([item]).failures.count, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: copy.path))
+        try FileManager.default.removeItem(at: alias)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: physical)
+        let result = storage.remove([item])
+        XCTAssertEqual(result.removed.count, 1)
+        let update = LibraryRemovalState(result: result, wallpapers: [wallpaper], current: wallpaper, screenAssignments: [:])
+        XCTAssertNil(update.current)
+        XCTAssertTrue(update.wallpapers.isEmpty)
+    }
+
+    func testCacheCleanupRechecksNewlyProtectedThumbnailsAndKeepsVideosAndStills() throws {
+        let name = UUID().uuidString + ".jpg"
+        try file(service.thumbnailsURL!.appendingPathComponent(name), bytes: 10)
+        try file(service.thumbnailsURL!.appendingPathComponent(UUID().uuidString + ".jpg"), bytes: 20)
+        let video = try file(service.libraryURL.appendingPathComponent("video.mp4"), bytes: 30)
+        let still = try file(service.framesURL.appendingPathComponent("frame-0123456789abcdef.jpg"), bytes: 40)
+        let scan = try service.scan()
+        let result = service.remove(scan.items.filter { $0.category != .videos }, protectedThumbnailNames: [name])
+        XCTAssertEqual(result.removed.count, 1)
+        XCTAssertEqual(result.failures.count, 2)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: video.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: still.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: service.thumbnailsURL!.appendingPathComponent(name).path))
+    }
+
+    func testCancelledScanStopsBeforeEnumerating() async throws {
+        let storage = try XCTUnwrap(service)
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try storage.scan()
+        }
+        do { _ = try await task.value; XCTFail("Expected cancellation") }
+        catch is CancellationError { }
+    }
+
+    func testWidgetReferencesRejectLinksPipesAndOversizedRecordsWithoutReadingTargets() throws {
+        let target = try file(root.appendingPathComponent("target.json"), bytes: 10)
+        let link = root.appendingPathComponent("link.json")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        XCTAssertThrowsError(try SharedDataManager.readStorageReferences(at: link))
+        let pipe = root.appendingPathComponent("pipe.json")
+        XCTAssertEqual(mkfifo(pipe.path, 0o600), 0)
+        XCTAssertThrowsError(try SharedDataManager.readStorageReferences(at: pipe))
+        let large = try file(root.appendingPathComponent("large.json"), bytes: 1_048_577)
+        XCTAssertThrowsError(try SharedDataManager.readStorageReferences(at: large))
+        XCTAssertEqual(try Data(contentsOf: target).count, 10)
+    }
+
+    func testWidgetReferencesDistinguishMissingFromCorruptRecords() throws {
+        let url = root.appendingPathComponent("widget.json")
+        XCTAssertNil(try SharedDataManager.readStorageReferences(at: url).currentThumbnailPath)
+        var shared = SharedWidgetData()
+        shared.currentThumbnailPath = UUID().uuidString + ".jpg"
+        try JSONEncoder().encode(shared).write(to: url)
+        XCTAssertEqual(try SharedDataManager.readStorageReferences(at: url).currentThumbnailPath, shared.currentThumbnailPath)
+        try Data("broken JSON".utf8).write(to: url)
+        XCTAssertThrowsError(try SharedDataManager.readStorageReferences(at: url))
+    }
+
+    func testLibraryRescanKeepsIDsForCollectionAndDisplayReferences() throws {
+        try file(service.libraryURL.appendingPathComponent("keep.mp4"), bytes: 10)
+        let library = WallpaperLibrary(directory: service.libraryURL)
+        let first = library.loadAll(favoritePaths: [])
+        try file(service.libraryURL.appendingPathComponent("new.mp4"), bytes: 20)
+        let rescanned = library.loadAll(favoritePaths: [], existingIDs: Dictionary(uniqueKeysWithValues: first.map { ($0.url.path, $0.id) }))
+        XCTAssertEqual(rescanned.first { $0.url == first[0].url }?.id, first[0].id)
+        XCTAssertEqual(Set(rescanned.map(\.id)).count, 2)
+    }
+
+    func testOnlySuccessfulRemovalClearsActiveAndDisplayReferencesDespiteOldIDs() throws {
+        let deletedURL = try file(service.libraryURL.appendingPathComponent("delete.mp4"), bytes: 10)
+        let keptURL = try file(service.libraryURL.appendingPathComponent("keep.mp4"), bytes: 20)
+        let current = Wallpaper(url: deletedURL)
+        let reloaded = Wallpaper(url: deletedURL)
+        let kept = Wallpaper(url: keptURL)
+        let wallpapers = [reloaded, kept]
+        let displays = ["old-current": current.id, "reloaded": reloaded.id, "keep": kept.id]
+        let before = LibraryRemovalState(result: StorageRemovalResult(failures: ["Permission denied"]),
+                                         wallpapers: wallpapers, current: current, screenAssignments: displays)
+        XCTAssertEqual(before.current?.id, current.id)
+        XCTAssertEqual(before.screenAssignments, displays)
+        XCTAssertEqual(before.wallpapers.count, 2)
+        let item = try XCTUnwrap(service.scan().items.first { $0.url == deletedURL })
+        let after = LibraryRemovalState(result: service.remove([item]), wallpapers: wallpapers,
+                                        current: current, screenAssignments: displays)
+        XCTAssertNil(after.current)
+        XCTAssertEqual(after.wallpapers.map(\.id), [kept.id])
+        XCTAssertEqual(after.screenAssignments, ["keep": kept.id])
+        XCTAssertEqual(after.ids, [current.id, reloaded.id])
+    }
+
+    /// #308: a removed item's Pause After override must not carry over to a
+    /// different video imported later at the same path.
+    func testOnlySuccessfulRemovalPrunesPauseAfterOverrideBeforeReimport() throws {
+        let suite = "LibraryStoragePauseAfter.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = PauseAfterSettings(defaults: defaults)
+        let beach = try file(service.libraryURL.appendingPathComponent("beach.mp4"), bytes: 10)
+        let kept = try file(service.libraryURL.appendingPathComponent("kept.mp4"), bytes: 20)
+        settings.setDefault(seconds: 30)
+        settings.setOverride(seconds: 0, for: beach)
+        settings.setOverride(seconds: 47, for: kept)
+        let wallpapers = [Wallpaper(url: beach), Wallpaper(url: kept)]
+
+        let failed = LibraryRemovalState(result: StorageRemovalResult(failures: ["Permission denied"]),
+                                         wallpapers: wallpapers, current: nil, screenAssignments: [:])
+        settings.removeOverrides(for: failed.urls)
+        XCTAssertNil(settings.preferences.duration(for: beach), "A failed removal keeps Never Pause")
+
+        let item = try XCTUnwrap(service.scan().items.first { $0.url == beach })
+        let removed = LibraryRemovalState(result: service.remove([item]), wallpapers: wallpapers,
+                                          current: nil, screenAssignments: [:])
+        XCTAssertEqual(removed.urls, [beach])
+        settings.removeOverrides(for: removed.urls)
+        XCTAssertEqual(PauseAfterSettings(defaults: defaults).preferences.overrides,
+                       [kept.standardizedFileURL.path: 47], "Only the removed item's override is forgotten")
+
+        try file(beach, bytes: 30)
+        XCTAssertEqual(settings.preferences.duration(for: Wallpaper(url: beach).url), 30,
+                       "A different video at the same path follows the default interval")
+        XCTAssertEqual(settings.preferences.duration(for: kept), 47)
+    }
+
+    func testOnlySuccessfulRemovalPrunesLoopRangeBeforeReimport() throws {
+        let suite = "LibraryStorageLoopRanges.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = PlaybackTrimStore(defaults: defaults)
+        let beach = try file(service.libraryURL.appendingPathComponent("beach.mp4"), bytes: 10)
+        let kept = try file(service.libraryURL.appendingPathComponent("kept.mp4"), bytes: 20)
+        let beachRange = PlaybackTrim(start: .zero, end: CMTime(value: 2, timescale: 1),
+                                      fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: beach)))
+        let keptRange = PlaybackTrim(start: .zero, end: CMTime(value: 3, timescale: 1),
+                                     fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: kept)))
+        try store.setTrim(beachRange, for: beach)
+        try store.setTrim(keptRange, for: kept)
+        let wallpapers = [Wallpaper(url: beach), Wallpaper(url: kept)]
+
+        let failed = LibraryRemovalState(result: StorageRemovalResult(failures: ["Permission denied"]),
+                                         wallpapers: wallpapers, current: nil, screenAssignments: [:])
+        store.removeTrims(for: failed.urls)
+        XCTAssertEqual(store.trim(for: beach), beachRange, "A failed removal keeps the loop range")
+
+        let item = try XCTUnwrap(service.scan().items.first { $0.url == beach })
+        let removed = LibraryRemovalState(result: service.remove([item]), wallpapers: wallpapers,
+                                          current: nil, screenAssignments: [:])
+        XCTAssertEqual(removed.urls, [beach])
+        store.removeTrims(for: removed.urls)
+        let relaunched = PlaybackTrimStore(defaults: defaults)
+        XCTAssertNil(relaunched.trim(for: beach))
+        XCTAssertEqual(relaunched.trim(for: kept), keptRange, "Only the removed item's range is forgotten")
+
+        try file(beach, bytes: 10)
+        XCTAssertNil(store.trim(for: Wallpaper(url: beach).url),
+                     "A different video imported at the same path plays in full")
+    }
+
+    @MainActor
+    func testLateWidgetSyncCannotRestoreDeletedCurrentWallpaperOrFavorites() async throws {
+        let removed = Wallpaper(url: service.libraryURL.appendingPathComponent("deleted.mp4"), isFavorite: true)
+        let sink = StorageWidgetSink()
+        var continuation: CheckedContinuation<SendableImage?, Never>?
+        let sync = WidgetSyncService(writer: { sink }, thumbnail: { _, _ in
+            await withCheckedContinuation { continuation = $0 }
+        })
+        let old = sync.syncAll(current: removed, isPlaying: true, wallpapers: [removed])
+        while continuation == nil { await Task.yield() }
+        await sync.syncAll(current: nil, isPlaying: false, wallpapers: []).value
+        continuation?.resume(returning: nil)
+        await old.value
+        XCTAssertNil(sink.currentID)
+        XCTAssertTrue(sink.favorites.isEmpty)
+        XCTAssertFalse(sink.isPlaying)
+        XCTAssertEqual(sink.currentWrites, 1, "A stale thumbnail task must not republish a deleted wallpaper")
+    }
+
+    @MainActor
+    func testLateFavoriteThumbnailCannotRestoreRemovedFavorites() async {
+        let removed = Wallpaper(url: service.libraryURL.appendingPathComponent("deleted.mp4"), isFavorite: true)
+        let sink = StorageWidgetSink()
+        var continuation: CheckedContinuation<SendableImage?, Never>?
+        let sync = WidgetSyncService(writer: { sink }, thumbnail: { _, _ in
+            await withCheckedContinuation { continuation = $0 }
+        })
+        let old = Task { await sync.syncFavorites([removed]) }
+        while continuation == nil { await Task.yield() }
+        await sync.syncFavorites([])
+        continuation?.resume(returning: nil)
+        await old.value
+        XCTAssertTrue(sink.favorites.isEmpty)
+    }
+
+    @MainActor
+    func testConfirmationRefreshesSizesAndKeepsSelectionUntilConfirmed() async throws {
+        let video = try file(service.libraryURL.appendingPathComponent("copy.mp4"), bytes: 10)
+        let storage = try XCTUnwrap(service)
+        var deletes = 0
+        let model = LibraryStorageModel(scan: { try storage.scan() }, remove: { items in
+            deletes += 1
+            return storage.remove(items)
+        })
+        await model.refresh()
+        model.selection = [video]
+        try file(video, bytes: 200)
+        await model.prepareRemoval(caches: false)
+        let plan = try XCTUnwrap(model.plan)
+        XCTAssertEqual(plan.items.count, 1)
+        XCTAssertEqual(plan.bytes, 200)
+        XCTAssertEqual(deletes, 0)
+        model.plan = nil // Cancel confirmation: no filesystem mutation.
+        XCTAssertTrue(FileManager.default.fileExists(atPath: video.path))
+        await model.prepareRemoval(caches: false)
+        await model.confirmRemoval(try XCTUnwrap(model.plan))
+        XCTAssertEqual(deletes, 1)
+        XCTAssertTrue(model.selection.isEmpty)
+        XCTAssertTrue(model.scan.items.isEmpty)
+    }
+
+    @MainActor
+    func testPartialFailureKeepsFailedSelectionAndReportsIt() async throws {
+        let video = try file(service.libraryURL.appendingPathComponent("copy.mp4"), bytes: 10)
+        let storage = try XCTUnwrap(service)
+        let model = LibraryStorageModel(scan: { try storage.scan() }, remove: { storage.remove($0) })
+        await model.refresh()
+        model.selection = [video]
+        await model.prepareRemoval(caches: false)
+        let plan = try XCTUnwrap(model.plan)
+        try file(video, bytes: 30)
+        await model.confirmRemoval(plan)
+        XCTAssertEqual(model.failures.count, 1)
+        XCTAssertEqual(model.selection, [video])
+        XCTAssertEqual(model.scan.totalBytes, 30)
+    }
+
+    @MainActor
+    func testRepeatedConfirmationCannotStartOverlappingDeletion() async throws {
+        try file(service.libraryURL.appendingPathComponent("copy.mp4"), bytes: 10)
+        let snapshot = try service.scan()
+        var continuation: CheckedContinuation<StorageRemovalResult, Never>?
+        var calls = 0
+        let model = LibraryStorageModel(scan: { snapshot }, remove: { _ in
+            calls += 1
+            return await withCheckedContinuation { continuation = $0 }
+        })
+        let plan = StorageRemovalPlan(items: snapshot.items, isCacheCleanup: false)
+        let operation = Task { await model.confirmRemoval(plan) }
+        while continuation == nil { await Task.yield() }
+        await model.confirmRemoval(plan)
+        XCTAssertEqual(calls, 1)
+        continuation?.resume(returning: StorageRemovalResult())
+        await operation.value
+        XCTAssertFalse(model.isBusy)
+    }
+}
+
+private final class StorageWidgetSink: WidgetDataWriting {
+    var currentID: UUID?
+    var currentWrites = 0
+    var isPlaying = false
+    var favorites: [SharedWidgetWallpaper] = []
+    func updateCurrentWallpaper(id: UUID?, name: String?, thumbnailPath: String?) {
+        currentID = id
+        currentWrites += 1
+    }
+    func updatePlaybackState(isPlaying: Bool) { self.isPlaying = isPlaying }
+    func updateFavoriteWallpapers(_ wallpapers: [SharedWidgetWallpaper]) { favorites = wallpapers }
+    func saveThumbnail(data: Data, for wallpaperID: UUID) -> String? { nil }
+}

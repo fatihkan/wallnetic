@@ -21,11 +21,11 @@ enum PowerPauseOwnership {
     /// Whether a pause should be *claimed* as ours when a power condition
     /// fires.
     ///
-    /// Only claim it if the wallpaper was actually playing. If the user had
-    /// already paused, claiming here would hand us permission to "resume" a
-    /// pause we never caused — which is the v1.4.1 defect, just moved.
-    static func shouldClaimPause(wallpaperIsPlaying: Bool) -> Bool {
-        wallpaperIsPlaying
+    /// Duration, Calm and thermal holds retain playback intent. A manual pause
+    /// revokes it and must never be claimed by a later power event.
+    static func shouldClaimPause(wallpaperIsPlaying: Bool, isPausedAfterDuration: Bool = false,
+                                 hasPlaybackResumeIntent: Bool = false) -> Bool {
+        wallpaperIsPlaying || isPausedAfterDuration || hasPlaybackResumeIntent
     }
 
     /// Whether playback should resume now.

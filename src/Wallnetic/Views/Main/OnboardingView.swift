@@ -1,13 +1,27 @@
 import SwiftUI
 
-/// Cinematic 4-step onboarding. Full-bleed dark stage, animated gradient
-/// orb, staggered typography reveal, custom progress capsule.
 struct OnboardingView: View {
     @Binding var isPresented: Bool
     var onComplete: () -> Void = {}
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        OnboardingTourContent(isPresented: $isPresented, onComplete: onComplete,
+                              reduceMotion: reduceMotion, scenePhase: scenePhase)
+    }
+}
+
+/// Keep the tour's identity stable when environment preferences change so an
+/// ongoing sample/import is not cancelled. Explicit inputs also allow isolated
+/// previews without changing system accessibility preferences.
+struct OnboardingTourContent: View {
+    @Binding var isPresented: Bool
+    var onComplete: () -> Void = {}
+    let reduceMotion: Bool
+    let scenePhase: ScenePhase
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var currentStep = 0
-    @State private var orbPhase: Double = 0
 
     private struct Step {
         let icon: String
@@ -31,7 +45,7 @@ struct OnboardingView: View {
             icon: "tray.and.arrow.down.fill",
             title: "Bring Anything In",
             kicker: "01 · IMPORT",
-            description: "Drop video files, link from the browser, or generate with AI — Wallnetic accepts it all.",
+            description: "Drop video files, download from the built-in browser, or try a wallpaper pack — Wallnetic accepts it all.",
             accent: Color(red: 0.30, green: 0.85, blue: 0.92),
             secondary: Color(red: 0.28, green: 0.55, blue: 1.00)
         ),
@@ -39,7 +53,7 @@ struct OnboardingView: View {
             icon: "rectangle.stack.fill.badge.person.crop",
             title: "Curate Effortlessly",
             kicker: "02 · ORGANIZE",
-            description: "Collections, favorites, color filters and now smart auto-tags via local Ollama Vision.",
+            description: "Favorites, color filters and search keep your library in order.",
             accent: Color(red: 1.00, green: 0.45, blue: 0.72),
             secondary: Color(red: 0.95, green: 0.65, blue: 0.30)
         ),
@@ -47,13 +61,20 @@ struct OnboardingView: View {
             icon: "display.2",
             title: "Every Display, Its Own Mood",
             kicker: "03 · MULTI-MONITOR",
-            description: "Assign distinct wallpapers per screen and per Space. Pause on battery, fullscreen, or schedule.",
+            description: "Choose a wallpaper for each display. Space recovery saves choices to apply manually to all displays and Spaces; automatic per-Space switching is unavailable.",
             accent: Color(red: 0.40, green: 0.95, blue: 0.55),
             secondary: Color(red: 0.20, green: 0.85, blue: 0.85)
         ),
     ]
 
     private var step: Step { steps[currentStep] }
+    private var animatesArtwork: Bool { !reduceMotion && scenePhase == .active }
+
+    private func artworkPhase(at date: Date) -> Double {
+        guard animatesArtwork else { return 0 }
+        let seconds = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 32)
+        return (1 - cos(seconds * .pi / 16)) / 2
+    }
 
     var body: some View {
         ZStack {
@@ -62,16 +83,22 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
                 orb
-                    .frame(height: 220)
+                    .frame(height: currentStep == 0 ? 100 : 220)
+                    .scaleEffect(currentStep == 0 ? 0.48 : 1)
 
                 stepCopy
-                    .padding(.top, 32)
+                    .padding(.top, currentStep == 0 ? 8 : 32)
+
+                if currentStep == 0 {
+                    OnboardingQuickStartView()
+                        .padding(.top, 14)
+                }
 
                 Spacer(minLength: 0)
 
                 controls
                     .padding(.horizontal, 40)
-                    .padding(.bottom, 36)
+                    .padding(.bottom, currentStep == 0 ? 20 : 36)
             }
         }
         .frame(width: 640, height: 520)
@@ -79,9 +106,10 @@ struct OnboardingView: View {
         .clipped()
         .modifier(OnboardingSheetSizing())
         .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
-        .onAppear {
-            withAnimation(.linear(duration: 16).repeatForever(autoreverses: true)) {
-                orbPhase = 1
+        .transaction { transaction in
+            if reduceMotion {
+                transaction.animation = nil
+                transaction.disablesAnimations = true
             }
         }
     }
@@ -89,13 +117,20 @@ struct OnboardingView: View {
     // MARK: - Backdrop
 
     private var backdrop: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !animatesArtwork)) { context in
+            backdrop(phase: artworkPhase(at: context.date))
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func backdrop(phase: Double) -> some View {
         ZStack {
             Surface.stageFloor
 
             // Drifting accent radial
             RadialGradient(
                 colors: [step.accent.opacity(0.32), .clear],
-                center: UnitPoint(x: 0.2 + orbPhase * 0.15, y: 0.18),
+                center: UnitPoint(x: 0.2 + phase * 0.15, y: 0.18),
                 startRadius: 8,
                 endRadius: 420
             )
@@ -103,7 +138,7 @@ struct OnboardingView: View {
             // Secondary radial bottom-right
             RadialGradient(
                 colors: [step.secondary.opacity(0.22), .clear],
-                center: UnitPoint(x: 0.85, y: 0.85 - orbPhase * 0.1),
+                center: UnitPoint(x: 0.85, y: 0.85 - phase * 0.1),
                 startRadius: 8,
                 endRadius: 380
             )
@@ -121,12 +156,19 @@ struct OnboardingView: View {
                 endRadius: 550
             )
         }
-        .animation(.easeInOut(duration: 0.8), value: currentStep)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.8), value: currentStep)
     }
 
     // MARK: - Orb (animated icon stage)
 
     private var orb: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !animatesArtwork)) { context in
+            orb(phase: artworkPhase(at: context.date))
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func orb(phase: Double) -> some View {
         ZStack {
             // Outer rings
             ForEach(0..<3) { i in
@@ -139,7 +181,7 @@ struct OnboardingView: View {
                         lineWidth: 0.5
                     )
                     .frame(width: 160 + CGFloat(i) * 36, height: 160 + CGFloat(i) * 36)
-                    .scaleEffect(1 + (orbPhase * 0.04) * Double(i + 1))
+                    .scaleEffect(1 + (phase * 0.04) * Double(i + 1))
                     .opacity(0.6 - Double(i) * 0.18)
             }
 
@@ -155,7 +197,7 @@ struct OnboardingView: View {
                 )
                 .frame(width: 220, height: 220)
                 .blur(radius: 8)
-                .scaleEffect(1 + orbPhase * 0.03)
+                .scaleEffect(1 + phase * 0.03)
 
             // Core disk
             Circle()
@@ -176,10 +218,10 @@ struct OnboardingView: View {
                 .font(.system(size: 36, weight: .semibold))
                 .foregroundColor(.white)
                 .shadow(color: .black.opacity(0.45), radius: 6, y: 2)
-                .transition(.scale.combined(with: .opacity))
+                .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
                 .id("icon-\(currentStep)")
         }
-        .animation(.spring(response: 0.55, dampingFraction: 0.78), value: currentStep)
+        .animation(reduceMotion ? nil : .spring(response: 0.55, dampingFraction: 0.78), value: currentStep)
     }
 
     // MARK: - Step copy
@@ -196,6 +238,7 @@ struct OnboardingView: View {
                 .foregroundColor(.primary)
                 .tracking(-0.4)
                 .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
 
             Text(step.description)
                 .font(.system(size: 13))
@@ -207,16 +250,16 @@ struct OnboardingView: View {
         }
         .padding(.horizontal, 40)
         .id("copy-\(currentStep)")
-        .transition(.asymmetric(
+        .transition(reduceMotion ? .identity : .asymmetric(
             insertion: .offset(y: 12).combined(with: .opacity),
             removal: .offset(y: -8).combined(with: .opacity)
         ))
-        .animation(.spring(response: 0.55, dampingFraction: 0.82), value: currentStep)
+        .animation(reduceMotion ? nil : .spring(response: 0.55, dampingFraction: 0.82), value: currentStep)
     }
 
     private func finish() {
         onComplete()
-        withAnimation { isPresented = false }
+        withAnimation(reduceMotion ? nil : .default) { isPresented = false }
     }
 
     // MARK: - Controls (progress + buttons)
@@ -225,6 +268,11 @@ struct OnboardingView: View {
         VStack(spacing: 24) {
             // Capsule progress
             HStack(spacing: 6) {
+                Text("Step \(currentStep + 1) of \(steps.count)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 4)
+                    .accessibilityLabel("Welcome tour, step \(currentStep + 1) of \(steps.count)")
                 ForEach(0..<steps.count, id: \.self) { i in
                     Capsule()
                         .fill(i == currentStep ? AnyShapeStyle(LinearGradient(
@@ -233,14 +281,15 @@ struct OnboardingView: View {
                             )) : AnyShapeStyle(Color.primary.opacity(0.18)))
                         .frame(width: i == currentStep ? 28 : 12, height: 4)
                         .shadow(color: i == currentStep ? step.accent.opacity(0.6) : .clear, radius: 4)
-                        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: currentStep)
+                        .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.75), value: currentStep)
+                        .accessibilityHidden(true)
                 }
             }
 
             HStack {
                 if currentStep > 0 {
                     WallneticButton.cancel("Back") {
-                        withAnimation { currentStep -= 1 }
+                        withAnimation(reduceMotion ? nil : .default) { currentStep -= 1 }
                     }
                 } else {
                     WallneticButton.cancel("Skip") {
@@ -252,7 +301,7 @@ struct OnboardingView: View {
 
                 if currentStep < steps.count - 1 {
                     WallneticButton.primary("Next", icon: "arrow.right", accent: step.accent) {
-                        withAnimation { currentStep += 1 }
+                        withAnimation(reduceMotion ? nil : .default) { currentStep += 1 }
                     }
                 } else {
                     WallneticButton.primary("Enter Wallnetic", icon: "sparkles", accent: step.accent) {

@@ -5,7 +5,235 @@ All notable changes to Wallnetic are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] — Unreleased
+
+### Added
+- Playback profiles in Settings > Playback: Quality, Balanced and Battery Saver.
+  With the Metal renderer they show the wallpaper at up to 60, 30 or 15 frames
+  per second at normal video speed, and the menu bar names the current profile.
+  A change applies at once to every display, including displays connected later,
+  and never pauses, resumes or reloads playback. The AVPlayer renderer keeps the
+  video's own frame rate in every profile.
+- Pause After stops wallpaper motion after a chosen time and keeps the last
+  frame on screen: Settings > Playback > Pause After, off by default. Set a
+  default interval (presets from 15 seconds to 15 minutes, or a custom time from
+  1 second to 24 hours), and give any Library wallpaper its own interval, Never
+  Pause or Use Default. Each display times its own wallpaper from that video's
+  first frame, and its status then reads Playback timer finished. Play, a
+  wallpaper change or an automatic resume, for example after unlock, starts a
+  new interval. Removing a wallpaper from the Library also removes its own
+  interval.
+- Replay when the desktop becomes clear, an optional Pause After setting that is
+  off by default, plays a timed-out wallpaper again after app windows have
+  covered and then uncovered its display; detection takes a few seconds. It
+  never overrides a manual Pause, Calm Mode or a power pause, and it looks only
+  at where app windows are, with no extra permission. Covering the desktop never
+  pauses playback.
+- The menu bar lists each display's playback status: Playing, Loading
+  wallpaper…, Waiting for video, paused with its reason (for example Paused by
+  you, Paused on battery, Paused for a fullscreen app or Playback timer
+  finished), Wallpaper unavailable or No wallpaper selected. A display's submenu
+  explains the status and any other active pause conditions, and Settings >
+  Display shows the same status for each display. When a video is missing or
+  cannot be played, Retry wallpaper reloads it on that display only and keeps
+  any pause. Play is unavailable while a condition such as battery power, a
+  fullscreen app or Calm Mode holds playback.
+- Calm Mode holds wallpaper motion on the current frame. Turn it on from the
+  menu bar, the Playback menu, Settings > Playback, Command–Shift–M while
+  Wallnetic is active, or Shortcuts on macOS 14 or later. Turning it off resumes
+  playback only when nothing else holds it, and Calm Mode turns off when
+  Wallnetic quits.
+- Optional thermal-aware playback (Settings > Playback > Pause wallpaper when
+  the Mac gets hot, off by default) pauses the wallpaper after sustained heat,
+  or at once when the Mac is critically hot, and releases its hold after a
+  minute of cooling. Manual pauses, power restrictions and finished Pause After
+  timers stay in effect.
+- The welcome tour's first page can apply a wallpaper right away: Try a sample
+  uses a short video included with the app, and Import my video… uses one of
+  your own. Both apply to all displays by default; choosing one display switches
+  to Different per display and leaves the other displays as they were. The
+  sample works offline and becomes an ordinary Library copy you can delete, and
+  imported videos are copied without changing the originals. Manual pause and
+  power settings still apply. Show welcome tour and sample in Settings > General
+  opens the tour again without resetting preferences.
+- Settings > Storage shows how much space Library videos, generated still images
+  for the system wallpaper and caches use. Library videos can be sorted by size
+  or name, selected one by one or all at once, and removed after a confirmation
+  that shows how many files and how much space they take. Clear unused caches
+  removes only widget thumbnails that nothing uses. Only Wallnetic's own Library
+  copies are listed, original files are never touched, and anything that could
+  not be removed is listed with the reason.
+- Create Optimized Copy… in the Library and Home context menus makes a separate,
+  silent copy of a video, with resolution and frame rate capped by the Compact,
+  Balanced or HEVC preset. HEVC is offered only on Macs that support it.
+  Playback speed and length stay the same, and the original is never changed.
+  Nothing is converted until Create copy, and a cancelled or failed conversion
+  adds nothing to Library. You can preview both videos and compare their file
+  sizes before choosing one; a copy can be larger than the original, and the
+  result says so. If checking the video fails, Check video again tries once
+  more. HDR, wide-color, transparent and anamorphic videos are not supported.
+  The copy is named after the original, and Use Original Video in its context
+  menu switches back.
+- Optional wallpaper packs in Discover > Browse Packs, starting with Soft
+  Motion: two original, silent, MIT-licensed animations. Previews, sizes,
+  credits and the license show before anything is downloaded. Downloads come
+  from Wallnetic's GitHub repository only when you choose Download Pack, can be
+  cancelled and retried, are checked before they are added to Library, and never
+  change the current wallpaper. Remove Copies deletes only pack files that are
+  unchanged. Refresh Catalog looks for new packs only when you choose it.
+- Daily wallpaper schedules on a timeline in Settings > Schedule, replacing the
+  four fixed time-of-day slots. Turn on Daily wallpaper schedule and add your
+  own ranges. Drag a range to move it, drag its handles to resize it in
+  five-minute steps, or choose Edit to type exact times and pick a wallpaper.
+  Ranges can cross midnight but cannot overlap. In a gap, or when a range's
+  wallpaper is missing, the current wallpaper stays. The schedule follows the
+  Mac's local time and time zone, and after sleep or a relaunch it switches to
+  the range for the current time without replaying missed changes.
+- Playlists can give each wallpaper its own duration, from one second to 24
+  hours: turn on Set a duration for each item in Settings > Playlist. The list
+  starts as a copy of the current source at its interval, and you can add,
+  reorder, edit or remove items. Missing items are marked and skipped. Turning
+  the option off returns to Whole Library, Favorites or Collection rotation, and
+  both setups are kept.
+- Trim…, in the Library and Home context menus, loops a chosen part of a video
+  without changing or re-encoding the original. Start and End move frame by
+  frame with the keyboard and VoiceOver, a loop is at least one second long,
+  both renderers loop only the chosen part, and an edit never resumes a paused
+  wallpaper. If the range no longer fits the file, the card shows Trim not
+  applied and the full video plays. With Sync video frame to system wallpaper
+  on, the system wallpaper still comes from inside the range, and optimized
+  copies keep the range when it fits the copy.
+- An optional clock, with an optional date, on each display's live wallpaper:
+  Settings > Effects > Desktop Clock, off by default, with a choice of position
+  and size. It sits below desktop icons, is in English with the region's date
+  and time format and the 12/24-hour setting (limits in docs/DESKTOP_CLOCK.md),
+  and updates at each minute change, also over a paused wallpaper. It hides
+  while displays sleep, the session is locked or a screen saver runs, and it
+  never changes playback. Wallpaper effects do not alter it, and the lock screen
+  does not show it.
+
+### Changed
+- Balanced is the default playback profile, so with the Metal renderer, which is
+  the default, videos recorded above 30 frames per second play less smoothly
+  than in 1.4.2 until you choose Quality in Settings > Playback.
+- A manual Pause now lasts until you press Play: choosing a wallpaper, Next
+  Wallpaper, a playlist or a schedule no longer resumes playback. With the Metal
+  renderer, a wallpaper chosen while paused appears when you press Play.
+- Any change that puts one wallpaper on all displays now also sets Settings >
+  Display > Wallpaper Mode to Same on all displays, so that wallpaper stays on
+  every display after a relaunch and on displays connected later. This covers
+  Set as Wallpaper, Next Wallpaper, favorites in the menu bar and widgets,
+  Shortcuts, schedules, playlists and saved Space choices. Per-display choices
+  are kept and come back when you choose Different per display again.
+- Choosing a wallpaper yourself, for all displays or for one, including Next
+  Wallpaper and applying a saved Space choice, or changing Wallpaper Mode, now
+  holds an active daily schedule or playlist for 30 minutes. After that, the
+  schedule returns to the current range's wallpaper and a playlist to the item
+  that is due. In 1.4.2 the schedule kept a manual choice until the next time
+  slot, and a playlist replaced it at its next interval. The hold survives a
+  relaunch, and Resume schedule now or Resume playlist now ends it early.
+- Playlists, in every mode, now keep time across pauses, sleep and relaunches.
+  After a relaunch the playlist continues with the wallpaper that is due instead
+  of restarting its interval, and editing the playlist starts a new cycle.
+  Shuffle plays each wallpaper once per cycle instead of picking at random each
+  time, and the menu bar item Shuffle Wallpapers is now Start Playlist or Stop
+  Playlist.
+- Upgrading keeps your time-of-day schedule: the four slots become ranges named
+  Morning, Afternoon, Evening and Night with the same start times and
+  wallpapers, and a schedule that was on stays on. If the saved start times were
+  invalid or out of order, the default times (06:00, 12:00, 17:00 and 21:00) are
+  used, the wallpapers are kept, and Settings > Schedule shows a notice.
+  Playlist settings carry over unchanged.
+- Settings > Spaces now keeps a list of saved wallpaper choices, and its toggle,
+  formerly Different wallpaper per Space, is now Enable Space recovery. Add a
+  choice with Add saved choice… or with Save for Space Recovery in a wallpaper's
+  context menu; saving never changes the wallpaper. Edit renames a choice or
+  picks another Library video, and a choice whose video is missing stays listed
+  until you replace it. After a relaunch, a Space or display change, sleep or a
+  user switch, each choice shows Needs reassignment.
+- Delete in the Library and Home context menus now asks for confirmation,
+  showing the file's size, and reports a file it could not remove. A deleted
+  wallpaper stops on every display that shows it and leaves its collections.
+  Per-display choices, saved Space choices, playlist items and schedule ranges
+  that used it become unassigned. The original file it was imported from is
+  kept.
+- Wallpapers downloaded in Discover's browser are named after the video or link
+  title or the page title, with the file name as a fallback; Library previously
+  showed a generated name. The same name appears in the found-videos list,
+  download progress and Library, and the Library file is saved under it, for
+  example Ocean Sunset.mp4. Earlier downloads keep their names, and Rename still
+  changes the title.
+
+### Removed
+- Automatic per-Space wallpaper switching was removed, because individual
+  desktops cannot be reliably identified. Wallnetic no longer changes the
+  wallpaper when you move to another Space, and Set for This Space is gone from
+  the wallpaper menu. Wallpapers you assigned to Spaces are kept in Settings >
+  Spaces as saved choices (Saved choice 1, Saved choice 2 and so on) and are
+  never applied automatically. To use one, make sure Enable Space recovery is on
+  in Settings > Spaces and choose Apply next to it; it sets that wallpaper on
+  all displays and Spaces (docs/SPACE_RECOVERY.md).
+- Settings > Notifications is gone: no feature in this version sends a
+  notification, so the page only asked for a permission.
+- Settings > Playlist no longer offers Collection as a source, because
+  collections cannot be created in this version; a playlist that already uses
+  one keeps it.
+- The Transition section is gone from Settings > Effects; it only said that
+  wallpaper changes are instant, which they still are.
+
+### Fixed
+- HDR videos no longer look washed out with the Metal renderer; Wallnetic
+  converts them to standard dynamic range before drawing. SDR videos and the
+  AVPlayer renderer are unchanged.
+- Per-display wallpapers now come back after a restart and stay assigned when
+  Library files are added or removed; before, every display could come back with
+  the last wallpaper. Choosing one wallpaper for all displays after per-display
+  choices now updates every display, and switching back to Different per display
+  no longer leaves the old video on a display whose wallpaper was deleted.
+  Switching to Different per display keeps what each display shows as its own
+  choice, and after a restart a display without its own choice shows the last
+  wallpaper. Per-display choices made in 1.4.2 are not carried over: after
+  upgrading, every display starts with the last wallpaper and Wallpaper Mode
+  reads Same on all displays, so choose per-display wallpapers again.
+- With the Metal renderer, switching between videos of different shapes, such as
+  landscape and portrait, no longer shows the previous video's last frame
+  stretched while the next one loads, including while the wallpaper is paused.
+- The Metal renderer no longer risks a crash when a display is disconnected, or
+  Wallnetic quits, while a frame is still being drawn.
+- With Sync video frame to system wallpaper on (Settings > Spaces), a display
+  connected later, and each display after you switch to Different per display,
+  now gets a still of the video it shows, and two displays showing the same
+  video both get it. Cleaning up old stills no longer deletes one that a display
+  is using.
+- Settings > Display: with Different per display, each display has a Choose
+  wallpaper… button, and each wallpaper in the picker is a button. Both work
+  with the keyboard and VoiceOver, which names the display, the full wallpaper
+  title and whether it is selected. Clicking a display's row no longer opens the
+  picker.
+- The welcome tour follows Reduce Motion, including changes made while it is
+  open: the artwork stops moving and pages change without animation. VoiceOver
+  reads each page title as a heading and the current step, shown as Step 1 of 4,
+  and skips decorative artwork. The last page no longer promises per-Space
+  wallpapers; it describes per-display wallpapers and saved Space choices that
+  are applied manually.
+- Open Wallnetic, in the menu bar and in the Dynamic Island, now brings the main
+  window forward, restores it if it was minimized, or opens it again if it was
+  closed. Before, it could bring a different window, such as a panel, to the
+  front instead.
+- Widgets show the time in the Mac's 12- or 24-hour setting instead of always
+  24-hour, and dates in English with the region's formats. Their minute now
+  changes with the menu-bar clock instead of up to a minute later, and a long
+  12-hour time shrinks to stay on one line.
+- Corrected public descriptions: ordinary windows covering the desktop do not
+  pause playback, wallpaper changes are instant, saved Space choices are not
+  applied automatically, and the audio visualizer, disabled since 1.3.1, no
+  longer appears as a feature. The privacy policy now covers Create from Photos
+  and lists every permission Wallnetic can request.
+
+### Not in this release
+- a standalone screen saver is in development and is not distributed. Neither
+  the App Store nor the DMG release includes or installs it
+  (docs/STANDALONE_SCREEN_SAVER.md).
 
 ## [1.4.2] — 2026-09-24
 

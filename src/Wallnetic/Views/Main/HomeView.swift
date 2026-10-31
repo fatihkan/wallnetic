@@ -357,7 +357,7 @@ struct HeroBannerCard: View {
         .task(id: wallpaper.id) {
             thumbnail = nil
             isLoadingThumbnail = true
-            let image = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))
+            let image = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))?.image
             guard !Task.isCancelled else { return }
             thumbnail = image
             isLoadingThumbnail = false
@@ -399,7 +399,7 @@ struct CarouselSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 10) {
                     ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                        CarouselCard(wallpaper: wallpaper)
+                        CarouselCard(wallpaper: wallpaper, allowsTrim: true)
                             .staggered(index: index)
                     }
                 }
@@ -415,11 +415,16 @@ struct CarouselSection: View {
 struct CarouselCard: View {
     let wallpaper: Wallpaper
     var onApply: ((Wallpaper) -> Void)? = nil
+    /// Trim is offered on Home's carousel, not in Explore's 3D carousel,
+    /// which shares this card.
+    var allowsTrim = false
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var thumbnail: NSImage?
     @State private var isLoadingThumbnail = true
     @State private var isHovering = false
+    @State private var optimizingWallpaper: Wallpaper?
+    @State private var trimmingWallpaper: Wallpaper?
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText = ""
     @State private var pointer = CGPoint(x: 0.5, y: 0.5)
@@ -585,11 +590,14 @@ struct CarouselCard: View {
         .animation(reduceMotion ? nil : .spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
         .onHover { h in isHovering = h }
         .contextMenu {
-            WallpaperContextMenu(wallpaper: wallpaper, onRename: {
+            WallpaperContextMenu(wallpaper: wallpaper, onOptimize: { optimizingWallpaper = wallpaper },
+                                 onTrim: allowsTrim ? { trimmingWallpaper = wallpaper } : nil, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
             })
         }
+        .sheet(item: $optimizingWallpaper) { VideoOptimizationSheet(wallpaper: $0) }
+        .sheet(item: $trimmingWallpaper) { VideoTrimSheet(wallpaper: $0) }
         .sheet(item: $renamingWallpaper) { wp in
             RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
                 wallpaperManager.renameWallpaper(wp, to: newTitle)
@@ -599,7 +607,7 @@ struct CarouselCard: View {
         .task(id: wallpaper.id) {
             thumbnail = nil
             isLoadingThumbnail = true
-            let image = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))
+            let image = await wallpaper.generateThumbnail(size: CGSize(width: 480, height: 270))?.image
             guard !Task.isCancelled else { return }
             thumbnail = image
             isLoadingThumbnail = false

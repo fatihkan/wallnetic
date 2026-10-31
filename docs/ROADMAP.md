@@ -156,13 +156,14 @@ Bu doküman Wallnetic projesinin tüm geliştirme aşamalarını, task'larını 
 | 2.4.3 | Retina/HiDPI desteği | P1 | ⬜ |
 | 2.4.4 | Upscaling (düşük çözünürlük → yüksek) | P2 | ⬜ |
 
-### 2.5 Lock Screen Desteği (macOS 14+)
+### 2.5 Screen Saver & Lock Screen Feasibility
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 2.5.1 | Lock Screen API araştırması | P1 | ⬜ |
-| 2.5.2 | Lock Screen wallpaper ayarlama | P1 | ⬜ |
-| 2.5.3 | Desktop + Lock Screen sync | P2 | ⬜ |
+| 2.5.1 | Supported API research ([#259](https://github.com/fatihkan/wallnetic/issues/259)); [findings](SCREENSAVER_FEASIBILITY.md) | P1 | ✅ |
+| 2.5.2 | Live lock-screen playback: no supported implementation path identified | P1 | ❌ |
+| 2.5.3 | System wallpaper still-frame sync; OS controls lock-screen presentation | P2 | ✅ |
+| 2.5.4 | Standalone bundled-video screen saver candidate ([#274](https://github.com/fatihkan/wallnetic/issues/274)); [implementation and release gates](STANDALONE_SCREEN_SAVER.md) | P2 | 🚧 |
 
 ---
 
@@ -194,9 +195,11 @@ Bu doküman Wallnetic projesinin tüm geliştirme aşamalarını, task'larını 
 
 | # | Task | Öncelik | Durum |
 |---|------|---------|-------|
-| 3.3.1 | Video trimming/cropping | P1 | ⬜ |
-| 3.3.2 | Video loop noktası ayarlama | P1 | ⬜ |
+| 3.3.1 | Video trimming: loop aralığı, orijinal dosya değişmeden (`dev`, #309, [LOOP_RANGE](LOOP_RANGE.md)) | P1 | ✅ |
+| 3.3.2 | Video loop noktası ayarlama: Start/End kare kare (`dev`, #309) | P1 | ✅ |
 | 3.3.3 | Video export (paylaşım için) | P2 | ⬜ |
+| 3.3.4 | Cropping/framing: ekran başına zoom + anchor (trim'den ayrı özellik) | P2 | ⬜ |
+| 3.3.5 | Trim devamı: crossfade'li kesintisiz döngü kopyası, kırpılmış thumbnail ve süreler, import sırasında kırpma | P2 | ⬜ |
 
 ---
 

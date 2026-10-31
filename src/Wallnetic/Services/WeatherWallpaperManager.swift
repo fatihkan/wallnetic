@@ -108,6 +108,12 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
         }
     }
 
+    func removeWallpaperPaths(_ paths: Set<String>) {
+        for condition in WeatherCondition.allCases where paths.contains(wallpaperPath(for: condition)) {
+            setWallpaperPath("", for: condition)
+        }
+    }
+
     // MARK: - Weather Fetching
 
     private func fetchWeather() {
@@ -130,6 +136,7 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
         guard condition != currentCondition else { return }
 
         currentCondition = condition
+        guard !WallpaperAutomation.takesPriorityOverOtherModes else { return }
         let path = wallpaperPath(for: condition)
         guard !path.isEmpty else { return }
 

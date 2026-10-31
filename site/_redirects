@@ -1,0 +1,7 @@
+# The privacy policy has one source, in the repository. These stay
+# temporary so the site can host its own pages later.
+/privacy                https://github.com/fatihkan/wallnetic/blob/main/PRIVACY.md  302
+/privacy/               https://github.com/fatihkan/wallnetic/blob/main/PRIVACY.md  302
+/support/issues         https://github.com/fatihkan/wallnetic/issues  302
+/app-store              https://apps.apple.com/app/id6760347328  302
+/github                 https://github.com/fatihkan/wallnetic  302

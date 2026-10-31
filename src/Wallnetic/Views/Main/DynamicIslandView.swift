@@ -403,9 +403,8 @@ struct DynamicIslandView: View {
     }
 
     private func openMainWindow() {
-        openWindow(id: "main")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApp.activate(ignoringOtherApps: true)
+        WindowManager.shared.showMainWindow {
+            openWindow(id: "main")
         }
     }
 
@@ -416,7 +415,7 @@ struct DynamicIslandView: View {
             let next = await wallpaperManager.currentWallpaper?.generateThumbnail(
                 size: CGSize(width: 112, height: 112)
             )
-            await MainActor.run { thumbnail = next }
+            await MainActor.run { thumbnail = next?.image }
         }
     }
 

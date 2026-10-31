@@ -47,21 +47,20 @@ struct WallpaperTimelineProvider: TimelineProvider {
         let currentWallpaper = loadCurrentWallpaper(from: sharedData)
         let favorites = loadFavorites(from: sharedData)
 
-        // Generate entries for the next 60 minutes (one per minute for clock updates)
-        var entries: [WallpaperEntry] = []
+        // One entry per minute for the next hour, on minute boundaries.
         let now = Date()
-
-        for minuteOffset in 0..<60 {
-            let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: now) ?? now
-            entries.append(WallpaperEntry(
-                date: entryDate,
+        let dates = WidgetClockFormat.timelineDates(from: now, count: 60)
+        let entries = dates.map { date in
+            WallpaperEntry(
+                date: date,
                 currentWallpaper: currentWallpaper,
                 isPlaying: sharedData.isPlaying,
                 favorites: favorites
-            ))
+            )
         }
 
-        let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now
+        let nextUpdate = WidgetClockFormat.reloadDate(after: dates)
+            ?? Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now
         completion(Timeline(entries: entries, policy: .after(nextUpdate)))
     }
 

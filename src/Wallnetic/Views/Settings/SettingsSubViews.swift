@@ -119,6 +119,7 @@ struct GeneralSettingsView: View {
     @State private var launchAtLoginEnabled = false
     @State private var loginItemNeedsApproval = false
     @State private var loginItemError: String?
+    @State private var showingOnboarding = false
     @AppStorage("hideDockIcon") private var hideDockIcon = false
     @AppStorage("island.enabled") private var islandEnabled = false
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = false
@@ -162,6 +163,11 @@ struct GeneralSettingsView: View {
                 Toggle("Global Hotkeys", isOn: $globalHotkeysEnabled)
                     .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
             }
+            Section("Getting Started") {
+                Button("Show welcome tour and sample") { showingOnboarding = true }
+                Text("Try the included wallpaper or import a video. No account required.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Library") {
                 LabeledContent("Location") {
                     Text("~/Library/Application Support/Wallnetic")
@@ -178,6 +184,9 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showingOnboarding) {
+            OnboardingView(isPresented: $showingOnboarding)
+        }
         .onAppear { refreshLoginItemStatus() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshLoginItemStatus()
@@ -214,6 +223,7 @@ struct GeneralSettingsView: View {
 
 struct PlaybackSettingsView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @ObservedObject private var performance = PerformanceManager.shared
     @AppStorage(BatteryPromptService.alwaysPlayKey) private var alwaysPlayOnBattery: Bool = false
 
     var body: some View {
@@ -232,7 +242,23 @@ struct PlaybackSettingsView: View {
                 }
                 .help("Clears saved battery-mode choice so the prompt appears again.")
             }
+            PauseAfterSettingsView()
+            CalmPlaybackSettingsView(settings: .shared)
             Section("Performance") {
+                Picker("Playback profile", selection: $performance.mode) {
+                    ForEach(PerformanceManager.PerformanceMode.allCases, id: \.self) { mode in
+                        Label(mode.rawValue, systemImage: mode.icon).tag(mode)
+                    }
+                }
+                Text(performance.mode.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Applies immediately to all Metal displays at normal video speed. Resolution stays unchanged. Energy savings depend on the video and your Mac; decoding may continue at the source frame rate.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("AVPlayer keeps the video's original frame rate in every profile. Use Metal to apply frame-rate limits.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 Toggle("Use Metal Renderer", isOn: $wallpaperManager.useMetalRenderer)
                     .help("Metal provides better GPU acceleration. Restart app after changing.")
                 Text("Metal renderer uses GPU for video playback (recommended)")

@@ -37,6 +37,15 @@ final class PowerPauseOwnershipTests: XCTestCase {
 
     // MARK: - The behaviour v1.4.1 was built for, which must still hold
 
+    func testDurationPauseRetainsIntentForUnlockWithoutClaimingManualPause() {
+        let claimed = PowerPauseOwnership.shouldClaimPause(wallpaperIsPlaying: false, isPausedAfterDuration: true)
+        XCTAssertTrue(claimed)
+        XCTAssertTrue(PowerPauseOwnership.shouldResume(
+            pausedByPower: claimed, shouldBePaused: false, respectAutoResume: false, autoResumeEnabled: false
+        ))
+        XCTAssertFalse(PowerPauseOwnership.shouldClaimPause(wallpaperIsPlaying: false, isPausedAfterDuration: false))
+    }
+
     /// A lock-induced pause resumes on unlock even with auto-resume off —
     /// otherwise the wallpaper is dead after every unlock, which is the whole
     /// reason the bypass exists.

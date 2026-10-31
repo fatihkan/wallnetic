@@ -1,0 +1,262 @@
+import XCTest
+import AppKit
+import CoreMedia
+@testable import Wallnetic
+
+@MainActor
+final class VideoOptimizationModelTests: XCTestCase {
+    private var root: URL!
+    private var library: OptimizationLibrarySpy!
+    private var exporter: OptimizationExporterSpy!
+    private var source: Wallpaper!
+    private var result: OptimizedVideoResult!
+
+    override func setUpWithError() throws {
+        root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let original = root.appendingPathComponent("Original.mp4"), copy = root.appendingPathComponent("Copy.mp4")
+        try Data([1]).write(to: original)
+        try Data([2]).write(to: copy)
+        source = Wallpaper(url: original)
+        result = OptimizedVideoResult(url: copy, sourceBytes: 10, outputBytes: 5, duration: 1, size: CGSize(width: 640, height: 360), frameRate: 15)
+        library = OptimizationLibrarySpy()
+        library.wallpapers = [source, Wallpaper(url: copy)]
+        exporter = OptimizationExporterSpy(result: result)
+    }
+    override func tearDownWithError() throws {
+        if let root, FileManager.default.fileExists(atPath: root.path) { try FileManager.default.removeItem(at: root) }
+    }
+
+    func testOptInConversionReportsProgressAndDoesNotApplyAutomatically() async throws {
+        var refreshed = 0
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library, refreshLibrary: { refreshed += 1 })
+        XCTAssertNil(model.start(), "Inspect before enabling the action")
+        await model.load().value
+        XCTAssertEqual(exporter.exports, 0)
+        XCTAssertTrue(model.canStart)
+        model.preset = .compact
+        let task = try XCTUnwrap(model.start())
+        XCTAssertTrue(model.isWorking)
+        XCTAssertNil(model.start(), "Double clicks must not start two jobs")
+        await task.value
+        XCTAssertEqual(exporter.exports, 1)
+        XCTAssertEqual(exporter.preset, .compact)
+        XCTAssertEqual(model.progress, 1)
+        XCTAssertNotNil(model.result)
+        XCTAssertNil(library.currentWallpaper)
+        XCTAssertEqual(refreshed, 1)
+        XCTAssertFalse(model.isWorking)
+        XCTAssertFalse(model.canStart)
+        model.apply(result.url)
+        XCTAssertEqual(library.currentWallpaper?.url, result.url)
+        model.apply(source.url)
+        XCTAssertEqual(library.currentWallpaper?.url, source.url)
+        XCTAssertEqual(library.userInitiated, [true, true])
+    }
+    /// #309: a copy of a trimmed video loops the same part, on the copy's own
+    /// frames and with its own fingerprint; the original's range is unchanged.
+    func testCopyOfATrimmedVideoInheritsItsLoopRange() async throws {
+        let suite = "VideoOptimizationTrims.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let trims = PlaybackTrimStore(defaults: defaults)
+        try await TrimFixture.writeVideo(to: source.url, frames: 30)
+        try await TrimFixture.writeVideo(to: result.url, times: (0..<24).map { CMTime(value: Int64($0), timescale: 8) },
+                                         end: CMTime(value: 24, timescale: 8))
+        let sourceTrim = PlaybackTrim(start: CMTime(value: 11, timescale: 10), end: CMTime(value: 23, timescale: 10),
+                                      fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: source.url)))
+        try trims.setTrim(sourceTrim, for: source.url)
+
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library, trims: trims)
+        await model.load().value
+        let task = try XCTUnwrap(model.start())
+        await task.value
+        let copyTrim = try XCTUnwrap(trims.trim(for: result.url))
+        XCTAssertEqual(copyTrim.start, CMTime(value: 9, timescale: 8))
+        XCTAssertEqual(copyTrim.end, CMTime(value: 19, timescale: 8))
+        XCTAssertEqual(copyTrim.fingerprint, VideoFileFingerprint(fileAt: result.url))
+        XCTAssertEqual(trims.trim(for: source.url), sourceTrim)
+        XCTAssertEqual(model.message, "Copy added to Library with the same loop range. Your original is unchanged.")
+        try trims.setTrim(nil, for: result.url)
+        XCTAssertEqual(trims.trim(for: source.url), sourceTrim, "Each item's range is edited on its own")
+    }
+
+    /// A range that spans the copy loops exactly that part, so the copy needs
+    /// no range of its own and is not reported as having lost one.
+    func testCopySpannedByTheRangeIsNotReportedAsLost() async throws {
+        let suite = "VideoOptimizationWholeCopy.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let trims = PlaybackTrimStore(defaults: defaults)
+        try await TrimFixture.writeVideo(to: source.url, frames: 30)
+        try await TrimFixture.writeVideo(to: result.url, times: (0..<24).map { CMTime(value: Int64($0), timescale: 8) },
+                                         end: CMTime(value: 24, timescale: 8))
+        try trims.setTrim(PlaybackTrim(start: .zero, end: CMTime(value: 29, timescale: 10),
+                                       fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: source.url))),
+                          for: source.url)
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library, trims: trims)
+        await model.load().value
+        try await XCTUnwrap(model.start()).value
+        XCTAssertNil(trims.trim(for: result.url))
+        XCTAssertEqual(model.message, "Copy added to Library. Your original is unchanged.")
+    }
+
+    func testCopyThatCannotKeepTheRangeSaysSo() async throws {
+        let suite = "VideoOptimizationLostRange.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let trims = PlaybackTrimStore(defaults: defaults)
+        try await TrimFixture.writeVideo(to: source.url, frames: 30)
+        try trims.setTrim(PlaybackTrim(start: CMTime(value: 11, timescale: 10), end: CMTime(value: 23, timescale: 10),
+                                       fingerprint: try XCTUnwrap(VideoFileFingerprint(fileAt: source.url))),
+                          for: source.url)
+        // The copy file from setUp is not a readable video.
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library, trims: trims)
+        await model.load().value
+        try await XCTUnwrap(model.start()).value
+        XCTAssertNil(trims.trim(for: result.url))
+        XCTAssertEqual(model.message,
+                       "Copy added to Library. Its loop range could not be kept, so the copy plays in full. Your original is unchanged.")
+    }
+
+    func testUnsupportedPresetAndInspectionFailureStayVisible() async {
+        exporter.unavailable = [.hevc: "No hardware HEVC"]
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await model.load().value
+        model.preset = .hevc
+        XCTAssertEqual(model.unavailableReason, "No hardware HEVC")
+        XCTAssertNil(model.start())
+        XCTAssertFalse(model.canStart)
+        model.preset = .compact
+        XCTAssertTrue(model.canStart)
+        exporter.inspectionError = VideoOptimizationError.unsupported("HDR unsupported")
+        let bad = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await bad.load().value
+        XCTAssertEqual(bad.error, "HDR unsupported")
+        XCTAssertFalse(bad.canStart)
+    }
+    func testCancellationWaitsForCleanupAndAllowsRetry() async throws {
+        exporter.waitUntilCancelled = true
+        let started = expectation(description: "Conversion entered")
+        exporter.started = { started.fulfill() }
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await model.load().value
+        let task = try XCTUnwrap(model.start())
+        await fulfillment(of: [started], timeout: 2)
+        model.cancel()
+        XCTAssertTrue(model.isCancelling)
+        XCTAssertTrue(model.isWorking, "Keep the job busy until the exporter has cleaned up")
+        await task.value
+        XCTAssertTrue(exporter.cleanedUp)
+        XCTAssertFalse(model.isWorking)
+        XCTAssertFalse(model.isCancelling)
+        XCTAssertTrue(model.message?.contains("Cancelled") == true)
+        XCTAssertNil(model.error)
+        XCTAssertNil(model.result)
+        XCTAssertTrue(model.canStart)
+        exporter.waitUntilCancelled = false
+        exporter.started = nil
+        await model.start()?.value
+        XCTAssertNotNil(model.result)
+    }
+    func testFailureDoesNotApplyAndMissingSourceCannotBeRestored() async throws {
+        exporter.conversionError = VideoOptimizationError.diskSpace(1000)
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await model.load().value
+        await model.start()?.value
+        XCTAssertTrue(model.error?.contains("disk space") == true)
+        XCTAssertFalse(model.isWorking)
+        XCTAssertNil(model.result)
+        XCTAssertNil(library.currentWallpaper)
+        try FileManager.default.removeItem(at: source.url)
+        model.apply(source.url)
+        XCTAssertTrue(model.error?.contains("no longer") == true)
+        XCTAssertNil(library.currentWallpaper)
+    }
+
+    func testReinspectionFailureInvalidatesEarlierApprovalAndCanBeRetried() async {
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await model.load().value
+        XCTAssertTrue(model.canStart)
+
+        exporter.inspectionError = VideoOptimizationError.sourceChanged
+        let failedInspection = model.load()
+        XCTAssertTrue(model.isLoading)
+        XCTAssertNil(model.info, "A new check invalidates the previous source inspection")
+        XCTAssertFalse(model.canStart)
+        await failedInspection.value
+        XCTAssertNotNil(model.error)
+        XCTAssertFalse(model.canStart, "A failed recheck must not enable conversion using stale approval")
+        exporter.inspectionError = nil
+        await model.load().value
+        XCTAssertNil(model.error)
+        XCTAssertTrue(model.canStart)
+        XCTAssertEqual(exporter.exports, 0, "Rechecking is not consent to start conversion")
+        XCTAssertNil(library.currentWallpaper)
+    }
+
+    func testAvailableCopyRecoversFromMissingOriginalWithoutKeepingStaleError() async throws {
+        let model = VideoOptimizationModel(source: source, optimizer: exporter, library: library)
+        await model.load().value
+        await model.start()?.value
+        try FileManager.default.removeItem(at: source.url)
+        model.apply(source.url)
+        XCTAssertNotNil(model.error)
+        XCTAssertNil(library.currentWallpaper)
+        XCTAssertNil(model.message, "A failed selection must not retain a success message")
+
+        model.apply(result.url)
+        XCTAssertEqual(library.currentWallpaper?.url, result.url)
+        XCTAssertEqual(library.userInitiated, [true])
+        XCTAssertNil(model.error, "The missing-original error must clear after selecting an available copy")
+        XCTAssertTrue(model.message?.contains("selected") == true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: source.url.path))
+
+        model.apply(source.url)
+        XCTAssertNotNil(model.error)
+        XCTAssertNil(model.message)
+        XCTAssertEqual(library.currentWallpaper?.url, result.url, "A failed apply preserves the previous selection")
+        XCTAssertEqual(library.userInitiated, [true])
+    }
+}
+
+@MainActor
+private final class OptimizationExporterSpy: VideoOptimizing {
+    var exports = 0
+    var preset: VideoOptimizationPreset?
+    var unavailable: [VideoOptimizationPreset: String] = [:]
+    var inspectionError: Error?
+    var conversionError: Error?
+    var waitUntilCancelled = false
+    var cleanedUp = false
+    var started: (() -> Void)?
+    let result: OptimizedVideoResult
+    init(result: OptimizedVideoResult) { self.result = result }
+    func inspect(_ source: URL) async throws -> VideoOptimizationInfo {
+        if let inspectionError { throw inspectionError }
+        return VideoOptimizationInfo(duration: 1, size: CGSize(width: 640, height: 360), frameRate: 60, sourceBytes: 10, unavailable: unavailable, assumesSDR: false)
+    }
+    func optimize(_ source: URL, preset: VideoOptimizationPreset, progress: @escaping (Double) -> Void) async throws -> OptimizedVideoResult {
+        exports += 1
+        self.preset = preset
+        progress(0.5)
+        started?()
+        defer { cleanedUp = true }
+        if waitUntilCancelled { try await Task.sleep(nanoseconds: 30_000_000_000) }
+        if let conversionError { throw conversionError }
+        return result
+    }
+}
+
+private final class OptimizationLibrarySpy: WallpaperReading, WallpaperWriting {
+    var wallpapers: [Wallpaper] = []
+    var currentWallpaper: Wallpaper?
+    var isPlaying = false
+    var userInitiated: [Bool] = []
+    func wallpaper(for screen: NSScreen) -> Wallpaper? { currentWallpaper }
+    func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool) { currentWallpaper = wallpaper; self.userInitiated.append(userInitiated) }
+    func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen, userInitiated: Bool) { setWallpaper(wallpaper, userInitiated: userInitiated) }
+    func togglePlayback() { isPlaying.toggle() }
+    func cycleToNextWallpaper() { }
+    func importVideo(from sourceURL: URL) async throws -> Wallpaper { Wallpaper(url: sourceURL) }
+}

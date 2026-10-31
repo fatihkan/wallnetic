@@ -3,29 +3,11 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Environment(\.openWindow) var openWindow
+    @ObservedObject private var performance = PerformanceManager.shared
 
     private func openMainWindow() {
-        // Check if main window already exists
-        let existingWindow = NSApp.windows.first { window in
-            // Skip menu bar windows and settings
-            guard window.level == .normal,
-                  !window.title.isEmpty || window.contentView != nil else {
-                return false
-            }
-            // Check for our main window
-            return window.styleMask.contains(.borderless) == false ||
-                   window.frame.width >= 800
-        }
-
-        if let window = existingWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-        } else {
-            // Open new window using WindowGroup ID
+        WindowManager.shared.showMainWindow {
             openWindow(id: "main")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                NSApp.activate(ignoringOtherApps: true)
-            }
         }
     }
 
@@ -46,6 +28,24 @@ struct MenuBarView: View {
             }
 
             // Playback controls
+            ForEach(wallpaperManager.displayPlaybackStatuses) { status in
+                Menu {
+                    Text(status.title)
+                    if !status.detail.isEmpty { Text(status.detail) }
+                    if status.canRetry {
+                        Button("Retry wallpaper") { wallpaperManager.retryWallpaper(on: status.id) }
+                            .accessibilityLabel("Retry wallpaper on \(status.displayName)")
+                    }
+                } label: {
+                    Label("\(status.displayName): \(status.title)", systemImage: status.symbol)
+                }
+                .accessibilityLabel("\(status.displayName): \(status.title)")
+            }
+            Text("Playback profile: \(performance.mode.rawValue)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
             Button {
                 wallpaperManager.togglePlayback()
             } label: {
@@ -55,6 +55,10 @@ struct MenuBarView: View {
                 )
             }
             .keyboardShortcut("p", modifiers: .command)
+            .disabled(!wallpaperManager.isPlaying &&
+                wallpaperManager.displayPlaybackStatuses.contains(where: \.blocksResume))
+
+            CalmModeButton(settings: .shared)
 
             Button {
                 wallpaperManager.cycleToNextWallpaper()
@@ -69,7 +73,7 @@ struct MenuBarView: View {
                 PlaylistManager.shared.toggle()
             } label: {
                 Label(
-                    PlaylistManager.shared.isEnabled ? "Stop Shuffle" : "Shuffle Wallpapers",
+                    PlaylistManager.shared.isEnabled ? "Stop Playlist" : "Start Playlist",
                     systemImage: PlaylistManager.shared.isEnabled ? "shuffle.circle.fill" : "shuffle"
                 )
             }

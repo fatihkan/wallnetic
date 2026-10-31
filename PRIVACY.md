@@ -27,6 +27,8 @@ Your imported wallpaper videos are stored in:
 ```
 ~/Library/Application Support/Wallnetic/Library
 ```
+In the App Store version this folder is inside Wallnetic's app container,
+`~/Library/Containers/com.wallnetic.app/Data/`.
 
 ### App Preferences
 Your settings are stored using macOS standard preferences (UserDefaults):
@@ -48,17 +50,31 @@ Video thumbnails are cached locally for faster loading.
 
 Local imports and playback do not require an internet connection. Wallnetic connects to the internet only when you use one of the optional features below. It does not send your library contents, preferences or any identifiers to us, and we do not operate servers that receive data from the app.
 
+### Optional wallpaper packs
+
+Opening the pack catalog uses bundled or locally saved previews without making a network request. Choosing **Refresh Catalog** contacts `raw.githubusercontent.com` to retrieve the Wallnetic catalog. Choosing **Download Pack / Download / Retry** contacts the same host to download the selected media from the public `fatihkan/wallnetic` repository.
+
+These requests disclose ordinary connection information to GitHub, including your IP address, requested URL and request time. The pack feature sends no library contents, account details or tracking identifiers, uses no cookies or stored credentials, and performs no background catalog polling. Saved catalogs, download ownership records and downloaded copies remain on your Mac. GitHub operates the host under its [privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
+
 ### Discover (in-app browser)
 
-Opening a wallpaper website in Discover loads that site in Wallnetic's built-in browser, as any web browser would. The site receives ordinary connection information, such as your IP address and the pages you request, and it can store cookies and other website data in Wallnetic's app container on your Mac. Videos you choose to download are saved to your Wallnetic library. Each website has its own privacy policy.
+Opening a wallpaper website in Discover loads that site in Wallnetic's built-in browser, as any web browser would. The site receives ordinary connection information, such as your IP address and the pages you request, and it can store cookies and other website data on your Mac: inside Wallnetic's app container in the App Store version, and in the `com.wallnetic.app` folders of `~/Library/WebKit`, `~/Library/HTTPStorages` and `~/Library/Caches` in the direct-download version. Videos you choose to download are saved to your Wallnetic library. Each website has its own privacy policy.
 
 ### Importing from a link
 
 If you open a `wallnetic://import` link and confirm the import, Wallnetic downloads the file from the HTTPS address in the link. That server receives ordinary connection information, such as your IP address and the requested address.
 
-### Other optional connections
+### Create from Photos
 
-Opening external wallpaper sources or using optional network/AI integrations contacts the websites or providers you choose. Those services have their own privacy policies and may receive the requests and inputs needed for the selected action. You can continue using local wallpapers without using these features.
+Create from Photos asks for access to your Photos library, shows thumbnails of the albums you browse, and builds a slideshow wallpaper on your Mac from the photos you select. For photos stored in iCloud Photos, macOS may download them from iCloud for Wallnetic. The slideshow is saved to your Wallnetic library; nothing is uploaded.
+
+### App Store
+
+**Rate Wallnetic** opens Wallnetic's App Store page, and macOS may show Apple's rating prompt. Apple handles these under its own privacy policy.
+
+### No other connections
+
+This version has no other network features, such as AI services or update checks. You can keep using local wallpapers without any of the features above.
 
 ## App Permissions
 
@@ -67,22 +83,23 @@ Wallnetic requests the following macOS permissions:
 | Permission | Purpose |
 |------------|---------|
 | File Access | To import and play video files you select |
-| Screen Access | To display wallpapers on your desktop |
+| Photos | Optional - to build a slideshow from photos you select (Create from Photos) |
+| Accessibility | Optional - only if you turn on global keyboard shortcuts, so they work while another app is active; Wallnetic looks only for its own shortcuts |
 | Login Items | Optional - to launch at system startup |
 
-These permissions are used solely for the app's core functionality.
+Showing wallpapers on your desktop needs no permission. These permissions are used solely for the features listed.
 
 ## Data Security
 
 Your data is protected by macOS security features:
 
-- **App Sandbox:** Wallnetic runs in a sandboxed environment, isolated from other apps
+- **App Sandbox:** the App Store version runs in a sandboxed environment, isolated from other apps. The direct-download version from GitHub is ad-hoc signed and not sandboxed
 - **Secure Storage:** All data is stored using macOS secure storage mechanisms
 - **Local Library:** Wallnetic does not upload your imported videos or library metadata
 
 ## Third-Party Services
 
-Wallnetic does not include analytics platforms, advertising networks or tracking tools. Websites you open in Discover and other optional providers are separate services with their own privacy policies.
+Optional wallpaper packs use GitHub hosting. Wallnetic does not include analytics platforms, advertising networks or tracking tools. Websites you open in Discover, iCloud Photos and the App Store are separate services with their own privacy policies.
 
 ## Children's Privacy
 
@@ -92,8 +109,8 @@ Wallnetic does not collect any information from anyone, including children under
 
 Since we don't collect any data, there is no personal data to access, modify, or delete. You can:
 
-- Delete all local data by uninstalling the app
-- Clear your wallpaper library through the app
+- Remove wallpapers in the Library or in Settings > Storage
+- Delete all local data: deleting the app does not remove it. Also delete `~/Library/Containers/com.wallnetic.app` and `~/Library/Group Containers/group.com.wallnetic.shared` (App Store version), or `~/Library/Application Support/Wallnetic`, `~/Library/Preferences/com.wallnetic.app.plist`, the `com.wallnetic.app` folders in `~/Library/WebKit`, `~/Library/HTTPStorages` and `~/Library/Caches`, and the group container (direct-download version)
 - Remove app permissions in System Settings > Privacy & Security
 
 ## Changes to This Policy

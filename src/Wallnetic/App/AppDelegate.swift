@@ -20,6 +20,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Wire up PlaybackDelegate — direct calls instead of notification relay (#170)
         WallpaperManager.shared.playbackDelegate = self
+        desktopWindowController?.onPlaybackStateChanged = { playing, heldByDuration in
+            WallpaperManager.shared.isPlaying = playing
+            WallpaperManager.shared.isPausedAfterDuration = heldByDuration
+            NotificationCenter.default.post(name: .playbackStateDidChange, object: playing)
+            WidgetSyncService.shared.syncPlaybackState(isPlaying: playing)
+        }
+        desktopWindowController?.onDisplayStatusesChanged = { statuses in
+            WallpaperManager.shared.displayPlaybackStatuses = statuses
+        }
+        desktopWindowController?.refreshPlaybackStatuses()
 
         // System wallpaper sync (lock screen / Mission Control still frame).
         // Registered before the delayed wallpaper restore so the restore
@@ -28,6 +38,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Setup power manager with callbacks
         setupPowerManager()
+
+        // Restore automation after WallpaperManager's delayed launch restore.
+        // Unit tests use isolated managers and must not run user automation.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                WallpaperAutomation.restore()
+            }
+        }
 
         // Setup display change observer
         setupDisplayObserver()
@@ -174,6 +192,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    // The wallpaper's only resign-active hook; the controller does not observe
+    // it as well. Resign-active, not every app switch: didActivateApplication
+    // fires while the user works in a windowed app, and poking the renderer
+    // then (like the old 4 Hz pulse) paused/unpaused Metal in a loop.
     func applicationWillResignActive(_ notification: Notification) {
         desktopWindowController?.maintainPlayback()
     }
@@ -185,27 +207,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showMainWindow() {
-        if NSApp.activationPolicy() == .accessory {
-            NSApp.setActivationPolicy(.regular)
-        }
-
-        let existingWindow = NSApp.windows.first { window in
-            guard window.level == .normal,
-                  !window.title.isEmpty || window.contentView != nil else {
-                return false
-            }
-            return !window.styleMask.contains(.borderless) || window.frame.width >= 800
-        }
-
-        if let window = existingWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-        } else {
-            WindowManager.shared.openMainWindow?()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        }
+        WindowManager.shared.showMainWindow()
 
         // #228: re-hiding the Dock icon (.accessory) is handled centrally by the
         // NSWindow.willCloseNotification observer once the last normal window
@@ -234,18 +236,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // the common path, and a widget stuck on "playing" reads as a bug.
         powerManager?.onShouldPausePlayback = { [weak self] in
             self?.desktopWindowController?.pause()
-            DispatchQueue.main.async {
-                WallpaperManager.shared.isPlaying = false
-                WidgetSyncService.shared.syncPlaybackState(isPlaying: WallpaperManager.shared.isPlaying)
-            }
         }
 
         powerManager?.onShouldResumePlayback = { [weak self] in
             self?.desktopWindowController?.play()
-            DispatchQueue.main.async {
-                WallpaperManager.shared.isPlaying = true
-                WidgetSyncService.shared.syncPlaybackState(isPlaying: WallpaperManager.shared.isPlaying)
-            }
         }
     }
 
@@ -269,6 +263,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - PlaybackDelegate (#170)
 
 extension AppDelegate: PlaybackDelegate {
+    func playbackClearWallpaper(url: URL) {
+        desktopWindowController?.clearWallpaper(url: url)
+    }
+    func playbackRetry(on displayID: UInt32) {
+        desktopWindowController?.retryWallpaper(on: displayID)
+    }
+    var playbackIsPlaying: Bool { desktopWindowController?.isCurrentlyPlaying ?? false }
+    func playbackWallpaperURL(on displayID: UInt32) -> URL? { desktopWindowController?.wallpaperURL(on: displayID) }
+    var playbackHasResumeIntent: Bool { desktopWindowController?.hasPlaybackResumeIntent ?? false }
     func playbackSetWallpaper(url: URL) {
         Log.app.debug("PlaybackDelegate: setWallpaper \(url.lastPathComponent, privacy: .public)")
         desktopWindowController?.setWallpaper(url: url)
@@ -291,12 +294,12 @@ extension AppDelegate: PlaybackDelegate {
             Log.app.info("Play request swallowed — a power condition is active")
             return false
         }
-        desktopWindowController?.play()
-        return true
+        desktopWindowController?.play(explicit: true)
+        return playbackIsPlaying
     }
 
     func playbackPause() {
-        desktopWindowController?.pause()
+        desktopWindowController?.pause(manual: true)
     }
 
     func playbackApplyScreenWallpapers() {
@@ -304,6 +307,8 @@ extension AppDelegate: PlaybackDelegate {
         for screen in NSScreen.screens {
             if let wallpaper = WallpaperManager.shared.wallpaper(for: screen) {
                 desktopWindowController?.setWallpaper(url: wallpaper.url, for: screen)
+            } else if let id = screen.displayID {
+                desktopWindowController?.clearWallpaper(on: id)
             }
         }
         if !(powerManager?.shouldBePaused ?? false) {

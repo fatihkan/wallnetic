@@ -27,7 +27,7 @@ final class WallpaperLibrary {
     // MARK: - Load
 
     /// Scans the library directory and returns raw wallpaper objects.
-    func loadAll(favoritePaths: Set<String>) -> [Wallpaper] {
+    func loadAll(favoritePaths: Set<String>, existingIDs: [String: UUID] = [:]) -> [Wallpaper] {
         guard let contents = try? fileManager.contentsOfDirectory(
             at: libraryURL,
             includingPropertiesForKeys: [.contentTypeKey],
@@ -36,14 +36,14 @@ final class WallpaperLibrary {
 
         return contents.compactMap { url in
             guard isVideoFile(url) else { return nil }
-            return Wallpaper(url: url, isFavorite: favoritePaths.contains(url.path))
+            return Wallpaper(url: url, isFavorite: favoritePaths.contains(url.path), id: existingIDs[url.path] ?? UUID())
         }
     }
 
     // MARK: - Import
 
     /// Imports a video file into the library. Returns the new library-local URL.
-    func importFile(from sourceURL: URL, existingWallpapers: [Wallpaper]) async throws -> URL {
+    func importFile(from sourceURL: URL, existingWallpapers: [Wallpaper], preferredName: String? = nil) async throws -> URL {
         guard sourceURL.isFileURL,
               VideoFormatConverter.allSupportedFormats.contains(sourceURL.pathExtension.lowercased()) else {
             throw WallpaperImportError.unsupportedFile
@@ -51,12 +51,14 @@ final class WallpaperLibrary {
         let values = try sourceURL.resourceValues(forKeys: [.isRegularFileKey])
         guard values.isRegularFile == true else { throw WallpaperImportError.unsupportedFile }
 
-        // Duplicate detection by exact file path component + byte size. Name
-        // matching uses the on-disk filename (not the display name, which can
-        // be customized by the user) to avoid false positives.
+        let preferredStem = Self.filenameStem(for: preferredName)
+
+        // Duplicate detection for ordinary local imports by filename + size. A
+        // download title is not an identity: different downloads can share it.
+        // Local matching still uses the on-disk name rather than a user rename.
         let sourceSize = (try? fileManager.attributesOfItem(atPath: sourceURL.path))?[.size] as? Int64 ?? 0
         let sourceFilename = sourceURL.deletingPathExtension().lastPathComponent
-        if let dup = existingWallpapers.first(where: {
+        if preferredStem == nil, let dup = existingWallpapers.first(where: {
             $0.fileSize == sourceSize
             && $0.url.deletingPathExtension().lastPathComponent == sourceFilename
         }) {
@@ -71,6 +73,23 @@ final class WallpaperLibrary {
         defer {
             if importURL != sourceURL {
                 try? fileManager.removeItem(at: importURL)
+            }
+        }
+
+        if let preferredStem {
+            // FileManager's copy refuses existing destinations. Retry a name
+            // collision with a readable stem plus UUID; never replace a file,
+            // directory or symlink, and never derive the extension from a title.
+            let ext = importURL.pathExtension.lowercased()
+            let destination = libraryURL.appendingPathComponent(preferredStem + "." + ext)
+            do {
+                try fileManager.copyItem(at: importURL, to: destination)
+                return destination
+            } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileWriteFileExistsError {
+                let uniqueName = preferredStem + " (" + UUID().uuidString + ")." + ext
+                let uniqueURL = libraryURL.appendingPathComponent(uniqueName)
+                try fileManager.copyItem(at: importURL, to: uniqueURL)
+                return uniqueURL
             }
         }
 
@@ -89,10 +108,26 @@ final class WallpaperLibrary {
         }
     }
 
-    // MARK: - Remove
-
-    func removeFile(at url: URL) {
-        try? fileManager.removeItem(at: url)
+    /// Derive one bounded filename component; the full title remains metadata.
+    /// Reserve room for the collision suffix and the trusted media extension.
+    private static func filenameStem(for title: String?) -> String? {
+        guard let title = WallpaperMetadataStore.normalizedImportedTitle(title) else { return nil }
+        let reserved = CharacterSet(charactersIn: "/\\:*?\"<>|")
+        let replaced = title.components(separatedBy: reserved).joined(separator: " ")
+        let trimmed = replaced.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            .trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+        var stem = ""
+        var bytes = 0
+        for character in trimmed {
+            let text = String(character)
+            // Account for decomposed Unicode as well as the input encoding.
+            let count = max(text.utf8.count, text.decomposedStringWithCanonicalMapping.utf8.count)
+            guard bytes + count <= 180 else { break }
+            stem.append(character)
+            bytes += count
+        }
+        stem = stem.trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+        return stem.isEmpty ? nil : stem
     }
 
     // MARK: - File Watching

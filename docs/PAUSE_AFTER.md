@@ -1,0 +1,103 @@
+# Pause After
+
+Settings > Playback > Pause After lets wallpaper motion stop after an interval
+while keeping the last valid frame on the desktop. It is disabled by default.
+Presets are 15 seconds, 30 seconds, 1 minute, 5 minutes, and 15 minutes. Custom
+intervals accept 1–86,400 seconds.
+
+Choose a library item in Wallpaper override to change only that file:
+
+- **Use Default** follows the global interval, including future changes.
+- **Never Pause** overrides the global interval and allows continuous motion.
+- A preset or custom interval overrides the global duration.
+
+Preferences persist locally, with overrides keyed by the standardized file path
+like other library metadata. Changing a display title does not lose its override.
+Removing an item from the Library also removes its override, so a different video
+imported later under the same file name follows the default interval. A failed
+removal keeps it.
+
+## Playback rules
+
+| Event | Behavior |
+| --- | --- |
+| First valid frame of the selected video available | Begin the interval while playback is allowed. An older retained frame cannot start a replacement video's interval. Loading or failed selections do not run the duration timer. |
+| Duration expires | Pause that display's renderer and retain its frame. Stop its watchdog recovery; stop the duration timer, watchdog, and playback activity when all displays are held. |
+| Explicit Play | Start fresh intervals on all displays, subject to power restrictions. |
+| Explicit Pause | Hold all displays until explicit Play; wallpaper rotation, preference edits, unlock, and desktop-clear replay cannot override it. |
+| Wallpaper changes | Reset only the affected display(s). Reapplying the same file does not silently extend a running interval. |
+| Power, lock, sleep, screen saver, fullscreen restriction | Suspend playback. Existing power-manager ownership and automatic-resume preferences still decide whether resuming is allowed. |
+| Allowed automatic resume | Start fresh intervals; a duration pause retains intent, so unlock can replay it. A manual pause does not retain that permission. |
+| Effective duration changes | Start a fresh interval on affected displays when allowed. Never Pause removes the limit. Unaffected overrides keep their deadlines. |
+| Display removed/added | Remove its old session; a newly assigned renderer gets a fresh interval and its wallpaper's effective setting. |
+
+The timer uses monotonic uptime and checks every 250 ms while needed; busy run
+loops can delay expiration. It never seeks, changes video speed, discards the
+retained frame, or writes modified videos. The menu bar explains a duration pause
+when every active wallpaper has timed out; the widget reflects paused playback.
+Renderer status events enable the timer once the current load has a valid frame;
+retries receive a fresh interval after their own frame arrives. Other displays'
+deadlines and manual, Calm Mode, thermal and power pause ownership stay intact.
+
+## Optional desktop-clear replay
+
+Replay when the desktop becomes clear is off by default. When enabled, a utility
+queue samples on-screen regular app-window geometry every two seconds. Two
+consecutive covered samples followed by two consecutive clear samples constitute
+one transition. Only an expired display is replayed. An initially clear desktop
+does not replay continuously, and another display's timer is not reset.
+
+This detects regular layer-zero windows intersecting each display, rather than
+all possible floating panels or system overlays. It does not read window titles,
+capture screens, request Accessibility/Screen Recording access, or use private
+APIs. Failed/incomplete metadata is not treated as permission to replay. Sampling
+stops when disabled, manually/power paused, or no displayed wallpaper has a limit.
+
+Each display sample is confirmed clear, confirmed covered, or unknown. Missing
+or invalid window layer, opacity or bounds cannot establish a clear desktop.
+Invalid display geometry is also unknown. A valid regular window intersecting a
+display is sufficient to confirm coverage; known transparent, non-regular and
+zero-area windows do not cover it. Unknown samples discard that display's
+transition history. Two new covered samples followed by two clear samples are
+required before replay, so a metadata gap cannot manufacture a transition.
+Other displays keep their own valid histories.
+
+## Validation
+
+The desktop-clear metadata fix for [#295](https://github.com/fatihkan/wallnetic/issues/295)
+passed 53 focused duration, desktop-clear, playback-status and native-renderer
+tests in the development-signed, sandbox-enabled XCTest host on Apple M4 /
+macOS 26.6.2. Six new regressions cover incomplete metadata, non-finite values,
+display geometry, interrupted sample sequences, independent display histories
+and prevention of unintended replay after duration expiry. The original
+classifier reproduced the unwanted replay in the isolated renderer test.
+Existing manual/power/Calm/thermal ownership and native AVPlayer/Metal tests
+also passed. XCTest's additional permissions and synthetic window data do not
+replace production UI or physical lifecycle acceptance.
+
+The replacement-readiness fix for [#278](https://github.com/fatihkan/wallnetic/issues/278)
+passed 47 focused duration, playback-status and native-renderer tests on Apple M4 /
+macOS 26.6.2. An isolated injected-clock reproduction expires a still-loading
+replacement before the fix; after the fix, it expires exactly 15 simulated seconds
+after the replacement's first frame. Regression coverage includes independent
+display deadlines, failure/retry, Metal and AVPlayer, and existing pause ownership.
+These checks do not replace the physical-device validation below.
+
+### Original feature validation
+
+The full local suite passed 195 tests on Apple M4 / macOS 26.6.2. This includes
+duration-boundary and lifecycle tests, independent display deadlines, persistence,
+manual pause precedence, overlapping power restrictions, and desktop-clear edge
+stability. Real AVPlayer and Metal renderer tests verified a retained frame, a
+stopped playback clock after expiry, and explicit resume without changing speed.
+
+A separate smoke run on two connected monitors used different videos with 1 s
+and 2 s intervals. At 1.2 s only the first player had paused; at 2.2 s both had
+paused with valid frames. MTKView draw counts stopped advancing while held.
+Replaying one display left the other paused, automatic play did not override
+manual Pause, and explicit Play resumed both.
+
+The universal Release build passed for arm64 and x86_64. Physical Intel playback,
+macOS 13, actual sleep/wake, lock/unlock, display hot-plug, and desktop-clear UX
+remain manual release checks. Synthetic lifecycle events are not substitutes for
+those hardware checks; issue #249 remains open for release validation.

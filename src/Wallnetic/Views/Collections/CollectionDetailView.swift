@@ -180,7 +180,7 @@ struct CollectionWallpaperCard: View {
         .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
         .cornerRadius(12)
         .task {
-            thumbnail = await wallpaper.generateThumbnail()
+            thumbnail = await wallpaper.generateThumbnail()?.image
         }
     }
 }

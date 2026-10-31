@@ -8,8 +8,8 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "1.4.2"
-    CURRENT_PROJECT_VERSION: "11"
+    MARKETING_VERSION: "1.5.0"
+    CURRENT_PROJECT_VERSION: "12"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.9"
@@ -28,7 +28,9 @@ targets:
       - path: Engine
       - path: Utils
       - path: Resources
-      - path: ../WallneticWidget/Models/SharedWidgetModels.swift
+      # The widget's models are shared with the app. Both targets list the
+      # folder on its own, so Xcode keeps it in one group.
+      - path: ../WallneticWidget/Models
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.app
@@ -69,6 +71,8 @@ targets:
     platform: macOS
     sources:
       - path: ../WallneticWidget
+        excludes: ["Models"]
+      - path: ../WallneticWidget/Models
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.app.WallneticWidget
@@ -87,6 +91,15 @@ targets:
     platform: macOS
     sources:
       - path: Tests
+      # Test fixtures belong in the test bundle. Reading the checkout at runtime
+      # can trigger removable-volume privacy prompts on a developer's Mac.
+      - path: ../../catalog/media
+        includes: ["*.mp4"]
+        buildPhase: resources
+      - path: ../../catalog/wallpaper-packs-v1.json
+        buildPhase: resources
+      - path: ../../LICENSE
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wallnetic.tests

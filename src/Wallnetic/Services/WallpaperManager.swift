@@ -61,6 +61,8 @@ actor ImportGate {
 
 /// Receives playback commands directly instead of through NotificationCenter.
 protocol PlaybackDelegate: AnyObject {
+    var playbackIsPlaying: Bool { get }
+    var playbackHasResumeIntent: Bool { get }
     func playbackSetWallpaper(url: URL)
     func playbackSetWallpaper(url: URL, for screen: NSScreen)
     /// - Returns: whether playback actually started. A power condition (screen
@@ -68,7 +70,11 @@ protocol PlaybackDelegate: AnyObject {
     ///   callers must not report "Playing" over a desktop that isn't.
     @discardableResult func playbackPlay() -> Bool
     func playbackPause()
+    func playbackRetry(on displayID: UInt32)
+    func playbackClearWallpaper(url: URL)
     func playbackApplyScreenWallpapers()
+    /// The video a display plays now, or nil when it shows none.
+    func playbackWallpaperURL(on displayID: UInt32) -> URL?
 }
 
 /// Central coordinator for wallpaper state and settings.
@@ -96,6 +102,12 @@ class WallpaperManager: ObservableObject {
     }
     @Published var currentWallpaper: Wallpaper?
     @Published var isPlaying: Bool = false
+    @Published var isPausedAfterDuration: Bool = false
+    @Published var displayPlaybackStatuses: [DisplayPlaybackStatus] = []
+
+    func retryWallpaper(on displayID: UInt32) {
+        playbackDelegate?.playbackRetry(on: displayID)
+    }
     @Published var wallpaperMode: WallpaperMode = .same
 
     /// Maps wallpaper.id → index in `wallpapers`. Rebuilt on every
@@ -119,6 +131,7 @@ class WallpaperManager: ObservableObject {
 
     /// Per-screen wallpaper assignments (screenName -> wallpaperID)
     @Published var screenWallpapers: [String: UUID] = [:]
+    private let displayAssignments = DisplayWallpaperAssignments()
 
     // MARK: - Settings
 
@@ -129,8 +142,6 @@ class WallpaperManager: ObservableObject {
     @AppStorage("wallpaperModeRaw") private var wallpaperModeRaw: String = "same"
     @AppStorage("screenWallpapersData") private var screenWallpapersData: Data = Data()
     @AppStorage("useMetalRenderer") var useMetalRenderer: Bool = true
-    @AppStorage("transitionStyle") var transitionStyle: String = "crossfade"
-    @AppStorage("transitionDuration") var transitionDuration: Double = 0.5
     @AppStorage("lastWallpaperURL") private var lastWallpaperURL: String = ""
 
     // MARK: - Delegates & Services
@@ -142,6 +153,13 @@ class WallpaperManager: ObservableObject {
     private let metadata = WallpaperMetadataStore.shared
     private let widgetSync = WidgetSyncService.shared
     private let cache = WallpaperMetadataCache.shared
+    private var isRemovingStorage = false
+
+    private lazy var storage = LibraryStorage(
+        libraryURL: library.libraryURL,
+        framesURL: SystemWallpaperSync.framesDirectory(),
+        thumbnailsURL: SharedDataManager.shared.thumbnailsDirectory,
+        metadataURL: applicationSupportURL().appendingPathComponent("Wallnetic/metadata.sqlite"))
 
     // P1-6: persistence debouncers. Toggling favorites rapidly used to
     // re-encode the entire favorites JSON per click. We now coalesce
@@ -207,7 +225,7 @@ class WallpaperManager: ObservableObject {
             }
         }
 
-        if !lastWallpaperURL.isEmpty {
+        if !lastWallpaperURL.isEmpty || displayAssignments.hasAssignments {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.restoreLastWallpaper()
             }
@@ -215,21 +233,23 @@ class WallpaperManager: ObservableObject {
     }
 
     private func restoreLastWallpaper() {
+        if wallpaperMode == .different, displayAssignments.hasAssignments {
+            // Nothing has applied a wallpaper yet at launch, so a display
+            // without its own choice inherits the last one instead of nothing.
+            let last = currentWallpaper ?? wallpapers.first { $0.url.path == lastWallpaperURL }
+            for screen in NSScreen.screens {
+                if let wallpaper = wallpaper(for: screen, inheriting: last) {
+                    setWallpaper(wallpaper, for: screen, userInitiated: false)
+                }
+            }
+            return
+        }
         guard !lastWallpaperURL.isEmpty else { return }
         let url = URL(fileURLWithPath: lastWallpaperURL)
         if let wallpaper = wallpapers.first(where: { $0.url.path == url.path }) {
             // Launch restore is not a deliberate apply — it must not count
             // toward the rating prompt.
             setWallpaper(wallpaper, userInitiated: false)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                // Launch restore: if the Mac wakes into a locked screen or the
-                // saver, the play is swallowed — say so rather than restoring
-                // to a "Playing" menu bar over a still desktop.
-                let started = self?.playbackDelegate?.playbackPlay() ?? false
-                self?.isPlaying = started
-                // Keep notification for broadcast consumers (widget, etc.)
-                NotificationCenter.default.post(name: .playbackStateDidChange, object: started)
-            }
         }
     }
 
@@ -244,8 +264,10 @@ class WallpaperManager: ObservableObject {
     // MARK: - Library Management
 
     func loadWallpapers() {
+        guard !isRemovingStorage else { return }
         let favPaths = metadata.favoritePaths
-        wallpapers = library.loadAll(favoritePaths: favPaths)
+        let ids = Dictionary(wallpapers.map { ($0.url.path, $0.id) }, uniquingKeysWith: { first, _ in first })
+        wallpapers = library.loadAll(favoritePaths: favPaths, existingIDs: ids)
 
         metadata.applyCustomTitles(to: &wallpapers)
         metadata.applySavedColors(to: &wallpapers)
@@ -271,6 +293,10 @@ class WallpaperManager: ObservableObject {
     private let importGate = ImportGate()
 
     func importVideo(from sourceURL: URL) async throws -> Wallpaper {
+        try await importVideo(from: sourceURL, displayName: nil)
+    }
+
+    func importVideo(from sourceURL: URL, displayName: String?) async throws -> Wallpaper {
         // Serialize the critical region. `postImportProcess` runs after
         // the gate releases so thumbnails/color extraction stay parallel.
         let wallpaper = try await importGate.run { [weak self] in
@@ -278,16 +304,42 @@ class WallpaperManager: ObservableObject {
             let existingWallpapers = await MainActor.run { self.wallpapers }
             let destURL = try await self.library.importFile(
                 from: sourceURL,
-                existingWallpapers: existingWallpapers
+                existingWallpapers: existingWallpapers,
+                preferredName: displayName
             )
-            let wp = Wallpaper(url: destURL)
-            await MainActor.run {
+            return await MainActor.run {
+                var wp = Wallpaper(url: destURL)
+                self.metadata.applyImportedTitle(displayName, to: &wp)
                 self.wallpapers.append(wp)
+                return wp
             }
-            return wp
         }
         postImportProcess(wallpaper)
         return wallpaper
+    }
+
+    /// Pack downloads are already hash/format checked; install through the same
+    /// permit as imports/removals, using a descriptor-anchored exclusive write.
+    func importPackData(_ data: Data, name: String) async throws -> StorageItem {
+        let item = try await importGate.run { [self] in
+            let storage = await MainActor.run { self.storage }
+            let item = try await Task.detached { try storage.installPackData(data) }.value
+            await MainActor.run {
+                self.loadWallpapers()
+                if let wallpaper = self.wallpapers.first(where: { $0.url == item.url }) {
+                    self.renameWallpaper(wallpaper, to: name)
+                    self.postImportProcess(wallpaper)
+                }
+            }
+            return item
+        }
+        return item
+    }
+
+    @MainActor
+    func verifiedPackItem(_ receipt: PackReceipt) async throws -> StorageItem? {
+        let storage = self.storage
+        return try await Task.detached { try storage.verifiedPackItem(receipt) }.value
     }
 
     /// P3-12 / YUKSEK-1: true producer-consumer. Maintains up to
@@ -356,14 +408,139 @@ class WallpaperManager: ObservableObject {
     }
 
     func removeWallpaper(_ wallpaper: Wallpaper) {
-        library.removeFile(at: wallpaper.url)
-        wallpapers.removeAll { $0.id == wallpaper.id }
-        if currentWallpaper?.id == wallpaper.id {
-            currentWallpaper = nil
+        Task { @MainActor in
+            do {
+                let scan = try await scanStorage()
+                guard let item = scan.items.first(where: { $0.url.path == wallpaper.url.path && $0.canRemove }) else {
+                    throw StorageError.unsafeFile
+                }
+                let alert = NSAlert()
+                alert.messageText = "Remove this library copy?"
+                alert.informativeText = "\(wallpaper.displayName) (\(ByteCountFormatter.string(fromByteCount: item.bytes, countStyle: .file))). This permanently removes the app-managed copy and its assignments. Your original source file is kept."
+                alert.addButton(withTitle: "Remove")
+                alert.addButton(withTitle: "Cancel")
+                alert.buttons.first?.hasDestructiveAction = true
+                guard alert.runModal() == .alertFirstButtonReturn else { return }
+                let result = await removeStorageItems([item])
+                if !result.failures.isEmpty {
+                    let failure = NSAlert()
+                    failure.messageText = "Could not remove the copy"
+                    failure.informativeText = result.failures.joined(separator: "\n")
+                    failure.runModal()
+                }
+            } catch {
+                let alert = NSAlert(error: error)
+                alert.runModal()
+            }
         }
-        scheduleFavoritesWrite()
-        cache.delete(id: wallpaper.id)
-        Task { await widgetSync.syncFavorites(wallpapers.filter { $0.isFavorite }) }
+    }
+
+    @MainActor
+    private var protectedThumbnailNames: Set<String> {
+        Set(wallpapers.map { $0.id.uuidString + ".jpg" })
+    }
+
+    private static func storedThumbnailNames() throws -> Set<String> {
+        let shared = try SharedDataManager.shared.readSharedDataForStorage()
+        var names = Set<String>()
+        names.formUnion(shared.favorites.compactMap(\.thumbnailPath))
+        if let current = shared.currentThumbnailPath { names.insert(current) }
+        return names
+    }
+
+    @MainActor
+    func scanStorage() async throws -> StorageScan {
+        let service = storage
+        let protected = protectedThumbnailNames
+        let task = Task.detached(priority: .utility) {
+            var names = protected
+            var failure: String?
+            if service.thumbnailsURL != nil {
+                do { names.formUnion(try Self.storedThumbnailNames()) }
+                catch { failure = "Widget references could not be read; cache cleanup is unavailable. \(error.localizedDescription)" }
+            }
+            var scan = try service.scan(protectedThumbnailNames: names)
+            if let failure {
+                scan.failures.append(failure)
+                for index in scan.items.indices where scan.items[index].category == .caches {
+                    scan.items[index].canRemove = false
+                }
+            }
+            return scan
+        }
+        return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
+    @MainActor
+    func removeStorageItems(_ items: [StorageItem]) async -> StorageRemovalResult {
+        do {
+            return try await importGate.run { [self] in
+                let (service, protected) = await MainActor.run {
+                    self.isRemovingStorage = true
+                    return (self.storage, self.protectedThumbnailNames)
+                }
+                let result = await Task.detached(priority: .utility) {
+                    var names = protected
+                    if items.contains(where: { $0.category == .caches }) {
+                        do { names.formUnion(try Self.storedThumbnailNames()) }
+                        catch {
+                            var result = service.remove(items.filter { $0.category == .videos })
+                            result.failures.append("Cache cleanup skipped: widget references could not be read. \(error.localizedDescription)")
+                            return result
+                        }
+                    }
+                    return service.remove(items, protectedThumbnailNames: names)
+                }.value
+                await MainActor.run {
+                    self.finishStorageRemoval(result)
+                    self.isRemovingStorage = false
+                    self.loadWallpapers()
+                }
+                return result
+            }
+        } catch {
+            return StorageRemovalResult(failures: [error.localizedDescription])
+        }
+    }
+
+    @MainActor
+    private func finishStorageRemoval(_ result: StorageRemovalResult) {
+        let update = LibraryRemovalState(result: result, wallpapers: wallpapers, current: currentWallpaper,
+                                         screenAssignments: screenWallpapers)
+        let urls = update.urls
+        guard !urls.isEmpty else { return }
+        let paths = update.paths
+        for url in urls {
+            playbackDelegate?.playbackClearWallpaper(url: url)
+            displayAssignments.remove(url)
+        }
+        screenWallpapers = update.screenAssignments
+        saveScreenWallpapers()
+        if paths.contains(lastWallpaperURL) { lastWallpaperURL = "" }
+        currentWallpaper = update.current
+        wallpapers = update.wallpapers
+        isPlaying = playbackDelegate?.playbackIsPlaying ?? false
+
+        // Clear persisted automation references in the same main-actor turn.
+        OptimizedCopyStore.shared.removeCopies(at: paths)
+        PauseAfterSettings.shared.removeOverrides(for: urls)
+        PlaybackTrimStore.shared.removeTrims(for: urls)
+        CollectionManager.shared.removeWallpaperIDs(update.ids)
+        TimeOfDayManager.shared.removeWallpaperPaths(paths)
+        PlaylistManager.shared.removeWallpaperPaths(paths)
+        WeatherWallpaperManager.shared.removeWallpaperPaths(paths)
+        SpaceWallpaperManager.shared.removeWallpaperPaths(paths)
+        pendingFavoritesWrite?.cancel()
+        pendingTitlesWrite?.cancel()
+        pendingTagsWrite?.cancel()
+        metadata.favoritePaths.subtract(paths)
+        metadata.customTitles = metadata.customTitles.filter { !paths.contains($0.key) }
+        metadata.savedTags = metadata.savedTags.filter { !paths.contains($0.key) }
+        metadata.savedColors = metadata.savedColors.filter { !paths.contains($0.key) }
+        cache.replaceAll(with: wallpapers)
+        ThumbnailCache.shared.clearCache()
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
+        widgetSync.syncAll(current: currentWallpaper, isPlaying: isPlaying, wallpapers: wallpapers)
     }
 
     func renameWallpaper(_ wallpaper: Wallpaper, to newTitle: String) {
@@ -469,9 +646,9 @@ class WallpaperManager: ObservableObject {
     // MARK: - Async Metadata
 
     private func loadMetadataInBackground() {
-        Task {
-            for i in wallpapers.indices {
-                var wp = wallpapers[i]
+        Task { @MainActor in
+            let targets = wallpapers
+            for var wp in targets {
                 if wp.duration == nil {
                     await wp.loadMetadata()
                     // Immutable copies — capturing the mutated `var wp` in the
@@ -482,7 +659,7 @@ class WallpaperManager: ObservableObject {
                     let duration = wp.duration
                     let resolution = wp.resolution
                     await MainActor.run {
-                        if i < wallpapers.count && wallpapers[i].id == id {
+                        if let i = index(of: id) {
                             wallpapers[i].duration = duration
                             wallpapers[i].resolution = resolution
                         }
@@ -493,7 +670,7 @@ class WallpaperManager: ObservableObject {
     }
 
     func extractMissingColors() {
-        Task {
+        Task { @MainActor in
             // Snapshot the wallpapers needing color extraction by their id;
             // after each suspension we re-resolve the index via id so the
             // write goes to the right wallpaper (or no-op if it was deleted
@@ -516,12 +693,23 @@ class WallpaperManager: ObservableObject {
             // Immutable copy — same captured-var-in-concurrent-code fix as above.
             let colors = updatedColors
             await MainActor.run {
-                metadata.savedColors = colors
+                let existingPaths = Set(wallpapers.map { $0.url.path })
+                metadata.savedColors = colors.filter { existingPaths.contains($0.key) }
             }
         }
     }
 
     // MARK: - Playback
+
+    /// Scheduled changes own all displays and keep the normal playback pause policy.
+    func applyScheduledWallpaper(_ wallpaper: Wallpaper) {
+        setWallpaper(wallpaper, userInitiated: false)
+    }
+
+    private func holdAutomationForManualChoice() {
+        TimeOfDayManager.shared.onManualChange()
+        PlaylistManager.shared.onManualChange()
+    }
 
     /// Sets wallpaper for all screens (same mode).
     /// PlaybackDelegate drives the renderer directly (#170); the broadcast
@@ -532,12 +720,17 @@ class WallpaperManager: ObservableObject {
     /// switch (playlist / time-of-day). Only user-initiated applies feed the
     /// rating prompt — passive rotation isn't a "ask for a review" moment.
     func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool = true) {
+        if userInitiated { holdAutomationForManualChoice() }
+        // Match the all-display renderer command in both UI and persistence.
+        // Otherwise a later hot-plug/relaunch restores old per-display choices.
+        wallpaperMode = .same
+        wallpaperModeRaw = WallpaperMode.same.rawValue
         currentWallpaper = wallpaper
         lastWallpaperURL = wallpaper.url.path
 
         playbackDelegate?.playbackSetWallpaper(url: wallpaper.url)
         // A power condition can swallow this; don't claim it played.
-        isPlaying = playbackDelegate?.playbackPlay() ?? false
+        isPlaying = playbackDelegate?.playbackIsPlaying ?? false
         let started = isPlaying
 
         NotificationCenter.default.post(
@@ -550,21 +743,24 @@ class WallpaperManager: ObservableObject {
             RatingPromptManager.shared.recordWallpaperApplied()
         }
 
-        Task {
+        Task { @MainActor in
+            guard currentWallpaper?.url == wallpaper.url else { return }
             await widgetSync.syncCurrentWallpaper(wallpaper)
-            widgetSync.syncPlaybackState(isPlaying: started)
+            await MainActor.run { widgetSync.syncPlaybackState(isPlaying: isPlaying) }
         }
     }
 
     /// Sets wallpaper for a specific screen (different mode).
     func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen, userInitiated: Bool = true) {
+        if userInitiated { holdAutomationForManualChoice() }
         let screenName = screen.localizedName
+        displayAssignments.set(wallpaper.url, for: screen.wallpaperAssignmentKey)
         screenWallpapers[screenName] = wallpaper.id
         saveScreenWallpapers()
 
         playbackDelegate?.playbackSetWallpaper(url: wallpaper.url, for: screen)
         // A power condition can swallow this; don't claim it played.
-        isPlaying = playbackDelegate?.playbackPlay() ?? false
+        isPlaying = playbackDelegate?.playbackIsPlaying ?? false
 
         // The active screen's wallpaper is what DynamicAccent, DynamicIsland,
         // ThemeManager, and the widget should reflect. Without updating
@@ -581,9 +777,10 @@ class WallpaperManager: ObservableObject {
             if userInitiated {
                 RatingPromptManager.shared.recordWallpaperApplied()
             }
-            Task {
+            Task { @MainActor in
+                guard currentWallpaper?.url == wallpaper.url else { return }
                 await widgetSync.syncCurrentWallpaper(wallpaper)
-                widgetSync.syncPlaybackState(isPlaying: true)
+                await MainActor.run { widgetSync.syncPlaybackState(isPlaying: isPlaying) }
             }
         }
 
@@ -591,17 +788,48 @@ class WallpaperManager: ObservableObject {
             name: .screenWallpaperDidChange,
             object: ScreenWallpaperInfo(wallpaper: wallpaper, screen: screen)
         )
-        NotificationCenter.default.post(name: .playbackStateDidChange, object: true)
+        NotificationCenter.default.post(name: .playbackStateDidChange, object: isPlaying)
     }
 
     func wallpaper(for screen: NSScreen) -> Wallpaper? {
-        guard let wallpaperID = screenWallpapers[screen.localizedName] else {
-            return currentWallpaper
+        if wallpaperMode == .same { return currentWallpaper }
+        return wallpaper(for: screen, inheriting: currentWallpaper)
+    }
+
+    /// A display's wallpaper in Different per display mode, with `current`
+    /// for a display that has no choice of its own.
+    private func wallpaper(for screen: NSScreen, inheriting current: Wallpaper?) -> Wallpaper? {
+        Self.displayWallpaper(selection: displayAssignments.selection(for: screen.wallpaperAssignmentKey),
+                              legacyID: screenWallpapers[screen.localizedName],
+                              wallpapers: wallpapers, current: current)
+    }
+
+    /// Each connected display without a choice of its own keeps what it shows
+    /// as its choice, so a pick for another display or a restart does not
+    /// move it. Displays connected later still inherit.
+    static func keepInheritedChoices(_ shown: [(key: String, url: URL?)], in assignments: DisplayWallpaperAssignments) {
+        for (key, url) in shown where assignments.selection(for: key) == .inherit {
+            if let url { assignments.set(url, for: key) }
         }
-        return wallpapers.first { $0.id == wallpaperID }
+    }
+
+    /// A display's wallpaper in Different per display mode. A choice saved by
+    /// 1.4.2 or earlier is keyed by a wallpaper ID that changes on every
+    /// launch, so one that no longer resolves inherits like no choice at all;
+    /// only an empty selection leaves a display intentionally empty.
+    static func displayWallpaper(selection: DisplayWallpaperAssignments.Selection, legacyID: UUID?,
+                                 wallpapers: [Wallpaper], current: Wallpaper?) -> Wallpaper? {
+        switch selection {
+        case .empty: return nil
+        case .file(let url): return wallpapers.first { $0.url.standardizedFileURL == url }
+        case .inherit:
+            guard let legacyID, let chosen = wallpapers.first(where: { $0.id == legacyID }) else { return current }
+            return chosen
+        }
     }
 
     func setWallpaperMode(_ mode: WallpaperMode) {
+        holdAutomationForManualChoice()
         wallpaperMode = mode
         wallpaperModeRaw = mode.rawValue
 
@@ -613,8 +841,31 @@ class WallpaperManager: ObservableObject {
                 userInfo: ["userInitiated": true]
             )
         } else if mode == .different {
+            Self.keepInheritedChoices(NSScreen.screens.map { ($0.wallpaperAssignmentKey, wallpaper(for: $0)?.url) },
+                                      in: displayAssignments)
             playbackDelegate?.playbackApplyScreenWallpapers()
             NotificationCenter.default.post(name: .applyScreenWallpapers, object: nil)
+        }
+    }
+
+    /// A targeted first playback preserves other displays, including displays
+    /// with no wallpaper. Store paths before changing currentWallpaper.
+    func applyOnboardingWallpaper(_ wallpaper: Wallpaper, to displayID: UInt32?) throws {
+        if let displayID {
+            guard let target = NSScreen.screens.first(where: { $0.displayID == displayID }) else {
+                throw OnboardingDemoError.displayDisconnected
+            }
+            let previous = NSScreen.screens.map { ($0, self.wallpaper(for: $0)?.url) }
+            for (screen, url) in previous {
+                displayAssignments.set(url, for: screen.wallpaperAssignmentKey)
+            }
+            wallpaperMode = .different
+            wallpaperModeRaw = WallpaperMode.different.rawValue
+            setWallpaper(wallpaper, for: target)
+        } else {
+            wallpaperMode = .same
+            wallpaperModeRaw = WallpaperMode.same.rawValue
+            setWallpaper(wallpaper)
         }
     }
 
@@ -690,10 +941,6 @@ extension Notification.Name {
     static let screenWallpaperDidChange = Notification.Name("screenWallpaperDidChange")
     static let applyScreenWallpapers = Notification.Name("applyScreenWallpapers")
     static let openMainWindow = Notification.Name("openMainWindow")
-    /// Posted after `NSApp.setActivationPolicy` (and similar events) so the
-    /// desktop overlay can re-pin itself. Policy flips tear down window
-    /// backing stores and otherwise leave a black desktop.
-    static let desktopWindowsNeedReassert = Notification.Name("desktopWindowsNeedReassert")
 }
 
 // MARK: - Screen Wallpaper Info

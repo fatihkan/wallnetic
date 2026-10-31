@@ -36,13 +36,14 @@ final class ThumbnailCache {
         "\(url.path)_\(Int(size.width))x\(Int(size.height))" as NSString
     }
 
-    /// Gets a cached thumbnail or generates a new one
-    func thumbnail(for url: URL, size: CGSize = CGSize(width: 320, height: 180)) async -> NSImage? {
+    /// Gets a cached thumbnail or generates a new one. A cached thumbnail is
+    /// never changed, so it is handed out as a `SendableImage`.
+    func thumbnail(for url: URL, size: CGSize = CGSize(width: 320, height: 180)) async -> SendableImage? {
         let key = cacheKey(for: url, size: size)
 
         // Check cache first
         if let cached = cache.object(forKey: key) {
-            return cached
+            return SendableImage(image: cached)
         }
 
         // Generate thumbnail
@@ -54,7 +55,7 @@ final class ThumbnailCache {
         let cost = Int(thumbnail.size.width * thumbnail.size.height * 4)  // RGBA
         cache.setObject(thumbnail, forKey: key, cost: cost)
 
-        return thumbnail
+        return SendableImage(image: thumbnail)
     }
 
     /// Removes all cached thumbnails for a URL (all sizes)

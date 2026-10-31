@@ -1,3 +1,4 @@
+import Darwin
 import XCTest
 @testable import Wallnetic
 
@@ -156,6 +157,123 @@ final class LibraryReviewTests: XCTestCase {
         wallpaper.resolution = CGSize(width: 1920, height: 1080)
         XCTAssertEqual(wallpaper.formattedDuration, "2:05")
         XCTAssertEqual(wallpaper.formattedResolution, "1920×1080")
+    }
+}
+
+final class DownloadFilenameTests: XCTestCase {
+    private var root: URL!
+    private var library: WallpaperLibrary!
+
+    override func setUpWithError() throws {
+        root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let physical = try XCTUnwrap(realpath(root.path, nil))
+        defer { free(physical) }
+        root = URL(fileURLWithPath: String(cString: physical), isDirectory: true)
+        library = WallpaperLibrary(directory: root.appendingPathComponent("Library"))
+    }
+
+    override func tearDownWithError() throws {
+        library = nil
+        if let root { try FileManager.default.removeItem(at: root) }
+    }
+
+    private func source(fileName: String? = nil, bytes: Data = Data([1, 2, 3])) throws -> URL {
+        let url = root.appendingPathComponent(fileName ?? UUID().uuidString + ".mp4")
+        try bytes.write(to: url)
+        return url
+    }
+
+    func testReadableFilenameUsesActualMediaExtensionAndPreservesSource() async throws {
+        for ext in ["mp4", "MOV", "m4v", "hevc"] {
+            let input = try source(fileName: UUID().uuidString + "." + ext)
+            let destination = try await library.importFile(from: input, existingWallpapers: [], preferredName: "Ocean Sunset")
+            XCTAssertEqual(destination.lastPathComponent, "Ocean Sunset." + ext.lowercased())
+            XCTAssertEqual(try Data(contentsOf: input), Data([1, 2, 3]))
+            XCTAssertEqual(try Data(contentsOf: destination), Data([1, 2, 3]))
+            XCTAssertTrue(library.isVideoFile(destination))
+        }
+    }
+
+    func testRepeatedTitlesKeepDistinctSameSizeDownloadsWithoutOverwriting() async throws {
+        let first = try await library.importFile(from: source(), existingWallpapers: [], preferredName: "Shared")
+        // The new source's filename and size even match the previous copy.
+        // A common download title must not incorrectly trigger local deduplication.
+        let input = try source(fileName: "Shared.mp4", bytes: Data([4, 5, 6]))
+        let second = try await library.importFile(from: input, existingWallpapers: [Wallpaper(url: first)], preferredName: "Shared")
+        XCTAssertNotEqual(first, second)
+        XCTAssertEqual(first.lastPathComponent, "Shared.mp4")
+        XCTAssertTrue(second.lastPathComponent.hasPrefix("Shared ("))
+        XCTAssertEqual(second.pathExtension, "mp4")
+        XCTAssertEqual(try Data(contentsOf: first), Data([1, 2, 3]))
+        XCTAssertEqual(try Data(contentsOf: second), Data([4, 5, 6]))
+        XCTAssertEqual(try Data(contentsOf: input), Data([4, 5, 6]))
+    }
+
+    func testUnsafeTitlesRemainVisibleSingleComponentsInsideLibrary() async throws {
+        let titles = ["../../escape/owned\\name: <movie> | ? *", "/absolute/escape", ".hidden",
+                      "evil.app", " \u{0000}\u{202E}Ocean\nSunset ", "$(touch injected)"]
+        for title in titles {
+            let destination = try await library.importFile(from: source(), existingWallpapers: [], preferredName: title)
+            XCTAssertEqual(destination.deletingLastPathComponent().standardizedFileURL.path, library.libraryURL.standardizedFileURL.path)
+            XCTAssertEqual(destination.pathExtension, "mp4")
+            XCTAssertFalse(destination.lastPathComponent.hasPrefix("."))
+            XCTAssertNil(destination.lastPathComponent.rangeOfCharacter(from: CharacterSet(charactersIn: "/\\:*?\"<>|")))
+            XCTAssertEqual(try Data(contentsOf: destination), Data([1, 2, 3]))
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("injected").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("escape").path))
+    }
+
+    func testUnusableTitlesKeepGeneratedFilenameFallback() async throws {
+        for title in [nil, "", " \n\t ", "... / \\ : * ? < > |", "\u{0000}\u{202E}", String(repeating: "x", count: 4097)] as [String?] {
+            let input = try source()
+            let destination = try await library.importFile(from: input, existingWallpapers: [], preferredName: title)
+            XCTAssertEqual(destination.lastPathComponent, input.lastPathComponent)
+            XCTAssertEqual(try Data(contentsOf: input), Data([1, 2, 3]))
+        }
+    }
+
+    func testLongUnicodeTitlesFitFilesystemLimitIncludingCollisionSuffix() async throws {
+        for title in [String(repeating: "🌅", count: 160), String(repeating: "é", count: 160),
+                      String(repeating: "👩‍🚀", count: 160)] {
+            let first = try await library.importFile(from: source(), existingWallpapers: [], preferredName: title)
+            let second = try await library.importFile(from: source(), existingWallpapers: [], preferredName: title)
+            XCTAssertNotEqual(first, second)
+            for destination in [first, second] {
+                XCTAssertLessThanOrEqual(destination.lastPathComponent.decomposedStringWithCanonicalMapping.utf8.count, 255)
+                XCTAssertTrue(destination.lastPathComponent.hasPrefix(String(try XCTUnwrap(title.first))))
+                XCTAssertEqual(try Data(contentsOf: destination), Data([1, 2, 3]))
+            }
+        }
+        let input = try source()
+        let oversizedCharacter = "e" + String(repeating: "\u{0301}", count: 500)
+        let destination = try await library.importFile(from: input, existingWallpapers: [], preferredName: oversizedCharacter)
+        XCTAssertEqual(destination.lastPathComponent, input.lastPathComponent)
+    }
+
+    func testCollisionsPreserveDirectoriesAndSymbolicLinkTargets() async throws {
+        let directory = library.libraryURL.appendingPathComponent("Directory.mp4", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let marker = directory.appendingPathComponent("keep.txt")
+        try Data([9]).write(to: marker)
+        let outside = root.appendingPathComponent("outside.mp4")
+        try Data([8]).write(to: outside)
+        let missing = root.appendingPathComponent("missing.mp4")
+        for (name, target) in [("Link", outside), ("Dangling", missing)] {
+            try FileManager.default.createSymbolicLink(at: library.libraryURL.appendingPathComponent(name + ".mp4"),
+                                                      withDestinationURL: target)
+        }
+        for name in ["Directory", "Link", "Dangling"] {
+            let destination = try await library.importFile(from: source(), existingWallpapers: [], preferredName: name)
+            XCTAssertTrue(destination.lastPathComponent.hasPrefix(name + " ("))
+            XCTAssertEqual(try Data(contentsOf: destination), Data([1, 2, 3]))
+        }
+        XCTAssertEqual(try Data(contentsOf: marker), Data([9]))
+        XCTAssertEqual(try Data(contentsOf: outside), Data([8]))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: missing.path))
+        XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: library.libraryURL.appendingPathComponent("Link.mp4").path), outside.path)
+        XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: library.libraryURL.appendingPathComponent("Dangling.mp4").path), missing.path)
     }
 }
 

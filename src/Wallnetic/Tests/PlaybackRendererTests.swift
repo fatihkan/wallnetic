@@ -1,6 +1,7 @@
 import XCTest
 import AVFoundation
 import AppKit
+import Combine
 @testable import Wallnetic
 
 final class PlaybackRendererTests: XCTestCase {
@@ -41,13 +42,51 @@ final class PlaybackRendererTests: XCTestCase {
             XCTAssertTrue(Thread.isMainThread)
             frames += 1
         }
-        DispatchQueue.concurrentPerform(iterations: 500) { _ in scheduler.requestFrame() }
+        DispatchQueue.concurrentPerform(iterations: 500) { _ in scheduler.requestFrame(at: 0) }
         await drainMainQueue()
         XCTAssertEqual(frames, 1)
-        scheduler.requestFrame()
+        scheduler.requestFrame(at: 1.0 / 60)
         await drainMainQueue()
         XCTAssertEqual(frames, 2)
         scheduler.invalidate()
+    }
+
+    @MainActor
+    func testMetalRendererCanDeallocateWithSubmittedFrames() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("gpu-teardown-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video)
+        window.orderFront(nil)
+        for _ in 0..<6 {
+            var renderer: MetalVideoRenderer? = MetalVideoRenderer()
+            // Assigned separately: Swift 5.9 has no `weak let`.
+            weak var releasedRenderer: MetalVideoRenderer?
+            releasedRenderer = renderer
+            window.contentView = renderer?.metalView
+            renderer?.loadVideo(url: video)
+            renderer?.play()
+            let deadline = Date().addingTimeInterval(5)
+            while renderer?.hasPresentedFrame == false, Date() < deadline {
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+            XCTAssertEqual(renderer?.hasPresentedFrame, true)
+            for _ in 0..<8 { renderer?.metalView.draw() }
+            renderer?.stop()
+            window.contentView = nil
+            // Unlike the existing stop test, drop the cache owner immediately,
+            // while GPU completion handlers may still retain submitted frames.
+            renderer = nil
+            XCTAssertNil(releasedRenderer, "Frames must not retain the renderer")
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        try await Task.sleep(nanoseconds: 200_000_000)
     }
 
     @MainActor
@@ -66,6 +105,57 @@ final class PlaybackRendererTests: XCTestCase {
         XCTAssertEqual(oldFrames, 0)
         XCTAssertEqual(newFrames, 1)
         replacement.invalidate()
+    }
+
+    @MainActor
+    func testMetalCalmAndThermalHoldsKeepThePresentedFrame() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertMotionHolds(MetalVideoRenderer())
+    }
+
+    @MainActor
+    func testAVFoundationCalmAndThermalHoldsKeepThePresentedFrame() async throws {
+        try await assertMotionHolds(VideoRenderer())
+    }
+
+    @MainActor
+    private func assertMotionHolds(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("holds-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 40, fps: 10)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        let playback = PauseAfterPlayback(canPlay: { true })
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init())
+        playback.play()
+        let deadline = Date().addingTimeInterval(5)
+        while !renderer.hasPresentedFrame, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        playback.setHolds([.calm, .thermal])
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let pausedTime = try XCTUnwrap(renderer.currentPlaybackTime)
+        playback.setHolds([.thermal])
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(renderer.currentPlaybackTime ?? -1, pausedTime, accuracy: 0.02)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertTrue(renderer.hasPresentedFrame, "The hold must preserve the displayed frame")
+        playback.setHolds([])
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertGreaterThan(renderer.currentPlaybackTime ?? -1, pausedTime + 0.05)
+        playback.pause(manual: true)
+        playback.setHolds([.calm])
+        playback.setHolds([])
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
     }
 
     @MainActor
@@ -129,6 +219,7 @@ final class PlaybackRendererTests: XCTestCase {
             }
         }
         XCTAssertGreaterThanOrEqual(wraps, 2, "A failed replacement must not disable the active player's loop")
+        XCTAssertTrue(renderer.playbackMonitor.state.isFailed, "The previous video must not mask the failed selection")
         renderer.pause()
         try await Task.sleep(nanoseconds: 100_000_000)
         let pausedTime = renderer.currentPlaybackTime
@@ -155,30 +246,95 @@ final class PlaybackRendererTests: XCTestCase {
         XCTAssertFalse(renderer.hasPresentedFrame)
     }
 
-    private func writeShortVideo(to url: URL) async throws {
+    @MainActor
+    func testAVFoundationPresentsAndResizesInsideTheWallpaperContent() async throws {
+        try await assertPresentsAndResizesInsideTheWallpaperContent(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalPresentsAndResizesInsideTheWallpaperContent() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertPresentsAndResizesInsideTheWallpaperContent(MetalVideoRenderer())
+    }
+
+    /// #311: the renderer view sits in a container with the clock, not as the
+    /// window's content view. It still reveals its first frame in a window
+    /// kept at alpha 0 and follows the window's size, as on a display change.
+    @MainActor
+    private func assertPresentsAndResizesInsideTheWallpaperContent(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("container-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 160, height: 100), styleMask: .borderless,
+                              backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 20)
+        let clock = DesktopClockView(frame: .zero)
+        let content = DesktopWindowController.wallpaperContent(rendererView: renderer.rendererView,
+                                                               size: NSSize(width: 160, height: 100), clockView: clock)
+        window.contentView = content
+        let effectOverlay = NSView(frame: renderer.rendererView.bounds)
+        effectOverlay.autoresizingMask = [.width, .height]
+        effectOverlay.wantsLayer = true
+        renderer.rendererView.addSubview(effectOverlay)
+        window.alphaValue = 0
+        window.orderFront(nil)
+        var revealed = false
+        renderer.onBecameReady = { revealed = true }
+
+        renderer.loadVideo(url: video)
+        renderer.play()
+        let deadline = Date().addingTimeInterval(5)
+        while !(revealed && renderer.hasPresentedFrame), Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        XCTAssertTrue(revealed, "The first frame asks for the window to be revealed")
+
+        window.setFrame(NSRect(x: 0, y: 0, width: 320, height: 200), display: false)
+        window.layoutIfNeeded()
+        XCTAssertEqual(content.frame.size, NSSize(width: 320, height: 200))
+        XCTAssertEqual(renderer.rendererView.frame, content.bounds)
+        XCTAssertEqual(effectOverlay.frame, renderer.rendererView.bounds)
+        XCTAssertEqual(clock.frame, content.bounds)
+        XCTAssertTrue(content.subviews.last === clock, "The clock stays above the video")
+        if let metal = renderer as? MetalVideoRenderer {
+            let scale = window.backingScaleFactor
+            XCTAssertEqual(metal.metalView.drawableSize, CGSize(width: 320 * scale, height: 200 * scale))
+        } else {
+            XCTAssertEqual(renderer.filterLayer?.frame, renderer.rendererView.bounds)
+        }
+    }
+
+    private func writeShortVideo(to url: URL, frames: Int = 3, fps: Int32 = 10,
+                                 width: Int = 64, height: Int = 64) async throws {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
             AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: 64,
-            AVVideoHeightKey: 64
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height
         ])
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String: 64,
-            kCVPixelBufferHeightKey as String: 64
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height
         ])
         writer.add(input)
         guard writer.startWriting() else { throw writer.error ?? FixtureError.encodingFailed }
         writer.startSession(atSourceTime: .zero)
         var pixelBuffer: CVPixelBuffer?
-        guard CVPixelBufferCreate(kCFAllocatorDefault, 64, 64, kCVPixelFormatType_32BGRA, nil, &pixelBuffer) == kCVReturnSuccess,
+        guard CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32BGRA, nil, &pixelBuffer) == kCVReturnSuccess,
               let buffer = pixelBuffer else { throw FixtureError.encodingFailed }
         CVPixelBufferLockBaseAddress(buffer, [])
         if let base = CVPixelBufferGetBaseAddress(buffer) {
-            memset(base, 128, CVPixelBufferGetBytesPerRow(buffer) * 64)
+            memset(base, 128, CVPixelBufferGetBytesPerRow(buffer) * height)
         }
         CVPixelBufferUnlockBaseAddress(buffer, [])
-        for frame in 0..<3 {
+        for frame in 0..<frames {
             let deadline = Date().addingTimeInterval(5)
             while !input.isReadyForMoreMediaData {
                 guard writer.status == .writing, Date() < deadline else {
@@ -187,16 +343,429 @@ final class PlaybackRendererTests: XCTestCase {
                 }
                 try await Task.sleep(nanoseconds: 10_000_000)
             }
-            guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: 10)) else {
+            guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: fps)) else {
                 writer.cancelWriting()
                 throw writer.error ?? FixtureError.encodingFailed
             }
         }
-        writer.endSession(atSourceTime: CMTime(value: 3, timescale: 10))
+        writer.endSession(atSourceTime: CMTime(value: Int64(frames), timescale: fps))
         input.markAsFinished()
         await writer.finishWriting()
         guard writer.status == .completed else { throw writer.error ?? FixtureError.encodingFailed }
     }
 
+    /// #307: after a switch to a video of another aspect ratio, the retained
+    /// frame keeps its own crop until the new video's first frame, also when
+    /// a pause request redraws it while paused. The new video then gets its crop.
+    @MainActor
+    func testMetalRetainedFrameKeepsItsCropAcrossAspectRatioChange() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        let renderer = MetalVideoRenderer()
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 160, height: 100), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("crop-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let landscapeSize = CGSize(width: 64, height: 36)
+        let portraitSize = CGSize(width: 36, height: 64)
+        let landscape = directory.appendingPathComponent("landscape.mov")
+        let portrait = directory.appendingPathComponent("portrait.mov")
+        try await writeShortVideo(to: landscape, frames: 40, fps: 10, width: 64, height: 36)
+        try await writeShortVideo(to: portrait, frames: 40, fps: 10, width: 36, height: 64)
+        window.contentView = renderer.metalView
+        window.orderFront(nil)
+
+        renderer.loadVideo(url: landscape)
+        renderer.play()
+        var deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertEqual(renderer.quadCrop?.videoSize, landscapeSize)
+
+        // Paused, as with a manual pause, Calm Mode or battery: load B. Lock,
+        // sleep or a power change then sends another pause request.
+        renderer.pause()
+        renderer.loadVideo(url: portrait)
+        deadline = Date().addingTimeInterval(5)
+        while renderer.playerVideoSize != portraitSize, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(renderer.playerVideoSize, portraitSize, "B's player must be attached")
+        renderer.pause()
+        XCTAssertTrue(renderer.hasPresentedFrame, "A's frame stays on screen")
+        XCTAssertFalse(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertEqual(renderer.quadCrop?.videoSize, landscapeSize, "A's frame must keep A's crop")
+        XCTAssertEqual(renderer.currentPlaybackRate, 0, "Redrawing must not start playback")
+
+        renderer.play()
+        deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertEqual(renderer.quadCrop?.videoSize, portraitSize)
+        let crop = try XCTUnwrap(renderer.quadCrop)
+        XCTAssertEqual(crop.textureRect, WallpaperAspectFill.textureRect(videoSize: portraitSize, viewSize: crop.viewSize))
+    }
+
+    @MainActor
+    func testAVFoundationReplacementGetsFullIntervalAfterItsOwnFirstFrame() async throws {
+        try await assertReplacementDuration(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalReplacementGetsFullIntervalAfterItsOwnFirstFrame() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertReplacementDuration(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertReplacementDuration(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("replacement-duration-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 40, fps: 10)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        let preferences = PauseAfterSettings.Preferences(defaultSeconds: 15)
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: preferences)
+        playback.play()
+        var deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        playback.tick()
+
+        time = 5
+        renderer.loadVideo(url: video) // A fresh load generation, as with Retry.
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: preferences)
+        XCTAssertTrue(renderer.hasPresentedFrame, "Keep the previous image on the desktop")
+        XCTAssertFalse(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertFalse(playback.needsTimer)
+        playback.tick()
+        time = 100 // Advance the injected clock before asynchronous loading can finish.
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 1))
+
+        deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.playbackMonitor.hasFrameForCurrentLoad)
+        XCTAssertTrue(playback.needsTimer)
+        playback.tick()
+        time = 114.999
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 1))
+        time = 115
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 1))
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertTrue(renderer.hasPresentedFrame)
+    }
+
+    @MainActor
+    func testDurationPauseHoldsAVPlayerFrameUntilExplicitResume() async throws {
+        try await assertDurationPause(VideoRenderer())
+    }
+
+    @MainActor
+    func testDurationPauseHoldsMetalFrameUntilExplicitResume() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertDurationPause(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertDurationPause(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("duration-\(UUID().uuidString).mov")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init(defaultSeconds: 15))
+        playback.play()
+        let deadline = Date().addingTimeInterval(5)
+        while !renderer.playbackMonitor.hasFrameForCurrentLoad, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        playback.tick()
+        time = 15
+        playback.tick()
+        renderer.maintainPlayback() // App activation must not revive motion.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let frozenTime = renderer.currentPlaybackTime
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertEqual(renderer.currentPlaybackTime ?? -1, frozenTime ?? -1, accuracy: 0.02)
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        XCTAssertTrue(playback.isPausedAfterDuration)
+        if let layer = renderer.filterLayer as? AVPlayerLayer {
+            XCTAssertNotNil(layer.displayedPixelBuffer())
+        }
+        playback.play(explicit: true)
+        XCTAssertEqual(renderer.currentPlaybackRate, 1)
+        XCTAssertFalse(playback.isPausedAfterDuration)
+    }
+
+    @MainActor
+    func testAVFoundationReportsLoadFailureRetryAndManualPause() async throws {
+        try await assertStatusLifecycle(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalReportsLoadFailureRetryAndManualPause() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertStatusLifecycle(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertStatusLifecycle(_ renderer: WallpaperRenderer) async throws {
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("status-\(UUID().uuidString).mov")
+        let missing = video.appendingPathExtension("missing")
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 30)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        renderer.loadVideo(url: video)
+        XCTAssertEqual(renderer.playbackMonitor.state, .loading)
+        // A later missing selection invalidates even a pending valid load.
+        renderer.loadVideo(url: missing)
+        XCTAssertEqual(renderer.playbackMonitor.state, .failed(.missingFile))
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(renderer.playbackMonitor.state, .failed(.missingFile))
+        XCTAssertNil(renderer.currentPlaybackTime)
+
+        var allowed = true
+        let playback = PauseAfterPlayback(canPlay: { allowed })
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init())
+        playback.pause(manual: true)
+        renderer.loadVideo(url: video)
+        playback.setWallpaper(video, renderer: renderer, on: 1, preferences: .init())
+        playback.play() // The retry path must not revoke manual Pause.
+        try await Task.sleep(nanoseconds: 150_000_000)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        XCTAssertNotEqual(renderer.playbackMonitor.state, .playing)
+        allowed = false
+        playback.play(explicit: true)
+        XCTAssertEqual(renderer.currentPlaybackRate, 0)
+        allowed = true
+        playback.play(explicit: true)
+        let deadline = Date().addingTimeInterval(5)
+        while renderer.playbackMonitor.state != .playing, Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(renderer.playbackMonitor.state, .playing)
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        playback.pause(manual: true)
+        await drainMainQueue()
+        XCTAssertEqual(renderer.playbackMonitor.state, .paused)
+        renderer.stop()
+        await drainMainQueue()
+        XCTAssertEqual(renderer.playbackMonitor.state, .idle)
+    }
+
     private enum FixtureError: Error { case encodingFailed }
+
+    @MainActor
+    func testProfilesThrottleDisplayLinkAtDifferentRefreshRates() async {
+        for refreshRate in [59.94, 60, 120, 144] {
+            for mode in PerformanceManager.PerformanceMode.allCases {
+                var frames = 0
+                let scheduler = DisplayLinkFrameScheduler(maximumFramesPerSecond: mode.maxFPS) { frames += 1 }
+                for tick in 0..<Int(ceil(refreshRate * 2)) {
+                    scheduler.requestFrame(at: Double(tick) / refreshRate)
+                    await drainMainQueue()
+                }
+                XCTAssertEqual(Double(frames), Double(mode.maxFPS * 2), accuracy: 1,
+                               "\(mode) at \(refreshRate) Hz")
+                scheduler.invalidate()
+            }
+        }
+    }
+
+    @MainActor
+    func testProfileChangeAndStallDoNotQueueCatchUpFramesOrReviveInvalidatedSession() async {
+        var frames = 0
+        let scheduler = DisplayLinkFrameScheduler(maximumFramesPerSecond: 60) { frames += 1 }
+        scheduler.requestFrame(at: 0)
+        scheduler.setMaximumFramesPerSecond(15)
+        for tick in 1...500 { scheduler.requestFrame(at: Double(tick)) }
+        await drainMainQueue()
+        XCTAssertEqual(frames, 1, "A blocked main queue must coalesce pending work")
+        scheduler.requestFrame(at: 600)
+        await drainMainQueue()
+        scheduler.requestFrame(at: 600.001)
+        await drainMainQueue()
+        XCTAssertEqual(frames, 2, "No burst after a stall")
+        scheduler.requestFrame(at: 601)
+        scheduler.invalidate()
+        scheduler.setMaximumFramesPerSecond(60)
+        await drainMainQueue()
+        scheduler.requestFrame(at: 602)
+        await drainMainQueue()
+        XCTAssertEqual(frames, 2)
+    }
+
+    func testPerformancePreferenceSurvivesRelaunchAndAcceptsLegacyValues() throws {
+        let suite = "PerformanceTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertEqual(PerformanceManager(defaults: defaults).mode, .balanced)
+        for mode in PerformanceManager.PerformanceMode.allCases {
+            PerformanceManager(defaults: defaults).mode = mode
+            XCTAssertEqual(PerformanceManager(defaults: defaults).mode, mode)
+        }
+        defaults.set("balanced", forKey: "performance.mode")
+        XCTAssertEqual(PerformanceManager(defaults: defaults).mode, .balanced)
+        defaults.set("unknown", forKey: "performance.mode")
+        XCTAssertEqual(PerformanceManager(defaults: defaults).mode, .balanced)
+    }
+
+    @MainActor
+    func testProfileBindingUpdatesExistingAndNewDisplaysWithoutChangingPlayback() throws {
+        let suite = "PerformanceBindingTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let manager = PerformanceManager(defaults: defaults)
+        let first = ProfileRendererSpy()
+        let second = ProfileRendererSpy()
+        let firstBinding = manager.bind(to: first)
+        let secondBinding = manager.bind(to: second)
+        manager.mode = .battery
+        let connectedLater = ProfileRendererSpy()
+        let thirdBinding = manager.bind(to: connectedLater)
+        XCTAssertEqual(first.modes, [.balanced, .battery])
+        XCTAssertEqual(second.modes, [.balanced, .battery])
+        XCTAssertEqual(connectedLater.modes, [.battery])
+        firstBinding.cancel()
+        manager.mode = .quality
+        manager.mode = .quality
+        XCTAssertEqual(first.modes, [.balanced, .battery], "Disconnected display must unsubscribe")
+        XCTAssertEqual(second.modes, [.balanced, .battery, .quality])
+        XCTAssertEqual(connectedLater.modes, [.battery, .quality])
+        XCTAssertEqual(first.playbackMutations + second.playbackMutations + connectedLater.playbackMutations, 0)
+        withExtendedLifetime([secondBinding, thirdBinding]) {}
+    }
+
+    @MainActor
+    func testAVFoundationProfileChangesKeepNormalSpeedAndPreservePause() async throws {
+        try await assertProfileChangesPreservePlayback(VideoRenderer())
+    }
+
+    @MainActor
+    func testMetalProfileChangesKeepNormalSpeedAndPreservePause() async throws {
+        guard MetalVideoRenderer.isSupported else { throw XCTSkip("Metal is unavailable") }
+        try await assertProfileChangesPreservePlayback(MetalVideoRenderer())
+    }
+
+    @MainActor
+    private func assertProfileChangesPreservePlayback(_ renderer: WallpaperRenderer) async throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 96, height: 96), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let video = FileManager.default.temporaryDirectory.appendingPathComponent("profiles-\(UUID().uuidString).mov")
+        defer {
+            renderer.stop()
+            window.contentView = nil
+            window.close()
+            try? FileManager.default.removeItem(at: video)
+        }
+        try await writeShortVideo(to: video, frames: 300, fps: 60)
+        window.contentView = renderer.rendererView
+        window.orderFront(nil)
+        renderer.loadVideo(url: video)
+        renderer.play()
+        renderer.applyPerformanceMode(.battery) // Change during asynchronous load.
+        let deadline = Date().addingTimeInterval(5)
+        while (!renderer.hasPresentedFrame || (renderer.currentPlaybackTime ?? 0) < 0.1), Date() < deadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(renderer.hasPresentedFrame)
+        let layer = renderer.filterLayer as? AVPlayerLayer
+        let originalItem = layer?.player?.currentItem
+        if let originalItem {
+            XCTAssertNil(originalItem.videoComposition, "AVPlayer fallback must keep native timing")
+        }
+        for mode in [PerformanceManager.PerformanceMode.quality, .battery, .balanced] {
+            let start = try XCTUnwrap(renderer.currentPlaybackTime)
+            renderer.applyPerformanceMode(mode)
+            if let originalItem {
+                XCTAssertTrue(layer?.player?.currentItem === originalItem, "A profile must not reload the player")
+                XCTAssertNil(originalItem.videoComposition)
+            }
+            for _ in 0..<10 {
+                try await Task.sleep(nanoseconds: 20_000_000)
+                XCTAssertEqual(renderer.currentPlaybackRate, 1)
+                XCTAssertTrue(renderer.hasPresentedFrame)
+                if let layer {
+                    XCTAssertTrue(layer.isReadyForDisplay, "Profile switching must retain displayed video")
+                }
+            }
+            let elapsed = try XCTUnwrap(renderer.currentPlaybackTime) - start
+            XCTAssertGreaterThan(elapsed, 0.15, "Lower frame rate must not slow the video timeline")
+            renderer.pause()
+            let pausedTime = try XCTUnwrap(renderer.currentPlaybackTime)
+            renderer.applyPerformanceMode(.quality)
+            try await Task.sleep(nanoseconds: 100_000_000)
+            XCTAssertEqual(renderer.currentPlaybackRate, 0)
+            XCTAssertEqual(renderer.currentPlaybackTime ?? -1, pausedTime, accuracy: 0.02)
+            XCTAssertTrue(renderer.hasPresentedFrame)
+            if let layer { XCTAssertNotNil(layer.displayedPixelBuffer(), "Paused frame must remain available") }
+            renderer.play()
+        }
+    }
+}
+
+private final class ProfileRendererSpy: WallpaperRenderer {
+    let playbackMonitor = RendererPlaybackMonitor()
+    let rendererView = NSView()
+    var modes: [PerformanceManager.PerformanceMode] = []
+    var playbackMutations = 0
+    let currentPlaybackTime: TimeInterval? = nil
+    let currentPlaybackRate: Float = 0
+    let hasPresentedFrame = false
+    var onBecameReady: (() -> Void)?
+    var filterLayer: CALayer? { nil }
+    func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode) { modes.append(mode) }
+    func loadVideo(url: URL, trim: PlaybackTrim?) { playbackMutations += 1 }
+    func applyTrim(_ trim: PlaybackTrim?) { playbackMutations += 1 }
+    func play() { playbackMutations += 1 }
+    func pause() { playbackMutations += 1 }
+    func stop() { playbackMutations += 1 }
+    func recoverPlayback() { playbackMutations += 1 }
+    func maintainPlayback() { playbackMutations += 1 }
 }

@@ -24,9 +24,13 @@ final class DeepLinkHandlerTests: XCTestCase {
     }
 
     func testHandlesPlayPauseHost() {
-        DeepLinkHandler.shared.handle(URL(string: "wallnetic://playPause")!)
-        // No state inspection — togglePlayback effects are global. We're
-        // really exercising the host-routing switch shape.
+        var toggles = 0
+        let handler = DeepLinkHandler(togglePlayback: { toggles += 1 })
+        handler.handle(URL(string: "https://playPause")!)
+        handler.handle(URL(string: "wallnetic://playPause?a=1&a=2")!)
+        XCTAssertEqual(toggles, 0)
+        handler.handle(URL(string: "wallnetic://playPause")!)
+        XCTAssertEqual(toggles, 1)
     }
 
     func testHandlesUnknownHost() {

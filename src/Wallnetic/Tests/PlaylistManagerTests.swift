@@ -50,6 +50,9 @@ final class PlaylistManagerTests: XCTestCase {
     // MARK: - Interval labels
 
     func testIntervalLabels() {
+        XCTAssertEqual(PlaylistManager.intervalLabel(1), "1 second")
+        XCTAssertEqual(PlaylistManager.intervalLabel(90), "90 seconds")
+        XCTAssertEqual(PlaylistManager.intervalLabel(5400), "90 minutes")
         XCTAssertEqual(PlaylistManager.intervalLabel(300), "5 minutes")
         XCTAssertEqual(PlaylistManager.intervalLabel(1800), "30 minutes")
         XCTAssertEqual(PlaylistManager.intervalLabel(3600), "1 hour")

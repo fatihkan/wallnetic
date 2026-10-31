@@ -61,6 +61,19 @@ jobs:
             exit 1
           fi
 
+      # The standalone candidate is never installed or included in the app.
+      # Its separate windowed host exercises real playback and bad-media copies.
+      - name: Build and test standalone screen saver candidate
+        timeout-minutes: 5
+        run: tools/screensaver-probe/build.sh --run
+
+      # Compile the current renderers; do not collect noisy CI performance baselines.
+      - name: Build playback benchmark tools and check reporting
+        timeout-minutes: 5
+        run: |
+          python3 tools/playback-benchmark/benchmark.py build
+          python3 -m unittest discover -s tools/playback-benchmark -p 'test_*.py'
+
       # Entitlements are cleared and the sandbox disabled because the app-group
       # entitlement cannot be ad-hoc signed on a runner. This mirrors the
       # documented local recipe so CI and local runs agree.

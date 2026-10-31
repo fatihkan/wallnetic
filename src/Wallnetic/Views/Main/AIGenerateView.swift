@@ -405,7 +405,7 @@ struct AIGenerateView: View {
                 .foregroundColor(.secondary)
 
             // Cancel button
-            Button(action: vm.cancelGeneration) {
+            Button(action: { vm.cancelGeneration() }) {
                 HStack {
                     Image(systemName: "xmark.circle")
                     Text("Cancel")

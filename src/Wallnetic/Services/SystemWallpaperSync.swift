@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import Combine
 import CryptoKit
 import Foundation
 import SwiftUI
@@ -11,9 +12,9 @@ import SwiftUI
 /// screen, in Mission Control Space previews, and during Space transition
 /// animations. Wallnetic draws video in its own desktop-level window, so
 /// without this sync those surfaces show whatever unrelated picture is
-/// configured in System Settings. Playing actual video on the lock screen
-/// is not possible for third-party apps (it lives in a separate secure
-/// session), so a matching still frame is the best the platform allows.
+/// configured in System Settings. The documented API used here sets an image;
+/// it does not register a live lock-screen background. The OS controls how that
+/// image appears on each surface. See docs/SCREENSAVER_FEASIBILITY.md (#259).
 @MainActor
 final class SystemWallpaperSync: ObservableObject {
     static let shared = SystemWallpaperSync()
@@ -28,10 +29,20 @@ final class SystemWallpaperSync: ObservableObject {
     /// Last frame applied per display (CGDirectDisplayID → frame URL). Keyed
     /// by display id, not localizedName, so identical monitors don't collide.
     private var appliedFrames: [CGDirectDisplayID: URL] = [:]
-    /// Video URLs with an extraction currently in flight (dedup guard for
-    /// rapid changes — slideshow, per-Space switching).
-    private var inFlight: Set<URL> = []
+    /// Extractions in flight, by still file (video and loop range), with the
+    /// displays waiting for each. A later request for the same still joins
+    /// them instead of starting a second extraction (slideshow, per-Space
+    /// switching, two displays showing one video).
+    private var inFlight: [URL: Set<CGDirectDisplayID>] = [:]
+    /// The still each display asked for last, and the video it came from. A
+    /// finished extraction applies only to displays that still want it, and a
+    /// range edit resyncs the displays whose video it changed.
+    private var requestedFrames: [CGDirectDisplayID: URL] = [:]
+    private var syncedVideos: [CGDirectDisplayID: URL] = [:]
     private var started = false
+    /// Loop ranges as of the last sync, to resync only the edited videos.
+    private var syncedTrims: [String: PlaybackTrim] = [:]
+    private var trimObserver: AnyCancellable?
 
     private init() {}
 
@@ -81,10 +92,81 @@ final class SystemWallpaperSync: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in self?.reapplyIfNeeded() }
         })
+        // Switching to Different reloads each display without a still sync.
+        observers.append(center.addObserver(
+            forName: .applyScreenWallpapers, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.isEnabled else { return }
+                self.syncOutdatedDisplays()
+            }
+        })
+        // A loop-range edit changes which still belongs to that video. It is
+        // not a wallpaper change, so it does not repost .wallpaperDidChange.
+        syncedTrims = PlaybackTrimStore.shared.trims
+        trimObserver = PlaybackTrimStore.shared.$trims.dropFirst().sink { [weak self] trims in
+            Task { @MainActor [weak self] in self?.resyncEditedRanges(trims) }
+        }
+    }
+
+    /// Resyncs only the displays showing a video whose range was added,
+    /// edited or removed.
+    private func resyncEditedRanges(_ trims: [String: PlaybackTrim]) {
+        let changed = Set(trims.keys).union(syncedTrims.keys).filter { trims[$0] != syncedTrims[$0] }
+        syncedTrims = trims
+        guard isEnabled, !changed.isEmpty else { return }
+        // The displays playing an edited video now. Cleared displays play
+        // nothing and keep their still.
+        let videos = (playingVideos() ?? syncedVideos).filter { changed.contains($0.value.standardizedFileURL.path) }
+        syncGrouped(videos)
+    }
+
+    /// What each connected display plays now, from the desktop windows. Nil
+    /// when playback is not connected; this service's own sync history is
+    /// then the best guess.
+    private func playingVideos() -> [CGDirectDisplayID: URL]? {
+        guard let playback = WallpaperManager.shared.playbackDelegate else { return nil }
+        var videos: [CGDirectDisplayID: URL] = [:]
+        for screen in NSScreen.screens {
+            if let id = screen.displayID, let url = playback.playbackWallpaperURL(on: id) { videos[id] = url }
+        }
+        return videos
+    }
+
+    /// The still a display needs for the video it plays now.
+    private func expectedFrame(for video: URL) -> URL {
+        let trim = TrimmedVideoAsset.usableTrim(PlaybackTrimStore.shared.trim(for: video), for: video)
+        return Self.framesDirectory().appendingPathComponent(Self.frameFileName(for: video, trim: trim))
+    }
+
+    /// Syncs displays whose last requested still is not the one for what they
+    /// play now: a display connected or reconnected since, or one whose video
+    /// changed without a still sync. A still that failed to extract is tried
+    /// again only once its video or range changes.
+    private func syncOutdatedDisplays() {
+        guard let playing = playingVideos() else { return }
+        syncGrouped(playing.filter { requestedFrames[$0.key] != expectedFrame(for: $0.value) })
+    }
+
+    /// Syncs displays grouped by video, so each still is extracted once for
+    /// all displays showing it.
+    private func syncGrouped(_ videos: [CGDirectDisplayID: URL]) {
+        var screensByVideo: [URL: [NSScreen]] = [:]
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID, let video = videos[id] else { continue }
+            screensByVideo[video, default: []].append(screen)
+        }
+        for (video, screens) in screensByVideo {
+            sync(videoURL: video, to: screens)
+        }
     }
 
     /// Full sync of the current wallpaper(s) — used when the toggle flips on.
     func syncNow() {
+        if let playing = playingVideos() {
+            syncGrouped(playing)
+            return
+        }
         let manager = WallpaperManager.shared
         if manager.wallpaperMode == .different {
             for screen in NSScreen.screens {
@@ -115,6 +197,8 @@ final class SystemWallpaperSync: ObservableObject {
         }
         originalsJSON = "{}"
         appliedFrames.removeAll()
+        requestedFrames.removeAll()
+        syncedVideos.removeAll()
     }
 
     // MARK: - Sync
@@ -122,36 +206,54 @@ final class SystemWallpaperSync: ObservableObject {
     private func sync(videoURL: URL, to screens: [NSScreen]) {
         guard videoURL.isFileURL else { return }
 
+        // A trimmed video's still comes from inside its loop range.
+        let trim = TrimmedVideoAsset.usableTrim(PlaybackTrimStore.shared.trim(for: videoURL), for: videoURL)
         let frameURL = Self.framesDirectory()
-            .appendingPathComponent(Self.frameFileName(for: videoURL))
+            .appendingPathComponent(Self.frameFileName(for: videoURL, trim: trim))
+        let targetIDs = screens.compactMap(\.displayID)
+        for id in targetIDs {
+            requestedFrames[id] = frameURL
+            syncedVideos[id] = videoURL
+        }
 
         if FileManager.default.fileExists(atPath: frameURL.path) {
             apply(frameURL: frameURL, to: screens)
             return
         }
 
-        guard !inFlight.contains(videoURL) else { return }
-        inFlight.insert(videoURL)
+        if inFlight[frameURL] != nil {
+            inFlight[frameURL]?.formUnion(targetIDs)
+            return
+        }
+        inFlight[frameURL] = Set(targetIDs)
 
-        // Largest backing size among target screens bounds the extraction.
-        let maxSize = screens.reduce(CGSize(width: 1920, height: 1080)) { acc, screen in
+        // The largest connected display bounds the extraction, so displays
+        // that join while it runs get a large enough still too.
+        let maxSize = NSScreen.screens.reduce(CGSize(width: 1920, height: 1080)) { acc, screen in
             let px = CGSize(width: screen.frame.width * screen.backingScaleFactor,
                             height: screen.frame.height * screen.backingScaleFactor)
             return px.width * px.height > acc.width * acc.height ? px : acc
         }
-        // Only immutable Sendable values cross the await (Xcode 15.2 WMO).
-        let targetIDs = screens.compactMap(\.displayID)
 
+        // Only immutable Sendable values cross the await (Xcode 15.2 WMO).
         Task { [weak self] in
-            let extracted = await Self.extractFrame(videoURL: videoURL, maxSize: maxSize, to: frameURL)
+            let extracted = await Self.extractFrame(videoURL: videoURL, trim: trim, maxSize: maxSize, to: frameURL)
             guard let self else { return }
-            self.inFlight.remove(videoURL)
+            let waiting = self.inFlight.removeValue(forKey: frameURL) ?? []
             guard extracted, self.isEnabled else { return }
-            // Re-resolve screens at apply time — the set may have changed
-            // during extraction; match by stable display id.
-            let targets = NSScreen.screens.filter { ($0.displayID).map(targetIDs.contains) ?? false }
+            // Re-resolve screens at apply time, by stable display id. A display
+            // that asked for another still meanwhile (a newer range or
+            // wallpaper) keeps that one.
+            let targets = NSScreen.screens.filter { screen in
+                guard let id = screen.displayID else { return false }
+                return waiting.contains(id) && self.requestedFrames[id] == frameURL
+            }
             self.apply(frameURL: frameURL, to: targets)
-            Self.cleanupFrames(in: Self.framesDirectory(), keepingNewest: 8)
+            // Stills in use as any display's picture stay, including ones
+            // applied before this session.
+            let inUse = Set(self.appliedFrames.values)
+                .union(NSScreen.screens.compactMap { NSWorkspace.shared.desktopImageURL(for: $0) })
+            Self.cleanupFrames(in: Self.framesDirectory(), keepingNewest: 8, protecting: inUse)
         }
     }
 
@@ -177,6 +279,7 @@ final class SystemWallpaperSync: ObservableObject {
     /// — push the last frame wherever the OS reports something else.
     private func reapplyIfNeeded() {
         guard isEnabled else { return }
+        syncOutdatedDisplays()
         for screen in NSScreen.screens {
             guard let id = screen.displayID,
                   let frameURL = appliedFrames[id],
@@ -207,7 +310,7 @@ final class SystemWallpaperSync: ObservableObject {
     /// Extracts a representative still and writes it as JPEG. Runs off the
     /// main actor; touches no shared state.
     nonisolated private static func extractFrame(
-        videoURL: URL, maxSize: CGSize, to destination: URL
+        videoURL: URL, trim: PlaybackTrim?, maxSize: CGSize, to destination: URL
     ) async -> Bool {
         let asset = AVURLAsset(url: videoURL)
         let generator = AVAssetImageGenerator(asset: asset)
@@ -216,8 +319,17 @@ final class SystemWallpaperSync: ObservableObject {
         // Default (loose) tolerances: keyframe-aligned and fast.
 
         do {
-            let duration = (try? await asset.load(.duration).seconds) ?? 0
-            let time = CMTime(seconds: frameTime(forDuration: duration), preferredTimescale: 600)
+            let time: CMTime
+            if let trim {
+                // Offset into the loop like an untrimmed video's still, with
+                // tolerances that keep the decoded frame inside the range.
+                time = trim.stillFrameTime(atOffset: frameTime(forDuration: (trim.end - trim.start).seconds))
+                generator.requestedTimeToleranceBefore = time - trim.start
+                generator.requestedTimeToleranceAfter = max(.zero, trim.end - time - CMTime(value: 1, timescale: 600))
+            } else {
+                let duration = (try? await asset.load(.duration).seconds) ?? 0
+                time = CMTime(seconds: frameTime(forDuration: duration), preferredTimescale: 600)
+            }
             let (cgImage, _) = try await generator.image(at: time)
 
             let rep = NSBitmapImageRep(cgImage: cgImage)
@@ -246,9 +358,13 @@ final class SystemWallpaperSync: ObservableObject {
 
     /// Stable per-video frame filename, so a video applied again later
     /// reuses its cached frame and the wallpaper agent sees a fresh URL
-    /// whenever the video actually changes.
-    nonisolated static func frameFileName(for videoURL: URL) -> String {
-        let digest = SHA256.hash(data: Data(videoURL.path.utf8))
+    /// whenever the video, or its loop range, actually changes.
+    nonisolated static func frameFileName(for videoURL: URL, trim: PlaybackTrim? = nil) -> String {
+        var key = videoURL.path
+        if let trim {
+            key += "|\(trim.start.value)/\(trim.start.timescale)-\(trim.end.value)/\(trim.end.timescale)"
+        }
+        let digest = SHA256.hash(data: Data(key.utf8))
         let hex = digest.map { String(format: "%02x", $0) }.joined().prefix(16)
         return "frame-\(hex).jpg"
     }
@@ -260,7 +376,9 @@ final class SystemWallpaperSync: ObservableObject {
     }
 
     /// Caps the frame cache, dropping the oldest files first.
-    nonisolated static func cleanupFrames(in directory: URL, keepingNewest keep: Int) {
+    /// `protecting`: stills in use as a display's wallpaper are never removed,
+    /// however old, because Spaces and reconnected displays reapply them.
+    nonisolated static func cleanupFrames(in directory: URL, keepingNewest keep: Int, protecting: Set<URL> = []) {
         let fm = FileManager.default
         guard let urls = try? fm.contentsOfDirectory(
             at: directory,
@@ -275,7 +393,9 @@ final class SystemWallpaperSync: ObservableObject {
                 .contentModificationDate) ?? .distantPast
             return lhsDate > rhsDate
         }
-        for url in sorted.dropFirst(keep) {
+        let protectedPaths = Set(protecting.map { $0.standardizedFileURL.resolvingSymlinksInPath().path })
+        for url in sorted.dropFirst(keep)
+        where !protectedPaths.contains(url.standardizedFileURL.resolvingSymlinksInPath().path) {
             try? fm.removeItem(at: url)
         }
     }

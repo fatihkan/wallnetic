@@ -11,6 +11,8 @@ struct WallpaperGridView: View {
     let searchText: String
     var filter: GridFilter = .all
     @State private var previewWallpaper: Wallpaper?
+    @State private var optimizingWallpaper: Wallpaper?
+    @State private var trimmingWallpaper: Wallpaper?
     @State private var renamingWallpaper: Wallpaper?
     @State private var renameText: String = ""
 
@@ -65,6 +67,8 @@ struct WallpaperGridView: View {
                                 onPreview: {
                                     withAnimation { previewWallpaper = wallpaper }
                                 },
+                                onOptimize: { optimizingWallpaper = wallpaper },
+                                onTrim: { trimmingWallpaper = wallpaper },
                                 onRename: {
                                     renameText = wallpaper.displayName
                                     renamingWallpaper = wallpaper
@@ -102,6 +106,8 @@ struct WallpaperGridView: View {
                 .transition(.opacity)
             }
         }
+        .sheet(item: $optimizingWallpaper) { VideoOptimizationSheet(wallpaper: $0) }
+        .sheet(item: $trimmingWallpaper) { VideoTrimSheet(wallpaper: $0) }
         .sheet(item: $renamingWallpaper) { wallpaper in
             RenameWallpaperSheet(
                 wallpaper: wallpaper,
@@ -141,6 +147,7 @@ struct WallpaperGridView: View {
 struct WallpaperCard: View {
     let wallpaper: Wallpaper
     let isSelected: Bool
+    @ObservedObject private var trims = PlaybackTrimStore.shared
     @State private var thumbnail: NSImage?
     @State private var isHovering = false
     @State private var isFlipped = false
@@ -189,7 +196,7 @@ struct WallpaperCard: View {
             }
         }
         .task {
-            thumbnail = await wallpaper.generateThumbnail()
+            thumbnail = await wallpaper.generateThumbnail()?.image
         }
     }
 
@@ -214,7 +221,7 @@ struct WallpaperCard: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    Text(wallpaper.formattedDuration)
+                    durationBadge
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -264,7 +271,10 @@ struct WallpaperCard: View {
                 Divider().background(Surface.hairline)
 
                 metadataRow("Resolution", value: wallpaper.formattedResolution)
-                metadataRow("Duration", value: wallpaper.formattedDuration)
+                metadataRow("Duration", value: LoopRangeStatus.durationText(loopStatus, duration: wallpaper.duration))
+                if loopStatus == .notApplied {
+                    metadataRow("Loop", value: "Trim not applied")
+                }
                 metadataRow("File Size", value: wallpaper.formattedFileSize)
                 metadataRow("Added", value: wallpaper.dateAdded.formatted(.dateTime.month().day().year()))
 
@@ -283,6 +293,27 @@ struct WallpaperCard: View {
         }
     }
 
+    private var loopStatus: LoopRangeStatus {
+        LoopRangeStatus(trim: trims.trim(for: wallpaper.url), fileAt: wallpaper.url, duration: wallpaper.duration,
+                        unbuilt: trims.isUnbuilt(wallpaper.url))
+    }
+
+    /// Trimmed items show the loop length with scissors; a range that cannot
+    /// apply says so, because the full video plays instead.
+    @ViewBuilder private var durationBadge: some View {
+        switch loopStatus {
+        case .none:
+            Text(wallpaper.formattedDuration)
+        case .applied:
+            Label(loopStatus.loopLengthText ?? "", systemImage: "scissors")
+                .accessibilityLabel("Trimmed loop, \(LoopRangeStatus.durationText(loopStatus, duration: wallpaper.duration))")
+        case .notApplied:
+            Label("Trim not applied", systemImage: "exclamationmark.triangle")
+                .foregroundColor(.orange)
+                .accessibilityLabel("Trim not applied, the full video plays")
+        }
+    }
+
     private func metadataRow(_ label: String, value: String) -> some View {
         HStack {
             Text(label)
@@ -298,10 +329,16 @@ struct WallpaperCard: View {
 
 // MARK: - Context Menu
 
+@MainActor
 struct WallpaperContextMenu: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     let wallpaper: Wallpaper
+    @ObservedObject private var optimizedCopies = OptimizedCopyStore.shared
+    @ObservedObject private var trims = PlaybackTrimStore.shared
+    @ObservedObject private var spaceManager = SpaceWallpaperManager.shared
     var onPreview: (() -> Void)? = nil
+    var onOptimize: (() -> Void)? = nil
+    var onTrim: (() -> Void)? = nil
     var onRename: (() -> Void)? = nil
 
     var body: some View {
@@ -338,16 +375,43 @@ struct WallpaperContextMenu: View {
             }
         }
 
-        // Space assignment - auto-detect current space
-        if SpaceWallpaperManager.shared.isEnabled {
+        if let onOptimize {
+            Button(action: onOptimize) { Label("Create Optimized Copy…", systemImage: "arrow.down.right.and.arrow.up.left") }
+        }
+        if let onTrim {
+            if trims.trim(for: wallpaper.url) == nil {
+                Button(action: onTrim) { Label("Trim…", systemImage: "scissors") }
+            } else {
+                Button(action: onTrim) { Label("Edit Trim…", systemImage: "scissors") }
+                Button {
+                    do {
+                        try trims.setTrim(nil, for: wallpaper.url)
+                    } catch {
+                        Log.app.error("Could not remove loop range: \(error.localizedDescription, privacy: .public)")
+                    }
+                } label: { Label("Remove Trim", systemImage: "arrow.uturn.backward") }
+            }
+        }
+        if let path = optimizedCopies.originalPath(for: wallpaper.url) {
+            if let original = wallpaperManager.wallpapers.first(where: { $0.url.standardizedFileURL == URL(fileURLWithPath: path).standardizedFileURL }) {
+                Button { wallpaperManager.setWallpaper(original) } label: { Label("Use Original Video", systemImage: "arrow.uturn.backward") }
+            } else {
+                Text("Original video is no longer in Library")
+            }
+        }
+
+        // Save intent for manual recovery; no persistent Space identity exists.
+        if spaceManager.isEnabled {
             Divider()
 
             Button {
-                let currentSpace = SpaceWallpaperManager.shared.currentSpaceIndex
-                SpaceWallpaperManager.shared.setWallpaper(wallpaper, forSpace: currentSpace)
+                spaceManager.saveForRecovery(wallpaper)
             } label: {
-                Label("Set for This Space", systemImage: "square.stack.3d.up")
+                Label(spaceManager.selections.contains(where: { $0.wallpaperPath == wallpaper.url.path })
+                      ? "Saved for Space Recovery" : "Save for Space Recovery", systemImage: "square.stack.3d.up")
             }
+            .disabled(spaceManager.hasUnreadableData || spaceManager.selections.count >= 500 ||
+                      spaceManager.selections.contains(where: { $0.wallpaperPath == wallpaper.url.path }))
         }
 
         Divider()
@@ -372,6 +436,7 @@ struct WallpaperContextMenu: View {
 
 struct SelectedWallpaperBar: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
+    @ObservedObject private var trims = PlaybackTrimStore.shared
     let wallpaper: Wallpaper
 
     var body: some View {
@@ -392,7 +457,10 @@ struct SelectedWallpaperBar: View {
                 HStack(spacing: 6) {
                     Text(wallpaper.formattedResolution)
                     Text("·").foregroundColor(.primary.opacity(0.3))
-                    Text(wallpaper.formattedDuration)
+                    Text(LoopRangeStatus.durationText(LoopRangeStatus(trim: trims.trim(for: wallpaper.url),
+                                                                      fileAt: wallpaper.url, duration: wallpaper.duration,
+                                                                      unbuilt: trims.isUnbuilt(wallpaper.url)),
+                                                      duration: wallpaper.duration))
                 }
                 .font(Typo.data)
                 .tracking(Typo.dataTracking)
@@ -442,7 +510,7 @@ struct AsyncThumbnailView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .task {
-            thumbnail = await wallpaper.generateThumbnail(size: size)
+            thumbnail = await wallpaper.generateThumbnail(size: size)?.image
         }
     }
 }

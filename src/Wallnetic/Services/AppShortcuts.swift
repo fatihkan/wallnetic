@@ -68,6 +68,38 @@ struct TogglePlaybackIntent: AppIntent {
     }
 }
 
+// MARK: - Calm Mode Intents
+
+@available(macOS 14.0, *)
+struct ToggleCalmModeIntent: AppIntent {
+    static var title: LocalizedStringResource = "Toggle Calm Mode"
+    static var description = IntentDescription("Hold wallpaper motion, or restore previous playback when other pause conditions allow.")
+    static var openAppWhenRun: Bool = false
+
+    func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        let enabled = await MainActor.run {
+            CalmPlaybackSettings.shared.toggleCalmMode()
+            return CalmPlaybackSettings.shared.state.isCalmEnabled
+        }
+        return .result(value: enabled ? "Calm Mode on" : "Calm Mode off; other pause conditions still apply")
+    }
+}
+
+@available(macOS 14.0, *)
+struct SetCalmModeIntent: AppIntent {
+    static var title: LocalizedStringResource = "Set Calm Mode"
+    static var description = IntentDescription("Enable or disable Calm Mode without changing other playback restrictions.")
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Enabled", default: true)
+    var enabled: Bool
+
+    func perform() async throws -> some IntentResult {
+        await MainActor.run { CalmPlaybackSettings.shared.setCalmEnabled(enabled) }
+        return .result()
+    }
+}
+
 // MARK: - Random Wallpaper Intent
 
 @available(macOS 14.0, *)
@@ -119,6 +151,13 @@ struct GetCurrentWallpaperIntent: AppIntent {
 @available(macOS 14.0, *)
 struct WallneticShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: ToggleCalmModeIntent(),
+            phrases: ["Toggle Calm Mode in \(.applicationName)"],
+            shortTitle: "Calm Mode",
+            systemImageName: "leaf"
+        )
+
         AppShortcut(
             intent: NextWallpaperShortcutIntent(),
             phrases: [

@@ -19,7 +19,12 @@ final class WallpaperMetadataStore {
     private var _savedColors: [String: String]?
     private var _savedTags: [String: [String]]?
 
-    private init() {}
+    init(defaults: UserDefaults = .standard) {
+        _favoriteWallpaperPaths = AppStorage(wrappedValue: "", "favoriteWallpaperPaths", store: defaults)
+        _customWallpaperTitlesData = AppStorage(wrappedValue: "", "customWallpaperTitles", store: defaults)
+        _wallpaperColorsData = AppStorage(wrappedValue: "", "wallpaperColors", store: defaults)
+        _wallpaperTagsData = AppStorage(wrappedValue: "", "wallpaperTags", store: defaults)
+    }
 
     // MARK: - Favorites
 
@@ -56,6 +61,41 @@ final class WallpaperMetadataStore {
                 wallpapers[i].customTitle = title
             }
         }
+    }
+
+    /// Keep the full display title separate from the sanitized storage filename.
+    /// Persist before publication so rescans/search use the same title.
+    /// A previously saved user title always wins over a suggested download name.
+    func applyImportedTitle(_ suggestedTitle: String?, to wallpaper: inout Wallpaper) {
+        var titles = customTitles
+        if let existing = titles[wallpaper.url.path] {
+            wallpaper.customTitle = existing
+            return
+        }
+        guard wallpaper.customTitle == nil,
+              let title = Self.normalizedImportedTitle(suggestedTitle) else { return }
+        wallpaper.customTitle = title
+        titles[wallpaper.url.path] = title
+        customTitles = titles
+    }
+
+    /// Also used before displaying untrusted page titles in download UI.
+    static func normalizedImportedTitle(_ value: String?) -> String? {
+        guard let value, value.utf8.count <= 4096 else { return nil }
+        var scalars = String.UnicodeScalarView()
+        for scalar in value.unicodeScalars {
+            if CharacterSet.whitespacesAndNewlines.contains(scalar) {
+                scalars.append(" ")
+            } else if scalar.properties.generalCategory != .control,
+                      scalar.value != 0x061C,
+                      scalar.value != 0x200E, scalar.value != 0x200F,
+                      !(0x202A...0x202E).contains(scalar.value),
+                      !(0x2066...0x2069).contains(scalar.value) {
+                scalars.append(scalar)
+            }
+        }
+        let title = String(scalars).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return title.isEmpty ? nil : String(title.prefix(160))
     }
 
     func saveCustomTitles(from wallpapers: [Wallpaper]) {

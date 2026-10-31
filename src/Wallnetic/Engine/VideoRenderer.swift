@@ -15,17 +15,33 @@ class VideoRenderer: NSObject {
     private var playerLayer: AVPlayerLayer { (view as! PlayerHostView).playerLayer }
 
     private var player: AVPlayer?
-    private var playerLooper: AVPlayerLooper?
-    private var queuePlayer: AVQueuePlayer?
     private var itemStatusObserver: NSKeyValueObservation?
-    private var currentItemObserver: NSKeyValueObservation?
     private var readyObserver: NSKeyValueObservation?
     private var loadGeneration: UInt64 = 0
     private var loadTask: Task<Void, Never>?
 
     private let preferredBufferDuration: TimeInterval = 4.0
     private var shouldPlayWhenReady = false
+    /// The video and loop range of the latest load, for trim edits.
+    private var loadedURL: URL?
+    private var loadedTrim: PlaybackTrim?
+    private var pendingTrimReload: PendingTrimReload?
+    /// The load started by a trim edit, while it is the latest load.
+    private var trimReloadGeneration: UInt64?
+    /// The load the current player came from.
+    private var playerGeneration: UInt64?
+    /// The range the current player loops, or nil when it plays the full video.
+    private(set) var appliedTrim: PlaybackTrim?
+    /// The range the latest load asked for, once it matched the file.
+    private var requestedTrim: PlaybackTrim?
 
+    var trimOutcome: (url: URL, applied: Bool)? {
+        guard pendingTrimReload == nil, playerGeneration == loadGeneration,
+              let loadedURL, requestedTrim != nil else { return nil }
+        return (loadedURL, appliedTrim != nil)
+    }
+
+    let playbackMonitor = RendererPlaybackMonitor()
     /// True once the layer has actually produced a frame. The overlay window
     /// must stay hidden until this is true, or it covers the desktop in black.
     var hasPresentedFrame = false
@@ -45,36 +61,88 @@ class VideoRenderer: NSObject {
 
     /// Loads a video file. The currently displayed player is kept until the
     /// new item is ready, so a switch cannot flash black.
-    func loadVideo(url: URL) {
-        guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else {
-            Log.video.error("File does not exist: \(url.path, privacy: .public)")
-            return
-        }
-
+    func loadVideo(url: URL, trim: PlaybackTrim?) {
         loadTask?.cancel()
         loadGeneration &+= 1
         let generation = loadGeneration
+        loadedURL = url
+        loadedTrim = trim
+        pendingTrimReload = nil
+        trimReloadGeneration = nil
+        playbackMonitor.beginLoad()
+        guard url.isFileURL, FileManager.default.isReadableFile(atPath: url.path) else {
+            failLoading(.missingFile)
+            return
+        }
 
-        let asset = AVURLAsset(url: url, options: [
-            AVURLAssetPreferPreciseDurationAndTimingKey: false
-        ])
+        let trim = TrimmedVideoAsset.usableTrim(trim, for: url)
+        requestedTrim = trim
+        let asset = TrimmedVideoAsset.sourceAsset(url: url, trim: trim)
 
         loadTask = Task { @MainActor [weak self] in
             do {
                 let isPlayable = try await asset.load(.isPlayable)
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
                 guard isPlayable else {
-                    Log.video.error("Asset is not playable")
+                    self.failLoading(.unplayable)
                     return
                 }
-                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
-                self.setupPlayer(with: asset, generation: generation)
+                let playback = await TrimmedVideoAsset.playbackAsset(for: asset, trim: trim)
+                guard !Task.isCancelled, generation == self.loadGeneration else { return }
+                self.setupPlayer(with: playback.asset, trim: playback.trim, generation: generation)
             } catch {
-                Log.video.error("Failed to load asset: \(error.localizedDescription, privacy: .public)")
+                guard !Task.isCancelled, let self, generation == self.loadGeneration else { return }
+                self.failLoading(.loadFailed)
             }
         }
     }
 
-    private func setupPlayer(with asset: AVURLAsset, generation: UInt64) {
+    /// Reloads the current video with an edited loop range, keeping its
+    /// play/pause intent. While paused, the reload waits for the next resume,
+    /// so a paused display keeps its frame and its Paused status.
+    func applyTrim(_ trim: PlaybackTrim?) {
+        guard let loadedURL else { return }
+        // The full video plays and still would: removing a range that does not
+        // apply keeps the current player instead of restarting it.
+        if playerGeneration == loadGeneration, appliedTrim == nil,
+           TrimmedVideoAsset.usableTrim(trim, for: loadedURL) == nil {
+            loadedTrim = trim
+            requestedTrim = nil
+            pendingTrimReload = nil
+            return
+        }
+        guard shouldPlayWhenReady else {
+            pendingTrimReload = trim == loadedTrim ? nil : PendingTrimReload(trim: trim)
+            return
+        }
+        guard trim != loadedTrim else { return }
+        loadTrimReload(url: loadedURL, trim: trim)
+    }
+
+    /// Loads a trim edit made while paused instead of resuming the old player
+    /// outside the edited range. The new player starts once it is ready.
+    private func startPendingTrimReload() -> Bool {
+        guard let pending = pendingTrimReload, let loadedURL else { return false }
+        loadTrimReload(url: loadedURL, trim: pending.trim)
+        return true
+    }
+
+    private func loadTrimReload(url: URL, trim: PlaybackTrim?) {
+        loadVideo(url: url, trim: trim)
+        trimReloadGeneration = loadGeneration
+    }
+
+    /// While a trim edit loads, the current player still plays the previous
+    /// range. Nothing may start it again before the edited player takes over.
+    private var isWaitingForTrimReload: Bool {
+        trimReloadGeneration == loadGeneration && playerGeneration != loadGeneration
+    }
+
+    private func failLoading(_ failure: RendererPlaybackFailure) {
+        playbackMonitor.fail(failure)
+    }
+
+    private func setupPlayer(with asset: AVAsset, trim: PlaybackTrim?, generation: UInt64) {
         guard generation == loadGeneration else { return }
 
         let playerItem = AVPlayerItem(asset: asset)
@@ -92,15 +160,19 @@ class VideoRenderer: NSObject {
         newPlayer.volume = 0
         newPlayer.actionAtItemEnd = .none
 
+        playbackMonitor.attach(newPlayer)
         itemStatusObserver = playerItem.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
             guard let self else { return }
             switch item.status {
             case .readyToPlay:
                 DispatchQueue.main.async {
-                    self.attachIfCurrent(player: newPlayer, item: playerItem, generation: generation)
+                    self.attachIfCurrent(player: newPlayer, item: playerItem, trim: trim, generation: generation)
                 }
             case .failed:
-                Log.video.error("Failed: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
+                DispatchQueue.main.async {
+                    guard generation == self.loadGeneration else { return }
+                    self.failLoading(.loadFailed)
+                }
             default:
                 break
             }
@@ -109,17 +181,16 @@ class VideoRenderer: NSObject {
 
     private var loopObserver: NSObjectProtocol?
 
-    private func attachIfCurrent(player newPlayer: AVPlayer, item: AVPlayerItem, generation: UInt64) {
+    private func attachIfCurrent(player newPlayer: AVPlayer, item: AVPlayerItem, trim: PlaybackTrim?,
+                                 generation: UInt64) {
         guard generation == loadGeneration else { return }
         guard player !== newPlayer else { return }
 
         let previousPlayer = player
-        let previousLooper = playerLooper
 
-        queuePlayer = nil
-        playerLooper?.disableLooping()
-        playerLooper = nil
         player = newPlayer
+        playerGeneration = generation
+        appliedTrim = trim
         itemStatusObserver = nil
 
         if let loopObserver {
@@ -158,6 +229,7 @@ class VideoRenderer: NSObject {
                 guard generation == self.loadGeneration else { return }
                 let firstFrame = !self.hasPresentedFrame
                 self.hasPresentedFrame = true
+                self.playbackMonitor.framePresented()
                 if firstFrame {
                     self.onBecameReady?()
                 }
@@ -165,7 +237,6 @@ class VideoRenderer: NSObject {
         }
 
         previousPlayer?.pause()
-        previousLooper?.disableLooping()
         previousPlayer?.replaceCurrentItem(with: nil)
 
         Log.video.debug("Attached player layer")
@@ -173,8 +244,18 @@ class VideoRenderer: NSObject {
 
     // MARK: - Playback Control
 
+    func applyPerformanceMode(_ mode: PerformanceManager.PerformanceMode) {
+        // AVPlayerLayer has no direct frame-rate cap for local video. Network
+        // bitrate/resolution preferences do not limit local decoding. Changing
+        // videoComposition during playback can move the clock backwards, so
+        // keep native timing rather than change rate or rebuild the player.
+        Log.video.debug("Profile \(mode.rawValue, privacy: .public): AVPlayer keeps source frame timing")
+    }
+
     func play() {
+        guard !playbackMonitor.state.isFailed else { return }
         shouldPlayWhenReady = true
+        guard !startPendingTrimReload() else { return }
         pinOrStart()
     }
 
@@ -188,12 +269,18 @@ class VideoRenderer: NSObject {
     }
 
     private func cleanup() {
+        playbackMonitor.reset()
         loadGeneration &+= 1
         loadTask?.cancel()
         loadTask = nil
         shouldPlayWhenReady = false
+        loadedURL = nil
+        loadedTrim = nil
+        requestedTrim = nil
+        pendingTrimReload = nil
+        trimReloadGeneration = nil
+        playerGeneration = nil
         itemStatusObserver = nil
-        currentItemObserver = nil
         readyObserver = nil
         if let loopObserver {
             NotificationCenter.default.removeObserver(loopObserver)
@@ -201,10 +288,8 @@ class VideoRenderer: NSObject {
         }
         player?.pause()
         player?.replaceCurrentItem(with: nil)
-        playerLooper?.disableLooping()
-        playerLooper = nil
-        queuePlayer = nil
         player = nil
+        appliedTrim = nil
         playerLayer.player = nil
         hasPresentedFrame = false
     }
@@ -241,11 +326,14 @@ class VideoRenderer: NSObject {
     }
 
     func recoverPlayback() {
+        guard !playbackMonitor.state.isFailed else { return }
         shouldPlayWhenReady = true
+        guard !startPendingTrimReload() else { return }
         pinOrStart()
     }
 
     func maintainPlayback() {
+        guard !playbackMonitor.state.isFailed else { return }
         guard shouldPlayWhenReady else { return }
         pinOrStart()
     }
@@ -253,7 +341,7 @@ class VideoRenderer: NSObject {
     /// Start from a stop, or pin a drifting rate back to 1. Never
     /// `playImmediately` — that seeks to the last keyframe.
     private func pinOrStart() {
-        guard let player else { return }
+        guard let player, !isWaitingForTrimReload else { return }
         if WallpaperPlaybackPolicy.shouldIssuePlay(currentRate: player.rate) {
             player.play()
         } else if WallpaperPlaybackPolicy.shouldCorrectRate(

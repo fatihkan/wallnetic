@@ -15,16 +15,16 @@ struct DisplaySettingsView: View {
                     ScreenRow(
                         screen: screen,
                         wallpaper: wallpaperManager.wallpaper(for: screen),
-                        isSelected: selectedScreen == screen,
-                        showDifferentMode: wallpaperManager.wallpaperMode == .different
-                    )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if wallpaperManager.wallpaperMode == .different {
+                        showDifferentMode: wallpaperManager.wallpaperMode == .different,
+                        playbackStatus: wallpaperManager.displayPlaybackStatuses.first { $0.id == screen.displayID },
+                        retry: {
+                            if let id = screen.displayID { wallpaperManager.retryWallpaper(on: id) }
+                        },
+                        chooseWallpaper: {
                             selectedScreen = screen
                             showingWallpaperPicker = true
                         }
-                    }
+                    )
                 }
             }
 
@@ -39,7 +39,7 @@ struct DisplaySettingsView: View {
                 }
 
                 if wallpaperManager.wallpaperMode == .different {
-                    Text("Click on a display above to set its wallpaper")
+                    Text("Choose a wallpaper for each display above.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -63,8 +63,10 @@ struct DisplaySettingsView: View {
 struct ScreenRow: View {
     let screen: NSScreen
     let wallpaper: Wallpaper?
-    let isSelected: Bool
     let showDifferentMode: Bool
+    var playbackStatus: DisplayPlaybackStatus?
+    var retry: () -> Void = {}
+    var chooseWallpaper: () -> Void = {}
 
     var body: some View {
         HStack {
@@ -88,6 +90,9 @@ struct ScreenRow: View {
                 Text("\(Int(screen.frame.width))×\(Int(screen.frame.height))")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                if let playbackStatus {
+                    PlaybackStatusView(status: playbackStatus, retry: retry)
+                }
             }
 
             Spacer()
@@ -108,8 +113,9 @@ struct ScreenRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
+                Button("Choose wallpaper…", action: chooseWallpaper)
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Choose wallpaper for \(screen.localizedName)")
             }
         }
         .padding(.vertical, 4)
@@ -160,9 +166,9 @@ struct ScreenWallpaperPickerView: View {
                         ForEach(wallpaperManager.wallpapers) { wallpaper in
                             WallpaperPickerCard(
                                 wallpaper: wallpaper,
-                                isSelected: wallpaperManager.screenWallpapers[screen.localizedName] == wallpaper.id
-                            )
-                            .onTapGesture {
+                                isSelected: wallpaperManager.wallpaper(for: screen)?.url == wallpaper.url,
+                                displayName: screen.localizedName
+                            ) {
                                 wallpaperManager.setWallpaper(wallpaper, for: screen)
                             }
                         }
@@ -180,9 +186,23 @@ struct ScreenWallpaperPickerView: View {
 struct WallpaperPickerCard: View {
     let wallpaper: Wallpaper
     let isSelected: Bool
+    let displayName: String
+    let choose: () -> Void
     @State private var thumbnail: NSImage?
 
     var body: some View {
+        Button(action: choose) {
+            cardContent
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel("Apply \(wallpaper.displayName) to \(displayName)")
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .task {
+            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 200, height: 112))?.image
+        }
+    }
+
+    private var cardContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack {
                 if let thumbnail = thumbnail {
@@ -211,9 +231,6 @@ struct WallpaperPickerCard: View {
             Text(wallpaper.displayName)
                 .font(.caption)
                 .lineLimit(1)
-        }
-        .task {
-            thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 200, height: 112))
         }
     }
 }

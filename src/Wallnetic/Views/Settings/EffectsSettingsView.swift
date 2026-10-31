@@ -3,6 +3,7 @@ import SwiftUI
 /// Settings view for wallpaper visual effects
 struct EffectsSettingsView: View {
     @ObservedObject private var effects = WallpaperEffectsManager.shared
+    @ObservedObject private var clock = DesktopClockSettings.shared
 
     var body: some View {
         Form {
@@ -55,10 +56,22 @@ struct EffectsSettingsView: View {
                 }
             }
 
-            // Transition
-            Section("Transition") {
-                Text("Wallpaper changes are currently instant.")
-                    .foregroundStyle(.secondary)
+            // Desktop clock (#311): not an effect, so Reset All Effects keeps it.
+            Section("Desktop Clock") {
+                Toggle("Show clock", isOn: clockBinding(\.showClock))
+                if clock.preferences.showClock {
+                    Toggle("Show date", isOn: clockBinding(\.showDate))
+                    Picker("Position", selection: clockBinding(\.position)) {
+                        ForEach(DesktopClockSettings.Position.allCases) { Text($0.title).tag($0) }
+                    }
+                    Picker("Size", selection: clockBinding(\.size)) {
+                        ForEach(DesktopClockSettings.Size.allCases) { Text($0.title).tag($0) }
+                    }
+                }
+                Text("Drawn in English on the live wallpaper of every display, below desktop icons, with your region's date and time format. The lock screen and Mission Control do not show it.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             // Reset
@@ -85,6 +98,11 @@ struct EffectsSettingsView: View {
     }
 
     // MARK: - Components
+
+    private func clockBinding<Value>(_ keyPath: WritableKeyPath<DesktopClockSettings.Preferences, Value>) -> Binding<Value> {
+        Binding(get: { clock.preferences[keyPath: keyPath] },
+                set: { value in clock.update { $0[keyPath: keyPath] = value } })
+    }
 
     private func presetButton(_ preset: WallpaperEffectsManager.EffectPreset) -> some View {
         Button {

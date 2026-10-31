@@ -24,8 +24,8 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     }
 
     /// Lightweight init — no I/O, no AVFoundation. Safe to call on main thread.
-    init(url: URL, isFavorite: Bool = false) {
-        self.id = UUID()
+    init(url: URL, isFavorite: Bool = false, id: UUID = UUID()) {
+        self.id = id
         self.url = url
         self.name = url.deletingPathExtension().lastPathComponent
         self.customTitle = nil
@@ -74,6 +74,10 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
     }
 
     var formattedDuration: String {
+        Self.formattedDuration(duration)
+    }
+
+    static func formattedDuration(_ duration: Double?) -> String {
         guard let duration = duration, duration.isFinite,
               duration >= 0, duration < Double(Int.max) else { return "--:--" }
         let minutes = Int(duration) / 60
@@ -103,14 +107,15 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
 
     // MARK: - Thumbnail Generation
 
-    /// Generates or retrieves cached thumbnail
-    func generateThumbnail(size: CGSize = CGSize(width: 320, height: 180)) async -> NSImage? {
+    /// Generates or retrieves cached thumbnail, made off the main thread.
+    /// Callers take `.image` where they use it.
+    func generateThumbnail(size: CGSize = CGSize(width: 320, height: 180)) async -> SendableImage? {
         return await ThumbnailCache.shared.thumbnail(for: url, size: size)
     }
 
     /// Extract dominant color from thumbnail
     func extractDominantColor() async -> String? {
-        guard let thumbnail = await generateThumbnail(size: CGSize(width: 64, height: 36)) else { return nil }
+        guard let thumbnail = await generateThumbnail(size: CGSize(width: 64, height: 36))?.image else { return nil }
         guard let tiffData = thumbnail.tiffRepresentation,
               let ciImage = CIImage(data: tiffData) else { return nil }
 
