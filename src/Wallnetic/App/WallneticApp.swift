@@ -99,6 +99,17 @@ struct WallneticApp: App {
         .defaultPosition(.center)
         .handlesExternalEvents(matching: [])
 
+        // Support Wallnetic (#337): optional tips. Its menu bar and About
+        // entries only appear when the App Store returned tip products.
+        WindowGroup(id: "support") {
+            SupportWindowView()
+                .cinematicWindowChrome()
+        }
+        .windowStyle(.titleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .handlesExternalEvents(matching: [])
+
         // Menu Bar Extra
         MenuBarExtra {
             MenuBarView()

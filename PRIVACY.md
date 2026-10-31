@@ -72,6 +72,8 @@ Create from Photos asks for access to your Photos library, shows thumbnails of t
 
 **Rate Wallnetic** opens Wallnetic's App Store page, and macOS may show Apple's rating prompt. Apple handles these under its own privacy policy.
 
+**Support Wallnetic** offers optional tips through the App Store's in-app purchase. To show tip prices, macOS asks the App Store for them. Apple processes the payment under its own privacy policy. Wallnetic never sees payment or account details, verifies the purchase on your Mac, sends nothing to a server of its own, and a tip unlocks nothing. The dates of tip offers and tips, used to pace the offer, stay in Wallnetic's preferences on your Mac. The direct-download version offers no tips.
+
 ### No other connections
 
 This version has no other network features, such as AI services or update checks. You can keep using local wallpapers without any of the features above.
