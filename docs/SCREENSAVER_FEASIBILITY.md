@@ -139,7 +139,7 @@ Observed on the machine above:
 Every run creates a unique ignored `.build/screensaver-probe.XXXXXX` directory.
 There is no installation, shared-container change, host preference write or
 system wallpaper change to restore. These are ad-hoc developer artifacts, not a
-new build of the shipping Wallnetic app. CI compiles the probe on Xcode 15.2;
+new build of the shipping Wallnetic app. CI compiles the probe on Xcode 26.4.1;
 windowed playback checks are performed locally.
 
 **Not established by this probe:** loading in Apple's actual screen-saver host,

@@ -1,6 +1,6 @@
 name: Release Build
 
-# The DMG workflow builds Release with Xcode 15.2 for each architecture, but it
+# The DMG workflow builds Release with Xcode 26.4.1 for each architecture, but it
 # only runs for a release tag. That configuration has reported errors the Debug
 # CI build did not (#218, #219), so dev runs the same build before tagging (#312).
 # Nothing is tagged, packaged or published.
@@ -28,7 +28,7 @@ env:
 jobs:
   build:
     name: Release build (${{ matrix.arch_name }})
-    runs-on: macos-14
+    runs-on: macos-26
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -46,7 +46,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '15.2'
+          xcode-version: '26.4.1'
 
       # Keep in sync with the build step in release.yml.
       - name: Build for ${{ matrix.arch_name }}
