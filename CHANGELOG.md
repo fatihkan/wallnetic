@@ -5,6 +5,21 @@ All notable changes to Wallnetic are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Support Wallnetic…, in the menu bar and in Settings > About, offers optional
+  tips in three sizes through the App Store. Tips unlock nothing (#337).
+- Now and then, Wallnetic offers the same tips in a sheet on the main window:
+  - only after two weeks, five launches and ten wallpaper changes;
+  - at most once every 30 days, and never close to a rating request;
+  - not again for six months after a tip.
+
+  Not Now waits 30 days. Don't Ask Again, or turning off Remind me to support
+  Wallnetic in Settings > About, stops the offer.
+- Tips are processed by Apple and verified on the Mac; Wallnetic adds no server
+  of its own. The direct-download version offers no tips.
+
 ## [1.5.0] — Unreleased
 
 ### Added

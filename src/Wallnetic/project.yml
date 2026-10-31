@@ -121,6 +121,9 @@ schemes:
         WallneticTests: [test]
     run:
       config: Debug
+      # Local tip testing (#337). Xcode serves these products instead of the
+      # App Store; Release builds and CI never use the file.
+      storeKitConfiguration: Configuration/Wallnetic.storekit
     test:
       config: Debug
       targets:
