@@ -9,7 +9,7 @@
 [![App Store](https://img.shields.io/badge/App%20Store-Download-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com/app/id6760347328?mt=12)
 [![CI](https://img.shields.io/github/actions/workflow/status/fatihkan/wallnetic/ci.yml?branch=main&label=CI)](https://github.com/fatihkan/wallnetic/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.2-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.5.0-blue.svg)](https://github.com/fatihkan/wallnetic/releases/latest)
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/61182f15-1208-4cc5-b37a-d7827e871022" width="800" autoplay loop muted playsinline>
@@ -24,12 +24,12 @@ It requires no account, has no subscription and no paid tier, collects no analyt
 released under the MIT license. Requires macOS 13 or later; universal binary for Apple Silicon
 and Intel.
 
-Unlike most apps in this category, Wallnetic ships **no wallpaper library of its own**. You supply
-the content: drag in a local file, or browse eight sources from inside the app. That means the
-library is as good as you want it to be, and the app carries none of the content liability that
-comes with hosting a catalogue.
+Unlike most apps in this category, Wallnetic ships **no large built-in catalogue**. You supply
+the content: drag in a local file, browse eight sources from inside the app, or download optional
+free wallpaper packs made for Wallnetic. That means the library is as good as you want it to be,
+and the app carries none of the content liability that comes with hosting a third-party catalogue.
 
-*Last updated: September 2026 · Current version: 1.4.2*
+*Last updated: November 2026 · Current version: 1.5.0*
 
 ### Is there a Wallpaper Engine for Mac?
 
@@ -46,7 +46,7 @@ share of Workshop items that are plain video, once you have the file locally.
 | **Open source** | **Yes (MIT)** | No | No | No | No |
 | **Account required** | **No** | No | No | No | No |
 | **Bring your own video** | Yes | Yes | Yes | Yes | Yes |
-| **Built-in library** | **None — by design** | Yes | 4,000+ | Yes | Via Wallpaper Engine |
+| **Built-in library** | **Optional free packs** | Yes | 4,000+ | Yes | Via Wallpaper Engine |
 | **In-app source browsing** | **8 sources** | Community library | Own library | Own library | — |
 | **Per-display wallpaper** | Yes | Yes | Yes | Yes | Yes |
 | **Per-Space wallpaper** | Manual recovery choices¹ | — | — | — | — |
@@ -57,7 +57,7 @@ share of Workshop items that are plain video, once you have the file locally.
 *Competitor pricing and features as published on their own sites, September 2026. Corrections
 welcome via issue or PR.*
 
-¹ On `dev`, Space selections are saved for manual recovery. Automatic per-Space switching is disabled because reliable desktop identity is unavailable; applying a choice affects all displays and Spaces. See [Space recovery](docs/SPACE_RECOVERY.md).
+¹ Since 1.5.0, Space selections are saved for manual recovery. Automatic per-Space switching is disabled because reliable desktop identity is unavailable; applying a choice affects all displays and Spaces. See [Space recovery](docs/SPACE_RECOVERY.md).
 
 ## Frequently asked questions
 
@@ -112,7 +112,8 @@ later.
 - Dark theme optimized for media browsing
 
 ### Discover Wallpaper Sources
-- Browse 7 wallpaper sources: Pixabay, Pexels, Wallhaven, MyLiveWallpapers, DesktopHut, MoeWalls, MotionBGs
+- Browse 8 wallpaper sources: Pixabay, Pexels, Wallhaven, MyLiveWallpapers, DesktopHut, MoeWalls, MotionBGs, Steam Workshop
+- Optional [wallpaper packs](docs/WALLPAPER_PACKS.md) in Discover > Browse Packs, downloaded from this repository only when you choose
 - In-app browser with automatic video download detection
 - Scan any page to find and download all videos
 - Progress tracking with auto-import to library
@@ -120,11 +121,15 @@ later.
 ### Live Video Wallpapers
 - Play any video file (MP4, MOV, M4V, GIF, WebM) as your desktop background
 - Seamless looping with zero stuttering
-- [Trim](docs/LOOP_RANGE.md) (`dev`): loop only part of a Library video, set frame
+- [Trim](docs/LOOP_RANGE.md): loop only part of a Library video, set frame
   by frame, without modifying or re-encoding the original
+- [Optimized copies](docs/OPTIMIZED_VIDEO_COPIES.md): an optional, separate copy of a heavy video;
+  the original is never changed
+- [Storage settings](docs/LIBRARY_STORAGE.md): see how much space the Library uses and clear unused caches
+- [A bundled sample](docs/ONBOARDING_SAMPLE.md) in the welcome tour that works offline
 - Drag & drop or file picker import
 
-### Space Selection Recovery (`dev`)
+### Space Selection Recovery
 - Preserve previous Space wallpaper choices after relaunch or display changes
 - Name, edit and manually apply saved choices without reimporting Library media
 - Settings > Spaces, or right-click a wallpaper > "Save for Space Recovery"
@@ -147,13 +152,14 @@ later.
 - Brightness, contrast, saturation, blur, tint, and vignette
 - 8 presets: None, Dim, Vivid, Moody, Film, B&W, Dreamy, Focus
 - Real-time CIFilter effects on video layer
-- [Desktop clock](docs/DESKTOP_CLOCK.md) (`dev`): an optional clock and date on
+- [Desktop clock](docs/DESKTOP_CLOCK.md): an optional clock and date on
   each display's wallpaper, below desktop icons, in English with your region's
   date and time format
 
-### Time-of-Day Auto Switch
-- 4 time slots: Morning, Afternoon, Evening, Night
-- Assign wallpapers per slot with configurable hours
+### Daily Schedule
+- [Daily wallpaper schedule](docs/WALLPAPER_SCHEDULE.md) on a timeline in Settings > Schedule,
+  replacing the four fixed time-of-day slots; earlier slot settings carry over
+- Per-item durations for playlist wallpapers
 
 ### Notification Center Widget
 - Glassmorphism clock widget with wallpaper background
@@ -242,11 +248,11 @@ later.
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [Wallnetic_1.4.2_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/download/v1.4.2/Wallnetic_1.4.2_arm64.dmg) |
-| macOS (Intel) | [Wallnetic_1.4.2_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/download/v1.4.2/Wallnetic_1.4.2_x86_64.dmg) |
+| macOS (Apple Silicon) | [Wallnetic_1.5.0_arm64.dmg](https://github.com/fatihkan/wallnetic/releases/download/v1.5.0/Wallnetic_1.5.0_arm64.dmg) |
+| macOS (Intel) | [Wallnetic_1.5.0_x86_64.dmg](https://github.com/fatihkan/wallnetic/releases/download/v1.5.0/Wallnetic_1.5.0_x86_64.dmg) |
 
-The DMGs use the same application source and version **1.4.2 (11)** as the App Store release.
-They are ad-hoc signed and not notarized. [SHA-256 checksums](https://github.com/fatihkan/wallnetic/releases/download/v1.4.2/SHA256SUMS.txt) are included with the release.
+The DMGs use the same application source and version **1.5.0 (12)** as the App Store release.
+They are ad-hoc signed and not notarized. [SHA-256 checksums](https://github.com/fatihkan/wallnetic/releases/download/v1.5.0/SHA256SUMS.txt) are included with the release.
 
 > **"Wallnetic is damaged and can't be opened"** &mdash; This happens because the DMG is not notarized by Apple. Run this command in Terminal after dragging Wallnetic to Applications:
 > ```bash
@@ -323,7 +329,7 @@ open Wallnetic.xcodeproj
 ### v1.1
 - [x] Netflix-style UI redesign
 - [x] Discover wallpaper sources (Pixabay, Pexels, web browser)
-- [x] Space wallpaper selections (now manual recovery on `dev`; automatic matching is unavailable)
+- [x] Space wallpaper selections (manual recovery since 1.5.0; automatic matching is unavailable)
 - [x] System wallpaper still-frame sync (live lock-screen playback is unavailable)
 - [x] Wallpaper effects (blur, brightness, tint, vignette)
 - [x] Time-of-day auto switch
@@ -375,11 +381,21 @@ open Wallnetic.xcodeproj
 - [x] Screen-saver pausing fixed &mdash; the observers could never fire before
 - [x] Watchdog no longer restarts a deliberately suspended renderer
 
-### v1.4.2 &mdash; Reliability (current)
+### v1.4.2 &mdash; Reliability
 - [x] More reliable wallpaper loading, switching and looping, with aspect-fill playback
 - [x] Ordinary windows no longer pause and restart the wallpaper decoder
 - [x] User-requested pauses stay paused across power and session events
 - [x] Native title bars for the main and Settings windows
+
+### v1.5.0 &mdash; Motion Control (current)
+- [x] Trim: loop a chosen part of a video without changing the original
+- [x] Optional desktop clock and date on each display's wallpaper
+- [x] Pause After, Calm Mode, playback profiles and optional thermal-aware playback
+- [x] Per-display playback status and pause reasons in the menu bar
+- [x] Daily schedule timeline and per-item playlist durations
+- [x] Welcome-tour sample, Storage settings, optimized copies and optional wallpaper packs
+- [x] Saved Space choices replace automatic per-Space switching
+- [x] HDR, widget clock and Metal aspect-ratio fixes
 
 ### v2.0 &mdash; Planned
 - [ ] AI video generation from text prompts
@@ -395,10 +411,10 @@ open Wallnetic.xcodeproj
 Release notes live in [CHANGELOG.md](CHANGELOG.md), formatted to
 [Keep a Changelog](https://keepachangelog.com/) and [SemVer](https://semver.org/).
 
-Latest: **[1.4.2](CHANGELOG.md#142--2026-09-24)** — more reliable loading,
-switching and looping with aspect-fill playback; ordinary windows no longer pause
-and restart the decoder; user-requested pauses stay paused across power and
-session events.
+Latest: **[1.5.0](CHANGELOG.md#150--2026-11-02)** — loop ranges, an optional
+desktop clock, Pause After, Calm Mode and playback profiles, a daily schedule
+timeline, optional wallpaper packs, and saved Space choices in place of
+automatic per-Space switching.
 
 ---
 

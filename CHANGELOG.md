@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tips are processed by Apple and verified on the Mac; Wallnetic adds no server
   of its own. The direct-download version offers no tips.
 
-## [1.5.0] — Unreleased
+## [1.5.0] — 2026-11-02
 
 ### Added
 - Playback profiles in Settings > Playback: Quality, Balanced and Battery Saver.
