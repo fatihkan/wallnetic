@@ -26,7 +26,7 @@ struct VideoPreviewView: View {
                     .aspectRatio(16/9, contentMode: .fit)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(40)
-                    .glowCard(isHovering: true, cornerRadius: 12)
+                    .cardHighlight(isHovering: true, cornerRadius: 12)
                     .scaleEffect(appeared ? 1.0 : 0.92)
                     .opacity(appeared ? 1 : 0)
                     .shadow(color: .black.opacity(0.5), radius: 30, y: 10)
@@ -92,7 +92,6 @@ struct VideoPreviewView: View {
                             Image(systemName: player?.rate == 0 ? "play.circle.fill" : "pause.circle.fill")
                                 .font(.system(size: 36))
                                 .foregroundColor(.white)
-                                .neonGlow(.white, isActive: true, radius: 6)
                         }
                         .buttonStyle(.plain)
 
@@ -111,7 +110,6 @@ struct VideoPreviewView: View {
                                 Capsule().fill(Color.accentColor)
                             )
                             .foregroundColor(.white)
-                            .neonGlow(.accentColor, isActive: true, radius: 8)
                         }
                         .buttonStyle(.plain)
                     }

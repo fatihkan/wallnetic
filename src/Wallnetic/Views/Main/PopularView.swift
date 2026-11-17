@@ -38,7 +38,6 @@ struct PopularView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "flame.fill")
                         .foregroundColor(.orange)
-                        .neonGlow(.orange, isActive: true, radius: 6)
                     Text("Popular")
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                 }
@@ -158,7 +157,6 @@ struct PopularCard: View {
                         .background(
                             Capsule().fill(rankColor)
                         )
-                        .neonGlow(rankColor, isActive: rank <= 3, radius: 6)
                         .padding(8)
 
                     // Hover overlay - centered
@@ -172,7 +170,7 @@ struct PopularCard: View {
                         .transition(.opacity)
                     }
                 }
-                .glowCard(isHovering: isHovering, cornerRadius: 10, glowColor: rank <= 3 ? rankColor : .accentColor)
+                .cardHighlight(isHovering: isHovering, cornerRadius: 10)
                 .scaleEffect(isHovering ? 1.02 : 1.0)
             }
             .buttonStyle(.plain)
@@ -198,7 +196,6 @@ struct PopularCard: View {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 11))
                         .foregroundColor(.pink)
-                        .neonGlow(.pink, isActive: true, radius: 4)
                 }
             }
         }

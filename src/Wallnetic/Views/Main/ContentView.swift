@@ -338,7 +338,6 @@ struct DesktopKeepsPlayingHint: View {
             Image(systemName: "sparkles.tv.fill")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.accentColor)
-                .neonGlow(.accentColor, isActive: true, radius: 6)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("Your wallpaper plays on the desktop — closing this window won't stop it.")

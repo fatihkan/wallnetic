@@ -65,7 +65,6 @@ struct DiscoverView: View {
                     Image(systemName: "globe")
                         .font(.system(size: 16))
                         .foregroundColor(.blue)
-                        .neonGlow(.blue, isActive: true, radius: 6)
                     Text("Discover Wallpapers")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
@@ -138,7 +137,6 @@ struct SourceCard: View {
             Image(systemName: source.icon)
                 .font(.system(size: 24))
                 .foregroundColor(source.color)
-                .neonGlow(source.color, isActive: isHovering, radius: 8)
                 .frame(width: 50, height: 50)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
@@ -159,7 +157,6 @@ struct SourceCard: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Color.green.opacity(0.15)))
-                            .neonGlow(.green, isActive: isHovering, radius: 3)
                     }
                 }
 
@@ -182,7 +179,7 @@ struct SourceCard: View {
         }
         .padding(16)
         .frame(height: 90)
-        .glowCard(isHovering: isHovering, cornerRadius: 12, glowColor: source.color)
+        .cardHighlight(isHovering: isHovering, cornerRadius: 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Surface.glassControl.opacity(isHovering ? 1.5 : 1.0))
