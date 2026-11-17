@@ -3,40 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Not found: Wallnetic</title>
+  <title>Page not found · Wallnetic</title>
   <meta name="robots" content="noindex">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/png" href="/favicon.png">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/site.css">
 </head>
 <body>
-  <div class="wallpaper" aria-hidden="true">
-    <span class="field one"></span>
-    <span class="field two"></span>
-    <span class="field three"></span>
-  </div>
-  <div class="desktop">
-    <header class="menubar">
-      <a class="wordmark" href="/" aria-label="Wallnetic home">
-        <img src="/favicon.png" alt="" width="22" height="22">
+  <header class="nav-wrap">
+    <nav class="nav glass" aria-label="Main">
+      <a class="brand" href="/" aria-label="Wallnetic home">
+        <img src="/favicon.png" alt="" width="24" height="24">
         <span>Wallnetic</span>
       </a>
-    </header>
-    <main>
-      <section class="window" aria-labelledby="headline">
-        <p class="kicker">404</p>
-        <h1 id="headline">This page is <em>still loading.</em></h1>
-        <p class="pitch">It does not exist yet. The rest of the site is on its way.</p>
-        <ul class="actions">
-          <li><a class="button primary" href="/">Go to wallnetic.app</a></li>
-          <li><a class="button" href="/support/">Support</a></li>
-        </ul>
-      </section>
-    </main>
-    <footer>
-      <span>© 2026 Wallnetic</span>
-      <nav aria-label="Legal and help"><a href="/privacy">Privacy Policy</a></nav>
-    </footer>
-  </div>
+      <a class="pill-button" href="https://apps.apple.com/app/id6760347328?mt=12">Download</a>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <p class="eyebrow">404</p>
+    <h1>This page doesn't exist.</h1>
+    <p class="lede">The link may be old, or the address may have a typo.</p>
+    <div class="cta">
+      <a class="pill-button" href="/">Go to wallnetic.app</a>
+      <a class="button" href="/support/">Support</a>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <nav aria-label="Footer">
+      <a href="/">Home</a>
+      <a href="/support/">Support</a>
+      <a href="/privacy">Privacy Policy</a>
+    </nav>
+  </footer>
 </body>
 </html>

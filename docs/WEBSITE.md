@@ -1,22 +1,39 @@
 # wallnetic.app
 
-The `site/` folder is the whole website: static HTML and CSS, one small
-script for the clock, no build step, no web fonts and no third-party
-requests. It is a placeholder while the full site is built.
+The `site/` folder is the whole website:
+- static HTML and CSS;
+- one small script for the demo desktop;
+- our own media;
+- no build step, no web fonts and no third-party requests.
 
 ## Pages
 
 | Path | Content |
 |------|---------|
-| `/` | One page: the app, a note that the site is under construction, and links to the Mac App Store, GitHub and support |
+| `/` | The product page:<br>• hero with the Mac App Store badge, GitHub link and requirements line<br>• a demo Mac desktop<br>• compatibility (Intel, Apple silicon, macOS 13–26)<br>• four reasons and a list of other features<br>• FAQ<br>• final call to action |
 | `/support/` | Contact (`support@wallnetic.app`, GitHub Issues) and common questions |
 | `/privacy` | Redirects to `PRIVACY.md` on `main`, so the policy has one source |
 | `/support/issues`, `/github`, `/app-store` | Short redirects |
 | any other path | `404.html` |
 
+### Files
+
+| File | Role |
+|------|------|
+| `site.css` | Shared styles for every page. Light by default, dark with the system. Glass surfaces use `backdrop-filter` with a solid fallback and honour Reduce Transparency. |
+| `site.js` | The demo desktop:<br>• the desktop clock and menu bar clock show the visitor's time<br>• the wallpaper video plays only with Reduce Motion off, and pauses off screen or in a hidden tab<br>• the Calm Mode button holds it<br>The page works without it. |
+| `media/lagoon.mp4` | The demo wallpaper: the MIT-licensed `catalog/media/lagoon.mp4`, remuxed with `+faststart` (same video stream, about 350 KB) |
+| `media/*.jpg` | The poster (first frame) and two stills for the per-display card |
+| `img/og.jpg` | The 1200×630 share image, a capture of the demo desktop |
+| `img/mac-app-store-badge*.svg` | Apple's official Mac App Store badges, black and white, unmodified and self-hosted |
+
+All media is Wallnetic's own (see `catalog/media/README.md`). Never use
+third-party artwork, characters or brands on the site. The App Store
+screenshots in `docs/assets/` contain some, so they are not reused here.
+
 Redirects are in `site/_redirects` and stay temporary (302), so the site can
 host its own pages later. `site/_headers` sets a strict Content Security Policy:
-only the site's own styles, script and images.
+only the site's own styles, script, images and media (`media-src 'self'`).
 
 ## Store and app links
 
