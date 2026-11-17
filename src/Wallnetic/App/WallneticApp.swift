@@ -71,6 +71,8 @@ struct WallneticApp: App {
                 }
         }
         .windowStyle(.titleBar)
+        // The sections, Add, Settings and search share one toolbar (#343 B2).
+        .windowToolbarStyle(.unified(showsTitle: false))
         .windowResizability(.contentSize)
         .defaultPosition(.center)
         .commands {
