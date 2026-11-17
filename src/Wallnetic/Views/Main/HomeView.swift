@@ -384,7 +384,6 @@ struct CarouselSection: View {
                 Image(systemName: icon)
                     .font(.system(size: 12))
                     .foregroundColor(iconColor)
-                    .neonGlow(iconColor, isActive: true, radius: 4)
 
                 Text(title)
                     .font(.system(size: 16, weight: .bold))
@@ -496,7 +495,6 @@ struct CarouselCard: View {
                         Image(systemName: "play.fill")
                             .font(.system(size: 28))
                             .foregroundColor(.white.opacity(0.95))
-                            .neonGlow(.white, isActive: true, radius: 8)
 
                         VStack {
                             Spacer()
@@ -527,7 +525,6 @@ struct CarouselCard: View {
                     if wallpaper.id == wallpaperManager.currentWallpaper?.id {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.accentColor, lineWidth: 2)
-                            .neonGlow(.accentColor, isActive: true, radius: 6)
                     }
                 }
                 .frame(width: cardWidth, height: cardHeight)
@@ -549,7 +546,7 @@ struct CarouselCard: View {
                     .allowsHitTesting(false)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 )
-                .glowCard(isHovering: isHovering, cornerRadius: 8)
+                .cardHighlight(isHovering: isHovering, cornerRadius: 8)
                 .rotation3DEffect(.degrees(tiltX), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
                 .rotation3DEffect(.degrees(tiltY), axis: (x: 0, y: 1, z: 0), perspective: 0.7)
                 .scaleEffect(isHovering && !reduceMotion ? 1.04 : 1.0)

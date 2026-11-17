@@ -299,7 +299,6 @@ struct ExploreView: View {
                         }
                     }
                 )
-                .neonGlow(.accentColor, isActive: isSelected, radius: 6)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -363,7 +362,6 @@ struct ExploreCard: View {
                                         Circle()
                                             .fill(.pink.opacity(0.8))
                                     )
-                                    .neonGlow(.pink, isActive: true, radius: 4)
                                     .padding(6)
                             }
                             Spacer()
@@ -392,7 +390,7 @@ struct ExploreCard: View {
                         .transition(.opacity)
                     }
                 }
-                .glowCard(isHovering: isHovering, cornerRadius: 10)
+                .cardHighlight(isHovering: isHovering, cornerRadius: 10)
                 .scaleEffect(isHovering ? 1.03 : 1.0)
             }
             .buttonStyle(.plain)

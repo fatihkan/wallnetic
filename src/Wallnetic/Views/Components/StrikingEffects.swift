@@ -25,12 +25,14 @@ enum Anim {
     static let transition = Animation.easeInOut(duration: medium)
 }
 
-// MARK: - Glow Card Modifier
+// MARK: - Card Highlight Modifier
 
-struct GlowCardModifier: ViewModifier {
+/// A plain hover outline for cards. It replaced the accent glow (#343 B1):
+/// a neutral stroke reads in light and dark appearance and sits quietly next
+/// to macOS 26 system chrome.
+struct CardHighlightModifier: ViewModifier {
     let isHovering: Bool
     let cornerRadius: CGFloat
-    var glowColor: Color = .accentColor
 
     func body(content: Content) -> some View {
         content
@@ -38,15 +40,9 @@ struct GlowCardModifier: ViewModifier {
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(
-                        isHovering
-                            ? glowColor.opacity(0.4)
-                            : Color.white.opacity(0.06),
+                        Color.primary.opacity(isHovering ? 0.28 : 0.08),
                         lineWidth: isHovering ? 1 : 0.5
                     )
-            )
-            .shadow(
-                color: isHovering ? glowColor.opacity(0.2) : .clear,
-                radius: 8
             )
     }
 }
@@ -72,44 +68,12 @@ struct GlassBackground: ViewModifier {
     }
 }
 
-// MARK: - Shimmer Effect
-
-struct ShimmerModifier: ViewModifier {
-    @State private var phase: CGFloat = 0
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                GeometryReader { geo in
-                    let p = phase
-                    let loc0 = max(0, min(p - 0.15, 1.0))
-                    let loc1 = max(loc0, min(p, 1.0))
-                    let loc2 = max(loc1, min(p + 0.15, 1.0))
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: loc0),
-                            .init(color: .white.opacity(0.06), location: loc1),
-                            .init(color: .clear, location: loc2)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-                .allowsHitTesting(false)
-            )
-            .onAppear {
-                withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
-                    phase = 1.3
-                }
-            }
-    }
-}
-
 // MARK: - Staggered Appearance
 
 struct StaggeredAppearance: ViewModifier {
     let index: Int
     let total: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isVisible = false
 
     private var delay: Double {
@@ -117,11 +81,14 @@ struct StaggeredAppearance: ViewModifier {
     }
 
     func body(content: Content) -> some View {
-        content
-            .opacity(isVisible ? 1 : 0)
-            .offset(y: isVisible ? 0 : 16)
-            .scaleEffect(isVisible ? 1 : 0.95)
+        // With Reduce Motion on, items appear in place without sliding or scaling.
+        let shown = isVisible || reduceMotion
+        return content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 16)
+            .scaleEffect(shown ? 1 : 0.95)
             .onAppear {
+                guard !reduceMotion else { isVisible = true; return }
                 withAnimation(.spring(response: Anim.medium, dampingFraction: 0.8).delay(delay)) {
                     isVisible = true
                 }
@@ -129,135 +96,19 @@ struct StaggeredAppearance: ViewModifier {
     }
 }
 
-// MARK: - Neon Glow Text/Icon
-
-struct NeonGlow: ViewModifier {
-    let color: Color
-    let isActive: Bool
-    var radius: CGFloat = 8
-
-    func body(content: Content) -> some View {
-        content
-            .shadow(color: isActive ? color.opacity(0.35) : .clear, radius: radius * 0.5)
-            .shadow(color: isActive ? color.opacity(0.15) : .clear, radius: radius)
-    }
-}
-
-// MARK: - Parallax Hover Effect
-
-struct ParallaxHover: ViewModifier {
-    let isHovering: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .rotation3DEffect(
-                .degrees(isHovering ? 1.5 : 0),
-                axis: (x: 0, y: 1, z: 0),
-                perspective: 0.8
-            )
-    }
-}
-
-// MARK: - Mesh Gradient Background (macOS 15+)
-
-struct AnimatedGradientBackground: View {
-    @State private var animateGradient = false
-
-    var body: some View {
-        LinearGradient(
-            colors: [
-                Color.black,
-                Color(red: 0.05, green: 0.02, blue: 0.12),
-                Color(red: 0.02, green: 0.05, blue: 0.1),
-                Color.black
-            ],
-            startPoint: animateGradient ? .topLeading : .bottomLeading,
-            endPoint: animateGradient ? .bottomTrailing : .topTrailing
-        )
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
-                animateGradient.toggle()
-            }
-        }
-    }
-}
-
-// MARK: - Card Flip
-
-struct CardFlip<Back: View>: ViewModifier {
-    @Binding var isFlipped: Bool
-    let back: Back
-
-    init(isFlipped: Binding<Bool>, @ViewBuilder back: () -> Back) {
-        self._isFlipped = isFlipped
-        self.back = back()
-    }
-
-    func body(content: Content) -> some View {
-        ZStack {
-            content
-                .opacity(isFlipped ? 0 : 1)
-                .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
-
-            back
-                .opacity(isFlipped ? 1 : 0)
-                .rotation3DEffect(.degrees(isFlipped ? 0 : -180), axis: (x: 0, y: 1, z: 0))
-        }
-        .animation(Anim.gentle, value: isFlipped)
-    }
-}
-
-extension View {
-    func cardFlip<Back: View>(isFlipped: Binding<Bool>, @ViewBuilder back: () -> Back) -> some View {
-        modifier(CardFlip(isFlipped: isFlipped, back: back))
-    }
-}
-
-// MARK: - Press Effect (scale down on click)
-
-struct PressEffect: ViewModifier {
-    @State private var isPressed = false
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isPressed ? 0.96 : 1.0)
-            .animation(Anim.press, value: isPressed)
-            .onLongPressGesture(minimumDuration: .infinity, pressing: { pressing in
-                isPressed = pressing
-            }, perform: {})
-    }
-}
-
 // MARK: - View Extensions
 
 extension View {
-    func glowCard(isHovering: Bool, cornerRadius: CGFloat = 10, glowColor: Color = .accentColor) -> some View {
-        modifier(GlowCardModifier(isHovering: isHovering, cornerRadius: cornerRadius, glowColor: glowColor))
+    func cardHighlight(isHovering: Bool, cornerRadius: CGFloat = 10) -> some View {
+        modifier(CardHighlightModifier(isHovering: isHovering, cornerRadius: cornerRadius))
     }
 
     func glassBackground(cornerRadius: CGFloat = 12, opacity: Double = 0.06) -> some View {
         modifier(GlassBackground(cornerRadius: cornerRadius, opacity: opacity))
     }
 
-    func shimmer() -> some View {
-        modifier(ShimmerModifier())
-    }
-
     func staggered(index: Int, total: Int = 20) -> some View {
         modifier(StaggeredAppearance(index: index, total: total))
-    }
-
-    func neonGlow(_ color: Color, isActive: Bool, radius: CGFloat = 8) -> some View {
-        modifier(NeonGlow(color: color, isActive: isActive, radius: radius))
-    }
-
-    func parallaxHover(isHovering: Bool) -> some View {
-        modifier(ParallaxHover(isHovering: isHovering))
-    }
-
-    func pressEffect() -> some View {
-        modifier(PressEffect())
     }
 }
 
