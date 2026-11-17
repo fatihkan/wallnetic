@@ -1,7 +1,31 @@
 import SwiftUI
 
-/// Explore tab with glass filter chips and glow cards
-struct ExploreView: View {
+/// Order of the library when no search is active. Search keeps relevance.
+enum LibrarySort: String, CaseIterable, Identifiable {
+    case newest = "Newest"
+    case oldest = "Oldest"
+    case nameAZ = "Name (A–Z)"
+    case nameZA = "Name (Z–A)"
+    case largest = "Largest"
+    case longest = "Longest"
+
+    var id: String { rawValue }
+
+    func apply(to wallpapers: [Wallpaper]) -> [Wallpaper] {
+        switch self {
+        case .newest: return wallpapers.sorted { $0.dateAdded > $1.dateAdded }
+        case .oldest: return wallpapers.sorted { $0.dateAdded < $1.dateAdded }
+        case .nameAZ: return wallpapers.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        case .nameZA: return wallpapers.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedDescending }
+        case .largest: return wallpapers.sorted { $0.fileSize > $1.fileSize }
+        case .longest: return wallpapers.sorted { ($0.duration ?? 0) > ($1.duration ?? 0) }
+        }
+    }
+}
+
+/// The Library section: search, filters, color and sort over the whole
+/// library (#343 B2; it absorbed the former Explore and Popular tabs).
+struct LibraryView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Binding var searchText: String
 
@@ -9,6 +33,11 @@ struct ExploreView: View {
     @State private var hoveredCategory: String?
     @State private var viewMode: ViewMode = .grid
     @State private var selectedColor: ColorCategory?
+    @State private var sort: LibrarySort = .newest
+
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     enum ViewMode: String {
         case grid, list, carousel3D
@@ -55,7 +84,7 @@ struct ExploreView: View {
             result = result.filter { $0.colorCategory == colorFilter }
         }
 
-        return result
+        return isSearching ? result : sort.apply(to: result)
     }
 
     var body: some View {
@@ -162,6 +191,17 @@ struct ExploreView: View {
                     .foregroundColor(.primary.opacity(0.55))
 
                 Spacer()
+
+                Picker("Sort", selection: $sort) {
+                    ForEach(LibrarySort.allCases) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .controlSize(.small)
+                .disabled(isSearching)
+                .help(isSearching ? "Search results are ordered by relevance" : "Sort the library")
 
                 // View mode toggle
                 HStack(spacing: 4) {
