@@ -3,90 +3,294 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wallnetic: live video wallpapers for macOS</title>
-  <meta name="description" content="Wallnetic turns your videos into live wallpapers for macOS, on every display. The new website is on its way; Wallnetic is on the Mac App Store.">
-  <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#05070d" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f4efe7" media="(prefers-color-scheme: light)">
+  <title>Wallnetic: live video wallpapers for Mac, on Intel and Apple silicon</title>
+  <meta name="description" content="Wallnetic plays your own videos as the desktop wallpaper on every display. Free, open source and private. macOS 13 Ventura or later, on Intel and Apple silicon Macs.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <link rel="canonical" href="https://wallnetic.app/">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Wallnetic: live video wallpapers for macOS">
-  <meta property="og:description" content="Motion behind every window. Wallnetic is on the Mac App Store.">
+  <meta property="og:site_name" content="Wallnetic">
+  <meta property="og:title" content="Wallnetic: live video wallpapers for Mac">
+  <meta property="og:description" content="Your own videos as a live desktop wallpaper, on every display. Free and open source. macOS 13 or later, Intel and Apple silicon.">
   <meta property="og:url" content="https://wallnetic.app/">
-  <meta property="og:image" content="https://wallnetic.app/icon-512.png">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/clock.js" defer></script>
+  <meta property="og:image" content="https://wallnetic.app/img/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A Mac desktop with a live Wallnetic wallpaper, the desktop clock and the Wallnetic menu.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
 </head>
 <body>
-  <div class="wallpaper" aria-hidden="true">
-    <span class="field one"></span>
-    <span class="field two"></span>
-    <span class="field three"></span>
-    <span class="field four"></span>
-  </div>
-  <div class="desktop-clock" aria-hidden="true" data-clock></div>
+  <a class="skip" href="#main">Skip to content</a>
 
-  <div class="desktop">
-    <header class="menubar">
-      <a class="wordmark" href="/" aria-label="Wallnetic home">
-        <img src="/favicon.png" alt="" width="22" height="22">
+  <header class="nav-wrap">
+    <nav class="nav glass" aria-label="Main">
+      <a class="brand" href="/" aria-label="Wallnetic home">
+        <img src="/favicon.png" alt="" width="24" height="24">
         <span>Wallnetic</span>
       </a>
-      <span class="status">Site under construction</span>
-    </header>
+      <ul class="nav-links">
+        <li><a href="#macs">Macs</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="/support/">Support</a></li>
+      </ul>
+      <a class="pill-button" href="https://apps.apple.com/app/id6760347328?mt=12">Download</a>
+    </nav>
+  </header>
 
-    <main>
-      <section class="window" aria-labelledby="headline">
-        <div class="app rise">
-          <img src="/apple-touch-icon.png" alt="Wallnetic app icon" width="72" height="72">
-          <div>
-            <p class="kicker">Live wallpapers for macOS</p>
-            <p class="app-name">Wallnetic</p>
-          </div>
+  <main id="main">
+    <section class="hero" aria-labelledby="headline">
+      <p class="eyebrow">Live wallpapers for Mac</p>
+      <h1 id="headline">Motion behind <span class="ink">every window.</span></h1>
+      <p class="lede">
+        Wallnetic plays your own videos as the desktop wallpaper, on every display,
+        below your icons and windows.
+      </p>
+
+      <div class="cta">
+        <a class="store-badge" href="https://apps.apple.com/app/id6760347328?mt=12">
+          <picture>
+            <source srcset="/img/mac-app-store-badge-white.svg" media="(prefers-color-scheme: dark)">
+            <img src="/img/mac-app-store-badge.svg" alt="Download on the Mac App Store" width="171" height="44">
+          </picture>
+        </a>
+        <a class="button" href="https://github.com/fatihkan/wallnetic">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2 0-.3-.5-1.5.2-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0 0 12 .3"/></svg>
+          Source on GitHub
+        </a>
+      </div>
+
+      <ul class="reqs" aria-label="Requirements">
+        <li>macOS 13 Ventura or later</li>
+        <li>Intel and Apple silicon</li>
+        <li>Free, no account</li>
+      </ul>
+    </section>
+
+    <figure class="stage">
+      <div class="screen" role="img" aria-label="A Mac desktop playing the Lagoon wallpaper, with Wallnetic's desktop clock and its menu bar menu open.">
+        <video class="wallpaper" src="/media/lagoon.mp4" poster="/media/lagoon-poster.jpg" muted loop playsinline preload="metadata" data-motion></video>
+        <div class="menubar" aria-hidden="true">
+          <span class="mb-app">Wallnetic</span>
+          <span>File</span><span>Edit</span><span>View</span><span>Playback</span><span>Window</span><span>Help</span>
+          <span class="mb-spacer"></span>
+          <svg class="mb-icon" viewBox="0 0 20 16"><rect x="1" y="3" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 1h11a2 2 0 0 1 2 2v8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 12l3.5-4 2.5 3 2-2 3 3" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+          <span class="mb-time" data-menubar-clock></span>
         </div>
+        <div class="desk-clock" data-clock aria-hidden="true"></div>
+        <div class="menu glass" aria-hidden="true">
+          <div class="menu-item strong"><span class="mi-icon"></span>Lagoon</div>
+          <div class="menu-item muted">Built-in Display: <span data-state>Playing</span></div>
+          <div class="menu-item muted">Playback profile: Balanced</div>
+          <hr>
+          <div class="menu-item"><span data-pause-label>Pause</span><kbd>⌘P</kbd></div>
+          <div class="menu-item"><span data-calm-label>Turn On Calm Mode</span></div>
+          <div class="menu-item">Next Wallpaper<kbd>⌘N</kbd></div>
+          <hr>
+          <div class="menu-item">Open Wallnetic<kbd>⌘O</kbd></div>
+          <div class="menu-item">Settings…<kbd>⌘,</kbd></div>
+        </div>
+      </div>
+      <button class="calm glass" type="button" data-calm hidden aria-pressed="false">Turn On Calm Mode</button>
+      <figcaption>
+        <strong>Lagoon</strong>, from Wallnetic's free Soft Motion pack. The clock is the
+        app's Desktop Clock, showing your time.
+      </figcaption>
+    </figure>
 
-        <h1 id="headline" class="rise d1">Motion behind <em>every window.</em></h1>
-
-        <p class="pitch rise d2">
-          Wallnetic plays your videos as the desktop wallpaper of every display,
-          below your icons and windows, and pauses when your Mac needs the power.
+    <section id="macs" class="macs" aria-labelledby="macs-title">
+      <div class="macs-copy">
+        <p class="eyebrow">Compatibility</p>
+        <h2 id="macs-title">Runs on the Mac you already have.</h2>
+        <p>
+          One app for Intel and Apple silicon, from macOS 13 Ventura to macOS 26
+          Tahoe. Many live wallpaper apps start at a newer macOS or need Apple
+          silicon. Wallnetic doesn't.
         </p>
+      </div>
+      <div class="chips" role="list">
+        <div class="chip" role="listitem">
+          <span class="chip-kicker">Processor</span>
+          <span class="chip-title">Intel</span>
+          <span class="chip-note">Native, no Rosetta</span>
+        </div>
+        <div class="chip" role="listitem">
+          <span class="chip-kicker">Processor</span>
+          <span class="chip-title">Apple silicon</span>
+          <span class="chip-note">M1 and later</span>
+        </div>
+        <div class="chip wide" role="listitem">
+          <span class="chip-kicker">macOS</span>
+          <span class="versions">
+            <span>13 Ventura</span><span>14 Sonoma</span><span>15 Sequoia</span><span>26 Tahoe</span>
+          </span>
+        </div>
+      </div>
+    </section>
 
-        <p class="note rise d3">
-          The new wallnetic.app is being built. Until it is ready, Wallnetic lives
-          on the Mac App Store and on GitHub.
-        </p>
+    <section id="features" class="features" aria-labelledby="features-title">
+      <p class="eyebrow">Why Wallnetic</p>
+      <h2 id="features-title">Your desktop, your videos, your rules.</h2>
 
-        <ul class="actions rise d4">
-          <li>
-            <a class="button primary" href="https://apps.apple.com/app/id6760347328">
-              <svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M10 2.5a.9.9 0 0 1 .9.9v7.9l2.6-2.6a.9.9 0 1 1 1.3 1.3l-4.1 4.1a.9.9 0 0 1-1.3 0L5.3 10a.9.9 0 1 1 1.3-1.3l2.5 2.6V3.4a.9.9 0 0 1 .9-.9ZM4 15.8h12a.9.9 0 1 1 0 1.8H4a.9.9 0 1 1 0-1.8Z"/></svg>
-              Get it on the Mac App Store
-            </a>
-          </li>
-          <li>
-            <a class="button" href="https://github.com/fatihkan/wallnetic">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-              Source on GitHub
-            </a>
-          </li>
-          <li>
-            <a class="button" href="/support/">Support</a>
-          </li>
+      <div class="cards">
+        <article class="card">
+          <h3>Your videos, not a catalogue</h3>
+          <p>
+            Use MP4, MOV, M4V, GIF and WebM files you own. Find more in Discover's
+            built-in browser for sites like Pixabay, Pexels and Wallhaven, or add
+            the free optional packs.
+          </p>
+          <ul class="formats" aria-label="Supported formats">
+            <li>MP4</li><li>MOV</li><li>M4V</li><li>GIF</li><li>WebM</li>
+          </ul>
+          <p class="card-note">Your originals are never changed. Trim a loop or make an optimized copy without touching the file.</p>
+        </article>
+
+        <article class="card displays">
+          <h3>Every display, its own wallpaper</h3>
+          <p>
+            Give each display a different video, or the same one on all. Plan the
+            day on a schedule timeline and give playlist items their own timing.
+          </p>
+          <div class="mini-displays" aria-hidden="true">
+            <img src="/media/lagoon-still.jpg" alt="" width="960" height="540" loading="lazy">
+            <img src="/media/ember-still.jpg" alt="" width="960" height="540" loading="lazy">
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Calm when it should be</h3>
+          <p>
+            Wallnetic pauses while your Mac is locked or asleep and, by default,
+            behind fullscreen apps. Pause After stops motion after a time you choose;
+            Calm Mode holds it with one click. Playback profiles set the frame rate.
+          </p>
+        </article>
+
+        <article class="card">
+          <h3>Free, private, open source</h3>
+          <p>
+            No account, no ads, no tracking: the App Store lists Wallnetic as
+            <em>Data Not Collected</em>. The whole app is on GitHub.
+          </p>
+        </article>
+      </div>
+
+      <div class="also">
+        <h3>Also in Wallnetic</h3>
+        <ul>
+          <li>Desktop clock</li>
+          <li>Trim a video to loop</li>
+          <li>Effects and presets</li>
+          <li>Pause After</li>
+          <li>Widgets</li>
+          <li>Shortcuts actions (macOS 14+)</li>
+          <li>Global hotkeys</li>
+          <li>Optimized copies</li>
+          <li>Slideshows from Photos</li>
+          <li>Menu bar controls</li>
         </ul>
-      </section>
-    </main>
+      </div>
+    </section>
 
-    <footer>
-      <span>© 2026 Wallnetic</span>
-      <nav aria-label="Legal and help">
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/support/">Support</a>
-        <a href="mailto:support@wallnetic.app">support@wallnetic.app</a>
-      </nav>
-    </footer>
-  </div>
+    <section id="faq" class="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Common questions.</h2>
+
+      <details>
+        <summary>Does Wallnetic work on Intel Macs?</summary>
+        <p>
+          Yes. The same app runs natively on Intel and Apple silicon Macs with
+          macOS 13 Ventura or later, from the Mac App Store or as a direct
+          download from GitHub.
+        </p>
+      </details>
+
+      <details>
+        <summary>Is it really free?</summary>
+        <p>
+          Yes. Wallnetic is free on the Mac App Store, with no account, ads or
+          subscription, and its source code is open on GitHub.
+        </p>
+      </details>
+
+      <details>
+        <summary>Where do the wallpapers come from?</summary>
+        <p>
+          From you. Import videos you own, browse wallpaper sites in Discover, or
+          download Wallnetic's free packs. Each website has its own license terms
+          for the videos it offers.
+        </p>
+      </details>
+
+      <details>
+        <summary>Can the wallpaper move on the lock screen?</summary>
+        <p>
+          No. macOS doesn't let apps play video on the lock screen. Wallnetic can
+          set a still frame of your wallpaper as the system wallpaper, which macOS
+          shows on the lock screen and in Mission Control.
+        </p>
+      </details>
+
+      <details>
+        <summary>Will a moving wallpaper get in my way?</summary>
+        <p>
+          It stays below your icons and windows and pauses while the Mac is locked,
+          asleep or showing a screen saver. You can also have it pause on battery,
+          behind fullscreen apps, after a set time, or with Calm Mode.
+        </p>
+      </details>
+
+      <details>
+        <summary>Does Wallnetic collect my data?</summary>
+        <p>
+          No. Your library and settings stay on your Mac. The
+          <a href="/privacy">privacy policy</a> describes the few optional features
+          that use the network.
+        </p>
+      </details>
+
+      <details>
+        <summary>Is Wallnetic available in my language?</summary>
+        <p>
+          The app is in English. Its App Store page is also available in French,
+          German and Simplified Chinese.
+        </p>
+      </details>
+    </section>
+
+    <section class="final" aria-labelledby="final-title">
+      <h2 id="final-title">Give your desktop a pulse.</h2>
+      <div class="cta">
+        <a class="store-badge" href="https://apps.apple.com/app/id6760347328?mt=12">
+          <picture>
+            <source srcset="/img/mac-app-store-badge-white.svg" media="(prefers-color-scheme: dark)">
+            <img src="/img/mac-app-store-badge.svg" alt="Download on the Mac App Store" width="171" height="44">
+          </picture>
+        </a>
+        <a class="button" href="https://github.com/fatihkan/wallnetic/releases/latest">Direct download (DMG)</a>
+      </div>
+      <p class="reqs-line">macOS 13 Ventura or later · Intel and Apple silicon · Free</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-brand">
+      <img src="/favicon.png" alt="" width="20" height="20">
+      <span>Wallnetic</span>
+    </div>
+    <nav aria-label="Footer">
+      <a href="https://apps.apple.com/app/id6760347328?mt=12">Mac App Store</a>
+      <a href="https://github.com/fatihkan/wallnetic">GitHub</a>
+      <a href="/support/">Support</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="mailto:support@wallnetic.app">support@wallnetic.app</a>
+    </nav>
+    <p class="fine">© 2026 Wallnetic. Mac, macOS and Mac App Store are trademarks of Apple Inc.</p>
+  </footer>
 </body>
 </html>
