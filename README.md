@@ -241,7 +241,7 @@ later.
 ### Mac App Store
 
 <a href="https://apps.apple.com/app/id6760347328?mt=12">
-  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-mac-app-store.svg" alt="Download on the Mac App Store" height="50">
+  <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-mac-app-store/black/en-us" alt="Download on the Mac App Store" height="50">
 </a>
 
 ### Direct Download
@@ -434,7 +434,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 **Fatih Kan**
 
-- Website: [github.com/fatihkan/wallnetic](https://github.com/fatihkan/wallnetic)
+- Website: [wallnetic.app](https://wallnetic.app)
 - GitHub: [@fatihkan](https://github.com/fatihkan)
 - Twitter: [@KanFatih](https://twitter.com/KanFatih)
 

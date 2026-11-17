@@ -14,6 +14,7 @@ The `site/` folder is the whole website:
 | `/support/` | Contact (`support@wallnetic.app`, GitHub Issues) and common questions |
 | `/privacy` | Redirects to `PRIVACY.md` on `main`, so the policy has one source |
 | `/support/issues`, `/github`, `/app-store` | Short redirects |
+| `/sitemap.xml`, `/robots.txt` | Both pages for search engines. Update `lastmod` when a page changes. |
 | any other path | `404.html` |
 
 ### Files
@@ -25,6 +26,8 @@ The `site/` folder is the whole website:
 | `media/lagoon.mp4` | The demo wallpaper: the MIT-licensed `catalog/media/lagoon.mp4`, remuxed with `+faststart` (same video stream, about 350 KB) |
 | `media/*.jpg` | The poster (first frame) and two stills for the per-display card |
 | `img/og.jpg` | The 1200×630 share image, a capture of the demo desktop |
+
+The home page also carries `SoftwareApplication` JSON-LD with name, category, macOS and processor requirements, a free offer and the license. It is a data block, so the CSP does not need to allow it. Keep it in step with the page. Add no rating unless the page shows it.
 | `img/mac-app-store-badge*.svg` | Apple's official Mac App Store badges, black and white, unmodified and self-hosted |
 
 All media is Wallnetic's own (see `catalog/media/README.md`). Never use
