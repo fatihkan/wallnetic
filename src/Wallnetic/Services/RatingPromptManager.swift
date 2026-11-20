@@ -38,8 +38,16 @@ final class RatingPromptManager {
     private let launchCountKey = "ratingPrompt.launchCount"
     private let applyCountKey = "ratingPrompt.applyCount"
     private let lastPromptedVersionKey = "ratingPrompt.lastPromptedVersion"
+    private let lastPromptedAtKey = "ratingPrompt.lastPromptedAt"
 
     private let defaults = UserDefaults.standard
+
+    // MARK: - Read-only state for the tip prompt (#337)
+
+    var launchCount: Int { defaults.integer(forKey: launchCountKey) }
+    var cumulativeApplies: Int { defaults.integer(forKey: applyCountKey) }
+    /// When the rating prompt last appeared; nil before the first one.
+    var lastPromptedAt: Date? { defaults.object(forKey: lastPromptedAtKey) as? Date }
 
     // MARK: - Thresholds
 
@@ -49,7 +57,7 @@ final class RatingPromptManager {
     // MARK: - Session state (reset on relaunch)
 
     private var appliesThisSession = 0
-    private var hasPromptedThisSession = false
+    private(set) var hasPromptedThisSession = false
 
     private init() {}
 
@@ -137,6 +145,7 @@ final class RatingPromptManager {
         hasPromptedThisSession = true
         pendingPrompt = false
         defaults.set(currentVersion, forKey: lastPromptedVersionKey)
+        defaults.set(Date(), forKey: lastPromptedAtKey)
         logger.info("Requesting App Store review (version \(self.currentVersion, privacy: .public))")
         AppStore.requestReview(in: controller)
     }

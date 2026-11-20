@@ -4,6 +4,7 @@ struct MenuBarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Environment(\.openWindow) var openWindow
     @ObservedObject private var performance = PerformanceManager.shared
+    @ObservedObject private var tipJar = TipJar.shared
 
     private func openMainWindow() {
         WindowManager.shared.showMainWindow {
@@ -163,6 +164,16 @@ struct MenuBarView: View {
                 NSWorkspace.shared.open(RatingPromptManager.writeReviewURL)
             } label: {
                 Label("Rate Wallnetic", systemImage: "star")
+            }
+
+            // Tips (#337); absent when the App Store has no tip products, as
+            // in the direct-download build.
+            if tipJar.isAvailable {
+                Button {
+                    openWindow(id: "support")
+                } label: {
+                    Label("Support Wallnetic…", systemImage: "heart")
+                }
             }
 
             Button {

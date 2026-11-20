@@ -273,6 +273,10 @@ struct PlaybackSettingsView: View {
 // MARK: - About Settings
 
 struct AboutSettingsView: View {
+    @Environment(\.openWindow) private var openWindow
+    @ObservedObject private var tipJar = TipJar.shared
+    @AppStorage(TipPromptPolicy.remindersEnabledKey) private var remindToTip = true
+
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "photo.on.rectangle.angled")
@@ -293,6 +297,17 @@ struct AboutSettingsView: View {
                 Link("Rate Wallnetic", destination: RatingPromptManager.writeReviewURL)
             }
             .font(.caption)
+            // Tips (#337); hidden when the App Store has no tip products.
+            if tipJar.isAvailable {
+                VStack(spacing: 8) {
+                    Button("Support Wallnetic…") {
+                        openWindow(id: "support")
+                    }
+                    Toggle("Remind me to support Wallnetic", isOn: $remindToTip)
+                        .toggleStyle(.checkbox)
+                        .font(.caption)
+                }
+            }
             Spacer()
             Text("© 2026 Wallnetic. All rights reserved.")
                 .font(.caption2)

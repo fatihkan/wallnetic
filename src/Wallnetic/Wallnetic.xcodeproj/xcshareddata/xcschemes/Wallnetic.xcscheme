@@ -104,6 +104,9 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
       </CommandLineArguments>
+      <StoreKitConfigurationFileReference
+         identifier = "../../Configuration/Wallnetic.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

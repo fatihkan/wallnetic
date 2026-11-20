@@ -1,0 +1,63 @@
+{
+  "identifier" : "4A7E2C1B",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "4A7E2C11",
+      "localizations" : [
+        {
+          "description" : "A small tip to support Wallnetic. It unlocks nothing.",
+          "displayName" : "Small Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.wallnetic.app.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "4A7E2C12",
+      "localizations" : [
+        {
+          "description" : "A medium tip to support Wallnetic. It unlocks nothing.",
+          "displayName" : "Medium Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.wallnetic.app.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "4A7E2C13",
+      "localizations" : [
+        {
+          "description" : "A large tip to support Wallnetic. It unlocks nothing.",
+          "displayName" : "Large Tip",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.wallnetic.app.tip.large",
+      "referenceName" : "Large Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

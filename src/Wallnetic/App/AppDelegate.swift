@@ -81,6 +81,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // gives the compiler the isolation it wants.
             Task { @MainActor in
                 RatingPromptManager.shared.windowDidBecomeKey(window)
+                TipPromptManager.shared.windowDidBecomeKey(window)
             }
         }
 
@@ -101,6 +102,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // App-maturity counter feeding the App Store rating prompt (v1.4 Wave 1).
         RatingPromptManager.shared.recordLaunch()
+
+        // Tips (#337): finish interrupted tips and load prices for the entry points.
+        Task { @MainActor in
+            TipPromptManager.shared.recordLaunch()
+            TipJar.shared.start()
+        }
 
         // #228: if a normal window auto-opened at launch while "Hide Dock icon"
         // is on, promote back to .regular so its controls are usable; the
