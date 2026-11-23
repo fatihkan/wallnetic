@@ -29,6 +29,24 @@ final class WindowPresentationTests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsRequestsFindTheOpenSettingsWindowOnly() {
+        let router = WindowManager()
+        let main = makeWindow()
+        let settings = makeWindow()
+        defer { main.close(); settings.close() }
+        router.registerMainWindow(main)
+        XCTAssertNil(router.settingsWindow(in: [main, settings]), "No Settings window is open yet")
+
+        router.registerSettingsWindow(settings)
+        XCTAssertTrue(router.settingsWindow(in: [main, settings]) === settings)
+        XCTAssertTrue(router.mainWindow(in: [main, settings]) === main, "Settings is never taken for the main window")
+        XCTAssertNil(WindowManager().settingsWindow(in: [main, settings]), "Membership belongs to this router")
+
+        settings.close()
+        XCTAssertNil(router.settingsWindow(in: [main, settings]), "A closed Settings window is not reused")
+    }
+
+    @MainActor
     func testClosedMainWindowIsNotReusedEvenWhileAppKitRetainsIt() {
         let router = WindowManager()
         let main = makeWindow()

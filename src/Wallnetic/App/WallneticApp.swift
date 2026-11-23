@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Routes every Library entry point to a window registered by the main scene.
+/// Routes every Library entry point to a window registered by the main scene,
+/// and every Settings entry point to the one Settings window.
 /// Weak membership preserves SwiftUI's window ownership and identifiers.
 class WindowManager {
     static let shared = WindowManager()
     var openMainWindow: (() -> Void)?
     private let mainWindows = NSHashTable<NSWindow>.weakObjects()
+    private let settingsWindows = NSHashTable<NSWindow>.weakObjects()
     private var closeObserver: NSObjectProtocol?
 
     init() {
@@ -14,6 +16,7 @@ class WindowManager {
         ) { [weak self] notification in
             guard let window = notification.object as? NSWindow else { return }
             self?.mainWindows.remove(window)
+            self?.settingsWindows.remove(window)
         }
     }
 
@@ -32,6 +35,32 @@ class WindowManager {
             mainWindows.contains($0) && $0.level == .normal &&
             $0.styleMask.contains(.titled) && !($0 is NSPanel) && !$0.isSheet
         }
+    }
+
+    func registerSettingsWindow(_ window: NSWindow) {
+        guard window.styleMask.contains(.titled), !(window is NSPanel), !window.isSheet else { return }
+        settingsWindows.add(window)
+    }
+
+    /// The Settings window that is open, if any. A closed one is not reused.
+    func settingsWindow(in windows: [NSWindow]) -> NSWindow? {
+        windows.first { settingsWindows.contains($0) && !($0 is NSPanel) && !$0.isSheet }
+    }
+
+    /// Settings is one window. Its scene is a window group, which would open
+    /// another window for every request, so a request brings the open window
+    /// forward and only opens the scene when there is none.
+    func showSettingsWindow(openScene: () -> Void) {
+        guard let window = settingsWindow(in: NSApp.windows) else {
+            openScene()
+            return
+        }
+        if NSApp.activationPolicy() == .accessory {
+            NSApp.setActivationPolicy(.regular)
+        }
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
     }
 
     func showMainWindow(openScene: (() -> Void)? = nil) {
@@ -82,7 +111,7 @@ struct WallneticApp: App {
             }
             CommandGroup(replacing: .appSettings) {
                 Button("Settings…") {
-                    openWindow(id: "settings")
+                    WindowManager.shared.showSettingsWindow { openWindow(id: "settings") }
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
@@ -95,7 +124,7 @@ struct WallneticApp: App {
             SettingsView()
                 .environmentObject(wallpaperManager)
                 // The sidebar's split view brings a system toolbar (#343 B3b).
-                .cinematicWindowChrome(hostsToolbar: true, showsTitle: true)
+                .cinematicWindowChrome(isSettingsWindow: true, hostsToolbar: true, showsTitle: true)
         }
         .windowStyle(.titleBar)
         .windowResizability(.contentSize)

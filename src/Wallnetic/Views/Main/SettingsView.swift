@@ -23,10 +23,13 @@ struct SettingsView: View {
                 // window's content out of view. Pages take the space given.
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
                 // The pages are grouped forms. They sit on the window's own
-                // floor instead of the form's default backdrop, and the
-                // title bar stays clear on pages that do not scroll.
+                // floor instead of the form's default backdrop.
                 .scrollContentBackground(.hidden)
-                .toolbarBackground(.hidden, for: .windowToolbar)
+                // A page that scrolls gets the system's title bar backdrop
+                // once content moves under it; without one, the content
+                // showed through the title. A page that does not scroll
+                // would show that backdrop all the time, so it has none.
+                .toolbarBackground(current.scrolls ? .automatic : .hidden, for: .windowToolbar)
                 .navigationTitle(current.title)
                 .navigationSubtitle(current.tagline)
         }
@@ -115,6 +118,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var isFooter: Bool { self == .about }
+    /// Whether the page's root is a scroll view. Storage and About are not.
+    var scrolls: Bool { self != .storage && self != .about }
 
     var title: String {
         switch self {
