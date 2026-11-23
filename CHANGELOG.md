@@ -45,12 +45,13 @@ Planned as 1.6.0.
 - The menu bar menu holds the essentials: each display's status, the playback
   profile, Pause, Calm Mode, Next, Open Wallnetic, Settings, Rate and Quit.
 - Neon and glow effects are removed from navigation, cards and Home.
-- The Dynamic Island is a liquid shape. On a MacBook with a notch it is part
-  of the notch, with ears that flow into the top edge; on any other display
-  it is a pill below the menu bar. It stretches open with a spring, takes a
-  glow from the wallpaper's colours, fades instead of stretching with Reduce
-  Motion, and uses a solid fill with Increase Contrast. It steps aside for
-  full-screen apps and does not open by itself while you type. The compact
+- The Dynamic Island hangs from the screen's top edge, with ears that flow
+  into the edge. On a MacBook with a notch it is part of the notch; on any
+  other display it is a bar in the middle of the menu bar. It grows open with
+  a spring, takes a glow from the wallpaper's colours, fades instead of
+  growing with Reduce Motion, and gets an outline with Increase Contrast. It
+  steps aside for full-screen apps and does not open by itself while you
+  type. The compact
   island shows the thumbnail and the playback state; the open card has play
   or pause, next, Calm Mode, the playback profile and Open Wallnetic.
 - The Desktop Clock is drawn in Wallnetic's language instead of always in

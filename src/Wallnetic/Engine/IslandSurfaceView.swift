@@ -42,6 +42,12 @@ final class IslandSurfaceView: NSView {
         super.init(frame: .zero)
         wantsLayer = true
         layerContentsRedrawPolicy = .duringViewResize
+        // If a frame of another size is ever on screen, it hangs from the top
+        // centre, as the shape does, at its own scale. It is never stretched
+        // to the view: a stretched frame put the shape beside its content.
+        // AppKit sets the layer's gravity from this; setting it on the layer
+        // itself does not last.
+        layerContentsPlacement = .top
         buildPipeline()
     }
 
@@ -56,10 +62,6 @@ final class IslandSurfaceView: NSView {
         // The frame lands in the same transaction as a change of the window's
         // size, so the shape never shows at the wrong size for a frame.
         layer.presentsWithTransaction = true
-        // If a frame of another size is ever on screen, it hangs from the top
-        // centre, as the shape does, at its own scale. It is never stretched
-        // to the view: a stretched frame put the shape beside its content.
-        layer.contentsGravity = .top
         return layer
     }
 
@@ -181,18 +183,16 @@ final class IslandSurfaceView: NSView {
         }
         let scale = Float(drawnSize.width / max(bounds.width, 1))
         let contrast = style.increasesContrast
-        // A notch is pure black, so an attached island is too.
-        let fillAlpha: Float = (contrast || shape.attached) ? 1 : 0.94
         let glowStrength: Float = contrast ? 0 : style.glowStrength
-        let attached: Float = shape.attached ? 1 : 0
         let outline: Float = contrast ? 1 : 0
-        let glowReach = Float(IslandGeometry.margin) * 0.45
-        let viewport = SIMD4<Float>(Float(bounds.width), Float(bounds.height), scale, attached)
-        let radii = SIMD4<Float>(Float(shape.barRadius), Float(shape.cardRadius),
-                                 Float(shape.blend), Float(shape.earRadius))
-        let fill = SIMD4<Float>(0, 0, 0, fillAlpha)
+        // The glow ends two points inside the window, on every side.
+        let glowReach = Float(IslandGeometry.margin) - 2
+        let viewport = SIMD4<Float>(Float(bounds.width), Float(bounds.height), scale, 0)
+        let radii = SIMD4<Float>(Float(shape.barRadius), Float(shape.cardRadius), 0, Float(shape.earRadius))
+        // A notch is pure black, so the island is too.
+        let fill = SIMD4<Float>(0, 0, 0, 1)
         let glow = SIMD4<Float>(style.glow.x, style.glow.y, style.glow.z, glowStrength)
-        let extra = SIMD4<Float>(glowReach, outline, Float(shape.cardOpacity), 0)
+        let extra = SIMD4<Float>(glowReach, outline, Float(shape.cardOpacity), Float(shape.glow))
         return Uniforms(viewport: viewport, bar: rect(shape.bar), card: rect(shape.card),
                         radii: radii, fill: fill, glow: glow, extra: extra)
     }
@@ -214,20 +214,21 @@ final class IslandSurfaceView: NSView {
     }
 
     /// One triangle covers the view. The fragment shader measures each
-    /// pixel's distance to the shape and colours it: fill inside, glow
-    /// outside. The output is premultiplied.
+    /// pixel's distance to the shape and colours it: black inside, a glow
+    /// outside. The output is premultiplied, and the glow is an ordinary
+    /// translucent colour that reaches zero before the view's edge.
     private static let shaderSource = """
     #include <metal_stdlib>
     using namespace metal;
 
     struct IslandUniforms {
-        float4 viewport;   // width, height in points; pixels per point; attached
+        float4 viewport;   // width, height in points; pixels per point; unused
         float4 bar;        // minX, minY, width, height
         float4 card;
-        float4 radii;      // bar, card, blend, ear
+        float4 radii;      // bar, card, unused, ear
         float4 fill;       // rgb, alpha
         float4 glow;       // rgb, strength
-        float4 extra;      // glow reach, outline, card opacity, unused
+        float4 extra;      // glow reach, outline, card opacity, glow share
     };
 
     struct IslandVertex {
@@ -243,8 +244,8 @@ final class IslandSurfaceView: NSView {
         return out;
     }
 
-    // Distance to a rounded rectangle. `lift` moves its top edge up, out of
-    // view, so an attached shape has a flat top.
+    // Distance to a rounded rectangle whose top edge is moved up by `lift`,
+    // out of view, so the shape has a flat top at the screen's edge.
     static float roundedBox(float2 p, float4 rect, float radius, float lift) {
         float2 low = float2(rect.x, rect.y - lift);
         float2 high = float2(rect.x + rect.z, rect.y + rect.w);
@@ -261,41 +262,43 @@ final class IslandSurfaceView: NSView {
         return min(a, b) - h * h * k * 0.25;
     }
 
+    // 1 at the shape's edge, 0 at `reach` and beyond, with no step.
+    static float falloff(float distance, float reach) {
+        float t = saturate(1.0 - max(distance, 0.0) / reach);
+        return t * t;
+    }
+
     fragment float4 islandFragment(IslandVertex in [[stage_in]], constant IslandUniforms &u [[buffer(0)]]) {
         float2 size = u.viewport.xy;
         float scale = max(u.viewport.z, 1.0);
-        bool attached = u.viewport.w > 0.5;
         float2 p = float2((in.uv.x - 0.5) * size.x, in.uv.y * size.y);
 
-        float lift = attached ? 64.0 : 0.0;
-        float bar = roundedBox(p, u.bar, u.radii.x, lift);
-        float card = roundedBox(p, u.card, u.radii.y, lift);
-        float body = smoothUnion(bar, card, u.radii.z);
-        if (attached) {
-            // The screen's top edge, one point above the view. Joining it
-            // gives the concave ears that flow into the menu bar.
-            float edge = p.y + 1.0;
-            body = smoothUnion(body, edge, u.radii.w);
-            bar = smoothUnion(bar, edge, u.radii.w);
-        }
+        // The screen's top edge lies one point above the view. Joining it
+        // gives the concave ears that flow into the edge. Bar and card are
+        // joined plainly: the card always contains the bar.
+        float edge = p.y + 1.0;
+        float bar = smoothUnion(roundedBox(p, u.bar, u.radii.x, 64.0), edge, u.radii.w);
+        float card = smoothUnion(roundedBox(p, u.card, u.radii.y, 64.0), edge, u.radii.w);
+        float body = min(bar, card);
 
         float soft = 0.75 / scale;
-        float bodyCover = 1.0 - smoothstep(-soft, soft, body);
-        float barCover = 1.0 - smoothstep(-soft, soft, bar);
         float fade = u.extra.z;
+        float barCover = 1.0 - smoothstep(-soft, soft, bar);
+        float bodyCover = 1.0 - smoothstep(-soft, soft, body);
         float cover = max(barCover, bodyCover * fade);
 
-        // Light from the wallpaper: a halo outside, a faint rim inside. While
-        // the card fades, the bar's light gives way to the card's.
-        float reachOfGlow = max(u.extra.x, 0.001);
-        float halo = mix(exp(-max(bar, 0.0) / reachOfGlow), exp(-max(body, 0.0) / reachOfGlow), fade);
-        halo *= u.glow.w * (1.0 - cover);
-        if (attached) { halo *= smoothstep(0.0, u.bar.w, p.y); }
+        // Light from the wallpaper, below the bar's own strip only, so the
+        // menu bar beside the island stays clean. While the card fades, the
+        // bar's light gives way to the card's.
+        float reach = max(u.extra.x, 1.0);
+        float below = smoothstep(u.bar.w - 1.0, u.bar.w + 5.0, p.y);
+        float strength = u.glow.w * u.extra.w * below;
+        float halo = mix(falloff(bar, reach), falloff(body, reach), fade) * strength * 0.55 * (1.0 - cover);
         float rim = mix(barCover * (1.0 - smoothstep(0.0, 1.5, -bar)),
-                        bodyCover * (1.0 - smoothstep(0.0, 1.5, -body)), fade) * u.glow.w * 0.35;
+                        bodyCover * (1.0 - smoothstep(0.0, 1.5, -body)), fade) * strength * 0.3;
 
-        float3 colour = u.fill.rgb * u.fill.a * cover + u.glow.rgb * (halo * 0.55 + rim);
-        float alpha = u.fill.a * cover + halo * 0.4;
+        float3 colour = u.fill.rgb * u.fill.a * cover + u.glow.rgb * (halo + rim * cover);
+        float alpha = u.fill.a * cover + halo;
 
         // Increase Contrast: a light outline just inside the edge.
         if (u.extra.y > 0.5) {
