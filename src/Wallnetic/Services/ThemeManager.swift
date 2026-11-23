@@ -6,6 +6,15 @@ enum AppearanceMode: String, CaseIterable, Codable {
     case light = "Light"
     case dark = "Dark"
 
+    /// The name in Settings. The raw value is stored and stays in English.
+    var title: String {
+        switch self {
+        case .system: return String(localized: "System")
+        case .light: return String(localized: "Light")
+        case .dark: return String(localized: "Dark")
+        }
+    }
+
     var icon: String {
         switch self {
         case .system: return "circle.lefthalf.filled"

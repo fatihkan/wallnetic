@@ -195,7 +195,7 @@ struct CreateFromPhotosView: View {
             HStack(alignment: .top, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
-                        Text("\(selectedAssets.count) of max \(Self.maxSelection) photo\(selectedAssets.count == 1 ? "" : "s") selected")
+                        Text("\(selectedAssets.count) of max \(Self.maxSelection) photos selected")
                             .font(.caption)
                             .foregroundColor(selectedAssets.count >= Self.maxSelection ? .orange : .secondary)
                         if selectedAssets.count >= Self.maxSelection {

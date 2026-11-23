@@ -11,6 +11,18 @@ enum LibrarySort: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// The name in the Sort menu. The raw value is only an identifier.
+    var title: String {
+        switch self {
+        case .newest: return String(localized: "Newest")
+        case .oldest: return String(localized: "Oldest")
+        case .nameAZ: return String(localized: "Name (A–Z)")
+        case .nameZA: return String(localized: "Name (Z–A)")
+        case .largest: return String(localized: "Largest")
+        case .longest: return String(localized: "Longest")
+        }
+    }
+
     func apply(to wallpapers: [Wallpaper]) -> [Wallpaper] {
         switch self {
         case .newest: return wallpapers.sorted { $0.dateAdded > $1.dateAdded }
@@ -179,8 +191,8 @@ struct LibraryView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .help(cat.rawValue.capitalized)
-                        .accessibilityLabel("\(cat.rawValue.capitalized) wallpapers")
+                        .help(cat.title)
+                        .accessibilityLabel("Color: \(cat.title)")
                         .accessibilityAddTraits(selectedColor == cat ? [.isSelected] : [])
                     }
                 }
@@ -213,7 +225,7 @@ struct LibraryView: View {
 
                 Picker("Sort", selection: $sort) {
                     ForEach(LibrarySort.allCases) { option in
-                        Text(option.rawValue).tag(option)
+                        Text(option.title).tag(option)
                     }
                 }
                 .pickerStyle(.menu)

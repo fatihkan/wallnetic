@@ -20,6 +20,21 @@ final class SpaceWallpaperManager: ObservableObject {
         case sessionChanged = "The Mac slept or the login session changed. Saved choices need reassignment."
         case disabled = "Saved choices are kept while Space recovery is off."
         case enabled = "Choose a saved wallpaper to apply manually."
+
+        /// The sentence shown in Spaces settings.
+        var message: String {
+            switch self {
+            case .appOpened: return String(localized: "Saved choices need reassignment after opening the app.")
+            case .legacyAssignments:
+                return String(localized: "Previous Space assignments were kept as saved choices. Choose one to apply manually.")
+            case .spaceChanged: return String(localized: "The active desktop changed. Saved choices need reassignment.")
+            case .displaysChanged: return String(localized: "The display setup changed. Saved choices need reassignment.")
+            case .sessionChanged:
+                return String(localized: "The Mac slept or the login session changed. Saved choices need reassignment.")
+            case .disabled: return String(localized: "Saved choices are kept while Space recovery is off.")
+            case .enabled: return String(localized: "Choose a saved wallpaper to apply manually.")
+            }
+        }
     }
 
     @Published private(set) var isEnabled: Bool

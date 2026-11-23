@@ -1,0 +1,15 @@
+/* App Shortcuts phrases in French (#351). A draft: not yet reviewed by a native speaker.
+   Each phrase must keep ${applicationName}. The English phrases are in Services/AppShortcuts.swift. */
+
+"Toggle Calm Mode in ${applicationName}" = "Activer ou désactiver le mode calme dans ${applicationName}";
+
+"Next wallpaper in ${applicationName}" = "Fond d’écran suivant dans ${applicationName}";
+"Change wallpaper in ${applicationName}" = "Changer de fond d’écran dans ${applicationName}";
+"Switch wallpaper in ${applicationName}" = "Passer au fond d’écran suivant dans ${applicationName}";
+
+"Pause wallpaper in ${applicationName}" = "Mettre le fond d’écran en pause dans ${applicationName}";
+"Play wallpaper in ${applicationName}" = "Lire le fond d’écran dans ${applicationName}";
+"Toggle ${applicationName}" = "Basculer ${applicationName}";
+
+"Random wallpaper in ${applicationName}" = "Fond d’écran aléatoire dans ${applicationName}";
+"Surprise me with ${applicationName}" = "Surprends-moi avec ${applicationName}";

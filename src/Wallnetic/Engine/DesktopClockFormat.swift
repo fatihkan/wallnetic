@@ -1,11 +1,12 @@
 import CoreGraphics
 import Foundation
 
-/// Time and date text for the desktop clock, in Wallnetic's language, English,
-/// with the region's formats and the user's 12/24-hour choice. macOS gives an
-/// English-only app an English locale for the user's region (en_TR on a
-/// Turkish system), and `Locale.autoupdatingCurrent` carries the 12/24-hour
-/// choice. Formatters are made per call, at most once per update of all
+/// Time and date text for the desktop clock, in the language Wallnetic runs in,
+/// with the region's formats and the user's 12/24-hour choice. macOS gives the
+/// app a locale of that language for the user's region (en_TR on a Turkish
+/// system, because there is no Turkish translation), and
+/// `Locale.autoupdatingCurrent` carries the 12/24-hour choice. Formatters are
+/// made per call, at most once per update of all
 /// displays, so a changed region, time zone or clock setting applies at the
 /// next update.
 enum DesktopClockFormat {

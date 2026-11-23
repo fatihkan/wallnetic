@@ -1,0 +1,15 @@
+/* App Shortcuts phrases in Simplified Chinese (#351). A draft: not yet reviewed by a native speaker.
+   Each phrase must keep ${applicationName}. The English phrases are in Services/AppShortcuts.swift. */
+
+"Toggle Calm Mode in ${applicationName}" = "在 ${applicationName} 中切换安静模式";
+
+"Next wallpaper in ${applicationName}" = "在 ${applicationName} 中切换到下一张壁纸";
+"Change wallpaper in ${applicationName}" = "在 ${applicationName} 中更换壁纸";
+"Switch wallpaper in ${applicationName}" = "在 ${applicationName} 中切换壁纸";
+
+"Pause wallpaper in ${applicationName}" = "在 ${applicationName} 中暂停壁纸";
+"Play wallpaper in ${applicationName}" = "在 ${applicationName} 中播放壁纸";
+"Toggle ${applicationName}" = "切换 ${applicationName}";
+
+"Random wallpaper in ${applicationName}" = "在 ${applicationName} 中使用随机壁纸";
+"Surprise me with ${applicationName}" = "用 ${applicationName} 给我一个惊喜";

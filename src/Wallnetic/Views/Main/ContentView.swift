@@ -106,7 +106,7 @@ struct ContentView: View {
             if pendingImports > 0 {
                 HStack(spacing: Space.sm) {
                     ProgressView().controlSize(.small)
-                    Text("Importing \(pendingImports) file(s)…")
+                    Text("Importing \(pendingImports) files…")
                         .font(Typo.body)
                 }
                 .padding(Space.md)

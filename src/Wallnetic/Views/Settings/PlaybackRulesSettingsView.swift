@@ -32,7 +32,7 @@ struct PlaybackRulesSettingsView: View {
             if rules.pausesWhenIdle {
                 Picker("After", selection: binding(\.idleMinutes)) {
                     ForEach(PlaybackRulesConfiguration.idleMinuteChoices, id: \.self) { minutes in
-                        Text(minutes == 1 ? "1 minute" : "\(minutes) minutes").tag(minutes)
+                        Text("\(minutes) minutes").tag(minutes)
                     }
                 }
                 .help("Counted from the last key press, click or pointer movement. Playback continues at the next one.")

@@ -44,7 +44,7 @@ struct OnboardingTourContent: View {
         Step(
             icon: "tray.and.arrow.down.fill",
             title: String(localized: "Bring Anything In"),
-            kicker: "01 · IMPORT",
+            kicker: String(localized: "01 · IMPORT"),
             description: String(localized: "Drop video files, download from the built-in browser, or try a wallpaper pack — Wallnetic accepts it all."),
             accent: Color(red: 0.30, green: 0.85, blue: 0.92),
             secondary: Color(red: 0.28, green: 0.55, blue: 1.00)
@@ -52,7 +52,7 @@ struct OnboardingTourContent: View {
         Step(
             icon: "rectangle.stack.fill.badge.person.crop",
             title: String(localized: "Curate Effortlessly"),
-            kicker: "02 · ORGANIZE",
+            kicker: String(localized: "02 · ORGANIZE"),
             description: String(localized: "Favorites, color filters and search keep your library in order."),
             accent: Color(red: 1.00, green: 0.45, blue: 0.72),
             secondary: Color(red: 0.95, green: 0.65, blue: 0.30)
@@ -60,7 +60,7 @@ struct OnboardingTourContent: View {
         Step(
             icon: "display.2",
             title: String(localized: "Every Display, Its Own Mood"),
-            kicker: "03 · MULTI-MONITOR",
+            kicker: String(localized: "03 · MULTI-MONITOR"),
             description: String(localized: "Choose a wallpaper for each display. Space recovery saves choices to apply manually to all displays and Spaces; automatic per-Space switching is unavailable."),
             accent: Color(red: 0.40, green: 0.95, blue: 0.55),
             secondary: Color(red: 0.20, green: 0.85, blue: 0.85)

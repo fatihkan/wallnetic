@@ -1,0 +1,42 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSPhotoLibraryUsageDescription": {
+      "comment": "Shown by macOS when the app asks to read the photo library.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic liest ausgewählte Fotos aus deiner Mediathek, um Diashow-Hintergründe zu erstellen. Nichts wird hochgeladen oder geteilt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wallnetic reads selected photos from your library to generate slideshow wallpapers. Nothing is uploaded or shared."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic lit les photos sélectionnées dans votre photothèque pour créer des fonds d’écran en diaporama. Rien n’est envoyé ni partagé."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallneticは、選択した写真をライブラリから読み込んでスライドショーの壁紙を作成します。アップロードや共有は行いません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic 会读取你从图库中选择的照片来生成幻灯片壁纸。不会上传或共享任何内容。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

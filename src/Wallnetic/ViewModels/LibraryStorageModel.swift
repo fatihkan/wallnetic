@@ -66,7 +66,7 @@ final class LibraryStorageModel: ObservableObject {
         await updateScan()
         failures = result.failures + scan.failures
         let size = ByteCountFormatter.string(fromByteCount: result.removed.reduce(0) { $0 + $1.bytes }, countStyle: .file)
-        message = String(localized: "Removed \(result.removed.count) file(s) (\(size)).")
+        message = String(localized: "Removed \(result.removed.count) files (\(size)).")
     }
 
     @discardableResult
