@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// The menu bar menu holds the essentials (#343 B4): what each display is
+/// doing, Play/Pause, Calm Mode, Next, the main window, Settings, Rate and
+/// Quit. The playlist switch, favourites, the Dynamic Island switch and
+/// About live in the main window and in Settings.
 struct MenuBarView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Environment(\.openWindow) var openWindow
@@ -67,41 +71,7 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("n", modifiers: .command)
 
-            // Playlist quick-toggle. The menu is rebuilt on open, so reading
-            // the flag directly reflects the current state without observation.
-            Button {
-                PlaylistManager.shared.toggle()
-            } label: {
-                Label(
-                    PlaylistManager.shared.isEnabled ? "Stop Playlist" : "Start Playlist",
-                    systemImage: PlaylistManager.shared.isEnabled ? "shuffle.circle.fill" : "shuffle"
-                )
-            }
-
             Divider()
-
-            // Favorites quick-switch
-            let favorites = wallpaperManager.wallpapers.filter { $0.isFavorite }
-            if !favorites.isEmpty {
-                Menu {
-                    ForEach(favorites.prefix(6)) { wallpaper in
-                        Button {
-                            wallpaperManager.setWallpaper(wallpaper)
-                        } label: {
-                            HStack {
-                                Text(wallpaper.displayName)
-                                if wallpaper.id == wallpaperManager.currentWallpaper?.id {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Label("Favorites", systemImage: "heart.fill")
-                }
-
-                Divider()
-            }
 
             // Quick access
             Button {
@@ -118,42 +88,13 @@ struct MenuBarView: View {
             Button {
                 openWindow(id: "settings")
             } label: {
-                Label("Settings...", systemImage: "gear")
+                Label("Settings…", systemImage: "gear")
             }
             .keyboardShortcut(",", modifiers: .command)
 
             Divider()
 
-            // Recent wallpapers submenu
-            Menu {
-                ForEach(wallpaperManager.wallpapers.prefix(5)) { wallpaper in
-                    Button(wallpaper.displayName) {
-                        wallpaperManager.setWallpaper(wallpaper)
-                    }
-                }
-
-                if wallpaperManager.wallpapers.count > 5 {
-                    Divider()
-                    Text("\(wallpaperManager.wallpapers.count - 5) more...")
-                        .foregroundColor(.secondary)
-                }
-            } label: {
-                Label("Recent", systemImage: "clock")
-            }
-
-            // Dynamic Island toggle
-            Button {
-                DynamicIslandController.shared.toggle()
-            } label: {
-                Label(
-                    DynamicIslandController.shared.isVisible ? "Hide Dynamic Island" : "Show Dynamic Island",
-                    systemImage: "capsule"
-                )
-            }
-
-            Divider()
-
-            // Rate, About & Quit.
+            // Rate & Quit.
             //
             // The automatic StoreKit prompt needs a presentable window, which a
             // menu-bar-only user never has, so without this entry they have no
@@ -163,12 +104,6 @@ struct MenuBarView: View {
                 NSWorkspace.shared.open(RatingPromptManager.writeReviewURL)
             } label: {
                 Label("Rate Wallnetic", systemImage: "star")
-            }
-
-            Button {
-                NSApp.orderFrontStandardAboutPanel()
-            } label: {
-                Label("About Wallnetic", systemImage: "info.circle")
             }
 
             Button {
