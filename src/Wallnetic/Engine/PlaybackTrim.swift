@@ -163,7 +163,7 @@ extension PlaybackTrim: Codable {
         fingerprint = try container.decode(VideoFileFingerprint.self, forKey: .fingerprint)
         guard start.isNumeric, end.isNumeric, start >= .zero, start < end else {
             throw DecodingError.dataCorruptedError(forKey: .endValue, in: container,
-                                                   debugDescription: "Not a forward time range")
+                                                   debugDescription: "Not a forward time range") // l10n:ignore
         }
     }
 

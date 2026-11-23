@@ -7,21 +7,21 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
 
     var title: String {
         switch self {
-        case .manual: return "Paused by you"
-        case .calm: return "Paused in Calm Mode"
-        case .thermal: return "Paused to reduce heat"
-        case .sessionInactive: return "Paused while the session is locked or inactive"
-        case .sleeping: return "Paused while the display is asleep"
-        case .screenSaver: return "Paused for the screen saver"
-        case .lowPower: return "Paused in Low Power Mode"
-        case .battery: return "Paused on battery"
-        case .lowBattery: return "Paused on low battery"
-        case .fullscreen: return "Paused for a fullscreen app"
-        case .frontApp: return "Paused for the app in front"
-        case .runningApp: return "Paused while a chosen app is running"
-        case .idle: return "Paused while the Mac is idle"
-        case .otherDisplay: return "Paused while another display is in use"
-        case .timer: return "Playback timer finished"
+        case .manual: return String(localized: "Paused by you")
+        case .calm: return String(localized: "Paused in Calm Mode")
+        case .thermal: return String(localized: "Paused to reduce heat")
+        case .sessionInactive: return String(localized: "Paused while the session is locked or inactive")
+        case .sleeping: return String(localized: "Paused while the display is asleep")
+        case .screenSaver: return String(localized: "Paused for the screen saver")
+        case .lowPower: return String(localized: "Paused in Low Power Mode")
+        case .battery: return String(localized: "Paused on battery")
+        case .lowBattery: return String(localized: "Paused on low battery")
+        case .fullscreen: return String(localized: "Paused for a fullscreen app")
+        case .frontApp: return String(localized: "Paused for the app in front")
+        case .runningApp: return String(localized: "Paused while a chosen app is running")
+        case .idle: return String(localized: "Paused while the Mac is idle")
+        case .otherDisplay: return String(localized: "Paused while another display is in use")
+        case .timer: return String(localized: "Playback timer finished")
         }
     }
 
@@ -29,21 +29,21 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
 
     var condition: String {
         switch self {
-        case .manual: return "manual pause"
-        case .calm: return "Calm Mode"
-        case .thermal: return "thermal pressure or cooling interval"
-        case .sessionInactive: return "inactive session"
-        case .sleeping: return "sleeping display"
-        case .screenSaver: return "screen saver"
-        case .lowPower: return "Low Power Mode"
-        case .battery: return "battery policy"
-        case .lowBattery: return "low battery rule"
-        case .fullscreen: return "fullscreen app"
-        case .frontApp: return "app in front rule"
-        case .runningApp: return "running app rule"
-        case .idle: return "idle rule"
-        case .otherDisplay: return "display in use rule"
-        case .timer: return "finished playback timer"
+        case .manual: return String(localized: "manual pause")
+        case .calm: return String(localized: "Calm Mode")
+        case .thermal: return String(localized: "thermal pressure or cooling interval")
+        case .sessionInactive: return String(localized: "inactive session")
+        case .sleeping: return String(localized: "sleeping display")
+        case .screenSaver: return String(localized: "screen saver")
+        case .lowPower: return String(localized: "Low Power Mode")
+        case .battery: return String(localized: "battery policy")
+        case .lowBattery: return String(localized: "low battery rule")
+        case .fullscreen: return String(localized: "fullscreen app")
+        case .frontApp: return String(localized: "app in front rule")
+        case .runningApp: return String(localized: "running app rule")
+        case .idle: return String(localized: "idle rule")
+        case .otherDisplay: return String(localized: "display in use rule")
+        case .timer: return String(localized: "finished playback timer")
         }
     }
 }
@@ -53,9 +53,9 @@ enum RendererPlaybackFailure: Equatable {
 
     var recovery: String {
         switch self {
-        case .missingFile: return "The video is missing or inaccessible. Restore the file and retry, or choose another wallpaper."
-        case .unplayable: return "This file cannot be played. Choose another video, or retry after replacing it."
-        case .loadFailed: return "The video could not be loaded. Retry, or choose another wallpaper."
+        case .missingFile: return String(localized: "The video is missing or inaccessible. Restore the file and retry, or choose another wallpaper.")
+        case .unplayable: return String(localized: "This file cannot be played. Choose another video, or retry after replacing it.")
+        case .loadFailed: return String(localized: "The video could not be loaded. Retry, or choose another wallpaper.")
         }
     }
 }
@@ -107,12 +107,12 @@ struct DisplayPlaybackStatus: Equatable, Identifiable {
 
     var title: String {
         switch state {
-        case .notSet: return "No wallpaper selected"
-        case .loading: return "Loading wallpaper…"
-        case .playing: return "Playing"
-        case .waiting: return "Waiting for video"
-        case .unavailable: return "Wallpaper unavailable"
-        case .paused: return reasons.first?.title ?? "Paused"
+        case .notSet: return String(localized: "No wallpaper selected")
+        case .loading: return String(localized: "Loading wallpaper…")
+        case .playing: return String(localized: "Playing")
+        case .waiting: return String(localized: "Waiting for video")
+        case .unavailable: return String(localized: "Wallpaper unavailable")
+        case .paused: return reasons.first?.title ?? String(localized: "Paused")
         }
     }
 
@@ -122,25 +122,27 @@ struct DisplayPlaybackStatus: Equatable, Identifiable {
         switch state {
         case .notSet: guidance = "Choose a wallpaper from the library."
         case .unavailable(let failure):
-            return ([failure.recovery, "A previous wallpaper may remain visible."] + reasons.map(\.title)).joined(separator: " ")
+            return ([failure.recovery, String(localized: "A previous wallpaper may remain visible.")] + reasons.map(\.title)).joined(separator: " ")
         case .loading: guidance = "Waiting for the first video frame."
         case .waiting: guidance = "The player is waiting for video data."
         case .playing:
-            return reasons.isEmpty ? "" : "Active pause conditions: \(reasons.map(\.condition).joined(separator: ", "))."
+            guard !reasons.isEmpty else { return "" }
+            let conditions = reasons.map(\.condition).joined(separator: ", ")
+            return String(localized: "Active pause conditions: \(conditions).")
         case .paused:
             let holds = [
-                reasons.contains(.calm) ? "Turn off Calm Mode to release its hold." : nil,
-                reasons.contains(.thermal) ? "The heat hold clears after one minute of cooling, or when thermal-aware playback is turned off." : nil,
-                reasons.contains(.idle) ? "Move the pointer or press a key to continue." : nil,
-                reasons.contains(.otherDisplay) ? "Use this display to continue here." : nil
+                reasons.contains(.calm) ? String(localized: "Turn off Calm Mode to release its hold.") : nil,
+                reasons.contains(.thermal) ? String(localized: "The heat hold clears after one minute of cooling, or when thermal-aware playback is turned off.") : nil,
+                reasons.contains(.idle) ? String(localized: "Move the pointer or press a key to continue.") : nil,
+                reasons.contains(.otherDisplay) ? String(localized: "Use this display to continue here.") : nil
             ].compactMap { $0 }
             let restoration: String
             if reasons.contains(where: \.blocksResume) {
                 restoration = reasons.contains(.manual) || reasons.contains(.timer)
-                    ? "After the active restrictions clear, press Play to resume."
-                    : "Playback can resume after the active restrictions clear."
+                    ? String(localized: "After the active restrictions clear, press Play to resume.")
+                    : String(localized: "Playback can resume after the active restrictions clear.")
             } else {
-                restoration = "Press Play to resume."
+                restoration = String(localized: "Press Play to resume.")
             }
             guidance = (holds + [restoration]).joined(separator: " ")
         }

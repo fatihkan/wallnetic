@@ -53,7 +53,7 @@ class PexelsService {
         }
 
         var resolution: String {
-            guard let f = bestFile, let w = f.width, let h = f.height else { return "Unknown" }
+            guard let f = bestFile, let w = f.width, let h = f.height else { return String(localized: "Unknown") }
             return "\(w)x\(h)"
         }
 
@@ -82,7 +82,7 @@ class PexelsService {
     /// Search videos on Pexels
     func search(query: String, page: Int = 1, perPage: Int = 20) async throws -> SearchResponse {
         guard let apiKey = KeychainManager.shared.getAPIKey(for: .pexels) else {
-            throw SourceError.noAPIKey("Pexels")
+            throw SourceError.noAPIKey("Pexels") // l10n:ignore
         }
 
         var components = URLComponents(string: "\(baseURL)/search")!
@@ -95,7 +95,7 @@ class PexelsService {
         ]
 
         var request = URLRequest(url: components.url!)
-        request.setValue(apiKey, forHTTPHeaderField: "Authorization")
+        request.setValue(apiKey, forHTTPHeaderField: "Authorization") // l10n:ignore
 
         let (data, _) = try await URLSession.shared.data(for: request)
         return try JSONDecoder().decode(SearchResponse.self, from: data)
@@ -104,7 +104,7 @@ class PexelsService {
     /// Get popular videos
     func popular(page: Int = 1) async throws -> SearchResponse {
         guard let apiKey = KeychainManager.shared.getAPIKey(for: .pexels) else {
-            throw SourceError.noAPIKey("Pexels")
+            throw SourceError.noAPIKey("Pexels") // l10n:ignore
         }
 
         var components = URLComponents(string: "\(baseURL)/popular")!
@@ -115,7 +115,7 @@ class PexelsService {
         ]
 
         var request = URLRequest(url: components.url!)
-        request.setValue(apiKey, forHTTPHeaderField: "Authorization")
+        request.setValue(apiKey, forHTTPHeaderField: "Authorization") // l10n:ignore
 
         let (data, _) = try await URLSession.shared.data(for: request)
         return try JSONDecoder().decode(SearchResponse.self, from: data)

@@ -13,7 +13,7 @@ final class TimeOfDayManager: ObservableObject {
     @Published private(set) var isEnabled: Bool
     @Published private(set) var ranges: [DailyWallpaperRange] = []
     @Published private(set) var activeRangeID: UUID?
-    @Published private(set) var status = "Daily schedule is off."
+    @Published private(set) var status = String(localized: "Daily schedule is off.")
     @Published private(set) var error: String?
     @Published private(set) var migrationNotice: String?
     @Published private(set) var manualOverrideUntil: Date?
@@ -83,7 +83,7 @@ final class TimeOfDayManager: ObservableObject {
         defaults.set(false, forKey: "tod.enabled")
         runtime.stop()
         activeRangeID = nil
-        status = "Daily schedule is off."
+        status = String(localized: "Daily schedule is off.")
         lastAppliedPath = nil
     }
 
@@ -153,22 +153,22 @@ final class TimeOfDayManager: ObservableObject {
         var delay = 60 - date.timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
         defer { runtime.schedule(after: delay) }
         if let until = manualOverrideUntil, until > date {
-            status = "Manual choice until " + until.formatted(date: .omitted, time: .shortened) + "."
+            status = String(localized: "Manual choice until \(until.formatted(date: .omitted, time: .shortened)).")
             delay = min(delay, until.timeIntervalSince(date))
             return
         }
         if manualOverrideUntil != nil { clearOverride() }
-        guard !unreadableDocument else { status = "Saved schedule needs attention. Current wallpaper kept."; return }
+        guard !unreadableDocument else { status = String(localized: "Saved schedule needs attention. Current wallpaper kept."); return }
         guard let range = DailyWallpaperSchedule.active(in: ranges, at: date, calendar: calendar()) else {
             activeRangeID = nil
             lastAppliedPath = nil
-            status = "No range now. Current wallpaper kept."
+            status = String(localized: "No range now. Current wallpaper kept.")
             return
         }
         activeRangeID = range.id
         guard let wallpaper = library().first(where: { $0.url.path == range.wallpaperPath }), fileExists(wallpaper.url) else {
             lastAppliedPath = nil
-            status = range.name + ": wallpaper missing or unassigned. Current wallpaper kept."
+            status = String(localized: "\(range.name): wallpaper missing or unassigned. Current wallpaper kept.")
             return
         }
         status = range.name + " · " + wallpaper.displayName

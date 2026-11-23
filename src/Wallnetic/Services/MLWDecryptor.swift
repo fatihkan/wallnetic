@@ -34,13 +34,15 @@ enum MLWDecryptor {
 
         var errorDescription: String? {
             switch self {
-            case .invalidMagic: return "Not a valid MLW file"
-            case .unsupportedVersion(let v): return "Unsupported MLW version: \(v)"
-            case .invalidBlockID(let id): return "Unexpected block ID: \(String(format: "0x%08X", id))"
-            case .decryptionFailed: return "AES-GCM decryption failed"
-            case .fileTooSmall: return "MLW file is too small"
-            case .invalidBlockSize: return "MLW block extends beyond the file or has an invalid size"
-            case .noMLWInArchive: return "No .mlw file found in ZIP archive"
+            case .invalidMagic: return String(localized: "Not a valid MLW file")
+            case .unsupportedVersion(let v): return String(localized: "Unsupported MLW version: \(v)")
+            case .invalidBlockID(let id):
+                let hex = String(format: "0x%08X", id)
+                return String(localized: "Unexpected block ID: \(hex)")
+            case .decryptionFailed: return String(localized: "AES-GCM decryption failed")
+            case .fileTooSmall: return String(localized: "MLW file is too small")
+            case .invalidBlockSize: return String(localized: "MLW block extends beyond the file or has an invalid size")
+            case .noMLWInArchive: return String(localized: "No .mlw file found in ZIP archive")
             }
         }
     }

@@ -105,9 +105,9 @@ struct AppearanceSettingsView: View {
 
     private func descriptionFor(_ mode: AppearanceMode) -> String {
         switch mode {
-        case .system: return "Follow system appearance"
-        case .light: return "Always use light mode"
-        case .dark: return "Always use dark mode"
+        case .system: return String(localized: "Follow system appearance")
+        case .light: return String(localized: "Always use light mode")
+        case .dark: return String(localized: "Always use dark mode")
         }
     }
 }

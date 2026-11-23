@@ -73,7 +73,7 @@ struct SpaceRecoverySections: View {
         }
         .sheet(item: $editing) { draft in
             SpaceSelectionEditor(selection: draft.selection, wallpapers: wallpapers) {
-                manager.save($0, replacing: draft.original) ? nil : (manager.error ?? "The saved choice could not be updated.")
+                manager.save($0, replacing: draft.original) ? nil : (manager.error ?? String(localized: "The saved choice could not be updated."))
             }
         }
         .alert("Start a new saved list?", isPresented: $confirmingNewList) {
@@ -96,7 +96,7 @@ struct SpaceRecoverySections: View {
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text(selection.name).lineLimit(1)
-                Text(wallpaper?.displayName ?? "Wallpaper missing · edit to replace")
+                Text(wallpaper?.displayName ?? String(localized: "Wallpaper missing · edit to replace"))
                     .font(.caption).foregroundColor(wallpaper == nil ? .orange : .secondary).lineLimit(1)
                 Text(manager.lastAppliedSelectionID == selection.id
                      ? "Applied manually · no desktop binding" : "Needs reassignment")

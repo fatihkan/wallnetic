@@ -53,21 +53,21 @@ final class VideoOptimizer: VideoOptimizing {
             throw VideoOptimizationError.sourceChanged
         }
         let asset = AVURLAsset(url: url)
-        guard try await asset.load(.isExportable) else { throw VideoOptimizationError.unsupported("This video cannot be exported by macOS.") }
+        guard try await asset.load(.isExportable) else { throw VideoOptimizationError.unsupported(String(localized: "This video cannot be exported by macOS.")) }
         let tracks = try await asset.loadTracks(withMediaType: .video)
         guard tracks.count == 1, let track = tracks.first else {
-            throw VideoOptimizationError.unsupported("Optimization supports videos with a single video track.")
+            throw VideoOptimizationError.unsupported(String(localized: "Optimization supports videos with a single video track."))
         }
         let duration = try await asset.load(.duration)
         guard duration.isNumeric, duration.seconds.isFinite, duration.seconds > 0, duration.seconds <= 86400 else {
-            throw VideoOptimizationError.unsupported("Optimization supports finite videos up to 24 hours long.")
+            throw VideoOptimizationError.unsupported(String(localized: "Optimization supports finite videos up to 24 hours long."))
         }
         let size = try await track.load(.naturalSize)
         let transform = try await track.load(.preferredTransform)
         let fps = Double(try await track.load(.nominalFrameRate))
         let formats = try await track.load(.formatDescriptions)
         let characteristics = try await track.load(.mediaCharacteristics)
-        guard !formats.isEmpty else { throw VideoOptimizationError.unsupported("The video format could not be read.") }
+        guard !formats.isEmpty else { throw VideoOptimizationError.unsupported(String(localized: "The video format could not be read.")) }
         var assumesSDR = false
         for format in formats {
             let ext = CMFormatDescriptionGetExtensions(format) as? [String: Any] ?? [:]
@@ -76,7 +76,7 @@ final class VideoOptimizer: VideoOptimizing {
             let dimensions = CMVideoFormatDescriptionGetPresentationDimensions(format, usePixelAspectRatio: true, useCleanAperture: false)
             let encoded = CMVideoFormatDescriptionGetDimensions(format)
             guard abs(dimensions.width - Double(encoded.width)) < 1, abs(dimensions.height - Double(encoded.height)) < 1 else {
-                throw VideoOptimizationError.unsupported("Anamorphic video is not supported by these presets. Keep using the original.")
+                throw VideoOptimizationError.unsupported(String(localized: "Anamorphic video is not supported by these presets. Keep using the original."))
             }
         }
         _ = try VideoOptimizationGeometry.make(size: size, transform: transform, fps: fps, preset: .balanced)
@@ -102,7 +102,7 @@ final class VideoOptimizer: VideoOptimizing {
               (ext[kCMFormatDescriptionExtension_ContainsAlphaChannel as String] as? Bool) != true,
               ext[kCMFormatDescriptionExtension_MasteringDisplayColorVolume as String] == nil,
               ext[kCMFormatDescriptionExtension_ContentLightLevelInfo as String] == nil else {
-            throw VideoOptimizationError.unsupported("HDR, transparency and color-tagged formats other than SDR Rec.709 are not supported by these presets. Keep using the original video.")
+            throw VideoOptimizationError.unsupported(String(localized: "HDR, transparency and color-tagged formats other than SDR Rec.709 are not supported by these presets. Keep using the original video."))
         }
     }
 
@@ -112,9 +112,9 @@ final class VideoOptimizer: VideoOptimizing {
         for preset in VideoOptimizationPreset.allCases {
             let geometry = try VideoOptimizationGeometry.make(size: source.size, transform: source.transform, fps: source.fps, preset: preset)
             if preset == .hevc && !hevcSupported(geometry.size) {
-                unavailable[preset] = "This Mac does not provide HEVC hardware encoding and decoding for this size. Choose H.264."
+                unavailable[preset] = String(localized: "This Mac does not provide HEVC hardware encoding and decoding for this size. Choose H.264.")
             } else if !(await AVAssetExportSession.compatibility(ofExportPreset: preset.exportPreset, with: source.asset, outputFileType: .mp4)) {
-                unavailable[preset] = "macOS cannot export this video with the selected codec. Try another preset."
+                unavailable[preset] = String(localized: "macOS cannot export this video with the selected codec. Try another preset.")
             }
             try Task.checkCancellation()
         }
@@ -129,11 +129,11 @@ final class VideoOptimizer: VideoOptimizing {
         let source = try await read(url)
         let geometry = try VideoOptimizationGeometry.make(size: source.size, transform: source.transform, fps: source.fps, preset: preset)
         if preset == .hevc && !hevcSupported(geometry.size) {
-            throw VideoOptimizationError.unsupported("HEVC hardware encoding/decoding is unavailable for this video size. Choose H.264.")
+            throw VideoOptimizationError.unsupported(String(localized: "HEVC hardware encoding/decoding is unavailable for this video size. Choose H.264."))
         }
         let composition = AVMutableComposition()
         guard let track = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-            throw VideoOptimizationError.failed("Could not create the video track.")
+            throw VideoOptimizationError.failed(String(localized: "Could not create the video track."))
         }
         let timeRange = CMTimeRange(start: .zero, duration: source.duration)
         try track.insertTimeRange(timeRange, of: source.track, at: .zero)
@@ -151,13 +151,13 @@ final class VideoOptimizer: VideoOptimizing {
         video.instructions = [instruction]
         guard await AVAssetExportSession.compatibility(ofExportPreset: preset.exportPreset, with: composition, outputFileType: .mp4),
               let session = AVAssetExportSession(asset: composition, presetName: preset.exportPreset) else {
-            throw VideoOptimizationError.unsupported("macOS cannot export this video with the selected preset.")
+            throw VideoOptimizationError.unsupported(String(localized: "macOS cannot export this video with the selected preset."))
         }
         session.videoComposition = video
         session.timeRange = timeRange
         session.outputFileType = .mp4
         let destination = directory().standardizedFileURL.resolvingSymlinksInPath()
-        guard destination.isFileURL else { throw VideoOptimizationError.failed("The library directory is unavailable.") }
+        guard destination.isFileURL else { throw VideoOptimizationError.failed(String(localized: "The library directory is unavailable.")) }
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         // Estimate is not a savings promise; leave headroom for the encoder and container.
         let estimate = (try? await session.estimatedOutputFileLengthInBytes) ?? 0
@@ -198,7 +198,7 @@ final class VideoOptimizer: VideoOptimizing {
                 if let unpublishedFinal { try FileManager.default.removeItem(at: unpublishedFinal) }
                 if FileManager.default.fileExists(atPath: staging.path) { try FileManager.default.removeItem(at: staging) }
             } catch {
-                throw VideoOptimizationError.failed("Conversion stopped, but temporary files could not be removed. Check the library disk and remove the temporary .optimization folder. " + error.localizedDescription)
+                throw VideoOptimizationError.failed(String(localized: "Conversion stopped, but temporary files could not be removed. Check the library disk and remove the temporary .optimization folder.") + " " + error.localizedDescription)
             }
             if Task.isCancelled || failure is CancellationError { throw CancellationError() }
             throw failure
@@ -246,7 +246,7 @@ final class VideoOptimizer: VideoOptimizing {
             name.append(character)
             bytes += count
         }
-        if name.isEmpty { name = "Wallpaper" }
+        if name.isEmpty { name = String(localized: "Wallpaper") }
         return name + " - Optimized " + preset.filenameLabel + " - " + UUID().uuidString + ".mp4"
     }
     nonisolated static func availableCapacity(_ url: URL) throws -> Int64 {
@@ -281,9 +281,9 @@ final class VideoOptimizer: VideoOptimizing {
         guard session.status == .completed else {
             if session.status == .cancelled { throw CancellationError() }
             if isOutOfSpace(session.error) {
-                throw VideoOptimizationError.failed("The library disk ran out of space during conversion. Free some space and try again.")
+                throw VideoOptimizationError.failed(String(localized: "The library disk ran out of space during conversion. Free some space and try again."))
             }
-            throw VideoOptimizationError.failed(session.error?.localizedDescription ?? "The encoder did not complete.")
+            throw VideoOptimizationError.failed(session.error?.localizedDescription ?? String(localized: "The encoder did not complete."))
         }
     }
 

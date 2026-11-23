@@ -34,9 +34,9 @@ final class PlaylistManager: ObservableObject {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .library: return "Whole Library"
-            case .favorites: return "Favorites"
-            case .collection: return "Collection"
+            case .library: return String(localized: "Whole Library")
+            case .favorites: return String(localized: "Favorites")
+            case .collection: return String(localized: "Collection")
             }
         }
     }
@@ -46,8 +46,8 @@ final class PlaylistManager: ObservableObject {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .shuffle: return "Shuffle"
-            case .sequential: return "In order"
+            case .shuffle: return String(localized: "Shuffle")
+            case .sequential: return String(localized: "In order")
             }
         }
     }
@@ -56,7 +56,7 @@ final class PlaylistManager: ObservableObject {
     static let intervalOptions: [Int] = [300, 900, 1800, 3600, 21600, 86400]
 
     static func intervalLabel(_ seconds: Int) -> String {
-        if seconds == 86400 { return "Daily" }
+        if seconds == 86400 { return String(localized: "Daily") }
         if seconds >= 3600 && seconds % 3600 == 0 {
             let hours = seconds / 3600
             return "\(hours) hour\(hours == 1 ? "" : "s")"
@@ -71,7 +71,7 @@ final class PlaylistManager: ObservableObject {
     @Published private(set) var isEnabled: Bool
     @Published private(set) var usesItemDurations: Bool
     @Published private(set) var items: [TimedWallpaperItem] = []
-    @Published private(set) var status = "Playlist is off."
+    @Published private(set) var status = String(localized: "Playlist is off.")
     @Published private(set) var error: String?
     @Published private(set) var manualOverrideUntil: Date?
     @Published private(set) var activeItemID: UUID?
@@ -170,7 +170,7 @@ final class PlaylistManager: ObservableObject {
         isEnabled = false
         defaults.set(false, forKey: "playlist.enabled")
         runtime.stop()
-        status = "Playlist is off."
+        status = String(localized: "Playlist is off.")
         activeItemID = nil
         lastAppliedPath = nil
     }
@@ -309,12 +309,12 @@ final class PlaylistManager: ObservableObject {
         var delay: TimeInterval = 60
         defer { runtime.schedule(after: delay) }
         if let until = manualOverrideUntil, until > date {
-            status = "Manual choice until " + until.formatted(date: .omitted, time: .shortened) + "."
+            status = String(localized: "Manual choice until \(until.formatted(date: .omitted, time: .shortened)).")
             delay = until.timeIntervalSince(date)
             return
         }
         if manualOverrideUntil != nil { clearOverride() }
-        if usesItemDurations && unreadableDocument { status = "Saved playlist needs attention. Current wallpaper kept."; return }
+        if usesItemDurations && unreadableDocument { status = String(localized: "Saved playlist needs attention. Current wallpaper kept."); return }
         let effective = effectiveItems(at: date)
         if let anchor = progress?.anchor, date < anchor {
             progress?.anchor = date // A backwards clock adjustment starts a fresh cycle.
@@ -325,13 +325,15 @@ final class PlaylistManager: ObservableObject {
               let wallpaper = library().first(where: { $0.url.path == effective[position.index].wallpaperPath }) else {
             activeItemID = nil
             lastAppliedPath = nil
-            status = "No available playlist wallpapers. Current wallpaper kept."
+            status = String(localized: "No available playlist wallpapers. Current wallpaper kept.")
             return
         }
         let item = effective[position.index]
         activeItemID = usesItemDurations ? item.id : nil
         let missing = usesItemDurations ? items.count - effective.count : 0
-        status = wallpaper.displayName + (missing > 0 ? " · \(missing) unavailable item(s) skipped." : "")
+        status = missing > 0
+            ? String(localized: "\(wallpaper.displayName) · \(missing) unavailable item(s) skipped.")
+            : wallpaper.displayName
         delay = position.secondsRemaining
         guard lastAppliedPath != wallpaper.url.path else { return }
         lastAppliedPath = wallpaper.url.path

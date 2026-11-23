@@ -100,5 +100,5 @@ class StoreKitManager: ObservableObject {
 
 enum StoreError: LocalizedError {
     case verificationFailed
-    var errorDescription: String? { "Purchase verification failed" }
+    var errorDescription: String? { String(localized: "Purchase verification failed") }
 }

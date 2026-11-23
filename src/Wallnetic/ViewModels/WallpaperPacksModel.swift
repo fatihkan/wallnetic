@@ -49,8 +49,8 @@ final class WallpaperPacksModel: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var activePackID: String?
     @Published private(set) var downloadedBytes = 0
-    @Published private(set) var status = "Previews are available offline. Download only the packs you want."
-    @Published private(set) var catalogSource = "Included catalog"
+    @Published private(set) var status = String(localized: "Previews are available offline. Download only the packs you want.")
+    @Published private(set) var catalogSource = String(localized: "Included catalog")
     @Published private(set) var ownershipError = false
     @Published private(set) var isRemoving = false
     private let defaults: UserDefaults
@@ -85,11 +85,11 @@ final class WallpaperPacksModel: ObservableObject {
         if let cached = defaults.data(forKey: Self.cacheKey), let decoded = try? WallpaperPackCatalog.decode(cached),
            decoded.revision >= (catalog?.revision ?? 0) {
             catalog = decoded
-            catalogSource = "Saved catalog · revision \(decoded.revision)"
+            catalogSource = String(localized: "Saved catalog · revision \(decoded.revision)")
         }
         do { receipts = try receiptStore.load() }
         catch { ownershipError = true; status = error.localizedDescription }
-        if catalog == nil { status = "No catalog is available. Your local library still works. Try Refresh Catalog." }
+        if catalog == nil { status = String(localized: "No catalog is available. Your local library still works. Try Refresh Catalog.") }
     }
 
     var installedPackIDs: [String] { Array(Set(receipts.map(\.packID))).sorted() }
@@ -98,7 +98,7 @@ final class WallpaperPacksModel: ObservableObject {
     func refresh() {
         guard !busy else { return }
         start(packID: nil)
-        status = "Refreshing catalog…"
+        status = String(localized: "Refreshing catalog…")
         task = Task {
             defer { finish() }
             do {
@@ -109,16 +109,16 @@ final class WallpaperPacksModel: ObservableObject {
                 try Task.checkCancellation()
                 defaults.set(data, forKey: Self.cacheKey)
                 catalog = updated
-                catalogSource = "Saved catalog · revision \(updated.revision)"
-                status = "Catalog is up to date. Existing downloads are unchanged."
-            } catch { status = Task.isCancelled ? "Refresh cancelled. Previous catalog kept." : "Refresh failed. Previous catalog kept. \(error.localizedDescription)" }
+                catalogSource = String(localized: "Saved catalog · revision \(updated.revision)")
+                status = String(localized: "Catalog is up to date. Existing downloads are unchanged.")
+            } catch { status = Task.isCancelled ? String(localized: "Refresh cancelled. Previous catalog kept.") : String(localized: "Refresh failed. Previous catalog kept. \(error.localizedDescription)") }
         }
     }
 
     func download(_ pack: WallpaperPack) {
         guard !busy, !ownershipError, catalog?.packs.contains(pack) == true else { return }
         start(packID: pack.id)
-        status = "Downloading \(pack.name)…"
+        status = String(localized: "Downloading \(pack.name)…")
         task = Task {
             defer { finish() }
             do {
@@ -151,9 +151,9 @@ final class WallpaperPacksModel: ObservableObject {
                     downloadedBytes = base + item.bytes
                 }
                 try Task.checkCancellation()
-                status = "\(pack.name) is in your library. Choose a wallpaper to play it."
+                status = String(localized: "\(pack.name) is in your library. Choose a wallpaper to play it.")
             } catch {
-                status = Task.isCancelled ? "Download cancelled. Completed copies stay in your library; Download / Retry continues safely." : "Download stopped. Completed copies were kept. \(error.localizedDescription) Use Download / Retry."
+                status = Task.isCancelled ? String(localized: "Download cancelled. Completed copies stay in your library; Download / Retry continues safely.") : String(localized: "Download stopped. Completed copies were kept. \(error.localizedDescription) Use Download / Retry.")
             }
         }
     }
@@ -162,7 +162,7 @@ final class WallpaperPacksModel: ObservableObject {
         guard !busy, !ownershipError else { return }
         start(packID: packID)
         isRemoving = true
-        status = "Checking downloaded copies…"
+        status = String(localized: "Checking downloaded copies…")
         task = Task {
             defer { finish() }
             var removable: [StorageItem] = [], forgotten = Set<String>(), protected = 0
@@ -181,9 +181,14 @@ final class WallpaperPacksModel: ObservableObject {
                 let result = await remove(removable)
                 forgotten.formUnion(result.removed.map { $0.url.lastPathComponent })
                 try persist(receipts.filter { !forgotten.contains($0.filename) })
-                status = "Removed \(result.removed.count) downloaded copies."
-                if protected > 0 { status += " Kept \(protected) changed or unavailable files in your library." }
-                if !result.failures.isEmpty { status += " Some copies could not be removed; retry or use Library Storage." }
+                var sentences = [String(localized: "Removed \(result.removed.count) downloaded copies.")]
+                if protected > 0 {
+                    sentences.append(String(localized: "Kept \(protected) changed or unavailable files in your library."))
+                }
+                if !result.failures.isEmpty {
+                    sentences.append(String(localized: "Some copies could not be removed; retry or use Library Storage."))
+                }
+                status = sentences.joined(separator: " ")
             } catch { status = error.localizedDescription }
         }
     }

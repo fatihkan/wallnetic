@@ -50,7 +50,7 @@ final class LibraryStorageModel: ObservableObject {
             $0.canRemove && (caches ? $0.category == .caches : $0.category == .videos && selection.contains($0.id))
         }
         guard !items.isEmpty else {
-            message = caches ? "No unused caches to clear." : "No selected copies are available to remove."
+            message = caches ? String(localized: "No unused caches to clear.") : String(localized: "No selected copies are available to remove.")
             return
         }
         plan = StorageRemovalPlan(items: items, isCacheCleanup: caches)
@@ -66,7 +66,7 @@ final class LibraryStorageModel: ObservableObject {
         await updateScan()
         failures = result.failures + scan.failures
         let size = ByteCountFormatter.string(fromByteCount: result.removed.reduce(0) { $0 + $1.bytes }, countStyle: .file)
-        message = "Removed \(result.removed.count) file(s) (\(size))."
+        message = String(localized: "Removed \(result.removed.count) file(s) (\(size)).")
     }
 
     @discardableResult

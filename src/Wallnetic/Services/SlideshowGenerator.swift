@@ -72,10 +72,10 @@ final class SlideshowGenerator {
 
         var errorDescription: String? {
             switch self {
-            case .noAssets: return "No photos selected."
-            case .writerFailed(let m): return "Video writer failed: \(m)"
-            case .imageLoadFailed: return "Could not load any of the selected photos."
-            case .cancelled: return "Slideshow generation was cancelled."
+            case .noAssets: return String(localized: "No photos selected.")
+            case .writerFailed(let m): return String(localized: "Video writer failed: \(m)")
+            case .imageLoadFailed: return String(localized: "Could not load any of the selected photos.")
+            case .cancelled: return String(localized: "Slideshow generation was cancelled.")
             }
         }
     }
@@ -183,12 +183,12 @@ final class SlideshowGenerator {
         )
 
         guard writer.canAdd(writerInput) else {
-            throw GeneratorError.writerFailed("input not accepted")
+            throw GeneratorError.writerFailed("input not accepted") // l10n:ignore
         }
         writer.add(writerInput)
 
         guard writer.startWriting() else {
-            throw GeneratorError.writerFailed(writer.error?.localizedDescription ?? "startWriting failed")
+            throw GeneratorError.writerFailed(writer.error?.localizedDescription ?? "startWriting failed") // l10n:ignore
         }
         writer.startSession(atSourceTime: .zero)
 
@@ -278,7 +278,7 @@ final class SlideshowGenerator {
 
             guard let pool = adaptor.pixelBufferPool,
                   let buffer = makePixelBuffer(pool: pool) else {
-                throw GeneratorError.writerFailed("could not allocate pixel buffer")
+                throw GeneratorError.writerFailed("could not allocate pixel buffer") // l10n:ignore
             }
 
             drawFrame(
@@ -294,7 +294,7 @@ final class SlideshowGenerator {
 
             let pts = CMTimeMultiply(frameDuration, multiplier: Int32(f))
             if !adaptor.append(buffer, withPresentationTime: pts) {
-                throw GeneratorError.writerFailed("append failed at frame \(f)")
+                throw GeneratorError.writerFailed("append failed at frame \(f)") // l10n:ignore
             }
 
             progress(Double(f + 1) / Double(totalFrames))

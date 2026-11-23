@@ -94,3 +94,7 @@ daily-notes/
 
 # Cloudflare wrangler state (account details); never commit
 .wrangler/
+
+# Python bytecode from the tools
+__pycache__/
+*.pyc

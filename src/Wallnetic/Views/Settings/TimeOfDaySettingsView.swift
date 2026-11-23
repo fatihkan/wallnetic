@@ -37,7 +37,7 @@ struct DailyScheduleContent: View {
                                       edit: { editing = $0 }, commit: { _ = manager.save($0) })
                 HStack {
                     Button("Add range…") {
-                        editing = DailyWallpaperRange(name: "Custom range", startMinute: 9 * 60, endMinute: 10 * 60, wallpaperPath: "")
+                        editing = DailyWallpaperRange(name: String(localized: "Custom range"), startMinute: 9 * 60, endMinute: 10 * 60, wallpaperPath: "")
                     }
                     Spacer()
                     Text("Drag a bar or its handles · 5-minute steps").font(.caption2).foregroundColor(.secondary)

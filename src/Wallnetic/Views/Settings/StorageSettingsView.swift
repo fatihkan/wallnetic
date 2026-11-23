@@ -104,9 +104,12 @@ struct StorageSettingsView: View {
         }
         .alert(item: $model.plan) { plan in
             Alert(title: Text(plan.isCacheCleanup ? "Clear \(plan.items.count) cache file(s)?" : "Remove \(plan.items.count) library copy/copies?"),
-                  message: Text("Estimated space recovery: \(size(plan.bytes)). Actual disk space recovered may differ.\n\n" +
-                    (plan.isCacheCleanup ? "This clears unused thumbnail copies. Your videos, active thumbnails and system wallpaper images are kept." :
-                        "This permanently removes the selected app-managed copies and their assignments. Active copies stop playing. Your original source files are kept.")),
+                  message: Text([
+                    String(localized: "Estimated space recovery: \(size(plan.bytes)). Actual disk space recovered may differ."),
+                    plan.isCacheCleanup
+                        ? String(localized: "This clears unused thumbnail copies. Your videos, active thumbnails and system wallpaper images are kept.")
+                        : String(localized: "This permanently removes the selected app-managed copies and their assignments. Active copies stop playing. Your original source files are kept.")
+                  ].joined(separator: "\n\n")),
                   primaryButton: .destructive(Text("Remove")) { Task { await model.confirmRemoval(plan) } },
                   secondaryButton: .cancel())
         }

@@ -355,8 +355,8 @@ class PowerManager {
 
                 let windowX = bounds["X"] ?? 0
                 let windowY = bounds["Y"] ?? 0
-                let windowWidth = bounds["Width"] ?? 0
-                let windowHeight = bounds["Height"] ?? 0
+                let windowWidth = bounds["Width"] ?? 0 // l10n:ignore
+                let windowHeight = bounds["Height"] ?? 0 // l10n:ignore
 
                 return screens.contains { screenFrame in
                     let xMatches = abs(windowX - screenFrame.origin.x) < 2

@@ -19,28 +19,28 @@ struct WallpaperSource: Identifiable {
     }
 
     static let allSources: [WallpaperSource] = [
-        WallpaperSource(id: "pixabay", name: "Pixabay", description: "Free stock videos and animations",
+        WallpaperSource(id: "pixabay", name: String(localized: "Pixabay"), description: String(localized: "Free stock videos and animations"),
                         icon: "photo.artframe", color: .green, url: "https://pixabay.com/videos/",
                         type: .api, estimatedCount: "6,000+"),
-        WallpaperSource(id: "pexels", name: "Pexels", description: "Free HD & 4K stock videos",
+        WallpaperSource(id: "pexels", name: String(localized: "Pexels"), description: String(localized: "Free HD & 4K stock videos"),
                         icon: "play.rectangle.fill", color: .teal, url: "https://www.pexels.com/videos/",
                         type: .api, estimatedCount: "52,000+"),
-        WallpaperSource(id: "mylivewallpapers", name: "MyLiveWallpapers", description: "Curated live wallpaper collection",
+        WallpaperSource(id: "mylivewallpapers", name: "MyLiveWallpapers", description: String(localized: "Curated live wallpaper collection"),
                         icon: "sparkles.rectangle.stack", color: .purple, url: "https://mylivewallpapers.com",
                         type: .browser, estimatedCount: "5,000+"),
-        WallpaperSource(id: "desktophut", name: "DesktopHut", description: "4K anime, nature, space wallpapers",
+        WallpaperSource(id: "desktophut", name: "DesktopHut", description: String(localized: "4K anime, nature, space wallpapers"),
                         icon: "desktopcomputer", color: .blue, url: "https://www.desktophut.com",
                         type: .browser, estimatedCount: "3,000+"),
-        WallpaperSource(id: "moewalls", name: "MoeWalls", description: "Anime and general live wallpapers",
+        WallpaperSource(id: "moewalls", name: "MoeWalls", description: String(localized: "Anime and general live wallpapers"),
                         icon: "sparkles.tv", color: .pink, url: "https://moewalls.com",
                         type: .browser, estimatedCount: "4,000+"),
-        WallpaperSource(id: "motionbgs", name: "MotionBGs", description: "4K animated backgrounds",
+        WallpaperSource(id: "motionbgs", name: "MotionBGs", description: String(localized: "4K animated backgrounds"),
                         icon: "film.stack", color: .orange, url: "https://motionbgs.com",
                         type: .browser, estimatedCount: "8,790+"),
-        WallpaperSource(id: "wallhaven", name: "Wallhaven", description: "Community-curated wallpapers, 4K+",
+        WallpaperSource(id: "wallhaven", name: String(localized: "Wallhaven"), description: String(localized: "Community-curated wallpapers, 4K+"),
                         icon: "globe.americas.fill", color: .cyan, url: "https://wallhaven.cc/search?categories=010&purity=100&sorting=toplist&order=desc&topRange=1M",
                         type: .browser, estimatedCount: "1M+"),
-        WallpaperSource(id: "steamworkshop", name: "Steam Workshop", description: "Wallpaper Engine community content",
+        WallpaperSource(id: "steamworkshop", name: String(localized: "Steam Workshop"), description: String(localized: "Wallpaper Engine community content"),
                         icon: "gamecontroller.fill", color: .indigo, url: "https://steamcommunity.com/workshop/browse/?appid=431960&browsesort=trend&section=readytouseitems",
                         type: .browser, estimatedCount: "2M+"),
     ]
@@ -72,11 +72,8 @@ struct DiscoverView: View {
 
                 Spacer()
 
-                Text("\(WallpaperSource.allSources.count)")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(.accentColor)
-                +
-                Text(" sources")
+                // One sentence, so a translation can place the number.
+                Text("\(Text("\(WallpaperSource.allSources.count)").font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundColor(.accentColor)) sources")
                     .font(.system(size: 12))
                     .foregroundColor(.primary.opacity(0.55))
             }

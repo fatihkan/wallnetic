@@ -118,31 +118,31 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .general:       return "General"
-        case .storage:       return "Storage"
-        case .appearance:    return "Appearance"
-        case .playback:      return "Playback"
-        case .effects:       return "Effects"
-        case .schedule:      return "Schedule"
-        case .playlist:      return "Playlist"
-        case .spaces:        return "Spaces"
-        case .display:       return "Display"
-        case .about:         return "About"
+        case .general:       return String(localized: "General")
+        case .storage:       return String(localized: "Storage")
+        case .appearance:    return String(localized: "Appearance")
+        case .playback:      return String(localized: "Playback")
+        case .effects:       return String(localized: "Effects")
+        case .schedule:      return String(localized: "Schedule")
+        case .playlist:      return String(localized: "Playlist")
+        case .spaces:        return String(localized: "Spaces")
+        case .display:       return String(localized: "Display")
+        case .about:         return String(localized: "About")
         }
     }
 
     var tagline: String {
         switch self {
-        case .general:       return "App-wide behavior and library location."
-        case .storage:       return "Library sizes and safe cleanup."
-        case .appearance:    return "Theme, accent, and dynamic colors."
-        case .playback:      return "Power, performance, and pause rules."
-        case .effects:       return "Live wallpaper post-processing."
-        case .schedule:      return "Custom daily time ranges."
-        case .playlist:      return "Rotate with individual durations."
-        case .spaces:        return "Saved choices and desktop recovery."
-        case .display:       return "Per-monitor mode and tracking."
-        case .about:         return "Version, credits, and links."
+        case .general:       return String(localized: "App-wide behavior and library location.")
+        case .storage:       return String(localized: "Library sizes and safe cleanup.")
+        case .appearance:    return String(localized: "Theme, accent, and dynamic colors.")
+        case .playback:      return String(localized: "Power, performance, and pause rules.")
+        case .effects:       return String(localized: "Live wallpaper post-processing.")
+        case .schedule:      return String(localized: "Custom daily time ranges.")
+        case .playlist:      return String(localized: "Rotate with individual durations.")
+        case .spaces:        return String(localized: "Saved choices and desktop recovery.")
+        case .display:       return String(localized: "Per-monitor mode and tracking.")
+        case .about:         return String(localized: "Version, credits, and links.")
         }
     }
 

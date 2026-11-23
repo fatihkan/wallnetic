@@ -29,8 +29,8 @@ struct LibraryView: View {
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @Binding var searchText: String
 
-    @State private var selectedCategory: String = "All"
-    @State private var hoveredCategory: String?
+    @State private var selectedCategory: Category = .all
+    @State private var hoveredCategory: Category?
     @State private var viewMode: ViewMode = .grid
     @State private var selectedColor: ColorCategory?
     @State private var sort: LibrarySort = .newest
@@ -44,14 +44,32 @@ struct LibraryView: View {
 
         var label: String {
             switch self {
-            case .grid: return "Grid view"
-            case .list: return "List view"
-            case .carousel3D: return "Gallery view"
+            case .grid: return String(localized: "Grid view")
+            case .list: return String(localized: "List view")
+            case .carousel3D: return String(localized: "Gallery view")
             }
         }
     }
 
-    private let categories = ["All", "Favorites", "Recent", "Long", "Short", "HD", "4K"]
+    /// The filter chips. The case identifies the filter; `title` is what
+    /// the chip shows, in the app's language.
+    enum Category: String, CaseIterable, Identifiable {
+        case all, favorites, recent, long, short, hd, uhd
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all: return String(localized: "All")
+            case .favorites: return String(localized: "Favorites")
+            case .recent: return String(localized: "Recent")
+            case .long: return String(localized: "Long")
+            case .short: return String(localized: "Short")
+            case .hd: return "HD" // l10n:ignore
+            case .uhd: return "4K" // l10n:ignore
+            }
+        }
+    }
 
     private let columns = [
         GridItem(.adaptive(minimum: 200, maximum: 280), spacing: 14)
@@ -62,21 +80,21 @@ struct LibraryView: View {
         var result = wallpaperManager.searchWallpapers(query: searchText)
 
         switch selectedCategory {
-        case "Favorites":
+        case .all:
+            break
+        case .favorites:
             result = result.filter { $0.isFavorite }
-        case "Recent":
+        case .recent:
             let week = Date().addingTimeInterval(-7 * 24 * 60 * 60)
             result = result.filter { $0.dateAdded > week }
-        case "Long":
+        case .long:
             result = result.filter { ($0.duration ?? 0) > 10 }
-        case "Short":
+        case .short:
             result = result.filter { $0.duration.map { $0 >= 0 && $0 <= 10 } ?? false }
-        case "HD":
+        case .hd:
             result = result.filter { ($0.resolution?.width ?? 0) >= 1920 && ($0.resolution?.width ?? 0) < 3840 }
-        case "4K":
+        case .uhd:
             result = result.filter { ($0.resolution?.width ?? 0) >= 3840 }
-        default:
-            break
         }
 
         // Color filter
@@ -100,7 +118,7 @@ struct LibraryView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                if selectedCategory != "All" || selectedColor != nil || !searchText.isEmpty {
+                if selectedCategory != .all || selectedColor != nil || !searchText.isEmpty {
                     Button("Reset filters", action: resetFilters)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -112,7 +130,7 @@ struct LibraryView: View {
             // Glass filter bar
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    ForEach(categories, id: \.self) { category in
+                    ForEach(Category.allCases) { category in
                         filterChip(category)
                     }
                 }
@@ -182,11 +200,12 @@ struct LibraryView: View {
 
             // Results count + view mode toggle
             HStack {
-                Text("\(results.count)")
+                // One sentence per count, so a translation can place the number.
+                let count = Text("\(results.count)")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundColor(.accentColor)
-                +
-                Text(results.count == 1 ? " wallpaper" : " wallpapers")
+                let label = results.count == 1 ? Text("\(count) wallpaper") : Text("\(count) wallpapers")
+                label
                     .font(.system(size: 12))
                     .foregroundColor(.primary.opacity(0.55))
 
@@ -264,7 +283,7 @@ struct LibraryView: View {
     }
 
     private func resetFilters() {
-        selectedCategory = "All"
+        selectedCategory = .all
         selectedColor = nil
         searchText = ""
     }
@@ -312,7 +331,7 @@ struct LibraryView: View {
     // MARK: - Filter Chip
 
     @ViewBuilder
-    private func filterChip(_ category: String) -> some View {
+    private func filterChip(_ category: Category) -> some View {
         let isSelected = selectedCategory == category
         let isHovered = hoveredCategory == category
 
@@ -321,7 +340,7 @@ struct LibraryView: View {
                 selectedCategory = category
             }
         } label: {
-            Text(category)
+            Text(category.title)
                 .font(.system(size: 12, weight: isSelected ? .bold : .medium))
                 .foregroundColor(isSelected ? .primary : .primary.opacity(isHovered ? 0.85 : 0.7))
                 .padding(.horizontal, 14)

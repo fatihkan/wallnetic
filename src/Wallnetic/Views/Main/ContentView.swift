@@ -241,7 +241,7 @@ struct ContentView: View {
                 Task { @MainActor in
                     let url = (item as? URL) ?? (item as? Data).flatMap { URL(dataRepresentation: $0, relativeTo: nil) }
                     guard let url else {
-                        importError = error?.localizedDescription ?? "The dropped file could not be read. Try importing it with the file picker."
+                        importError = error?.localizedDescription ?? String(localized: "The dropped file could not be read. Try importing it with the file picker.")
                         return
                     }
                     await importFiles([url])

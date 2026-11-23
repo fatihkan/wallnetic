@@ -13,7 +13,7 @@ enum BrowserDownloadMetadata {
         if let title = normalize(title) { return title }
         if let title = normalize(pageTitle) { return title }
         let basename = ((filename ?? "") as NSString).lastPathComponent
-        return normalize((basename as NSString).deletingPathExtension) ?? "Wallpaper"
+        return normalize((basename as NSString).deletingPathExtension) ?? String(localized: "Wallpaper")
     }
 
     static func videos(from result: Any?) -> [BrowserVideo] {

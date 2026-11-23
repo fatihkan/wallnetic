@@ -90,7 +90,7 @@ final class SpaceWallpaperManager: ObservableObject {
         // deleted references or overwriting a newer choice. A nil original adds.
         guard original == nil || original?.id == selection.id,
               selections.first(where: { $0.id == selection.id }) == original else {
-            error = "This saved choice changed or was removed while you were editing. Cancel and open it again."
+            error = String(localized: "This saved choice changed or was removed while you were editing. Cancel and open it again.")
             return false
         }
         var candidate = selections
@@ -109,7 +109,7 @@ final class SpaceWallpaperManager: ObservableObject {
         guard isEnabled, !hasUnreadableData else { return false }
         if selections.contains(where: { $0.wallpaperPath == wallpaper.url.path }) { return true }
         let name = wallpaper.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return save(SpaceWallpaperSelection(name: name.isEmpty ? "Wallpaper" : String(name.prefix(80)),
+        return save(SpaceWallpaperSelection(name: name.isEmpty ? String(localized: "Wallpaper") : String(name.prefix(80)),
                                             wallpaperPath: wallpaper.url.path))
     }
 
@@ -118,7 +118,7 @@ final class SpaceWallpaperManager: ObservableObject {
         guard isEnabled, !hasUnreadableData else { return false }
         guard let selection = selections.first(where: { $0.id == id }),
               let wallpaper = wallpaper(for: selection) else {
-            error = "This wallpaper is unavailable. Edit the saved choice to select a wallpaper from Library."
+            error = String(localized: "This wallpaper is unavailable. Edit the saved choice to select a wallpaper from Library.")
             return false
         }
         apply(wallpaper)
@@ -206,7 +206,7 @@ final class SpaceWallpaperManager: ObservableObject {
                 // Preserve every value: keys such as "1" and "01" must not
                 // collide (the former Int-key conversion could crash here).
                 let recovered = legacy.sorted { $0.key < $1.key }.enumerated().map { index, entry in
-                    SpaceWallpaperSelection(name: "Saved choice \(index + 1)", wallpaperPath: entry.value)
+                    SpaceWallpaperSelection(name: String(localized: "Saved choice \(index + 1)"), wallpaperPath: entry.value)
                 }
                 try SpaceSelectionDocument.validate(recovered)
                 guard write(recovered) else { throw SpaceSelectionError.unreadable }
@@ -215,7 +215,7 @@ final class SpaceWallpaperManager: ObservableObject {
             }
         } catch {
             hasUnreadableData = true
-            self.error = "Saved Space choices could not be read. The original data has been kept."
+            self.error = String(localized: "Saved Space choices could not be read. The original data has been kept.")
         }
     }
 
@@ -234,7 +234,7 @@ final class SpaceWallpaperManager: ObservableObject {
             defaults.set(data, forKey: Self.documentKey)
             return true
         } catch {
-            self.error = "Use a name of 1–80 characters and keep up to 500 saved choices."
+            self.error = String(localized: "Use a name of 1–80 characters and keep up to 500 saved choices.")
             return false
         }
     }

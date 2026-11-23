@@ -124,6 +124,6 @@ struct WallpaperPacksView: View {
     private func format(_ bytes: Int) -> String { ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file) }
     static var licenseText: String {
         Bundle(for: WallpaperPacksModel.self).url(forResource: "pack-LICENSE-MIT", withExtension: "txt")
-            .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? "License unavailable. See the MIT LICENSE in the Wallnetic repository."
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? String(localized: "License unavailable. See the MIT LICENSE in the Wallnetic repository.")
     }
 }

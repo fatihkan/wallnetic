@@ -36,7 +36,7 @@ class URLImporter: ObservableObject {
 
         isDownloading = true
         progress = 0
-        statusMessage = "Connecting..."
+        statusMessage = String(localized: "Connecting...")
         error = nil
 
         // Use URLSession.shared.download for simpler concurrency
@@ -79,14 +79,14 @@ class URLImporter: ObservableObject {
             try FileManager.default.moveItem(at: tempURL, to: stableURL)
 
             isDownloading = false
-            statusMessage = "Download complete"
+            statusMessage = String(localized: "Download complete")
             progress = 1.0
             return stableURL
 
         } catch {
             isDownloading = false
             self.error = error.localizedDescription
-            statusMessage = "Failed"
+            statusMessage = String(localized: "Failed")
             throw error
         }
     }
@@ -95,7 +95,7 @@ class URLImporter: ObservableObject {
         downloadTask?.cancel()
         downloadTask = nil
         isDownloading = false
-        statusMessage = "Cancelled"
+        statusMessage = String(localized: "Cancelled")
     }
 }
 
@@ -109,11 +109,12 @@ enum URLImportError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return "Invalid URL"
-        case .invalidScheme: return "Only HTTPS URLs are accepted."
-        case .downloadFailed: return "Download failed"
+        case .invalidURL: return String(localized: "Invalid URL")
+        case .invalidScheme: return String(localized: "Only HTTPS URLs are accepted.")
+        case .downloadFailed: return String(localized: "Download failed")
         case .unsupportedContentType(let mime):
-            return "Server returned unsupported content type: \(mime.isEmpty ? "(none)" : mime)"
+            let type = mime.isEmpty ? String(localized: "(none)") : mime
+            return String(localized: "Server returned unsupported content type: \(type)")
         }
     }
 }

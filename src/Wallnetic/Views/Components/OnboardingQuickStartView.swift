@@ -41,7 +41,7 @@ struct OnboardingQuickStartView: View {
                 Text(error).font(.caption).foregroundStyle(.primary)
                     .accessibilityLabel("Could not apply wallpaper. \(error)")
             } else {
-                Text(model.message ?? "Adds a removable copy to Library. Your own videos stay untouched.")
+                Text(model.message ?? String(localized: "Adds a removable copy to Library. Your own videos stay untouched."))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

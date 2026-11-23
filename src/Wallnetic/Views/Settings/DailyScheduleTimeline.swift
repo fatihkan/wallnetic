@@ -145,7 +145,7 @@ struct DailyRangeEditor: View {
                     range.startMinute = start
                     range.endMinute = end
                     range.name = range.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if range.name.isEmpty { range.name = "Custom range" }
+                    if range.name.isEmpty { range.name = String(localized: "Custom range") }
                     error = save(range)
                     if error == nil { dismiss() }
                 }.keyboardShortcut(.defaultAction)

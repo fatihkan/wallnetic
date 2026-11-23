@@ -24,7 +24,7 @@ enum LoopRangeStatus: Equatable {
     /// "0:42 of 1:10" for a trimmed item, or the plain duration.
     static func durationText(_ status: LoopRangeStatus, duration: Double?) -> String {
         guard let loop = status.loopLengthText else { return Wallpaper.formattedDuration(duration) }
-        return "\(loop) of \(Wallpaper.formattedDuration(duration))"
+        return String(localized: "\(loop) of \(Wallpaper.formattedDuration(duration))")
     }
 }
 
@@ -89,18 +89,18 @@ final class VideoTrimModel: ObservableObject {
 
     func load() async {
         guard let fingerprint = VideoFileFingerprint(fileAt: url) else {
-            state = .failed("The video file is missing or cannot be read.")
+            state = .failed(String(localized: "The video file is missing or cannot be read."))
             return
         }
         let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
         do {
             guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-                state = .failed("This file has no video track.")
+                state = .failed(String(localized: "This file has no video track."))
                 return
             }
             let (range, minFrameDuration, frameRate) = try await track.load(.timeRange, .minFrameDuration, .nominalFrameRate)
             guard range.isValid, !range.isEmpty, range.start.isNumeric, range.end.isNumeric else {
-                state = .failed("The video's length could not be read.")
+                state = .failed(String(localized: "The video's length could not be read."))
                 return
             }
             if minFrameDuration.isNumeric, minFrameDuration > .zero {
@@ -129,13 +129,13 @@ final class VideoTrimModel: ObservableObject {
                     start = stored.start
                     end = min(stored.end, duration)
                 } else {
-                    note = "The saved range does not match this file and is not applied. Saving replaces it."
+                    note = String(localized: "The saved range does not match this file and is not applied. Saving replaces it.")
                 }
             }
             state = .ready
             schedulePreview(after: 0)
         } catch {
-            state = .failed("The video could not be read: \(error.localizedDescription)")
+            state = .failed(String(localized: "The video could not be read: \(error.localizedDescription)"))
         }
     }
 
@@ -205,11 +205,11 @@ final class VideoTrimModel: ObservableObject {
     func save() -> Bool {
         guard state == .ready, let fingerprint else { return false }
         guard isInLibrary(url), FileManager.default.fileExists(atPath: url.path) else {
-            error = "This video is no longer in the Library, so nothing was saved."
+            error = String(localized: "This video is no longer in the Library, so nothing was saved.")
             return false
         }
         guard VideoFileFingerprint(fileAt: url) == fingerprint else {
-            error = "This video's file changed while the editor was open, so nothing was saved. Open Trim again to edit the new file."
+            error = String(localized: "This video's file changed while the editor was open, so nothing was saved. Open Trim again to edit the new file.")
             return false
         }
         do {
@@ -218,11 +218,11 @@ final class VideoTrimModel: ObservableObject {
             try store.setTrim(trim, for: url)
             return true
         } catch PlaybackTrimError.tooShort {
-            error = "A loop must be at least one second long."
+            error = String(localized: "A loop must be at least one second long.")
         } catch is PlaybackTrimError {
-            error = "Start and End must be inside the video, with Start before End."
+            error = String(localized: "Start and End must be inside the video, with Start before End.")
         } catch {
-            self.error = "The range could not be saved: \(error.localizedDescription)"
+            self.error = String(localized: "The range could not be saved: \(error.localizedDescription)")
         }
         return false
     }

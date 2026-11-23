@@ -21,9 +21,9 @@ final class PerformanceManager: ObservableObject {
 
         var description: String {
             switch self {
-            case .quality: return "Metal: up to 60 frames per second for smoother motion."
-            case .balanced: return "Metal: up to 30 frames per second for everyday playback."
-            case .battery: return "Metal: up to 15 frames per second with less fluid motion."
+            case .quality: return String(localized: "Metal: up to 60 frames per second for smoother motion.")
+            case .balanced: return String(localized: "Metal: up to 30 frames per second for everyday playback.")
+            case .battery: return String(localized: "Metal: up to 15 frames per second with less fluid motion.")
             }
         }
 

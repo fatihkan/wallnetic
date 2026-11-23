@@ -46,7 +46,7 @@ struct PlaylistScheduleContent: View {
                     }
                     Button("Add wallpaper…") {
                         let first = wallpapers.first
-                        editing = TimedWallpaperItem(name: first?.displayName ?? "Wallpaper",
+                        editing = TimedWallpaperItem(name: first?.displayName ?? String(localized: "Wallpaper"),
                             wallpaperPath: first?.url.path ?? "", durationSeconds: playlist.intervalSeconds)
                     }.disabled(playlist.items.count >= 500)
                 } else {

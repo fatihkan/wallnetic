@@ -82,7 +82,7 @@ final class VideoOptimizationModel: ObservableObject {
                 case .none, .wholeCopy: message = "Copy added to Library. Your original is unchanged."
                 }
             } catch is CancellationError {
-                message = "Cancelled. No partial copy was added to Library."
+                message = String(localized: "Cancelled. No partial copy was added to Library.")
             } catch { self.error = error.localizedDescription }
             isWorking = false
             isCancelling = false
@@ -127,11 +127,11 @@ final class VideoOptimizationModel: ObservableObject {
     func apply(_ url: URL) {
         message = nil
         guard let wallpaper = library.wallpapers.first(where: { $0.url.standardizedFileURL == url.standardizedFileURL }), FileManager.default.fileExists(atPath: url.path) else {
-            error = "That video is no longer in the library. Refresh the library and choose another wallpaper."
+            error = String(localized: "That video is no longer in the library. Refresh the library and choose another wallpaper.")
             return
         }
         library.setWallpaper(wallpaper, userInitiated: true)
         error = nil
-        message = "Wallpaper selected. Your playback and pause settings still apply."
+        message = String(localized: "Wallpaper selected. Your playback and pause settings still apply.")
     }
 }

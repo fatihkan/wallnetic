@@ -105,10 +105,10 @@ class VideoFormatConverter {
             while !input.isReadyForMoreMediaData {
                 waitCount += 1
                 if waitCount > maxWaitAttempts {
-                    throw ConversionError.writeFailed("Writer input timed out at frame \(i)")
+                    throw ConversionError.writeFailed("Writer input timed out at frame \(i)") // l10n:ignore
                 }
                 if writer.status == .failed {
-                    throw ConversionError.writeFailed(writer.error?.localizedDescription ?? "Writer failed")
+                    throw ConversionError.writeFailed(writer.error?.localizedDescription ?? "Writer failed") // l10n:ignore
                 }
                 try await Task.sleep(nanoseconds: 10_000_000) // 10ms
             }
@@ -133,7 +133,7 @@ class VideoFormatConverter {
         await writer.finishWriting()
 
         guard writer.status == .completed else {
-            throw ConversionError.writeFailed(writer.error?.localizedDescription ?? "Unknown")
+            throw ConversionError.writeFailed(writer.error?.localizedDescription ?? String(localized: "Unknown"))
         }
 
         progressHandler?(1.0)
@@ -238,13 +238,13 @@ enum ConversionError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedFormat(let fmt): return "Unsupported format: .\(fmt)"
-        case .failedToRead: return "Failed to read source file"
-        case .noFrames: return "No frames found in file"
-        case .notAnimated: return "File is not animated"
-        case .writeFailed(let msg): return "Write failed: \(msg)"
-        case .ffmpegNotFound: return "WebM conversion requires ffmpeg. Install via: brew install ffmpeg"
-        case .ffmpegFailed: return "ffmpeg conversion failed"
+        case .unsupportedFormat(let fmt): return String(localized: "Unsupported format: .\(fmt)")
+        case .failedToRead: return String(localized: "Failed to read source file")
+        case .noFrames: return String(localized: "No frames found in file")
+        case .notAnimated: return String(localized: "File is not animated")
+        case .writeFailed(let msg): return String(localized: "Write failed: \(msg)")
+        case .ffmpegNotFound: return String(localized: "WebM conversion requires ffmpeg. Install via: brew install ffmpeg")
+        case .ffmpegFailed: return String(localized: "ffmpeg conversion failed")
         }
     }
 }
