@@ -21,9 +21,37 @@ final class HomeSectionsTests: XCTestCase {
         XCTAssertEqual(sections.desktop.count, 1)
         XCTAssertNil(sections.desktop[0].wallpaperID, "A wallpaper outside the library is not shown")
         XCTAssertEqual(sections.desktop[0].statusTitle, "No wallpaper selected")
+        XCTAssertFalse(sections.desktop[0].statusDetail.isEmpty, "An empty display says what to do next")
+        XCTAssertFalse(sections.desktop[0].canRetry)
+        XCTAssertTrue(sections.recentlyUsed.isEmpty)
         XCTAssertTrue(sections.favorites.isEmpty)
         XCTAssertTrue(sections.recent.isEmpty)
         XCTAssertTrue(sections.all.isEmpty)
+    }
+
+    func testAFailedDisplayOffersRetryAndAHealthyOneDoesNot() {
+        let a = wallpaper("a")
+        let sections = HomeSections.make(
+            wallpapers: [a],
+            displays: [display(1, renderer: .failed(.missingFile)), display(2)],
+            wallpaperForDisplay: { _ in a.id }
+        )
+        XCTAssertTrue(sections.desktop[0].canRetry)
+        XCTAssertTrue(sections.desktop[0].statusDetail.contains(RendererPlaybackFailure.missingFile.recovery))
+        XCTAssertFalse(sections.desktop[1].canRetry)
+        XCTAssertTrue(sections.desktop[1].statusDetail.isEmpty, "A display that plays needs no explanation")
+    }
+
+    func testRecentlyUsedKeepsNewestFirstAndSkipsWhatTheDisplaysShow() {
+        let a = wallpaper("a"), b = wallpaper("b"), c = wallpaper("c")
+        let sections = HomeSections.make(
+            wallpapers: [a, b, c],
+            displays: [display(1)],
+            wallpaperForDisplay: { _ in c.id },
+            recentlyUsedPaths: [c.url.path, a.url.path, "/tmp/removed.mp4", b.url.path]
+        )
+        XCTAssertEqual(sections.recentlyUsed.map(\.id), [a.id, b.id],
+                       "The wallpaper on the desktop and a file no longer in the library are left out")
     }
 
     func testOneDisplayShowsItsWallpaperAndStatus() {

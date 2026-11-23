@@ -58,7 +58,7 @@ struct ContentView: View {
                         case .library:
                             LibraryView(searchText: $searchText)
                         default:
-                            HomeView()
+                            HomeView(onOpenLibrary: { selectedTab = .library })
                         }
                     }
                 }

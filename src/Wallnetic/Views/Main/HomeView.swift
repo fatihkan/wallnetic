@@ -8,9 +8,12 @@ extension HomeView {
 private var homeHorizontalInset: CGFloat { HomeView.horizontalInset }
 
 /// Home starts from the user's own desktop: what each display shows now,
-/// then favourites, recent additions and the whole library (#343 B2). It
-/// replaced an auto-rotating hero banner; the rules are in `HomeSections`.
+/// then recently used wallpapers, favourites, recent additions and the whole
+/// library (#343 B2). It replaced an auto-rotating hero banner; the rules
+/// are in `HomeSections`.
 struct HomeView: View {
+    /// Shows the Library tab, for a display that has no wallpaper yet.
+    var onOpenLibrary: () -> Void = {}
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @State private var screens: [NSScreen] = NSScreen.screens
 
@@ -21,7 +24,8 @@ struct HomeView: View {
             wallpaperForDisplay: { displayID in
                 screens.first { $0.displayID == displayID }
                     .flatMap { wallpaperManager.wallpaper(for: $0)?.id }
-            }
+            },
+            recentlyUsedPaths: wallpaperManager.recentlyUsedPaths
         )
     }
 
@@ -30,7 +34,16 @@ struct HomeView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 28) {
                 if !sections.desktop.isEmpty {
-                    DesktopNowSection(items: sections.desktop)
+                    DesktopNowSection(items: sections.desktop, onOpenLibrary: onOpenLibrary)
+                }
+
+                if !sections.recentlyUsed.isEmpty {
+                    CarouselSection(
+                        title: "Recently Used",
+                        icon: "clock.arrow.circlepath",
+                        iconColor: .teal,
+                        wallpapers: sections.recentlyUsed
+                    )
                 }
 
                 if !sections.favorites.isEmpty {
@@ -72,9 +85,11 @@ struct HomeView: View {
 
 // MARK: - On your desktop now
 
-/// One tile per display: its wallpaper, its name and how it is playing.
+/// One tile per display: its wallpaper, its name, how it is playing and,
+/// when the display needs attention, the control that fixes it.
 struct DesktopNowSection: View {
     let items: [HomeSections.DesktopItem]
+    var onOpenLibrary: () -> Void = {}
     @EnvironmentObject var wallpaperManager: WallpaperManager
 
     var body: some View {
@@ -96,7 +111,9 @@ struct DesktopNowSection: View {
                             item: item,
                             wallpaper: item.wallpaperID.flatMap { id in
                                 wallpaperManager.wallpapers.first { $0.id == id }
-                            }
+                            },
+                            onRetry: { wallpaperManager.retryWallpaper(on: item.id) },
+                            onOpenLibrary: onOpenLibrary
                         )
                     }
                 }
@@ -110,6 +127,8 @@ struct DesktopNowSection: View {
 private struct DesktopTile: View {
     let item: HomeSections.DesktopItem
     let wallpaper: Wallpaper?
+    let onRetry: () -> Void
+    let onOpenLibrary: () -> Void
 
     private let size = CGSize(width: 320, height: 200)
 
@@ -133,21 +152,40 @@ private struct DesktopTile: View {
                     .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(wallpaper?.displayName ?? "No wallpaper")
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
-                HStack(spacing: 5) {
-                    Image(systemName: item.statusSymbol)
-                    Text("\(item.displayName) · \(item.statusTitle)")
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(wallpaper?.displayName ?? "No wallpaper")
+                        .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
+                    HStack(spacing: 5) {
+                        Image(systemName: item.statusSymbol)
+                        Text("\(item.displayName) · \(item.statusTitle)")
+                            .lineLimit(1)
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                 }
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(item.statusDetail)
+
+                Spacer(minLength: 0)
+
+                // One control, and only when this display needs it. Play,
+                // Next and Calm Mode act on every display and are in the
+                // now-playing bar.
+                if item.canRetry {
+                    Button("Retry", action: onRetry)
+                        .controlSize(.small)
+                        .accessibilityLabel("Retry wallpaper on \(item.displayName)")
+                } else if wallpaper == nil {
+                    Button("Open Library", action: onOpenLibrary)
+                        .controlSize(.small)
+                        .accessibilityLabel("Open Library to choose a wallpaper for \(item.displayName)")
+                }
             }
             .frame(width: size.width, alignment: .leading)
         }
-        .accessibilityElement(children: .combine)
+        .help(item.statusDetail)
     }
 }
 

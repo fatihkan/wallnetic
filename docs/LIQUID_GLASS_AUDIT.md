@@ -112,6 +112,28 @@ Counted with `grep -rnF` over `*.swift`, without the definitions.
 - the wallpaper and desktop windows;
 - the window opacity from #237, unless a system toolbar is adopted later.
 
+## Update after B2 (toolbar navigation)
+
+The owner chose toolbar tabs after this audit, so B2 (#353) changed three
+things recorded above:
+
+- **`TopNavigationBar` is gone.** Home, Library and Discover are a segmented
+  control in the window's system toolbar, next to Add, Settings and search.
+  This resolves conflict 2, and the toolbar's controls take system glass on
+  macOS 26.
+- **Explore and Popular are one Library view.** Popular's order became
+  Library's sort menu. `Carousel3DGallery` stays, for Library's gallery mode.
+- **A now-playing bar** runs along the bottom of the window. It is a custom
+  surface on `.bar` material, so it joins the B3 list in place of the
+  `TopNavigationBar` background.
+
+Conflict 1 is still open. The window keeps the #237 settings: an opaque
+background and no `.fullSizeContentView`, guarded by
+`testNativeControlsStayOutsideContentAfterChromeUpdates`. Content therefore
+ends below the toolbar and does not scroll under it. Letting it scroll under
+the glass toolbar on macOS 26 means relaxing that guard for the main window
+only, and it needs a check of the window controls on macOS 26 first.
+
 ## Screens to confirm visually
 
 Check each on macOS 26 and on macOS 13, in light and dark appearance:

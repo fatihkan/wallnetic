@@ -104,6 +104,8 @@ class WallpaperManager: ObservableObject {
     @Published var isPlaying: Bool = false
     @Published var isPausedAfterDuration: Bool = false
     @Published var displayPlaybackStatuses: [DisplayPlaybackStatus] = []
+    /// Paths of the wallpapers the user chose most recently, newest first.
+    @Published private(set) var recentlyUsedPaths: [String] = []
 
     func retryWallpaper(on displayID: UInt32) {
         playbackDelegate?.playbackRetry(on: displayID)
@@ -205,6 +207,7 @@ class WallpaperManager: ObservableObject {
     private init() {
         loadWallpapers()
         loadSettings()
+        recentlyUsedPaths = metadata.recentlyUsedPaths
         syncToWidget()
         library.startWatching { [weak self] in
             self?.loadWallpapers()
@@ -534,6 +537,8 @@ class WallpaperManager: ObservableObject {
         pendingTitlesWrite?.cancel()
         pendingTagsWrite?.cancel()
         metadata.favoritePaths.subtract(paths)
+        recentlyUsedPaths.removeAll { paths.contains($0) }
+        metadata.recentlyUsedPaths = recentlyUsedPaths
         metadata.customTitles = metadata.customTitles.filter { !paths.contains($0.key) }
         metadata.savedTags = metadata.savedTags.filter { !paths.contains($0.key) }
         metadata.savedColors = metadata.savedColors.filter { !paths.contains($0.key) }
@@ -720,7 +725,10 @@ class WallpaperManager: ObservableObject {
     /// switch (playlist / time-of-day). Only user-initiated applies feed the
     /// rating prompt — passive rotation isn't a "ask for a review" moment.
     func setWallpaper(_ wallpaper: Wallpaper, userInitiated: Bool = true) {
-        if userInitiated { holdAutomationForManualChoice() }
+        if userInitiated {
+            holdAutomationForManualChoice()
+            recentlyUsedPaths = metadata.recordUse(of: wallpaper.url.path)
+        }
         // Match the all-display renderer command in both UI and persistence.
         // Otherwise a later hot-plug/relaunch restores old per-display choices.
         wallpaperMode = .same
@@ -752,7 +760,10 @@ class WallpaperManager: ObservableObject {
 
     /// Sets wallpaper for a specific screen (different mode).
     func setWallpaper(_ wallpaper: Wallpaper, for screen: NSScreen, userInitiated: Bool = true) {
-        if userInitiated { holdAutomationForManualChoice() }
+        if userInitiated {
+            holdAutomationForManualChoice()
+            recentlyUsedPaths = metadata.recordUse(of: wallpaper.url.path)
+        }
         let screenName = screen.localizedName
         displayAssignments.set(wallpaper.url, for: screen.wallpaperAssignmentKey)
         screenWallpapers[screenName] = wallpaper.id

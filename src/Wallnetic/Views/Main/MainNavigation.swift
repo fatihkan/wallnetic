@@ -51,6 +51,13 @@ struct NowPlayingBar: View {
         return "Playing on \(playing) of \(all.count) displays"
     }
 
+    /// Each display's own state, for the tooltip. Empty with one display,
+    /// where the visible line already says it.
+    private var perDisplaySummary: String {
+        guard statuses.count > 1 else { return "" }
+        return statuses.map { "\($0.displayName): \($0.title)" }.joined(separator: "\n")
+    }
+
     private var canResume: Bool {
         wallpaperManager.isPlaying || !statuses.contains(where: \.blocksResume)
     }
@@ -75,6 +82,7 @@ struct NowPlayingBar: View {
                         .lineLimit(1)
                 }
                 .accessibilityElement(children: .combine)
+                .help(perDisplaySummary)
 
                 Spacer(minLength: Space.md)
 

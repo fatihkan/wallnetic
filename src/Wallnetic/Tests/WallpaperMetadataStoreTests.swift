@@ -39,6 +39,22 @@ final class WallpaperMetadataStoreTests: XCTestCase {
         XCTAssertEqual(WallpaperMetadataStore(defaults: defaults).customTitles, titles)
     }
 
+    func testRecentlyUsedMovesARepeatedChoiceToTheFrontAndSurvivesRelaunch() {
+        XCTAssertTrue(store.recentlyUsedPaths.isEmpty)
+        store.recordUse(of: "/tmp/a.mp4")
+        store.recordUse(of: "/tmp/b.mp4")
+        XCTAssertEqual(store.recordUse(of: "/tmp/a.mp4"), ["/tmp/a.mp4", "/tmp/b.mp4"])
+        XCTAssertEqual(WallpaperMetadataStore(defaults: defaults).recentlyUsedPaths, ["/tmp/a.mp4", "/tmp/b.mp4"])
+    }
+
+    func testRecentlyUsedForgetsTheOldestBeyondItsLimit() {
+        let limit = WallpaperMetadataStore.recentlyUsedLimit
+        for index in 0...limit { store.recordUse(of: "/tmp/\(index).mp4") }
+        XCTAssertEqual(store.recentlyUsedPaths.count, limit)
+        XCTAssertEqual(store.recentlyUsedPaths.first, "/tmp/\(limit).mp4")
+        XCTAssertFalse(store.recentlyUsedPaths.contains("/tmp/0.mp4"))
+    }
+
     func testSavedColorsRoundTrip() {
         let colors = ["/tmp/a.mp4": "#FF8800"]
         store.savedColors = colors
