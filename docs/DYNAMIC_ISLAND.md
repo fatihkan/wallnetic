@@ -55,6 +55,12 @@ The window does not animate. It takes the expanded size before the shape
 grows and returns to the compact size after the shape has shrunk, so only
 the area of the shape (plus 18 points for the glow) ever takes clicks.
 
+The surface and the content inside the window always have the expanded size
+and hang from the window's top centre. A change of the window's size moves
+them and draws nothing. (When they were sized to the window, a frame drawn
+for the old size could stay on screen, stretched, with the content beside the
+shape.)
+
 ## Drawing on demand
 
 The surface draws a frame only when the shape, the colours or the window's

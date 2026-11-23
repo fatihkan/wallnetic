@@ -177,30 +177,81 @@ final class IslandGeometryTests: XCTestCase {
 
     func testTheSurfaceDrawsOnlyWhenSomethingChanges() throws {
         try XCTSkipIf(MTLCreateSystemDefaultDevice() == nil, "No Metal device")
-        let surface = IslandSurfaceView()
-        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 300, height: 120),
-                              styleMask: .borderless, backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
+        let (surface, window) = makeSurface(width: 300, height: 120)
         defer { window.close() }
-        surface.frame = CGRect(x: 0, y: 0, width: 300, height: 120)
-        window.contentView = surface
-        surface.layoutSubtreeIfNeeded()
 
         let compact = IslandGeometry.layout(progress: 0, metrics: floating)
         surface.show(compact, style: IslandStyle())
+        surface.renderIfDirty()
         let afterFirst = surface.drawCount
         try XCTSkipIf(afterFirst == 0, "No drawable in this environment")
 
         surface.show(compact, style: IslandStyle())
-        surface.show(compact, style: IslandStyle())
+        surface.renderIfDirty()
+        surface.renderIfDirty()
         XCTAssertEqual(surface.drawCount, afterFirst, "The same shape again draws nothing")
 
         surface.show(IslandGeometry.layout(progress: 0.5, metrics: floating), style: IslandStyle())
+        surface.renderIfDirty()
         XCTAssertEqual(surface.drawCount, afterFirst + 1)
 
         var contrast = IslandStyle()
         contrast.increasesContrast = true
         surface.show(IslandGeometry.layout(progress: 0.5, metrics: floating), style: contrast)
+        surface.renderIfDirty()
         XCTAssertEqual(surface.drawCount, afterFirst + 2, "A new style draws once")
+    }
+
+    /// The island's window changes size when it opens and closes. A frame
+    /// drawn for the old size and left on screen put the shape beside its
+    /// content, so a new size must always bring one frame of that size.
+    func testANewSizeBringsOneFrameOfThatSize() throws {
+        try XCTSkipIf(MTLCreateSystemDefaultDevice() == nil, "No Metal device")
+        let (surface, window) = makeSurface(width: 400, height: 148)
+        defer { window.close() }
+        let scale = window.backingScaleFactor
+
+        surface.show(IslandGeometry.layout(progress: 1, metrics: floating), style: IslandStyle())
+        surface.renderIfDirty()
+        let afterFirst = surface.drawCount
+        try XCTSkipIf(afterFirst == 0, "No drawable in this environment")
+        XCTAssertEqual(surface.drawableSize, CGSize(width: 400 * scale, height: 148 * scale))
+
+        // As at the end of a collapse: a new shape, then a smaller window.
+        surface.show(IslandGeometry.layout(progress: 0, metrics: floating), style: IslandStyle())
+        surface.setFrameSize(CGSize(width: 256, height: 54))
+        surface.renderIfDirty()
+        XCTAssertEqual(surface.drawCount, afterFirst + 1, "Shape and size together are one frame, not two")
+        XCTAssertEqual(surface.drawableSize, CGSize(width: 256 * scale, height: 54 * scale))
+
+        // A size change alone is also a frame.
+        surface.setFrameSize(CGSize(width: 400, height: 148))
+        surface.renderIfDirty()
+        XCTAssertEqual(surface.drawCount, afterFirst + 2)
+        XCTAssertEqual(surface.drawableSize, CGSize(width: 400 * scale, height: 148 * scale))
+
+        // The same size again is not.
+        surface.setFrameSize(CGSize(width: 400, height: 148))
+        surface.renderIfDirty()
+        XCTAssertEqual(surface.drawCount, afterFirst + 2)
+    }
+
+    func testAnOldFrameIsNeverStretchedToTheView() {
+        let surface = IslandSurfaceView()
+        XCTAssertEqual(surface.layer?.contentsGravity, .top,
+                       "A frame of another size hangs from the top centre at its own scale")
+    }
+
+    private func makeSurface(width: CGFloat, height: CGFloat) -> (IslandSurfaceView, NSWindow) {
+        let surface = IslandSurfaceView()
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: width, height: height),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        // A plain container, so the test sets the surface's size itself.
+        let container = NSView(frame: CGRect(x: 0, y: 0, width: width, height: height))
+        window.contentView = container
+        surface.frame = container.bounds
+        container.addSubview(surface)
+        return (surface, window)
     }
 }

@@ -25,6 +25,8 @@ final class IslandSurfaceView: NSView {
     private var shape: IslandLayout?
     private var style = IslandStyle()
     private var drawnSize = CGSize.zero
+    /// A frame is owed: the shape, the style or the size changed.
+    private var isDirty = false
 
     /// Frames drawn so far. Tests and diagnostics read it to see that an
     /// idle island draws nothing.
@@ -33,9 +35,13 @@ final class IslandSurfaceView: NSView {
     /// False when Metal is not usable. The caller then draws a plain shape.
     var isAvailable: Bool { pipeline != nil }
 
+    /// The size of the frames being drawn, in pixels.
+    var drawableSize: CGSize { drawnSize }
+
     init() {
         super.init(frame: .zero)
         wantsLayer = true
+        layerContentsRedrawPolicy = .duringViewResize
         buildPipeline()
     }
 
@@ -50,47 +56,82 @@ final class IslandSurfaceView: NSView {
         // The frame lands in the same transaction as a change of the window's
         // size, so the shape never shows at the wrong size for a frame.
         layer.presentsWithTransaction = true
+        // If a frame of another size is ever on screen, it hangs from the top
+        // centre, as the shape does, at its own scale. It is never stretched
+        // to the view: a stretched frame put the shape beside its content.
+        layer.contentsGravity = .top
         return layer
     }
 
     /// Clicks belong to the controls in front of the surface.
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    /// Shows a shape. Draws only when something changed.
+    /// Shows a shape. A frame is drawn only when something changed.
     func show(_ shape: IslandLayout, style: IslandStyle) {
         guard shape != self.shape || style != self.style else { return }
         self.shape = shape
         self.style = style
-        draw()
+        invalidate()
     }
 
-    override func layout() {
-        super.layout()
-        redrawIfResized()
+    // MARK: - One frame per change
+
+    /// Asks for one frame. Nothing is drawn here: the frame is drawn once,
+    /// when AppKit displays the view, with the shape and the size that hold
+    /// then. Drawing at once and again after a resize presented two frames in
+    /// one transaction; the second could be lost, and the first, drawn for
+    /// the old size, stayed on screen.
+    private func invalidate() {
+        isDirty = true
+        needsDisplay = true
+        // A display pass normally comes first and leaves nothing to do here.
+        DispatchQueue.main.async { [weak self] in self?.renderIfDirty() }
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        renderIfDirty()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        let changed = newSize != frame.size
+        super.setFrameSize(newSize)
+        if changed { invalidate() }
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        redrawIfResized()
+        invalidate()
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
-        drawnSize = .zero
-        redrawIfResized()
+        invalidate()
     }
 
-    private func redrawIfResized() {
+    /// Draws the frame that is owed, if any, at the view's current size.
+    func renderIfDirty() {
+        guard isDirty, window != nil else { return }
+        isDirty = false
+        syncDrawable()
+        guard !draw(), shape != nil, pipeline != nil, drawnSize.width >= 1 else { return }
+        // No drawable was free. Try again shortly instead of leaving an old
+        // frame on screen.
+        isDirty = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in self?.renderIfDirty() }
+    }
+
+    private func syncDrawable() {
         guard let metalLayer = layer as? CAMetalLayer, let window else { return }
         // A layer that joins a window late can keep a scale of zero and then
         // presents frames that show nothing.
         let scale = window.backingScaleFactor
         let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
-        guard size != drawnSize, size.width >= 1, size.height >= 1 else { return }
-        metalLayer.contentsScale = scale
-        metalLayer.drawableSize = size
+        guard size.width >= 1, size.height >= 1 else { return }
+        if metalLayer.contentsScale != scale { metalLayer.contentsScale = scale }
+        if metalLayer.drawableSize != size { metalLayer.drawableSize = size }
         drawnSize = size
-        draw()
     }
 
     // MARK: - Drawing
@@ -106,18 +147,20 @@ final class IslandSurfaceView: NSView {
         var extra: SIMD4<Float>
     }
 
-    private func draw() {
+    /// Draws one frame. False when nothing could be drawn.
+    @discardableResult
+    private func draw() -> Bool {
         guard let shape, let pipeline, let queue, let metalLayer = layer as? CAMetalLayer,
               drawnSize.width >= 1, drawnSize.height >= 1, bounds.width > 0,
               let drawable = metalLayer.nextDrawable(),
-              let commands = queue.makeCommandBuffer() else { return }
+              let commands = queue.makeCommandBuffer() else { return false }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].storeAction = .store
         pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
-        guard let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return }
+        guard let encoder = commands.makeRenderCommandEncoder(descriptor: pass) else { return false }
 
         var uniforms = self.uniforms(for: shape)
         encoder.setRenderPipelineState(pipeline)
@@ -129,6 +172,7 @@ final class IslandSurfaceView: NSView {
         commands.waitUntilScheduled()
         drawable.present()
         drawCount += 1
+        return true
     }
 
     private func uniforms(for shape: IslandLayout) -> Uniforms {

@@ -176,14 +176,21 @@ class DynamicIslandController: ObservableObject {
         // Hover is detected by an AppKit tracking area on this host, not by
         // SwiftUI's onHover — see IslandHostView.
         let host = IslandHostView(controller: self)
+        // The surface and the content always have the expanded window's size
+        // and hang from the window's top centre. When the window changes
+        // size, AppKit only moves them, in the same pass: nothing is drawn
+        // again and nothing is laid out again. Sized to the window, the
+        // surface once kept a frame of the old size, stretched, and the
+        // content sat beside the shape until SwiftUI caught up.
+        let full = IslandGeometry.windowFrame(expanded: true, metrics: metrics, anchor: anchor).size
         for view in [surface, hostingView] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
             host.addSubview(view)
             NSLayoutConstraint.activate([
-                view.leadingAnchor.constraint(equalTo: host.leadingAnchor),
-                view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+                view.centerXAnchor.constraint(equalTo: host.centerXAnchor),
                 view.topAnchor.constraint(equalTo: host.topAnchor),
-                view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+                view.widthAnchor.constraint(equalToConstant: full.width),
+                view.heightAnchor.constraint(equalToConstant: full.height),
             ])
         }
 
