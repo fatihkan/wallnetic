@@ -358,6 +358,7 @@ struct ExploreCard: View {
     @State private var isLoadingThumbnail = true
     @State private var isHovering = false
     @State private var renamingWallpaper: Wallpaper?
+    @State private var previewingWallpaper: Wallpaper?
     @State private var renameText = ""
 
     var body: some View {
@@ -453,11 +454,12 @@ struct ExploreCard: View {
         .onHover { h in isHovering = h }
         .staggered(index: index)
         .contextMenu {
-            WallpaperContextMenu(wallpaper: wallpaper, onRename: {
+            WallpaperContextMenu(wallpaper: wallpaper, onPreview: { previewingWallpaper = wallpaper }, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
             })
         }
+        .sheet(item: $previewingWallpaper) { WallpaperPreviewSheet(wallpaper: $0) }
         .sheet(item: $renamingWallpaper) { wp in
             RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
                 wallpaperManager.renameWallpaper(wp, to: newTitle)
@@ -479,6 +481,7 @@ struct ExploreListRow: View {
     @State private var thumbnail: NSImage?
     @State private var isLoadingThumbnail = true
     @State private var isHovering = false
+    @State private var previewingWallpaper: Wallpaper?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -552,8 +555,9 @@ struct ExploreListRow: View {
         .onHover { h in withAnimation(Anim.hover) { isHovering = h } }
         .onTapGesture(count: 2) { wallpaperManager.setWallpaper(wallpaper) }
         .contextMenu {
-            WallpaperContextMenu(wallpaper: wallpaper)
+            WallpaperContextMenu(wallpaper: wallpaper, onPreview: { previewingWallpaper = wallpaper })
         }
+        .sheet(item: $previewingWallpaper) { WallpaperPreviewSheet(wallpaper: $0) }
         .task {
             thumbnail = await wallpaper.generateThumbnail(size: CGSize(width: 160, height: 90))?.image
             isLoadingThumbnail = false
