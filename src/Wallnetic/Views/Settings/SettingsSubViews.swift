@@ -242,6 +242,7 @@ struct PlaybackSettingsView: View {
                 }
                 .help("Clears saved battery-mode choice so the prompt appears again.")
             }
+            PlaybackRulesSettingsView(settings: .shared)
             PauseAfterSettingsView()
             CalmPlaybackSettingsView(settings: .shared)
             Section("Performance") {

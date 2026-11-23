@@ -288,6 +288,111 @@ final class PauseAfterPlaybackTests: XCTestCase {
         XCTAssertTrue(playback.isPausedAfterDuration)
     }
 
+    // MARK: - Display in use (#350)
+
+    @MainActor
+    func testInactiveDisplayStopsOnlyThatDisplayAndItsIntervalSkipsTheHeldTime() {
+        var time = 0.0
+        let playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        let a = DurationRendererSpy(), b = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: a, on: 1, preferences: .init(defaultSeconds: 30))
+        playback.setWallpaper(secondURL, renderer: b, on: 2, preferences: .init(defaultSeconds: 30))
+        playback.play()
+        time = 10
+        let aPauses = a.pauses, bPlays = b.plays
+        playback.setInactiveDisplays([2])
+        XCTAssertEqual(b.pauses, 1)
+        XCTAssertEqual(a.pauses, aPauses, "The display in use keeps playing")
+        XCTAssertTrue(playback.shouldPlay(on: 1))
+        XCTAssertFalse(playback.shouldPlay(on: 2))
+        XCTAssertTrue(playback.isRequested)
+        XCTAssertTrue(playback.hasActivePlayback)
+        time = 30
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 1))
+        XCTAssertFalse(playback.isExpired(on: 2), "A held display does not spend its interval")
+        time = 50
+        playback.setInactiveDisplays([])
+        XCTAssertEqual(b.plays, bPlays + 1)
+        time = 69.999
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 2))
+        time = 70
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 2), "It played 10 s before and 20 s after the hold")
+    }
+
+    @MainActor
+    func testAGeneralHoldDuringAnInactiveDisplayCreditsTheSharedTimeOnce() {
+        // The general hold ends first.
+        var time = 0.0
+        var playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        var b = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: DurationRendererSpy(), on: 1, preferences: .init(defaultSeconds: 30))
+        playback.setWallpaper(secondURL, renderer: b, on: 2, preferences: .init(defaultSeconds: 30))
+        playback.play()
+        time = 10
+        playback.setInactiveDisplays([2])
+        time = 20
+        playback.setHolds([.idle])
+        time = 30
+        playback.setHolds([])
+        XCTAssertFalse(playback.shouldPlay(on: 2), "Releasing the rule hold does not release the display")
+        time = 50
+        playback.setInactiveDisplays([])
+        time = 69.999
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 2))
+        time = 70
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 2))
+
+        // The display is released first, while the general hold is active.
+        time = 0
+        playback = PauseAfterPlayback(now: { time }, canPlay: { true })
+        b = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: DurationRendererSpy(), on: 1, preferences: .init(defaultSeconds: 30))
+        playback.setWallpaper(secondURL, renderer: b, on: 2, preferences: .init(defaultSeconds: 30))
+        playback.play()
+        time = 10
+        playback.setInactiveDisplays([2])
+        time = 20
+        playback.setHolds([.idle])
+        time = 25
+        let plays = b.plays
+        playback.setInactiveDisplays([])
+        XCTAssertEqual(b.plays, plays, "The general hold still stops it")
+        time = 30
+        playback.setHolds([])
+        XCTAssertEqual(b.plays, plays + 1)
+        time = 49.999
+        playback.tick()
+        XCTAssertFalse(playback.isExpired(on: 2))
+        time = 50
+        playback.tick()
+        XCTAssertTrue(playback.isExpired(on: 2), "It played 10 s before the holds and 20 s after")
+    }
+
+    @MainActor
+    func testManualPauseSurvivesADisplayComingBackIntoUse() {
+        let playback = PauseAfterPlayback(now: { 0 }, canPlay: { true })
+        let a = DurationRendererSpy(), b = DurationRendererSpy()
+        playback.setWallpaper(firstURL, renderer: a, on: 1, preferences: .init())
+        playback.setWallpaper(secondURL, renderer: b, on: 2, preferences: .init())
+        playback.play()
+        playback.setInactiveDisplays([2])
+        playback.pause(manual: true)
+        let plays = a.plays + b.plays
+        playback.setInactiveDisplays([])
+        playback.setHolds([.frontApp])
+        playback.setHolds([])
+        playback.play()
+        XCTAssertEqual(a.plays + b.plays, plays, "A rule ending never undoes the user's Pause")
+        XCTAssertTrue(playback.isManuallyPaused)
+        playback.play(explicit: true)
+        XCTAssertEqual(a.plays + b.plays, plays + 2)
+    }
+
     @MainActor
     func testHoldReleaseCannotRestartExpiredDisplaysOrAnIdleSession() {
         var time = 0.0
