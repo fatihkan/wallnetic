@@ -159,7 +159,7 @@ struct GeneralSettingsView: View {
                         if newValue { DynamicIslandController.shared.show() }
                         else { DynamicIslandController.shared.hide() }
                     }
-                    .help("Show wallpaper controls in a floating pill at the top of the screen")
+                    .help("Show wallpaper controls at the notch, or in a pill below the menu bar on a display without one")
                 Toggle("Global Hotkeys", isOn: $globalHotkeysEnabled)
                     .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
             }

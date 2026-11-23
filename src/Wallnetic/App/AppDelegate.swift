@@ -87,6 +87,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup global hotkeys
         setupGlobalHotkeys()
 
+        // The Dynamic Island comes back with the app when it was left on.
+        // Nothing else creates its controller before Settings is opened.
+        if UserDefaults.standard.bool(forKey: "island.enabled") {
+            DynamicIslandController.shared.show()
+        }
+
         // Audio visualizer overlay disabled in v1.3.1 — TCC/SCStream UX issues.
         // Files retained for future re-enable; init is gated to skip the
         // lazy singleton allocation so the overlay never auto-restores.

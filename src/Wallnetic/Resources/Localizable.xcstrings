@@ -1933,34 +1933,6 @@
     "Add to Library": {
       "shouldTranslate": false
     },
-    "Add to favorites": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Zu Favoriten hinzufügen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Ajouter aux favoris"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "お気に入りに追加"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "添加到收藏"
-          }
-        }
-      }
-    },
     "Add wallpapers to build your playlist.": {
       "localizations": {
         "de": {
@@ -14563,34 +14535,6 @@
         }
       }
     },
-    "Previous wallpaper": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Vorheriges Hintergrundbild"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Fond d’écran précédent"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "前の壁紙"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "上一张壁纸"
-          }
-        }
-      }
-    },
     "Previously downloaded: %@": {
       "localizations": {
         "de": {
@@ -14764,34 +14708,6 @@
     },
     "Random anime-optimized models: Kling, Minimax, Pika": {
       "shouldTranslate": false
-    },
-    "Random wallpaper": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Zufälliges Hintergrundbild"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Fond d’écran aléatoire"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "ランダムな壁紙"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "随机壁纸"
-          }
-        }
-      }
     },
     "Rate Wallnetic": {
       "localizations": {
@@ -15426,34 +15342,6 @@
         }
       }
     },
-    "Remove from favorites": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Aus Favoriten entfernen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Supprimer des favoris"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "お気に入りから削除"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "从收藏中移除"
-          }
-        }
-      }
-    },
     "Remove range": {
       "localizations": {
         "de": {
@@ -15763,34 +15651,6 @@
       }
     },
     "Rename Wallpaper": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Hintergrundbild umbenennen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Renommer le fond d’écran"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "壁紙の名称変更"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "重新命名壁纸"
-          }
-        }
-      }
-    },
-    "Rename wallpaper": {
       "localizations": {
         "de": {
           "stringUnit": {
@@ -16377,34 +16237,6 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "保存用于空间恢复"
-          }
-        }
-      }
-    },
-    "Save name": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Namen sichern"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Enregistrer le nom"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "名前を保存"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "保存名称"
           }
         }
       }
@@ -17591,30 +17423,30 @@
         }
       }
     },
-    "Show wallpaper controls in a floating pill at the top of the screen": {
+    "Show wallpaper controls at the notch, or in a pill below the menu bar on a display without one": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Steuerung für Hintergrundbilder in einer schwebenden Kapsel oben auf dem Bildschirm anzeigen"
+            "value": "Zeigt die Hintergrundbild-Steuerung an der Notch an, oder in einer Pille unter der Menüleiste auf einem Display ohne Notch"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Affiche les commandes du fond d’écran dans une pastille flottante en haut de l’écran"
+            "value": "Affiche les commandes du fond d’écran au niveau de l’encoche, ou dans une pastille sous la barre des menus sur un écran sans encoche"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "画面上部のフローティングバーに壁紙のコントロールを表示"
+            "value": "壁紙のコントロールをノッチに表示します。ノッチのないディスプレイでは、メニューバーの下のピルに表示します"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "在屏幕顶部的悬浮胶囊中显示壁纸控制项"
+            "value": "在刘海处显示壁纸控制；在没有刘海的显示器上，显示在菜单栏下方的胶囊中"
           }
         }
       }
@@ -21800,34 +21632,6 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "壁纸缺失 · 编辑以替换"
-          }
-        }
-      }
-    },
-    "Wallpaper name": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Name des Hintergrundbilds"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Nom du fond d’écran"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "壁紙の名前"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "壁纸名称"
           }
         }
       }
