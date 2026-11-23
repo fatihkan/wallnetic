@@ -5,28 +5,29 @@ import Foundation
 struct IslandMetrics: Equatable {
     /// The hardware notch. Zero on a display without one.
     var notch: CGSize = .zero
+    /// The height of the menu bar on this display. Zero when it is hidden.
+    var menuBarHeight: CGFloat = 0
 
     var hasNotch: Bool { notch.width > 0 && notch.height > 0 }
 }
 
-/// The island's liquid shape at one moment: a bar and a card that melt into
-/// each other. `x` is measured from the island's centre line and `y` down
-/// from its top anchor: the screen's top edge on a display with a notch, the
-/// lower edge of the menu bar on any other.
+/// The island's shape at one moment: a bar and a card that grows out of it.
+/// `x` is measured from the island's centre line and `y` down from the
+/// screen's top edge. The shape hangs from that edge on every display: its
+/// top is flat and its upper corners flow into the edge as concave ears.
 struct IslandLayout: Equatable {
-    /// The part that is always there: the bar around the notch, or the pill.
+    /// The part that is always there: the bar around the notch, or the bar
+    /// that stands in for one on a display without a notch.
     var bar: CGRect
     /// The body that grows out of the bar. Equal to the bar while compact.
     var card: CGRect
     var barRadius: CGFloat
     var cardRadius: CGFloat
-    /// The distance over which bar and card blend.
-    var blend: CGFloat
-    /// The shape joins the screen's top edge: a flat top with concave ears.
-    var attached: Bool
     var earRadius: CGFloat
     /// How visible the card is. Below 1 only while it fades (Reduce Motion).
     var cardOpacity: CGFloat
+    /// How strong the glow is, from its resting share to 1 when open.
+    var glow: CGFloat
 
     var bounds: CGRect { bar.union(card) }
 }
@@ -34,89 +35,77 @@ struct IslandLayout: Equatable {
 enum IslandGeometry {
     /// Room beside the notch for the thumbnail and for the playback state.
     static let earWidth: CGFloat = 44
-    static let pillSize = CGSize(width: 220, height: 30)
+    /// The bar's width on a display without a notch.
+    static let barWidth: CGFloat = 220
+    /// The bar's height when the menu bar is hidden.
+    static let fallbackBarHeight: CGFloat = 28
     static let cardWidth: CGFloat = 364
-    /// The card's height below the notch.
+    /// The card's height below the bar.
     static let cardBodyHeight: CGFloat = 112
-    static let floatingCardHeight: CGFloat = 124
-    /// Space between the menu bar and a floating island.
-    static let floatingGap: CGFloat = 6
-    /// Room around the shape for its glow.
+    /// Room around the shape for its glow. The glow ends inside it.
     static let margin: CGFloat = 18
-    static let notchCornerRadius: CGFloat = 10
+    static let barCornerRadius: CGFloat = 10
     static let cardCornerRadius: CGFloat = 24
     static let earRadius: CGFloat = 8
-    static let blend: CGFloat = 14
+    /// A compact island glows this much of what an open one does.
+    static let restingGlow: CGFloat = 0.4
     /// A spring may pass its target a little. More than this is not drawn.
     static let maximumOvershoot: CGFloat = 0.08
 
-    /// The compact shape: a bar the height of the notch that reaches past it
-    /// on both sides, or a pill below the menu bar.
+    /// The compact shape, hanging from the screen's top edge: a bar of the
+    /// notch's height that reaches past it on both sides, or, without a
+    /// notch, a bar of the menu bar's height in the middle of the menu bar.
     static func compactBar(_ metrics: IslandMetrics) -> CGRect {
         if metrics.hasNotch {
             let width = metrics.notch.width + 2 * earWidth
             return CGRect(x: -width / 2, y: 0, width: width, height: metrics.notch.height)
         }
-        return CGRect(x: -pillSize.width / 2, y: floatingGap, width: pillSize.width, height: pillSize.height)
+        let height = metrics.menuBarHeight > 0 ? metrics.menuBarHeight : fallbackBarHeight
+        return CGRect(x: -barWidth / 2, y: 0, width: barWidth, height: height)
     }
 
-    /// The expanded shape. It keeps the compact shape's top edge.
+    /// The expanded shape. It keeps the top edge and grows down and outwards.
     static func expandedCard(_ metrics: IslandMetrics) -> CGRect {
-        if metrics.hasNotch {
-            let width = max(cardWidth, compactBar(metrics).width + 2 * blend)
-            return CGRect(x: -width / 2, y: 0, width: width, height: metrics.notch.height + cardBodyHeight)
-        }
-        return CGRect(x: -cardWidth / 2, y: floatingGap, width: cardWidth, height: floatingCardHeight)
+        let bar = compactBar(metrics)
+        let width = max(cardWidth, bar.width + 2 * cardCornerRadius)
+        return CGRect(x: -width / 2, y: 0, width: width, height: bar.height + cardBodyHeight)
     }
 
-    /// The top of the expanded card that the notch hides.
+    /// The top of the expanded card that holds no content: the part a notch
+    /// hides, or the strip at the menu bar's level.
     static func hiddenTop(_ metrics: IslandMetrics) -> CGFloat {
-        metrics.hasNotch ? metrics.notch.height : 0
+        compactBar(metrics).height
     }
 
     /// The shape for `progress`: 0 is compact and 1 is expanded. With
     /// `crossFades` the card does not stretch: it is drawn at full size and
     /// `progress` is its opacity.
+    ///
+    /// The card is one rounded rectangle that grows from the bar's own
+    /// outline to the full card, with the top edge fixed. Bar and card are
+    /// never blended: a blend swells wherever their edges lie on each other.
     static func layout(progress: CGFloat, metrics: IslandMetrics, crossFades: Bool = false) -> IslandLayout {
         let bar = compactBar(metrics)
         let full = expandedCard(metrics)
-        let barRadius = metrics.hasNotch ? notchCornerRadius : bar.height / 2
         let unit = min(max(progress, 0), 1)
+        let glow = restingGlow + (1 - restingGlow) * unit
         if crossFades {
-            return IslandLayout(bar: bar, card: full, barRadius: barRadius, cardRadius: cardCornerRadius,
-                                blend: 0, attached: metrics.hasNotch, earRadius: earRadius, cardOpacity: unit)
+            return IslandLayout(bar: bar, card: full, barRadius: barCornerRadius, cardRadius: cardCornerRadius,
+                                earRadius: earRadius, cardOpacity: unit, glow: glow)
         }
         let stretch = min(max(progress, 0), 1 + maximumOvershoot)
-        // The card starts inside the bar, a blend's width from its edges, and
-        // pushes out through it. Two shapes whose edges lie on each other
-        // would swell there, so at rest only one of them shows: the bar while
-        // compact, and the card, with the blend faded out, while expanded.
-        let seed = seedCard(in: bar, attached: metrics.hasNotch)
-        let card = CGRect(x: seed.minX + (full.minX - seed.minX) * stretch,
-                          y: seed.minY + (full.minY - seed.minY) * stretch,
-                          width: seed.width + (full.width - seed.width) * stretch,
-                          height: seed.height + (full.height - seed.height) * stretch)
-        let settling = min(max((unit - 0.7) / 0.3, 0), 1)
-        return IslandLayout(bar: bar, card: card, barRadius: barRadius,
-                            cardRadius: barRadius + (cardCornerRadius - barRadius) * unit,
-                            blend: blend * (1 - settling * settling * (3 - 2 * settling)),
-                            attached: metrics.hasNotch, earRadius: earRadius, cardOpacity: 1)
+        let width = bar.width + (full.width - bar.width) * stretch
+        let card = CGRect(x: -width / 2, y: 0, width: width,
+                          height: bar.height + (full.height - bar.height) * stretch)
+        return IslandLayout(bar: bar, card: card, barRadius: barCornerRadius,
+                            cardRadius: barCornerRadius + (cardCornerRadius - barCornerRadius) * unit,
+                            earRadius: earRadius, cardOpacity: 1, glow: glow)
     }
 
-    /// Where the card rests while the island is compact: inside the bar, far
-    /// enough from its edges that the blend does not reach them. An attached
-    /// shape has no top edge in view, so its card keeps the bar's top.
-    static func seedCard(in bar: CGRect, attached: Bool) -> CGRect {
-        let inset = min(blend, bar.width / 2 - 1, bar.height / 2 - 1)
-        if attached {
-            return CGRect(x: bar.minX + inset, y: bar.minY, width: bar.width - 2 * inset, height: bar.height - inset)
-        }
-        return bar.insetBy(dx: inset, dy: inset)
-    }
-
-    /// The island's top centre on a display, in AppKit screen coordinates.
-    static func anchor(screenFrame: CGRect, visibleFrame: CGRect, metrics: IslandMetrics) -> CGPoint {
-        CGPoint(x: screenFrame.midX, y: metrics.hasNotch ? screenFrame.maxY : visibleFrame.maxY)
+    /// The island's top centre on a display, in AppKit screen coordinates:
+    /// the middle of the screen's top edge.
+    static func anchor(screenFrame: CGRect) -> CGPoint {
+        CGPoint(x: screenFrame.midX, y: screenFrame.maxY)
     }
 
     /// The window that holds the compact or the expanded shape and its glow.

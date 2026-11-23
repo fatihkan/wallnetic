@@ -17423,30 +17423,30 @@
         }
       }
     },
-    "Show wallpaper controls at the notch, or in a pill below the menu bar on a display without one": {
+    "Show wallpaper controls at the notch, or at the top edge of a display without one": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Zeigt die Hintergrundbild-Steuerung an der Notch an, oder in einer Pille unter der Menüleiste auf einem Display ohne Notch"
+            "value": "Zeigt die Hintergrundbild-Steuerung an der Notch an, oder am oberen Rand eines Displays ohne Notch"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Affiche les commandes du fond d’écran au niveau de l’encoche, ou dans une pastille sous la barre des menus sur un écran sans encoche"
+            "value": "Affiche les commandes du fond d’écran au niveau de l’encoche, ou en haut d’un écran sans encoche"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "壁紙のコントロールをノッチに表示します。ノッチのないディスプレイでは、メニューバーの下のピルに表示します"
+            "value": "壁紙のコントロールをノッチに表示します。ノッチのないディスプレイでは上端に表示します"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "在刘海处显示壁纸控制；在没有刘海的显示器上，显示在菜单栏下方的胶囊中"
+            "value": "在刘海处显示壁纸控制；在没有刘海的显示器上，显示在屏幕顶部"
           }
         }
       }

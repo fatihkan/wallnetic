@@ -2,8 +2,9 @@ import Cocoa
 import SwiftUI
 import Combine
 
-/// Dynamic Island (#352): a liquid shape that flows out of the notch on a
-/// MacBook, or a pill that floats below the menu bar on any other display.
+/// Dynamic Island (#352): a shape that hangs from the screen's top edge. On
+/// a MacBook it flows out of the notch; on any other display it is a bar of
+/// its own in the middle of the menu bar.
 ///
 /// Every display gets its own island with its own geometry, and all of them
 /// share the same compact or expanded state.
@@ -36,6 +37,12 @@ class DynamicIslandController: ObservableObject {
     private struct Island {
         let panel: NSPanel
         let surface: IslandSurfaceView
+        /// The view that holds the thumbnail, the text and the controls.
+        let content: NSView
+        /// Cuts the content to the shape, so nothing shows outside it.
+        let clip: CAShapeLayer
+        /// The size of `surface` and `content`: the expanded window's size.
+        let contentSize: CGSize
         let metrics: IslandMetrics
         /// The island's top centre in screen coordinates.
         let anchor: CGPoint
@@ -67,25 +74,27 @@ class DynamicIslandController: ObservableObject {
 
     // MARK: - Displays
 
-    /// The notch of a display, or none. `safeAreaInsets` gives its height and
-    /// the two areas beside it give its width.
+    /// The notch of a display, or none, and its menu bar's height.
+    /// `safeAreaInsets` gives the notch's height and the two areas beside it
+    /// give its width.
     static func metrics(for screen: NSScreen, defaults: UserDefaults = .standard) -> IslandMetrics {
+        let menuBar = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
         #if DEBUG
         // A notch to look at on a Mac without one:
         // -island.debugNotchWidth 200 -island.debugNotchHeight 32
         let debugWidth = defaults.double(forKey: "island.debugNotchWidth")
         let debugHeight = defaults.double(forKey: "island.debugNotchHeight")
         if debugWidth > 0, debugHeight > 0 {
-            return IslandMetrics(notch: CGSize(width: debugWidth, height: debugHeight))
+            return IslandMetrics(notch: CGSize(width: debugWidth, height: debugHeight), menuBarHeight: menuBar)
         }
         #endif
         let height = screen.safeAreaInsets.top
         guard height > 0, let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea else {
-            return IslandMetrics()
+            return IslandMetrics(menuBarHeight: menuBar)
         }
         let width = screen.frame.width - left.width - right.width
-        guard width > 0 else { return IslandMetrics() }
-        return IslandMetrics(notch: CGSize(width: width, height: height))
+        guard width > 0 else { return IslandMetrics(menuBarHeight: menuBar) }
+        return IslandMetrics(notch: CGSize(width: width, height: height), menuBarHeight: menuBar)
     }
 
     private var reducesMotion: Bool {
@@ -160,8 +169,7 @@ class DynamicIslandController: ObservableObject {
 
     private func makeIsland(for screen: NSScreen) -> Island {
         let metrics = Self.metrics(for: screen)
-        let anchor = IslandGeometry.anchor(screenFrame: screen.frame, visibleFrame: screen.visibleFrame,
-                                           metrics: metrics)
+        let anchor = IslandGeometry.anchor(screenFrame: screen.frame)
         let frame = IslandGeometry.windowFrame(expanded: state == .expanded, metrics: metrics, anchor: anchor)
 
         let surface = IslandSurfaceView()
@@ -172,18 +180,31 @@ class DynamicIslandController: ObservableObject {
         )
         // The controller sizes the window. SwiftUI's ideal size must not.
         hostingView.sizingOptions = []
+        // While the shape grows or shrinks, the content is cut to it: a
+        // control that is still fading must not hang out of a smaller shape.
+        hostingView.wantsLayer = true
+        let clip = CAShapeLayer()
+        clip.fillColor = NSColor.black.cgColor
+        hostingView.layer?.mask = clip
 
         // Hover is detected by an AppKit tracking area on this host, not by
         // SwiftUI's onHover — see IslandHostView.
         let host = IslandHostView(controller: self)
+        // The surface and the content always have the expanded window's size
+        // and hang from the window's top centre. When the window changes
+        // size, AppKit only moves them, in the same pass: nothing is drawn
+        // again and nothing is laid out again. Sized to the window, the
+        // surface once kept a frame of the old size, stretched, and the
+        // content sat beside the shape until SwiftUI caught up.
+        let full = IslandGeometry.windowFrame(expanded: true, metrics: metrics, anchor: anchor).size
         for view in [surface, hostingView] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
             host.addSubview(view)
             NSLayoutConstraint.activate([
-                view.leadingAnchor.constraint(equalTo: host.leadingAnchor),
-                view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+                view.centerXAnchor.constraint(equalTo: host.centerXAnchor),
                 view.topAnchor.constraint(equalTo: host.topAnchor),
-                view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+                view.widthAnchor.constraint(equalToConstant: full.width),
+                view.heightAnchor.constraint(equalToConstant: full.height),
             ])
         }
 
@@ -195,7 +216,8 @@ class DynamicIslandController: ObservableObject {
         // Clicks on the controls must not pull focus from the user's app.
         panel.becomesKeyOnlyIfNeeded = true
         panel.contentView = host
-        return Island(panel: panel, surface: surface, metrics: metrics, anchor: anchor)
+        return Island(panel: panel, surface: surface, content: hostingView, clip: clip, contentSize: full,
+                      metrics: metrics, anchor: anchor)
     }
 
     // MARK: - Pointer
@@ -322,11 +344,27 @@ class DynamicIslandController: ObservableObject {
 
     private func applyShape() {
         let crossFades = reducesMotion
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         for island in islands.values {
             let shape = IslandGeometry.layout(progress: morph.value, metrics: island.metrics,
                                               crossFades: crossFades)
             island.surface.show(shape, style: style)
+            island.clip.path = Self.clipPath(for: shape, size: island.contentSize, flipped: island.content.isFlipped)
         }
+        CATransaction.commit()
+    }
+
+    /// The card's outline in the content view's coordinates. Its top reaches
+    /// above the view, so only the lower corners are rounded.
+    static func clipPath(for shape: IslandLayout, size: CGSize, flipped: Bool) -> CGPath {
+        let card = shape.card
+        let radius = min(shape.cardRadius, card.width / 2)
+        let height = card.maxY + radius
+        let rect = CGRect(x: size.width / 2 + card.minX,
+                          y: flipped ? -radius : size.height - card.maxY,
+                          width: card.width, height: height)
+        return CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
     }
 
     /// The glow follows the wallpaper's colour. Increase Contrast replaces it

@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 ///
 /// - **Compact:** the wallpaper's thumbnail on the left and the playback state
 ///   on the right. On a display with a notch they sit in the two ears beside
-///   it; on any other display the pill also has room for the name.
+///   it; on any other display the bar also has room for the name.
 /// - **Expanded:** the wallpaper's name and its display, and the controls:
 ///   play or pause, next, Calm Mode, the playback profile and Open Wallnetic.
 struct DynamicIslandView: View {
@@ -86,10 +86,12 @@ struct DynamicIslandView: View {
 
     // MARK: - Surface
 
-    /// The shape of the visible state, as a rounded rectangle.
+    /// The shape of the visible state: a flat top at the screen's edge and
+    /// rounded lower corners.
     private var outline: some InsettableShape {
-        RoundedRectangle(cornerRadius: isExpanded ? IslandGeometry.cardCornerRadius : bar.height / 2,
-                         style: .continuous)
+        let radius = isExpanded ? IslandGeometry.cardCornerRadius : IslandGeometry.barCornerRadius
+        return UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius,
+                                      style: .continuous)
     }
 
     private var shapeFrame: CGRect { isExpanded ? card : bar }
@@ -202,7 +204,7 @@ struct DynamicIslandView: View {
                            size: 14, hit: 30, action: openMainWindow)
             }
             .padding(.horizontal, Space.md)
-            .padding(.top, metrics.hasNotch ? Space.xs : Space.sm)
+            .padding(.top, Space.xs)
 
             Spacer(minLength: 0)
 
