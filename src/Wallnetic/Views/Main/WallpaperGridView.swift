@@ -353,7 +353,7 @@ struct WallpaperContextMenu: View {
             Button {
                 onPreview()
             } label: {
-                Label("Preview", systemImage: "eye")
+                Label("Preview…", systemImage: "eye")
             }
         }
 

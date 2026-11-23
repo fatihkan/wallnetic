@@ -228,11 +228,7 @@ class DesktopWindowController {
         renderer.playbackMonitor.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
 
         // Create effect overlay view
-        let effectOverlay = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
-        effectOverlay.autoresizingMask = [.width, .height]
-        effectOverlay.wantsLayer = true
-        effectOverlay.layer?.zPosition = 100
-        renderer.rendererView.addSubview(effectOverlay)
+        let effectOverlay = Self.makeEffectOverlay(in: renderer.rendererView, size: screen.frame.size)
         effectOverlays[displayID] = effectOverlay
 
         // Store references
@@ -241,7 +237,7 @@ class DesktopWindowController {
         performanceBindings[displayID] = PerformanceManager.shared.bind(to: renderer)
 
         // Apply current effects
-        applyEffectsToOverlay(effectOverlay)
+        Self.applyOverlayEffects(to: effectOverlay)
 
         // Park the window off the desktop until a frame exists. orderFront
         // of an empty opaque surface is a black screen; alpha=0 keeps it
@@ -661,38 +657,52 @@ class DesktopWindowController {
     /// Applies current effects to all screen overlays
     func applyEffects() {
         for (displayID, overlay) in effectOverlays {
-            applyEffectsToOverlay(overlay)
-            // Apply blur to the renderer view's layer
-            if let renderer = renderers[displayID] {
-                let effects = WallpaperEffectsManager.shared
-                let layer = renderer.filterLayer ?? renderer.rendererView.layer
-
-                // Build combined filter array for the video layer
-                var filters: [CIFilter] = []
-
-                // Brightness + Contrast + Saturation
-                if let colorFilter = CIFilter(name: "CIColorControls") {
-                    colorFilter.setValue(effects.brightness, forKey: kCIInputBrightnessKey)
-                    colorFilter.setValue(effects.contrast, forKey: kCIInputContrastKey)
-                    colorFilter.setValue(effects.saturation, forKey: kCIInputSaturationKey)
-                    filters.append(colorFilter)
-                }
-
-                // Blur applied to the video content itself (not backgroundFilters)
-                if effects.blur > 0 {
-                    if let blurFilter = CIFilter(name: "CIGaussianBlur") {
-                        blurFilter.setValue(effects.blur, forKey: kCIInputRadiusKey)
-                        filters.append(blurFilter)
-                    }
-                }
-
-                layer?.filters = effects.hasActiveEffects ? filters : []
-            }
+            Self.applyOverlayEffects(to: overlay)
+            if let renderer = renderers[displayID] { Self.applyVideoEffects(to: renderer) }
         }
     }
 
+    /// The view tint and vignette are drawn into: a subview of the renderer
+    /// view, above the video. The preview stage builds the same one (#349).
+    static func makeEffectOverlay(in rendererView: NSView, size: NSSize) -> NSView {
+        let overlay = NSView(frame: NSRect(origin: .zero, size: size))
+        overlay.autoresizingMask = [.width, .height]
+        overlay.wantsLayer = true
+        overlay.layer?.zPosition = 100
+        rendererView.addSubview(overlay)
+        return overlay
+    }
+
+    /// Brightness, contrast, saturation and blur, on the layer that shows
+    /// the video pixels.
+    static func applyVideoEffects(to renderer: WallpaperRenderer) {
+        let effects = WallpaperEffectsManager.shared
+        let layer = renderer.filterLayer ?? renderer.rendererView.layer
+
+        // Build combined filter array for the video layer
+        var filters: [CIFilter] = []
+
+        // Brightness + Contrast + Saturation
+        if let colorFilter = CIFilter(name: "CIColorControls") {
+            colorFilter.setValue(effects.brightness, forKey: kCIInputBrightnessKey)
+            colorFilter.setValue(effects.contrast, forKey: kCIInputContrastKey)
+            colorFilter.setValue(effects.saturation, forKey: kCIInputSaturationKey)
+            filters.append(colorFilter)
+        }
+
+        // Blur applied to the video content itself (not backgroundFilters)
+        if effects.blur > 0 {
+            if let blurFilter = CIFilter(name: "CIGaussianBlur") {
+                blurFilter.setValue(effects.blur, forKey: kCIInputRadiusKey)
+                filters.append(blurFilter)
+            }
+        }
+
+        layer?.filters = effects.hasActiveEffects ? filters : []
+    }
+
     /// Applies tint and vignette overlay effects
-    private func applyEffectsToOverlay(_ overlay: NSView) {
+    static func applyOverlayEffects(to overlay: NSView) {
         let effects = WallpaperEffectsManager.shared
         guard let layer = overlay.layer else { return }
 

@@ -246,6 +246,7 @@ struct CarouselCard: View {
     @State private var optimizingWallpaper: Wallpaper?
     @State private var trimmingWallpaper: Wallpaper?
     @State private var renamingWallpaper: Wallpaper?
+    @State private var previewingWallpaper: Wallpaper?
     @State private var renameText = ""
     @State private var pointer = CGPoint(x: 0.5, y: 0.5)
     @State private var lastPointerWrite: TimeInterval = 0
@@ -415,13 +416,15 @@ struct CarouselCard: View {
         .animation(reduceMotion ? nil : .spring(response: Anim.enter, dampingFraction: 0.75), value: isHovering)
         .onHover { h in isHovering = h }
         .contextMenu {
-            WallpaperContextMenu(wallpaper: wallpaper, onOptimize: { optimizingWallpaper = wallpaper },
+            WallpaperContextMenu(wallpaper: wallpaper, onPreview: { previewingWallpaper = wallpaper },
+                                 onOptimize: { optimizingWallpaper = wallpaper },
                                  onTrim: allowsTrim ? { trimmingWallpaper = wallpaper } : nil, onRename: {
                 renameText = wallpaper.displayName
                 renamingWallpaper = wallpaper
             })
         }
         .sheet(item: $optimizingWallpaper) { VideoOptimizationSheet(wallpaper: $0) }
+        .sheet(item: $previewingWallpaper) { WallpaperPreviewSheet(wallpaper: $0) }
         .sheet(item: $trimmingWallpaper) { VideoTrimSheet(wallpaper: $0) }
         .sheet(item: $renamingWallpaper) { wp in
             RenameWallpaperSheet(wallpaper: wp, title: $renameText, onSave: { newTitle in
