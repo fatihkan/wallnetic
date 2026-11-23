@@ -113,9 +113,9 @@ class DeepLinkHandler {
         DispatchQueue.main.async {
             let alert = NSAlert()
             alert.messageText = String(localized: "Download wallpaper from \(host)?")
-            alert.informativeText = "Wallnetic was asked to import a video from this URL:\n\n\(importURL.absoluteString)\n\nOnly proceed if you started this action."
+            alert.informativeText = String(localized: "Wallnetic was asked to import a video from this URL:\n\n\(importURL.absoluteString)\n\nOnly proceed if you started this action.")
             alert.alertStyle = .warning
-            alert.addButton(withTitle: "Download & Import")
+            alert.addButton(withTitle: String(localized: "Download & Import"))
             alert.addButton(withTitle: String(localized: "Cancel"))
             NSApp.activate(ignoringOtherApps: true)
 

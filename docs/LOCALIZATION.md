@@ -2,7 +2,23 @@
 
 Wallnetic's interface is in English, with draft translations into German,
 French, Japanese and Simplified Chinese. macOS picks the language from the
-system's language list and falls back to English.
+system's language list and falls back to English, unless the user chooses
+one in Settings.
+
+## Choosing the language
+
+Settings > General > **Language** offers System Default, English, Deutsch,
+Français, 日本語 and 简体中文. A language is listed under its own name.
+
+- The choice is the app's own language list, the value macOS also keeps for
+  System Settings > Language & Region > Applications. Either place changes
+  the same thing.
+- macOS reads that list when an app starts, so a new choice shows after a
+  restart. The row offers **Restart Now**, which starts a new copy with the
+  same launch arguments and quits the old one.
+- System Default removes the app's own list, and the Mac's list applies
+  again.
+- The widget is a separate program and follows the Mac's language list.
 
 ## Status
 
@@ -102,7 +118,7 @@ CI runs these after the build:
 
 | Check | What it catches |
 | --- | --- |
-| `python3 tools/l10n/check_strings.py --derived-data <folder>` | Interface text in the app's sources that cannot be translated: prose the compiler did not report as localizable, a value joined to a word (`"\(n) files"` in a plain string), and an enum's raw value shown as text. |
+| `python3 tools/l10n/check_strings.py --derived-data <folder>` | Interface text in the app's sources that cannot be translated: prose the compiler did not report as localizable, two words joined by a symbol (`"Download & Import"`), a value joined to a word (`"\(n) files"` in a plain string), and an enum's raw value shown as text. |
 | `tools/l10n/sync_strings.sh <folder> --check` | A string in the code that a catalog does not list. |
 | `python3 tools/l10n/catalog.py check <catalogs>` | A string without a translation in one of the catalog's languages, or a translation whose placeholders differ from the English. |
 | `python3 tools/l10n/check_shortcut_phrases.py` | A missing or outdated App Shortcuts phrase, or one without `${applicationName}`. |
@@ -112,9 +128,14 @@ finished build. The first check is a set of patterns, not a proof: it cannot
 see a single lowercase word, or text that reaches the interface through data.
 Looking at the screens in each language finds what it misses.
 
+Its rules for what to leave out are narrow on purpose. A rule that skipped
+every line containing the word `import` once hid four strings, among them an
+error title and an alert's text.
+
 ## Looking at a language
 
-Start the app in a language without changing the system:
+Choose the language in Settings > General and restart. For a script, start
+the app in a language without changing anything stored:
 
 ```bash
 open -n Wallnetic.app --args -AppleLanguages "(de)"
