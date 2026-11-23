@@ -25,16 +25,32 @@ Français, 日本語 and 简体中文. A language is listed under its own name.
 | Language | Code | State |
 | --- | --- | --- |
 | English | `en` | The source language. |
-| German | `de` | Draft. Not reviewed by a native speaker. |
-| French | `fr` | Draft. Not reviewed by a native speaker. |
-| Japanese | `ja` | Draft. Not reviewed by a native speaker. |
-| Simplified Chinese | `zh-Hans` | Draft. Not reviewed by a native speaker. |
+| German | `de` | Shipping, open to revision. Not reviewed by a native speaker. |
+| French | `fr` | Shipping, open to revision. Not reviewed by a native speaker. |
+| Japanese | `ja` | Shipping, open to revision. Not reviewed by a native speaker. |
+| Simplified Chinese | `zh-Hans` | Shipping, open to revision. Not reviewed by a native speaker. |
 
-- The drafts were written with AI assistance. Every translated string is
-  marked `needs_review` in the catalogs, and Xcode shows it that way.
-- **A draft ships like any other translation.** Before a release, each
-  language is either reviewed by a native speaker or taken out of that build.
+- The translations were written with AI assistance. Every translated string
+  is marked `needs_review` in the catalogs, and Xcode shows it that way, until
+  a native speaker confirms it.
+- **They ship as they are and get better from corrections.** The owner
+  decided this on 2026-11-23: a review by a native speaker before release is
+  welcome but does not hold a language back. The README says the same to
+  users and asks for corrections.
 - The App Store listings are separate and are not updated yet.
+
+## Improving a translation
+
+Anyone who speaks the language can help.
+
+- **Report it:** the Translation Correction issue template asks for the
+  language, the place, the current text and a suggestion.
+- **Correct it:** see Translations in [CONTRIBUTING.md](../CONTRIBUTING.md).
+- When a correction is merged, the string's state becomes `translated`
+  (Reviewed in Xcode) if a native speaker made or confirmed it.
+- A correction that changes a term goes into
+  [LOCALIZATION_GLOSSARY.md](LOCALIZATION_GLOSSARY.md) too, so the term stays
+  the same everywhere.
 
 ## Where the text lives
 

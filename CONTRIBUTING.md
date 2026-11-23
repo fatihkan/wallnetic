@@ -124,6 +124,30 @@ open src/Wallnetic/Wallnetic.xcodeproj
 - Keep functions small and focused
 - Add comments for complex logic
 
+## Translations
+
+Wallnetic's interface is translated into German, French, Japanese and
+Simplified Chinese. The translations were made with AI assistance and are
+open to revision: a correction from someone who speaks the language is the
+best way they get better.
+
+- **To report** a wrong, awkward, cut-off or untranslated text, open a
+  [Translation Correction](https://github.com/fatihkan/wallnetic/issues/new?template=translation.md)
+  issue. No code is needed.
+- **To correct it yourself:**
+  1. Open `src/Wallnetic/Resources/Localizable.xcstrings` in Xcode. Each
+     language is a column; the English text is the key.
+  2. Change the text. Keep every placeholder (`%@`, `%lld`, `%%`) and follow
+     the terms in [docs/LOCALIZATION_GLOSSARY.md](docs/LOCALIZATION_GLOSSARY.md).
+  3. Set the string's state to Reviewed if you are a native speaker and are
+     sure of it.
+  4. Open a pull request to `dev` and say which language you speak.
+- The other places with text are listed in
+  [docs/LOCALIZATION.md](docs/LOCALIZATION.md): the widget, the Photos
+  permission text and the App Shortcuts phrases.
+- **A new language** is welcome too. Open an issue first, so the work is not
+  done twice.
+
 ## Questions?
 
 Feel free to open an issue or reach out to the maintainer.
