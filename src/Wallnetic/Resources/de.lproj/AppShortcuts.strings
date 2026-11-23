@@ -1,4 +1,5 @@
-/* App Shortcuts phrases in German (#351). A draft: not yet reviewed by a native speaker.
+/* App Shortcuts phrases in German (#351). Made with AI assistance and open to revision:
+   corrections are welcome, see Translations in CONTRIBUTING.md.
    Each phrase must keep ${applicationName}. The English phrases are in Services/AppShortcuts.swift. */
 
 "Toggle Calm Mode in ${applicationName}" = "Ruhemodus in ${applicationName} umschalten";

@@ -225,6 +225,16 @@ later.
   app is in front. Ordinary windows covering the desktop do not pause playback.
 - Async image caching
 
+### Languages
+- English, German, French, Japanese and Simplified Chinese, from version 1.6.
+- Wallnetic follows your Mac's language. To choose another one, use
+  Settings > General > Language.
+- **The translations are open to revision.** They were made with AI
+  assistance and not every line has been read by a native speaker. If
+  something reads wrong, is cut off or was left in English, open a
+  [Translation Correction](https://github.com/fatihkan/wallnetic/issues/new?template=translation.md)
+  issue, or correct it yourself: see [Translations](CONTRIBUTING.md#translations).
+
 ---
 
 ## Installation

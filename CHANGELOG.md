@@ -29,8 +29,8 @@ Planned as 1.6.0.
 - Home shows Recently Used and Recently Added wallpapers.
 - The interface in German, French, Japanese and Simplified Chinese. macOS
   picks the language from the system's language list and falls back to
-  English. The translations are drafts until a native speaker has reviewed
-  them; a language that is not reviewed is left out of the release.
+  English. The translations were made with AI assistance and are open to
+  revision: the README says how to report or correct a text.
 - A Language choice in Settings > General: System Default or one of the
   app's languages. It takes effect after a restart, which the same row
   offers.

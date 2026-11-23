@@ -3,6 +3,10 @@
 For anyone translating or reviewing Wallnetic's interface. How the files and
 tools work is in [LOCALIZATION.md](LOCALIZATION.md).
 
+The translations are open to revision, and so is this glossary. If a term
+here is not the one your language uses on a Mac, say so in a Translation
+Correction issue or change it in a pull request.
+
 ## Rules
 
 1. **Placeholders stay as they are:** `%@`, `%lld`, `%.2f`, `%%` and line
