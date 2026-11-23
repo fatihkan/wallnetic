@@ -114,7 +114,9 @@ struct VideoPreviewView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(20)
-                    .glassBackground(cornerRadius: 16, opacity: 0.1)
+                    .adaptiveGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous)) {
+                        Color.clear.glassBackground(cornerRadius: 16, opacity: 0.1)
+                    }
                     .padding(.horizontal, 40)
                     .padding(.bottom, 8)
                 }

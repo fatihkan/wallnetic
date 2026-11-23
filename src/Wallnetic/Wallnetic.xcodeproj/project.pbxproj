@@ -204,6 +204,7 @@
 		E65253060E628BDD6E4F32C4 /* AuroraSample.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 5C3A351DF7BFC9E6FFC9C501 /* AuroraSample.mp4 */; };
 		E670DC0DFE3A0970082E73EF /* GenerationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE414F5FC0D738D8D7593A2E /* GenerationHistory.swift */; };
 		E7B74C3820414E4AD5A620B3 /* PauseAfterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A46F06E3D530E18AD8F596A4 /* PauseAfterSettingsView.swift */; };
+		E7FFD2BF08A5C5503F6841F8 /* AdaptiveGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC169FC06408223F055D996A /* AdaptiveGlass.swift */; };
 		E8B9B335A9706D2398DC72A2 /* ExceptionCatcher.m in Sources */ = {isa = PBXBuildFile; fileRef = AA91ACE8CEF6E8C6CC8A68B8 /* ExceptionCatcher.m */; };
 		EA0AA7318BCBE3C944FF48ED /* MLWDecryptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D290998483830980DF7E2CD5 /* MLWDecryptor.swift */; };
 		EAB040DBE1DBA4A2060A349D /* DynamicIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB1C25115998357CDFF95EB /* DynamicIslandView.swift */; };
@@ -460,6 +461,7 @@
 		E6BF7B9F0976B88C348B278D /* ember.mp4 */ = {isa = PBXFileReference; path = ember.mp4; sourceTree = "<group>"; };
 		E72EDA5DB0538086455362EF /* WindowPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowPresentationTests.swift; sourceTree = "<group>"; };
 		EA19F4DBD0636536454696F3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		EC169FC06408223F055D996A /* AdaptiveGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveGlass.swift; sourceTree = "<group>"; };
 		ECAF1A168D0AFB1A8443BBF6 /* BrowserDownloadMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserDownloadMetadata.swift; sourceTree = "<group>"; };
 		ED806BD7E0913BCDF1142604 /* MetalVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalVideoRenderer.swift; sourceTree = "<group>"; };
 		F3D3A43BF60BFD2ADD5853F5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -737,6 +739,7 @@
 		6D154AD72514800F57D7A3AE /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				EC169FC06408223F055D996A /* AdaptiveGlass.swift */,
 				BA26B4DDB98EF77D98CE5821 /* AmbientStage.swift */,
 				1237CAB7A69BEAF67CE09AD3 /* CalmModeButton.swift */,
 				DFF460340111975F4DA40C32 /* DesignTokens.swift */,
@@ -1106,6 +1109,7 @@
 				72F4CF08714A41746B6A0258 /* AIProvider.swift in Sources */,
 				FF16323D780FDC2A4404D5BA /* AIService.swift in Sources */,
 				C703D713F68746183202C7DE /* AIStyle.swift in Sources */,
+				E7FFD2BF08A5C5503F6841F8 /* AdaptiveGlass.swift in Sources */,
 				27E8C6194A802AD6C3726D0A /* AmbientStage.swift in Sources */,
 				E3721D2B68E6322EA1D6E408 /* AnalyticsManager.swift in Sources */,
 				53984128C8EBA3CD0BDEB573 /* AppDelegate.swift in Sources */,

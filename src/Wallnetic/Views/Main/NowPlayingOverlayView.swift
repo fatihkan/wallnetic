@@ -14,12 +14,12 @@ struct NowPlayingOverlayView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(titleText)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Text(subtitleText)
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.65))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
 
                 progressBar
@@ -36,14 +36,15 @@ struct NowPlayingOverlayView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(width: 340, height: 92)
-        .background(
+        // The card fills its panel, so it casts no shadow of its own.
+        .adaptiveGlass(in: RoundedRectangle(cornerRadius: 16, style: .continuous)) {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(.white.opacity(0.12), lineWidth: 0.5)
+                        .stroke(Color.primary.opacity(0.12), lineWidth: 0.5)
                 )
-        )
+        }
         .onHover { hovering = $0 }
     }
 
@@ -66,10 +67,10 @@ struct NowPlayingOverlayView: View {
             Image(nsImage: art).resizable().scaledToFill()
         } else {
             ZStack {
-                RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.08))
+                RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.08))
                 Image(systemName: "music.note")
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundColor(.white.opacity(0.45))
+                    .foregroundStyle(.tertiary)
             }
         }
     }
@@ -77,8 +78,8 @@ struct NowPlayingOverlayView: View {
     private var progressBar: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.15)).frame(height: 3)
-                Capsule().fill(.white.opacity(0.75))
+                Capsule().fill(Color.primary.opacity(0.15)).frame(height: 3)
+                Capsule().fill(Color.primary.opacity(0.75))
                     .frame(width: geo.size.width * progressFraction, height: 3)
             }
         }
@@ -104,7 +105,7 @@ struct NowPlayingOverlayView: View {
             }
         }
         .buttonStyle(.plain)
-        .foregroundColor(.white)
+        .foregroundStyle(.primary)
         .disabled(!manager.hasTrack)
     }
 }
