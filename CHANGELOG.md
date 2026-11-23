@@ -5,6 +5,68 @@ All notable changes to Wallnetic are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Planned as 1.6.0.
+
+### Added
+- Preview before applying: Preview… in a wallpaper's context menu, on Home and
+  in the Library, opens a sheet that plays the wallpaper as a display would
+  show it, with its loop range, scaling, effects and the Desktop Clock. With
+  several displays, a Display menu picks the shape to preview and the display
+  to apply to. The desktop does not change until Apply.
+- Fit with Blurred Backdrop, a second scaling choice in a wallpaper's context
+  menu. It shows the whole video frame and fills the rest of the display with
+  a blurred, dimmed copy of the same frame: nothing is cropped and there are
+  no black bars. Fill stays the default. The choice is saved for each
+  wallpaper and applies at once, also while playback is paused.
+- Playback Rules in Settings > Playback, five optional rules that are off by
+  default: pause while chosen apps are in front, pause while chosen apps are
+  running, pause when the Mac is idle (1 to 30 minutes), pause on low battery
+  (10% to 50%) and play only on the display in use. A rule holds motion like
+  Calm Mode does: it never changes your own Play or Pause, and the menu bar
+  names the rule that is pausing. No extra permission is needed.
+- Home shows Recently Used and Recently Added wallpapers.
+- The interface in German, French, Japanese and Simplified Chinese. macOS
+  picks the language from the system's language list and falls back to
+  English. The translations are drafts until a native speaker has reviewed
+  them; a language that is not reviewed is left out of the release.
+
+### Changed
+- Home starts with your desktop: what each display is showing, with its
+  playback status, and Retry or Open Library when a wallpaper is missing. The
+  carousel that advanced by itself is gone.
+- Home, Library and Discover are tabs in the window's toolbar, next to Add,
+  Settings and Search.
+- On macOS 26, the app's own surfaces (the now-playing bar, sheets and
+  overlays) use Liquid Glass. On macOS 13 to 25 they keep the earlier look.
+- Settings has a standard sidebar, and buttons and text fields use the
+  system's styles.
+- The menu bar menu holds the essentials: each display's status, the playback
+  profile, Pause, Calm Mode, Next, Open Wallnetic, Settings, Rate and Quit.
+- Neon and glow effects are removed from navigation, cards and Home.
+- The Dynamic Island is a liquid shape. On a MacBook with a notch it is part
+  of the notch, with ears that flow into the top edge; on any other display
+  it is a pill below the menu bar. It stretches open with a spring, takes a
+  glow from the wallpaper's colours, fades instead of stretching with Reduce
+  Motion, and uses a solid fill with Increase Contrast. It steps aside for
+  full-screen apps and does not open by itself while you type. The compact
+  island shows the thumbnail and the playback state; the open card has play
+  or pause, next, Calm Mode, the playback profile and Open Wallnetic.
+- The Desktop Clock is drawn in Wallnetic's language instead of always in
+  English.
+- Counts read correctly for one item, for example "1 file" instead of
+  "1 file(s)".
+
+### Removed
+- Rename, favorite, shuffle and previous on the Dynamic Island. Rename and
+  favorite stay in a wallpaper's context menu.
+
+### Fixed
+- Settings opens as one window. Each request (the toolbar button, the menu
+  bar, the Settings… command) used to open another Settings window.
+- Discover's source descriptions are no longer cut off after one line.
+
 ## [1.5.0] — 2026-11-02
 
 ### Added
