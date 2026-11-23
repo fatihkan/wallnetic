@@ -3,8 +3,8 @@
 #
 # xcodebuild does not write new strings back into a .xcstrings file. After a
 # build, this merges what the compiler found into each target's catalog.
-# Translations already in a catalog are kept; a string that left the code is
-# marked stale there, not deleted.
+# Translations already in a catalog are kept. A string that left the code is
+# removed with its translations, because nothing can show it any more.
 #
 # usage: tools/l10n/sync_strings.sh DERIVED_DATA [--check]
 #   --check  change nothing; fail when a catalog is missing a string.
@@ -26,7 +26,8 @@ sync() {
   fi
   if [ "$check" = "--check" ]; then
     local copy
-    copy="$(mktemp -d)/Localizable.xcstrings"
+    # The file name is the table name, so the copy keeps it.
+    copy="$(mktemp -d)/$(basename "$catalog")"
     cp "$catalog" "$copy"
     xcrun xcstringstool sync "$copy" --stringsdata "${files[@]}"
     if ! python3 - "$catalog" "$copy" <<'PY'
@@ -44,6 +45,9 @@ PY
     fi
   else
     xcrun xcstringstool sync "$catalog" --stringsdata "${files[@]}"
+    # Drop what left the code and keep one file format, so a new string is
+    # a small diff.
+    python3 "$root/tools/l10n/catalog.py" prune "$catalog"
     echo "Synced ${catalog#$root/}"
   fi
 }

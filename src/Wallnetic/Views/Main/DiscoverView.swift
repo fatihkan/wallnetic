@@ -175,7 +175,8 @@ struct SourceCard: View {
                 .offset(x: isHovering ? 3 : 0)
         }
         .padding(16)
-        .frame(height: 90)
+        // Room for a description of two lines, which translations need.
+        .frame(height: 104)
         .cardHighlight(isHovering: isHovering, cornerRadius: 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
@@ -370,7 +371,7 @@ struct InAppBrowserView: View {
                     HStack {
                         Image(systemName: "film.stack")
                             .foregroundColor(.blue)
-                        Text("Found \(foundVideos.count) video\(foundVideos.count == 1 ? "" : "s") on this page")
+                        Text("Found \(foundVideos.count) videos on this page")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.primary)
 

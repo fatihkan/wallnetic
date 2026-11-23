@@ -31,7 +31,7 @@ struct StorageSettingsView: View {
             HStack(alignment: .top, spacing: 18) {
                 ForEach(StorageCategory.allCases, id: \.self) { category in
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(category.rawValue).font(.caption).foregroundColor(.secondary)
+                        Text(category.title).font(.caption).foregroundColor(.secondary)
                         Text(size(model.scan.bytes(in: category))).monospacedDigit()
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -85,7 +85,7 @@ struct StorageSettingsView: View {
                 .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
             if let message = model.message { Text(message).font(.caption) }
             if !model.failures.isEmpty {
-                Button("\(model.failures.count) item(s) could not be processed — Show details") {
+                Button("\(model.failures.count) items could not be processed — Show details") {
                     showingFailures = true
                 }.font(.caption).foregroundColor(.orange)
             }
@@ -103,7 +103,7 @@ struct StorageSettingsView: View {
             }.padding(20).frame(width: 500, height: 300)
         }
         .alert(item: $model.plan) { plan in
-            Alert(title: Text(plan.isCacheCleanup ? "Clear \(plan.items.count) cache file(s)?" : "Remove \(plan.items.count) library copy/copies?"),
+            Alert(title: Text(plan.isCacheCleanup ? "Clear \(plan.items.count) cache files?" : "Remove \(plan.items.count) library copies?"),
                   message: Text([
                     String(localized: "Estimated space recovery: \(size(plan.bytes)). Actual disk space recovered may differ."),
                     plan.isCacheCleanup

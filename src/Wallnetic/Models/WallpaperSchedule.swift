@@ -121,8 +121,11 @@ struct DailyScheduleDocument: Codable {
         var hours = zip(slots, fallback).map { (defaults.object(forKey: "tod.\($0.0)Hour") as? Int) ?? $0.1 }
         let valid = hours.allSatisfy { (0..<24).contains($0) } && zip(hours, hours.dropFirst()).allSatisfy { $0 < $1 }
         if !valid { hours = fallback }
+        // The first names of the four ranges. They are the user's to rename.
+        let names = [String(localized: "Morning"), String(localized: "Afternoon"),
+                     String(localized: "Evening"), String(localized: "Night")]
         let ranges = slots.indices.map { i in
-            DailyWallpaperRange(name: slots[i].capitalized, startMinute: hours[i] * 60,
+            DailyWallpaperRange(name: names[i], startMinute: hours[i] * 60,
                                 endMinute: hours[(i + 1) % 4] * 60,
                                 wallpaperPath: defaults.string(forKey: "tod.\(slots[i])WallpaperPath") ?? "")
         }

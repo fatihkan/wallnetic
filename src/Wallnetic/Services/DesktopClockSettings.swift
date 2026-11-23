@@ -27,7 +27,13 @@ final class DesktopClockSettings: ObservableObject {
         case small, medium, large
 
         var id: String { rawValue }
-        var title: String { rawValue.capitalized }
+        var title: String {
+            switch self {
+            case .small: return String(localized: "Small")
+            case .medium: return String(localized: "Medium")
+            case .large: return String(localized: "Large")
+            }
+        }
         /// Time text size as a share of the display's visible height.
         var timeFraction: Double {
             switch self {

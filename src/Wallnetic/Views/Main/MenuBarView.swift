@@ -45,7 +45,7 @@ struct MenuBarView: View {
                 }
                 .accessibilityLabel("\(status.displayName): \(status.title)")
             }
-            Text("Playback profile: \(performance.mode.rawValue)")
+            Text("Playback profile: \(performance.mode.title)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)

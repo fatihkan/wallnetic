@@ -298,11 +298,11 @@ final class VideoTrimModel: ObservableObject {
 
     /// "1 minute 2.40 seconds", for VoiceOver.
     static func spokenText(_ time: CMTime) -> String {
-        guard time.isNumeric else { return "unknown" }
+        guard time.isNumeric else { return String(localized: "unknown") }
         let parts = minutesAndSeconds(time)
-        let seconds = String(format: "%.2f seconds", parts.seconds)
+        let seconds = String(localized: "\(parts.seconds, specifier: "%.2f") seconds")
         guard parts.minutes > 0 else { return seconds }
-        return "\(parts.minutes) \(parts.minutes == 1 ? "minute" : "minutes") \(seconds)"
+        return String(localized: "\(parts.minutes) minutes") + " " + seconds
     }
 }
 

@@ -6,6 +6,15 @@ enum StorageCategory: String, CaseIterable, Sendable {
     case videos = "Library videos"
     case generated = "Generated still images"
     case caches = "Caches"
+
+    /// The name in Storage settings.
+    var title: String {
+        switch self {
+        case .videos: return String(localized: "Library videos")
+        case .generated: return String(localized: "Generated still images")
+        case .caches: return String(localized: "Caches")
+        }
+    }
 }
 
 struct StorageFileIdentity: Codable, Equatable, Sendable {

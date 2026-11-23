@@ -93,13 +93,19 @@ jobs:
             ENABLE_APP_SANDBOX=NO \
             DEBUG_INFORMATION_FORMAT=dwarf
 
-      # Every interface string must be translatable, and the string catalogs
-      # must list every string in the code (#351). Both read what the build
-      # above left in its derived data.
+      # Every interface string must be translatable, the string catalogs must
+      # list every string in the code, and every language must translate all
+      # of them (#351). The first two read what the build above left in its
+      # derived data.
       - name: Check localizable strings
         run: |
           python3 tools/l10n/check_strings.py --derived-data build
           tools/l10n/sync_strings.sh build --check
+          python3 tools/l10n/catalog.py check \
+            src/Wallnetic/Resources/Localizable.xcstrings \
+            src/Wallnetic/Resources/InfoPlist.xcstrings \
+            src/WallneticWidget/Resources/Localizable.xcstrings
+          python3 tools/l10n/check_shortcut_phrases.py
 
       - name: Build Summary
         if: always()

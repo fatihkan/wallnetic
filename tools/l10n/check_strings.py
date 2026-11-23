@@ -47,15 +47,36 @@ SKIPPED_LINE = re.compile(
 LITERAL = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
 
 
+# A value followed by a word, as in "\(count) files" or "%d files": text that
+# is put together in code.
+VALUE_THEN_WORD = re.compile(r"(?:\\\([^()]*\)|%[\d.$]*(?:lld|ld|d|@|f)) ?[A-Za-z]{3,}")
+
+
+# An enum's raw value used as interface text, as in Text(mode.rawValue). A raw
+# value is an identifier, often a stored one: the type needs a localized title.
+RAW_VALUE_TEXT = re.compile(
+    r"\b(?:Text|Label|Button|Toggle|Picker|Section|Menu)\(\s*[\w.$]+\.rawValue\b"
+    r"|\.(?:help|accessibilityLabel|accessibilityValue|accessibilityHint|navigationTitle)\(\s*[\w.$]+\.rawValue\b"
+    r"|\brawValue\.capitalized\b"
+)
+RAW_VALUE_IN_TEXT = re.compile(r"\\\([\w.$]+\.rawValue\)")
+RAW_VALUE_NOTE = "a raw value shown as text; give the type a localized title"
+
+
 def is_prose(text):
     """A capitalized word, or words with spaces: something a person reads."""
     if len(text) < 3 or not re.search(r"[A-Za-z]{3,}", text):
         return False
+    if VALUE_THEN_WORD.search(text):
+        return True
     if " " not in text.strip():
         return bool(re.fullmatch(r"[A-Z][a-z]+(?:…|\.\.\.)?", text))
     # SQL, format-only strings and paths are not prose.
     if re.match(r"\s*(SELECT|INSERT|DELETE|UPDATE|CREATE|BEGIN|COMMIT|ROLLBACK|DROP)\b", text):
         return False
+    # A label in capitals beside other text, as in "01 · IMPORT".
+    if " " in text.strip() and re.search(r"(?<![A-Za-z])[A-Z]{4,}(?![A-Za-z])", text):
+        return True
     return bool(re.search(r"[A-Za-z]{2,} [A-Za-z(\\]", text))
 
 
@@ -88,6 +109,9 @@ def candidates(source, localized):
             continue
         code = line.split(" // ")[0]
         if "l10n:ignore" in line or (number > 1 and "l10n:ignore" in lines[number - 2]):
+            continue
+        if RAW_VALUE_TEXT.search(code) or (number in localized and RAW_VALUE_IN_TEXT.search(code)):
+            yield relative, number, RAW_VALUE_NOTE
             continue
         if SKIPPED_LINE.search(code) or number in localized:
             continue

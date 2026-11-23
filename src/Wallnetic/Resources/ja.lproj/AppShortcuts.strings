@@ -1,0 +1,15 @@
+/* App Shortcuts phrases in Japanese (#351). A draft: not yet reviewed by a native speaker.
+   Each phrase must keep ${applicationName}. The English phrases are in Services/AppShortcuts.swift. */
+
+"Toggle Calm Mode in ${applicationName}" = "${applicationName}でカームモードを切り替える";
+
+"Next wallpaper in ${applicationName}" = "${applicationName}で次の壁紙";
+"Change wallpaper in ${applicationName}" = "${applicationName}で壁紙を変更";
+"Switch wallpaper in ${applicationName}" = "${applicationName}で壁紙を切り替える";
+
+"Pause wallpaper in ${applicationName}" = "${applicationName}で壁紙を一時停止";
+"Play wallpaper in ${applicationName}" = "${applicationName}で壁紙を再生";
+"Toggle ${applicationName}" = "${applicationName}を切り替える";
+
+"Random wallpaper in ${applicationName}" = "${applicationName}でランダムな壁紙";
+"Surprise me with ${applicationName}" = "${applicationName}でおまかせ";

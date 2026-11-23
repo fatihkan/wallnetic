@@ -57,7 +57,7 @@ struct SpaceRecoverySections: View {
                     Text("Save a wallpaper here or use “Save for Space Recovery” in its Library menu. Your media stays in Library.")
                         .font(.caption).foregroundColor(.secondary)
                 } else if !manager.selections.isEmpty {
-                    Text(manager.recoveryReason.rawValue).font(.caption).foregroundColor(.secondary)
+                    Text(manager.recoveryReason.message).font(.caption).foregroundColor(.secondary)
                 }
                 ForEach(manager.selections) { selection in
                     selectionRow(selection)

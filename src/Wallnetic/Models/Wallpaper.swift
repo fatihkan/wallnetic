@@ -183,6 +183,23 @@ enum ColorCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// The colour's name in the interface.
+    var title: String {
+        switch self {
+        case .red: return String(localized: "Red")
+        case .orange: return String(localized: "Orange")
+        case .yellow: return String(localized: "Yellow")
+        case .green: return String(localized: "Green")
+        case .blue: return String(localized: "Blue")
+        case .purple: return String(localized: "Purple")
+        case .pink: return String(localized: "Pink")
+        case .brown: return String(localized: "Brown")
+        case .gray: return String(localized: "Gray")
+        case .black: return String(localized: "Black")
+        case .white: return String(localized: "White")
+        }
+    }
+
     var color: Color {
         switch self {
         case .red: return .red

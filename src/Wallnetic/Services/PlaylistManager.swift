@@ -57,15 +57,10 @@ final class PlaylistManager: ObservableObject {
 
     static func intervalLabel(_ seconds: Int) -> String {
         if seconds == 86400 { return String(localized: "Daily") }
-        if seconds >= 3600 && seconds % 3600 == 0 {
-            let hours = seconds / 3600
-            return "\(hours) hour\(hours == 1 ? "" : "s")"
-        }
-        if seconds >= 60 && seconds % 60 == 0 {
-            let minutes = seconds / 60
-            return "\(minutes) minute\(minutes == 1 ? "" : "s")"
-        }
-        return "\(seconds) second\(seconds == 1 ? "" : "s")"
+        // The catalog holds the singular and plural forms of these.
+        if seconds >= 3600 && seconds % 3600 == 0 { return String(localized: "\(seconds / 3600) hours") }
+        if seconds >= 60 && seconds % 60 == 0 { return String(localized: "\(seconds / 60) minutes") }
+        return String(localized: "\(seconds) seconds")
     }
 
     @Published private(set) var isEnabled: Bool
@@ -332,7 +327,7 @@ final class PlaylistManager: ObservableObject {
         activeItemID = usesItemDurations ? item.id : nil
         let missing = usesItemDurations ? items.count - effective.count : 0
         status = missing > 0
-            ? String(localized: "\(wallpaper.displayName) · \(missing) unavailable item(s) skipped.")
+            ? String(localized: "\(wallpaper.displayName) · \(missing) unavailable items skipped.")
             : wallpaper.displayName
         delay = position.secondsRemaining
         guard lastAppliedPath != wallpaper.url.path else { return }

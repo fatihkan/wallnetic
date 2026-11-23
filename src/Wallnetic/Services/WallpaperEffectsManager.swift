@@ -62,7 +62,7 @@ class WallpaperEffectsManager: ObservableObject {
                      brightness: -0.05, contrast: 1.15, saturation: 0.85,
                      blur: 0, tintEnabled: true, tintColorHex: "#2d1f0e",
                      tintOpacity: 0.15, vignetteEnabled: true, vignetteIntensity: 0.8),
-        EffectPreset(id: "bw", name: "B&W", icon: "circle.lefthalf.filled",
+        EffectPreset(id: "bw", name: String(localized: "B&W"), icon: "circle.lefthalf.filled",
                      brightness: 0.05, contrast: 1.2, saturation: 0,
                      blur: 0, tintEnabled: false, tintColorHex: "#000000",
                      tintOpacity: 0, vignetteEnabled: false, vignetteIntensity: 0),

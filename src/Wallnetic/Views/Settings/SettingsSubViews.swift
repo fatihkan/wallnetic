@@ -41,7 +41,7 @@ struct NotificationSettingsView: View {
                                     .foregroundColor(.accentColor)
                                     .frame(width: 24)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(type.rawValue)
+                                    Text(type.rawValue) // l10n:ignore (this view is not shown anywhere)
                                     Text(type.description)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
@@ -80,7 +80,7 @@ struct AppearanceSettingsView: View {
                                 .foregroundColor(mode == .dark ? .purple : (mode == .light ? .orange : .accentColor))
                                 .frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(mode.rawValue)
+                                Text(mode.title)
                                 Text(descriptionFor(mode))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -94,7 +94,7 @@ struct AppearanceSettingsView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(mode.rawValue)
+                    .accessibilityLabel(mode.title)
                     .accessibilityValue(descriptionFor(mode))
                     .accessibilityAddTraits(themeManager.appearanceMode == mode ? [.isSelected] : [])
                 }
@@ -248,7 +248,7 @@ struct PlaybackSettingsView: View {
             Section("Performance") {
                 Picker("Playback profile", selection: $performance.mode) {
                     ForEach(PerformanceManager.PerformanceMode.allCases, id: \.self) { mode in
-                        Label(mode.rawValue, systemImage: mode.icon).tag(mode)
+                        Label(mode.title, systemImage: mode.icon).tag(mode)
                     }
                 }
                 Text(performance.mode.description)

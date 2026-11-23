@@ -1,0 +1,15 @@
+/* App Shortcuts phrases in German (#351). A draft: not yet reviewed by a native speaker.
+   Each phrase must keep ${applicationName}. The English phrases are in Services/AppShortcuts.swift. */
+
+"Toggle Calm Mode in ${applicationName}" = "Ruhemodus in ${applicationName} umschalten";
+
+"Next wallpaper in ${applicationName}" = "Nächstes Hintergrundbild in ${applicationName}";
+"Change wallpaper in ${applicationName}" = "Hintergrundbild in ${applicationName} wechseln";
+"Switch wallpaper in ${applicationName}" = "Hintergrundbild in ${applicationName} ändern";
+
+"Pause wallpaper in ${applicationName}" = "Hintergrundbild in ${applicationName} pausieren";
+"Play wallpaper in ${applicationName}" = "Hintergrundbild in ${applicationName} wiedergeben";
+"Toggle ${applicationName}" = "${applicationName} umschalten";
+
+"Random wallpaper in ${applicationName}" = "Zufälliges Hintergrundbild in ${applicationName}";
+"Surprise me with ${applicationName}" = "Überrasch mich mit ${applicationName}";

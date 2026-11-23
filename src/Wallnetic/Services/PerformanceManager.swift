@@ -11,6 +11,15 @@ final class PerformanceManager: ObservableObject {
         case balanced = "Balanced"
         case battery = "Battery Saver"
 
+        /// The name in the interface. The raw value is stored and stays in English.
+        var title: String {
+            switch self {
+            case .quality: return String(localized: "Quality")
+            case .balanced: return String(localized: "Balanced")
+            case .battery: return String(localized: "Battery Saver")
+            }
+        }
+
         var icon: String {
             switch self {
             case .quality: return "sparkles"
