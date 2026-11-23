@@ -111,6 +111,38 @@ JSON numbers fail with a command-line error. Fixture durations must also be fini
 These checks preserve schema-v1 reports and do not authenticate the measurements
 or replace review of raw samples, traces and the physical-device matrix.
 
+## Running a whole session
+
+`tools/playback-benchmark/campaign.py` collects every configuration of a
+session in turn, so the operator starts one command and leaves the Mac alone.
+It only calls `benchmark.py run` and keeps a log; it measures nothing itself.
+
+```sh
+python3 tools/playback-benchmark/campaign.py plan          # what would run, and for how long
+python3 tools/playback-benchmark/campaign.py run \
+  --media .build/benchmark-media-v1 \
+  --context 'Rig A; AC; brightness fixed; background workloads documented' \
+  --output .build/benchmarks/rig-a-session-1
+```
+
+- **A default session** is both fixtures, Metal in its three profiles and
+  AVPlayer once per fixture (it plays at the video's own cadence in every
+  profile): 8 configurations, about 70 minutes with a 60-second pause between
+  them.
+- **Narrow it** with `--fixtures`, `--engines`, `--profiles`; add the clock
+  condition with `--overlays none,clock`; choose displays with `--screens 0,1`.
+- **Alternate the order** between sessions with `--reverse`.
+- Each configuration gets its own folder in the output directory, as with a
+  single `run`. `campaign.json` records every configuration: collected,
+  collected but not all repetitions eligible, failed, or not run.
+- A failed configuration does not stop the session. Ctrl-C does, and keeps
+  what was collected.
+
+**What the operator does:** close or note other workloads, fix brightness,
+start the command, and then do not touch the Mac. The playback window must
+stay visible and uncovered for the whole session; a covered window makes the
+run ineligible. The Mac may not sleep, lock or change displays.
+
 ## Metrics and limits
 
 | Field | Meaning / collection |
