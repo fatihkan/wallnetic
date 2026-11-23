@@ -21,16 +21,42 @@ struct WindowChrome: NSViewRepresentable {
         }
     }
 
+    /// Whether a window with a system toolbar lets its content run under
+    /// that toolbar. macOS 26 draws the toolbar as glass over the content;
+    /// earlier systems keep the toolbar in a title bar of its own.
+    static var toolbarFloatsOverContent: Bool {
+        if #available(macOS 26.0, *) { return true }
+        return false
+    }
+
     static func configureAppWindow(_ window: NSWindow) {
+        configureAppWindow(window, hostsToolbar: false)
+    }
+
+    /// - Parameter hostsToolbar: the window has a system toolbar that holds
+    ///   the window controls (the main window). Settings has none.
+    static func configureAppWindow(_ window: NSWindow, hostsToolbar: Bool) {
         guard window.styleMask.contains(.titled),
               !(window is NSPanel), !window.isSheet else { return }
 
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = false
-        // #237: use AppKit's reserved title-bar area, not a transparent strip
-        // under opaque SwiftUI content. Leave fullscreen's style to AppKit.
-        if !window.styleMask.contains(.fullScreen) {
-            window.styleMask.remove(.fullSizeContentView)
+        if hostsToolbar && toolbarFloatsOverContent {
+            // The controls sit in the toolbar, which AppKit keeps above the
+            // content, and SwiftUI keeps the content's own controls out of
+            // the toolbar's safe area. Only backgrounds and scrolled rows
+            // pass under the glass.
+            window.titlebarAppearsTransparent = true
+            // Leave fullscreen's style to AppKit.
+            if !window.styleMask.contains(.fullScreen) {
+                window.styleMask.insert(.fullSizeContentView)
+            }
+        } else {
+            window.titlebarAppearsTransparent = false
+            // #237: use AppKit's reserved title-bar area, not a transparent strip
+            // under opaque SwiftUI content. Leave fullscreen's style to AppKit.
+            if !window.styleMask.contains(.fullScreen) {
+                window.styleMask.remove(.fullSizeContentView)
+            }
         }
         window.appearance = ThemeManager.shared.appearanceMode.nsAppearance
         window.isOpaque = true
@@ -93,7 +119,7 @@ extension View {
     /// Theme-aware native title bar. Apply only at the main/settings scene root;
     /// sheets, panels and borderless wallpaper windows keep their own chrome.
     func cinematicWindowChrome(isMainWindow: Bool = false) -> some View {
-        background(WindowChrome(configure: WindowChrome.configureAppWindow,
+        background(WindowChrome(configure: { WindowChrome.configureAppWindow($0, hostsToolbar: isMainWindow) },
                                 onAttach: isMainWindow ? WindowManager.shared.registerMainWindow : nil))
     }
 }

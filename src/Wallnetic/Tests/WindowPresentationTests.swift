@@ -141,6 +141,32 @@ final class WindowPresentationTests: XCTestCase {
         }
     }
 
+    /// The main window has a system toolbar. On macOS 26 its content runs
+    /// under that toolbar; on earlier systems it keeps the #237 title bar.
+    @MainActor
+    func testToolbarWindowFollowsTheSystemAndKeepsItsControls() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.toolbar = NSToolbar(identifier: "test-toolbar")
+        WindowChrome.configureAppWindow(window, hostsToolbar: true)
+        WindowChrome.configureAppWindow(window, hostsToolbar: true)
+
+        let floats = WindowChrome.toolbarFloatsOverContent
+        XCTAssertEqual(window.styleMask.contains(.fullSizeContentView), floats)
+        XCTAssertEqual(window.titlebarAppearsTransparent, floats)
+        XCTAssertTrue(window.isOpaque)
+        for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            let button = try XCTUnwrap(window.standardWindowButton(type))
+            XCTAssertFalse(button.isHidden)
+            XCTAssertGreaterThan(button.alphaValue, 0)
+        }
+    }
+
     @MainActor
     func testChromeLeavesPanelsAndBorderlessWindowsAlone() {
         let panel = NSPanel(contentRect: .zero, styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
