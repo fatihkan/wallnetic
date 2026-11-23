@@ -528,6 +528,7 @@ class WallpaperManager: ObservableObject {
         OptimizedCopyStore.shared.removeCopies(at: paths)
         PauseAfterSettings.shared.removeOverrides(for: urls)
         PlaybackTrimStore.shared.removeTrims(for: urls)
+        WallpaperScalingStore.shared.removeScalings(for: urls)
         CollectionManager.shared.removeWallpaperIDs(update.ids)
         TimeOfDayManager.shared.removeWallpaperPaths(paths)
         PlaylistManager.shared.removeWallpaperPaths(paths)

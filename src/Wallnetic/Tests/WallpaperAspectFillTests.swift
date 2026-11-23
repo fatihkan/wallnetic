@@ -102,4 +102,61 @@ final class WallpaperAspectFillTests: XCTestCase {
         let smaller = try XCTUnwrap(WallpaperFrameCrop.rebuild(first, forFrameOf: CGSize(width: 1280, height: 720), viewSize: display))
         XCTAssertEqual(smaller.textureRect, first.textureRect)
     }
+
+    // MARK: - Fit with Blurred Backdrop (#348)
+
+    private let display1610 = CGSize(width: 2560, height: 1600)
+    private let ultrawideDisplay = CGSize(width: 3440, height: 1440)
+
+    func testFitShowsTheWholeFrameAndFillsOneAxis() {
+        let sources: [CGSize] = [
+            CGSize(width: 1080, height: 1920),   // portrait
+            CGSize(width: 1080, height: 1080),   // square
+            CGSize(width: 2560, height: 1080),   // 21:9
+            CGSize(width: 1920, height: 1080),   // 16:9
+        ]
+        for view in [display1610, ultrawideDisplay] {
+            for video in sources {
+                let fraction = WallpaperAspectFit.viewFraction(videoSize: video, viewSize: view)
+                XCTAssertEqual(max(fraction.width, fraction.height), 1, accuracy: 0.0001)
+                XCTAssertLessThanOrEqual(fraction.width, 1.0001)
+                XCTAssertLessThanOrEqual(fraction.height, 1.0001)
+                // The fitted rectangle keeps the video's shape.
+                let fitted = CGSize(width: view.width * fraction.width, height: view.height * fraction.height)
+                XCTAssertEqual(fitted.width / fitted.height, video.width / video.height, accuracy: 0.001)
+            }
+        }
+    }
+
+    func testPortraitOnLandscapeLeavesSideBandsAndWideOnTallerLeavesTopAndBottom() {
+        let portrait = WallpaperAspectFit.viewFraction(videoSize: CGSize(width: 1080, height: 1920), viewSize: display1610)
+        XCTAssertEqual(portrait.height, 1, accuracy: 0.0001)
+        XCTAssertEqual(portrait.width, (1080.0 / 1920.0) / (2560.0 / 1600.0), accuracy: 0.0001)
+
+        let wide = WallpaperAspectFit.viewFraction(videoSize: CGSize(width: 2560, height: 1080), viewSize: display1610)
+        XCTAssertEqual(wide.width, 1, accuracy: 0.0001)
+        XCTAssertLessThan(wide.height, 1)
+    }
+
+    func testBackdropIsDrawnOnlyForFitAndOnlyWhenBandsWouldShow() {
+        let portrait = CGSize(width: 1080, height: 1920)
+        let same = CGSize(width: 1280, height: 800)
+        XCTAssertTrue(WallpaperFrameCrop(videoSize: portrait, viewSize: display1610, scaling: .fitBlurred).drawsBackdrop)
+        XCTAssertFalse(WallpaperFrameCrop(videoSize: portrait, viewSize: display1610, scaling: .fill).drawsBackdrop,
+                       "Fill never draws a backdrop")
+        XCTAssertFalse(WallpaperFrameCrop(videoSize: same, viewSize: display1610, scaling: .fitBlurred).drawsBackdrop,
+                       "A video of the display's shape covers it either way")
+        XCTAssertFalse(WallpaperFrameCrop(videoSize: .zero, viewSize: display1610, scaling: .fitBlurred).drawsBackdrop)
+    }
+
+    func testAScalingChangeRebuildsTheQuadAndFillStaysTheDefault() throws {
+        let portrait = CGSize(width: 1080, height: 1920)
+        let fill = WallpaperFrameCrop(videoSize: portrait, viewSize: display1610)
+        XCTAssertEqual(fill.scaling, .fill)
+        XCTAssertNil(WallpaperFrameCrop.rebuild(fill, forFrameOf: portrait, viewSize: display1610))
+        let fit = try XCTUnwrap(WallpaperFrameCrop.rebuild(fill, forFrameOf: portrait, viewSize: display1610,
+                                                           scaling: .fitBlurred))
+        XCTAssertEqual(fit.scaling, .fitBlurred)
+        XCTAssertEqual(fit.textureRect, fill.textureRect, "The backdrop uses the same aspect-fill crop")
+    }
 }

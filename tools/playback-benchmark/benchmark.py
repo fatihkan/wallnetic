@@ -28,7 +28,8 @@ RENDERER_SOURCES = [
 # Renderer dependencies added after the pre-wave baseline revision (#309).
 # They compile when the checkout has them, so one unchanged collector measures
 # the baseline revision and later candidates alike.
-OPTIONAL_RENDERER_SOURCES = ["Engine/PlaybackTrim.swift", "Engine/TrimmedVideoAsset.swift"]
+OPTIONAL_RENDERER_SOURCES = ["Engine/PlaybackTrim.swift", "Engine/TrimmedVideoAsset.swift",
+                             "Models/WallpaperScaling.swift"]
 OVERLAYS = ("none", "clock")
 RECIPES = {"h264": (1920, 1080, 30, "avc1"), "hevc": (3840, 2160, 60, "hvc1")}
 COMPARISON_FIELDS = (

@@ -335,6 +335,7 @@ struct WallpaperContextMenu: View {
     let wallpaper: Wallpaper
     @ObservedObject private var optimizedCopies = OptimizedCopyStore.shared
     @ObservedObject private var trims = PlaybackTrimStore.shared
+    @ObservedObject private var scalings = WallpaperScalingStore.shared
     @ObservedObject private var spaceManager = SpaceWallpaperManager.shared
     var onPreview: (() -> Void)? = nil
     var onOptimize: (() -> Void)? = nil
@@ -392,6 +393,19 @@ struct WallpaperContextMenu: View {
                 } label: { Label("Remove Trim", systemImage: "arrow.uturn.backward") }
             }
         }
+        // How the video sits on a display of another shape (#348). The
+        // AVPlayer renderer always fills, so the choice is offered with Metal.
+        if wallpaperManager.useMetalRenderer {
+            Picker("Scaling", selection: Binding(
+                get: { scalings.scaling(for: wallpaper.url) },
+                set: { scalings.setScaling($0, for: wallpaper.url) }
+            )) {
+                ForEach(WallpaperScaling.allCases) { scaling in
+                    Text(scaling.title).tag(scaling)
+                }
+            }
+        }
+
         if let path = optimizedCopies.originalPath(for: wallpaper.url) {
             if let original = wallpaperManager.wallpapers.first(where: { $0.url.standardizedFileURL == URL(fileURLWithPath: path).standardizedFileURL }) {
                 Button { wallpaperManager.setWallpaper(original) } label: { Label("Use Original Video", systemImage: "arrow.uturn.backward") }
