@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// 2026 Liquid Glass sheet chrome. Uses the `LiquidGlass` primitive for
-/// the actual surface (refractive edges, multi-layer shadow, accent
-/// tint), and applies concentric inner radii to anything nested inside.
+/// Header, content and footer layout for the app's sheets. macOS 26 draws
+/// the sheet itself as Liquid Glass, so this adds no panel of its own there;
+/// on macOS 13–25 the `LiquidGlass` polyfill draws the surface.
 ///
 /// Usage:
 ///
@@ -42,7 +42,7 @@ struct WallneticSheet<Content: View, Footer: View>: View {
             .padding(.bottom, Space.md)
         }
         .frame(width: width)
-        .liquidGlass(LiquidGlassStyle(
+        .sheetSurface(polyfill: LiquidGlassStyle(
             radius: Radius.panel,
             accent: accent,
             accentStrength: 0.14,
@@ -64,7 +64,6 @@ struct WallneticSheet<Content: View, Footer: View>: View {
                     Image(systemName: icon)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(accent)
-                        .shadow(color: accent.opacity(0.75), radius: 4)
                 }
                 .frame(width: 30, height: 30)
             }
@@ -72,7 +71,7 @@ struct WallneticSheet<Content: View, Footer: View>: View {
             Text(title)
                 .font(Typo.title2)
                 .tracking(Typo.title2Tracking)
-                .foregroundColor(.white)
+                .foregroundStyle(.primary)
 
             Spacer()
         }

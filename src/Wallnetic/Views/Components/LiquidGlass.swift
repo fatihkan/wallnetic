@@ -132,8 +132,9 @@ private struct LiquidGlassModifier: ViewModifier {
 // shadow and prominent tone preset.
 
 extension View {
+    /// Real glass on macOS 26; this polyfill preset on earlier systems.
     func liquidGlassHUD(radius: CGFloat = Radius.panel, accent: Color = .accentColor) -> some View {
-        self.liquidGlass(LiquidGlassStyle(radius: radius, accent: accent, accentStrength: 0.18, tone: .prominent))
+        self.adaptiveGlass(polyfill: LiquidGlassStyle(radius: radius, accent: accent, accentStrength: 0.18, tone: .prominent))
     }
 
     func liquidGlassControl(radius: CGFloat = Radius.control, accent: Color = .accentColor, accentStrength: Double = 0.0) -> some View {

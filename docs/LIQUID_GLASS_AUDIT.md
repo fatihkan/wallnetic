@@ -134,6 +134,35 @@ ends below the toolbar and does not scroll under it. Letting it scroll under
 the glass toolbar on macOS 26 means relaxing that guard for the main window
 only, and it needs a check of the window controls on macOS 26 first.
 
+## Result of B3 (adaptive glass)
+
+`Views/Components/AdaptiveGlass.swift` holds the one place that checks for
+macOS 26. On macOS 13–25 every surface below draws what it drew before.
+
+| Surface | macOS 26 | macOS 13–25 |
+| --- | --- | --- |
+| Now-playing bar | Floating glass bar, inset from the window edges | Full-width `.bar` with a divider |
+| Import toast | Glass | `.regularMaterial` |
+| Download bar and desktop hint | Glass strip, accent tint kept on top | Material strip, as before |
+| Grid HUD (`liquidGlassHUD`) | Glass | Polyfill |
+| Preview control panel (`VideoPreviewView`) | Glass | `glassBackground` |
+| Now Playing overlay card | Glass | `.ultraThinMaterial` card |
+| `WallneticSheet` | No panel of its own; the system sheet shows | Polyfill panel |
+
+Also changed:
+- `WallneticSheet`'s title and the Now Playing overlay's text use `.primary`
+  and `.secondary` instead of hard-coded white, so they stay readable in light
+  appearance. The sheet icon lost its accent glow.
+
+Left as they were, on purpose:
+- **Onboarding's white icon.** It sits on a coloured disk in both appearances,
+  so the audit's concern does not apply.
+- **Thumbnail badges.** They are small labels on artwork, and the audit marked
+  them optional.
+- **`GlassEffectContainer`.** No two custom glass surfaces touch.
+- **The polyfill's accent shadow.** macOS 26 no longer draws the polyfill, and
+  earlier systems keep their look.
+
 ## Screens to confirm visually
 
 Check each on macOS 26 and on macOS 13, in light and dark appearance:

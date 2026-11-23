@@ -110,10 +110,12 @@ struct ContentView: View {
                         .font(Typo.body)
                 }
                 .padding(Space.md)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.control))
+                .adaptiveGlass(in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous)) {
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(.regularMaterial)
+                }
                 .padding(Space.lg)
                 // Clear the now-playing bar.
-                .padding(.bottom, wallpaperManager.currentWallpaper == nil ? 0 : 52)
+                .padding(.bottom, wallpaperManager.currentWallpaper == nil ? 0 : NowPlayingBar.reservedHeight)
             }
         }
         .frame(minWidth: 900, minHeight: 600)
@@ -355,16 +357,17 @@ struct DownloadProgressBar: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
             .background(
+                // The share of the bar that is filled shows the progress.
                 GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Rectangle().fill(Surface.glassControl)
-                        Rectangle()
-                            .fill(Color.accentColor.opacity(0.15))
-                            .frame(width: geo.size.width * totalProgress)
-                            .animation(.easeInOut(duration: 0.3), value: totalProgress)
-                    }
+                    Rectangle()
+                        .fill(Color.accentColor.opacity(0.15))
+                        .frame(width: geo.size.width * totalProgress)
+                        .animation(.easeInOut(duration: 0.3), value: totalProgress)
                 }
             )
+            .adaptiveGlass(in: Rectangle()) {
+                Rectangle().fill(Surface.glassControl)
+            }
         }
     }
 }
@@ -413,14 +416,16 @@ struct DesktopKeepsPlayingHint: View {
         .padding(.horizontal, Space.md)
         .padding(.vertical, Space.xs + 2)
         .background(
+            Rectangle().fill(LinearGradient(
+                colors: [Color.accentColor.opacity(0.10), .clear],
+                startPoint: .leading, endPoint: .trailing))
+        )
+        .adaptiveGlass(in: Rectangle()) {
             ZStack {
                 Rectangle().fill(.ultraThinMaterial)
                 Rectangle().fill(Surface.glassControl)
-                Rectangle().fill(LinearGradient(
-                    colors: [Color.accentColor.opacity(0.10), .clear],
-                    startPoint: .leading, endPoint: .trailing))
             }
-        )
+        }
         .overlay(alignment: .bottom) {
             Rectangle().fill(Surface.hairline).frame(height: 0.5)
         }

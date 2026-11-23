@@ -33,7 +33,17 @@ enum NavigationTab: String, CaseIterable, Identifiable {
 
 /// A bar along the bottom of the main window: the current wallpaper, how it
 /// is playing on the displays, and the playback controls from the menu bar.
+///
+/// On macOS 26 it floats above the content as Liquid Glass, inset from the
+/// window edges. On earlier systems it is a full-width bar (#343 B3).
 struct NowPlayingBar: View {
+    /// The room the bar takes at the bottom of the window, for views that
+    /// float just above it.
+    static var reservedHeight: CGFloat {
+        if #available(macOS 26.0, *) { return 58 + Space.xs }
+        return 58
+    }
+
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @ObservedObject private var calm = CalmPlaybackSettings.shared
 
@@ -64,56 +74,67 @@ struct NowPlayingBar: View {
 
     var body: some View {
         if let wallpaper = wallpaperManager.currentWallpaper {
-            HStack(spacing: Space.md) {
-                AsyncThumbnailView(wallpaper: wallpaper, size: CGSize(width: 56, height: 34), cornerRadius: 6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
-                    )
-                    .accessibilityHidden(true)
+            if #available(macOS 26.0, *) {
+                row(wallpaper)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Radius.panel, style: .continuous))
+                    .padding(.horizontal, Space.sm)
+                    .padding(.bottom, Space.xs)
+            } else {
+                row(wallpaper)
+                    .background(.bar)
+                    .overlay(alignment: .top) { Divider() }
+            }
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(wallpaper.displayName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-                    Text(calm.state.isCalmEnabled ? "Calm Mode is on" : summary)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+    private func row(_ wallpaper: Wallpaper) -> some View {
+        HStack(spacing: Space.md) {
+            AsyncThumbnailView(wallpaper: wallpaper, size: CGSize(width: 56, height: 34), cornerRadius: 6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(wallpaper.displayName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                Text(calm.state.isCalmEnabled ? "Calm Mode is on" : summary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+            .help(perDisplaySummary)
+
+            Spacer(minLength: Space.md)
+
+            HStack(spacing: Space.xs) {
+                barButton(
+                    wallpaperManager.isPlaying ? "Pause" : "Play",
+                    icon: wallpaperManager.isPlaying ? "pause.fill" : "play.fill"
+                ) {
+                    wallpaperManager.togglePlayback()
                 }
-                .accessibilityElement(children: .combine)
-                .help(perDisplaySummary)
+                .disabled(!canResume)
 
-                Spacer(minLength: Space.md)
+                barButton("Next Wallpaper", icon: "forward.fill") {
+                    wallpaperManager.cycleToNextWallpaper()
+                }
 
-                HStack(spacing: Space.xs) {
-                    barButton(
-                        wallpaperManager.isPlaying ? "Pause" : "Play",
-                        icon: wallpaperManager.isPlaying ? "pause.fill" : "play.fill"
-                    ) {
-                        wallpaperManager.togglePlayback()
-                    }
-                    .disabled(!canResume)
-
-                    barButton("Next Wallpaper", icon: "forward.fill") {
-                        wallpaperManager.cycleToNextWallpaper()
-                    }
-
-                    barButton(
-                        calm.state.isCalmEnabled ? "Turn Off Calm Mode" : "Turn On Calm Mode",
-                        icon: calm.state.isCalmEnabled ? "leaf.fill" : "leaf",
-                        isOn: calm.state.isCalmEnabled
-                    ) {
-                        calm.toggleCalmMode()
-                    }
+                barButton(
+                    calm.state.isCalmEnabled ? "Turn Off Calm Mode" : "Turn On Calm Mode",
+                    icon: calm.state.isCalmEnabled ? "leaf.fill" : "leaf",
+                    isOn: calm.state.isCalmEnabled
+                ) {
+                    calm.toggleCalmMode()
                 }
             }
-            .padding(.horizontal, Space.lg)
-            .padding(.vertical, Space.sm)
-            .frame(maxWidth: .infinity)
-            .background(.bar)
-            .overlay(alignment: .top) { Divider() }
         }
+        .padding(.horizontal, Space.lg)
+        .padding(.vertical, Space.sm)
+        .frame(maxWidth: .infinity)
     }
 
     private func barButton(_ label: String, icon: String, isOn: Bool = false,
