@@ -3,7 +3,9 @@ import SwiftUI
 // DUSUK-2: scoped to HomeView so it can't accidentally be reused as
 // app-wide. Access via `HomeView.horizontalInset`.
 extension HomeView {
-    static let horizontalInset: CGFloat = 48
+    /// The same page margin as Library, so content does not shift sideways
+    /// when the tab changes.
+    static let horizontalInset: CGFloat = Space.lg
 }
 private var homeHorizontalInset: CGFloat { HomeView.horizontalInset }
 
@@ -265,6 +267,13 @@ struct CarouselCard: View {
         return Double(pointer.x - 0.5) * 8  // right → tilt right
     }
 
+    /// The duration arrives a moment after launch. `Wallpaper` equality
+    /// leaves it out, so SwiftUI keeps the copy this card was created with;
+    /// read the library's current copy instead.
+    private var durationText: String {
+        (wallpaperManager.wallpapers.first { $0.id == wallpaper.id } ?? wallpaper).formattedDuration
+    }
+
     private var glareOffset: CGFloat {
         min(1, max(0, pointer.x))
     }
@@ -327,7 +336,7 @@ struct CarouselCard: View {
                     VStack {
                         HStack {
                             Spacer()
-                            Text(wallpaper.formattedDuration)
+                            Text(durationText)
                                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 6)

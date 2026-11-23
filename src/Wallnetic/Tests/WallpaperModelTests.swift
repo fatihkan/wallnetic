@@ -36,6 +36,26 @@ final class WallpaperModelTests: XCTestCase {
         XCTAssertEqual(wp.displayName, "test")
     }
 
+    // MARK: - Date added
+
+    func testDateAddedPrefersTheDayTheFileJoinedTheLibrary() {
+        let created = Date(timeIntervalSince1970: 1_000)
+        let added = Date(timeIntervalSince1970: 2_000)
+        let now = Date(timeIntervalSince1970: 3_000)
+        XCTAssertEqual(Wallpaper.dateAdded(addedToLibrary: added, created: created, now: now), added)
+        XCTAssertEqual(Wallpaper.dateAdded(addedToLibrary: nil, created: created, now: now), created)
+        XCTAssertEqual(Wallpaper.dateAdded(addedToLibrary: nil, created: nil, now: now), now)
+    }
+
+    func testDateAddedComesFromTheFileNotFromTheMomentItIsLoaded() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).mp4")
+        try Data([0]).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let first = Wallpaper(url: url).dateAdded
+        Thread.sleep(forTimeInterval: 0.05)
+        XCTAssertEqual(Wallpaper(url: url).dateAdded, first, "Loading the same file again must not move its date")
+    }
+
     // MARK: - Equatable
 
     func testEqualityIncludesCustomTitle() {
