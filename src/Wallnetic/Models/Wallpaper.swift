@@ -35,7 +35,10 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
         // Only file size and dates — cheap file-system calls
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         self.fileSize = (attributes?[.size] as? Int64) ?? 0
-        let dates = try? url.resourceValues(forKeys: [.addedToDirectoryDateKey, .creationDateKey])
+        // Read through a separate URL value. Resource values are cached on
+        // the URL they were asked of, and `url` outlives changes to the file.
+        let dates = try? URL(fileURLWithPath: url.path)
+            .resourceValues(forKeys: [.addedToDirectoryDateKey, .creationDateKey])
         self.dateAdded = Self.dateAdded(addedToLibrary: dates?.addedToDirectoryDate,
                                         created: dates?.creationDate, now: Date())
 
