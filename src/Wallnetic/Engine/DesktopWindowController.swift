@@ -17,6 +17,10 @@ protocol WallpaperRenderer: AnyObject {
     /// range applied (`true`) or fell back to the full video (`false`). Nil
     /// when there was no range, or while an edit waits for the next resume.
     var trimOutcome: (url: URL, applied: Bool)? { get }
+    /// The scaling of the video about to be loaded. Called before `loadVideo`.
+    func prepareScaling(_ scaling: WallpaperScaling)
+    /// An edit to the loaded video's scaling, shown without a reload.
+    func applyScaling(_ scaling: WallpaperScaling)
     func play()
     func pause()
     func stop()
@@ -50,6 +54,11 @@ extension WallpaperRenderer {
     }
 
     var trimOutcome: (url: URL, applied: Bool)? { nil }
+
+    /// A renderer without a blurred backdrop keeps filling the display. The
+    /// AVPlayer renderer is one: its video layer cannot be drawn twice.
+    func prepareScaling(_ scaling: WallpaperScaling) {}
+    func applyScaling(_ scaling: WallpaperScaling) {}
 }
 
 // Conform VideoRenderer to the protocol
@@ -103,15 +112,19 @@ class DesktopWindowController {
     private var playbackActivity: NSObjectProtocol?
     private let trimStore: PlaybackTrimStore
     private var trimObserver: AnyCancellable?
+    private let scalingStore: WallpaperScalingStore
+    private var scalingObserver: AnyCancellable?
     /// The optional desktop clock (#311). It only receives values.
     private let clock: DesktopClockCoordinator
     /// Makes a display's renderer; tests pass spies.
     private let makeRenderer: (_ useMetal: Bool) -> WallpaperRenderer
 
-    init(trimStore: PlaybackTrimStore = .shared, clock: DesktopClockCoordinator = DesktopClockCoordinator(),
+    init(trimStore: PlaybackTrimStore = .shared, scalingStore: WallpaperScalingStore = .shared,
+         clock: DesktopClockCoordinator = DesktopClockCoordinator(),
          makeRenderer: @escaping (_ useMetal: Bool) -> WallpaperRenderer = DesktopWindowController.defaultRenderer) {
         self.useMetalRenderer = WallpaperManager.shared.useMetalRenderer
         self.trimStore = trimStore
+        self.scalingStore = scalingStore
         self.clock = clock
         self.makeRenderer = makeRenderer
         setupDesktopWindows()
@@ -119,6 +132,9 @@ class DesktopWindowController {
         // `@Published` emits before it stores, so use the emitted ranges.
         trimObserver = trimStore.$trims.dropFirst().sink { [weak self] trims in
             self?.applyTrimEdits(trims)
+        }
+        scalingObserver = scalingStore.$scalings.dropFirst().sink { [weak self] scalings in
+            self?.applyScalingEdits(scalings)
         }
         durationPlayback.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
         calmSettingsObserver = CalmPlaybackSettings.shared.$state
@@ -329,6 +345,7 @@ class DesktopWindowController {
             // frame (or every looper item swap) as a visible twitch.
             // The renderer keeps the previous player until the next item is
             // ready, which is the hitch-free swap.
+            renderer.prepareScaling(scalingStore.scaling(for: url))
             renderer.loadVideo(url: url, trim: trimStore.trim(for: url))
             durationPlayback.setWallpaper(url, renderer: renderer, on: s,
                                           preferences: PauseAfterSettings.shared.preferences)
@@ -360,6 +377,14 @@ class DesktopWindowController {
     private func applyTrimEdits(_ trims: [String: PlaybackTrim]) {
         for (id, url) in screenWallpaperURLs {
             renderers[id]?.applyTrim(PlaybackTrimStore.trim(for: url, in: trims))
+        }
+    }
+
+    /// A scaling edit redraws the displays showing that video. It never
+    /// reloads a player, so playback, Pause After and Trim carry on.
+    private func applyScalingEdits(_ scalings: [String: WallpaperScaling]) {
+        for (id, url) in screenWallpaperURLs {
+            renderers[id]?.applyScaling(WallpaperScalingStore.scaling(for: url, in: scalings))
         }
     }
 
@@ -612,6 +637,7 @@ class DesktopWindowController {
                 ? WallpaperManager.shared.wallpaper(for: screen)?.url : currentWallpaperURL
             if let url, let renderer = renderers[id] {
                 screenWallpaperURLs[id] = url
+                renderer.prepareScaling(scalingStore.scaling(for: url))
                 renderer.loadVideo(url: url, trim: trimStore.trim(for: url))
                 durationPlayback.setWallpaper(url, renderer: renderer, on: id,
                                               preferences: PauseAfterSettings.shared.preferences)
@@ -706,6 +732,7 @@ class DesktopWindowController {
         clock.cleanup()
         statusObservers.removeAll()
         trimObserver = nil
+        scalingObserver = nil
         onDisplayStatusesChanged = nil
         durationSettingsObserver = nil
         calmSettingsObserver = nil

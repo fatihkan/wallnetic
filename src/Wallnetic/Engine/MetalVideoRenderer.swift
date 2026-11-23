@@ -78,6 +78,9 @@ final class MetalVideoRenderer: NSObject {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private var pipelineState: MTLRenderPipelineState!
+    /// Fit with Blurred Backdrop (#348): shrink the frame, then blur it.
+    private var downsamplePipelineState: MTLRenderPipelineState!
+    private var blurPipelineState: MTLRenderPipelineState!
     private var textureCache: CVMetalTextureCache?
 
     // MARK: - Video Objects
@@ -99,12 +102,17 @@ final class MetalVideoRenderer: NSObject {
         /// the frame, so a frame kept on screen across a reload keeps its own
         /// crop until the next video's first frame replaces it (#307).
         let videoSize: CGSize
+        /// How this frame's video is placed. Like the crop it follows the
+        /// frame; an edit to the playing video's scaling updates it.
+        var scaling: WallpaperScaling
         private var backing: CVMetalTexture?
         private let cache: CVMetalTextureCache
 
-        init(texture: MTLTexture, videoSize: CGSize, backing: CVMetalTexture, cache: CVMetalTextureCache) {
+        init(texture: MTLTexture, videoSize: CGSize, scaling: WallpaperScaling,
+             backing: CVMetalTexture, cache: CVMetalTextureCache) {
             self.texture = texture
             self.videoSize = videoSize
+            self.scaling = scaling
             self.backing = backing
             self.cache = cache
         }
@@ -119,8 +127,18 @@ final class MetalVideoRenderer: NSObject {
     private var vertexBuffer: MTLBuffer?
     /// The crop `vertexBuffer` was built for: always the drawn frame's.
     private(set) var quadCrop: WallpaperFrameCrop?
+    /// The whole view and the whole texture, for the backdrop passes.
+    private var unitQuadBuffer: MTLBuffer?
+    /// The whole frame, centred, for Fit with Blurred Backdrop.
+    private var fitQuadBuffer: MTLBuffer?
+    /// Two small targets the backdrop is shrunk into and blurred between.
+    private var backdropTargets: (a: MTLTexture, b: MTLTexture)?
     /// Display size of the current player's video, given to its frames.
     private(set) var playerVideoSize: CGSize = .zero
+    /// Scaling of the video being loaded, set before `loadVideo`.
+    private var loadScaling: WallpaperScaling = .fill
+    /// Scaling of the current player's video, given to its frames.
+    private(set) var playerScaling: WallpaperScaling = .fill
     private var lastPresentedSeconds: Double = -1
     private var hasLoggedFrameColorInfo = false
     private var loopObserver: NSObjectProtocol?
@@ -230,12 +248,51 @@ final class MetalVideoRenderer: NSObject {
             constexpr sampler s(mag_filter::linear, min_filter::linear);
             return texture.sample(s, in.texCoord);
         }
+
+        struct BackdropUniforms {
+            float2 step;
+            float dim;
+            float pad;
+        };
+
+        // Shrinks the frame into a small target. Sixteen taps spread over
+        // the area one small pixel covers, so fine detail does not shimmer.
+        fragment float4 downsampleShader(VertexOut in [[stage_in]],
+                                         texture2d<float> texture [[texture(0)]],
+                                         constant BackdropUniforms &u [[buffer(0)]]) {
+            constexpr sampler s(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
+            float3 c = float3(0.0);
+            for (int y = 0; y < 4; y++) {
+                for (int x = 0; x < 4; x++) {
+                    float2 offset = (float2(float(x), float(y)) - 1.5) * u.step;
+                    c += texture.sample(s, in.texCoord + offset).rgb;
+                }
+            }
+            return float4(c / 16.0, 1.0);
+        }
+
+        // One direction of a 9-tap Gaussian. With a zero step it only dims.
+        fragment float4 blurShader(VertexOut in [[stage_in]],
+                                   texture2d<float> texture [[texture(0)]],
+                                   constant BackdropUniforms &u [[buffer(0)]]) {
+            constexpr sampler s(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
+            const float weights[5] = {0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216};
+            float3 c = texture.sample(s, in.texCoord).rgb * weights[0];
+            for (int i = 1; i < 5; i++) {
+                float2 offset = u.step * float(i);
+                c += texture.sample(s, in.texCoord + offset).rgb * weights[i];
+                c += texture.sample(s, in.texCoord - offset).rgb * weights[i];
+            }
+            return float4(c * u.dim, 1.0);
+        }
         """
 
         do {
             let library = try device.makeLibrary(source: shaderSource, options: nil)
             guard let vertexFunc = library.makeFunction(name: "vertexShader"),
-                  let fragmentFunc = library.makeFunction(name: "fragmentShader") else {
+                  let fragmentFunc = library.makeFunction(name: "fragmentShader"),
+                  let downsampleFunc = library.makeFunction(name: "downsampleShader"),
+                  let blurFunc = library.makeFunction(name: "blurShader") else {
                 fatalError("Failed to create Metal shader functions")
             }
 
@@ -256,6 +313,12 @@ final class MetalVideoRenderer: NSObject {
             pipelineDescriptor.vertexDescriptor = vertexDescriptor
 
             self.pipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            // The backdrop targets use the drawable's pixel format, so the
+            // same descriptor serves with another fragment function.
+            pipelineDescriptor.fragmentFunction = downsampleFunc
+            self.downsamplePipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            pipelineDescriptor.fragmentFunction = blurFunc
+            self.blurPipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
         } catch {
             fatalError("Failed to create Metal pipeline state: \(error)")
         }
@@ -282,8 +345,9 @@ final class MetalVideoRenderer: NSObject {
 
     /// Rebuilds the fullscreen quad only when the frame about to be drawn
     /// comes from a video of another size, or the view size changed.
-    private func prepareQuad(forFrameOf videoSize: CGSize, viewSize: CGSize) {
-        guard let crop = WallpaperFrameCrop.rebuild(quadCrop, forFrameOf: videoSize, viewSize: viewSize) else { return }
+    private func prepareQuad(forFrameOf videoSize: CGSize, viewSize: CGSize, scaling: WallpaperScaling) {
+        guard let crop = WallpaperFrameCrop.rebuild(quadCrop, forFrameOf: videoSize, viewSize: viewSize,
+                                                    scaling: scaling) else { return }
         let rect = crop.textureRect
         let u0 = Float(rect.minX)
         let u1 = Float(rect.maxX)
@@ -302,7 +366,126 @@ final class MetalVideoRenderer: NSObject {
             length: vertices.count * MemoryLayout<Vertex>.stride,
             options: .storageModeShared
         )
+        if crop.drawsBackdrop {
+            let fit = crop.fitFraction
+            fitQuadBuffer = makeQuad(halfWidth: Float(fit.width), halfHeight: Float(fit.height))
+            if unitQuadBuffer == nil { unitQuadBuffer = makeQuad(halfWidth: 1, halfHeight: 1) }
+            prepareBackdropTargets(viewSize: viewSize)
+        } else {
+            fitQuadBuffer = nil
+        }
         quadCrop = vertexBuffer == nil ? nil : crop
+    }
+
+    /// A centred quad showing the whole texture. Sizes are in clip space,
+    /// where the view spans -1...1.
+    private func makeQuad(halfWidth w: Float, halfHeight h: Float) -> MTLBuffer? {
+        // NDC y=-1 is the bottom of the screen; textures have v=0 at the top.
+        let vertices: [Vertex] = [
+            Vertex(position: SIMD4<Float>(-w, -h, 0, 1), texCoord: SIMD2<Float>(0, 1)),
+            Vertex(position: SIMD4<Float>( w, -h, 0, 1), texCoord: SIMD2<Float>(1, 1)),
+            Vertex(position: SIMD4<Float>(-w,  h, 0, 1), texCoord: SIMD2<Float>(0, 0)),
+            Vertex(position: SIMD4<Float>( w,  h, 0, 1), texCoord: SIMD2<Float>(1, 0)),
+        ]
+        return device.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout<Vertex>.stride,
+                                 options: .storageModeShared)
+    }
+
+    /// The backdrop is blurred at a small size and stretched over the view,
+    /// which costs little and hides the low resolution.
+    private static let backdropLongSide = 256
+
+    private func prepareBackdropTargets(viewSize: CGSize) {
+        guard viewSize.width > 0, viewSize.height > 0 else { return }
+        let long = Self.backdropLongSide
+        let landscape = viewSize.width >= viewSize.height
+        let ratio = landscape ? viewSize.height / viewSize.width : viewSize.width / viewSize.height
+        let short = max(16, Int((Double(long) * Double(ratio)).rounded()))
+        let width = landscape ? long : short
+        let height = landscape ? short : long
+        if let current = backdropTargets, current.a.width == width, current.a.height == height { return }
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .private
+        guard let a = device.makeTexture(descriptor: descriptor),
+              let b = device.makeTexture(descriptor: descriptor) else {
+            backdropTargets = nil
+            return
+        }
+        backdropTargets = (a, b)
+    }
+
+    private struct BackdropUniforms {
+        var step: SIMD2<Float>
+        var dim: Float
+        var pad: Float = 0
+    }
+
+    /// How much the backdrop is darkened, so the picture in front stands out.
+    private static let backdropDim: Float = 0.55
+    /// Blur rounds; each is one horizontal and one vertical pass.
+    private static let backdropBlurRounds = 2
+
+    /// Draws one quad into `target` with `pipeline`.
+    private func encodeBackdropPass(_ commandBuffer: MTLCommandBuffer, into target: MTLTexture,
+                                    pipeline: MTLRenderPipelineState, quad: MTLBuffer,
+                                    source: MTLTexture, uniforms: BackdropUniforms) {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = target
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }
+        var values = uniforms
+        encoder.setRenderPipelineState(pipeline)
+        encoder.setVertexBuffer(quad, offset: 0, index: 0)
+        encoder.setFragmentTexture(source, index: 0)
+        encoder.setFragmentBytes(&values, length: MemoryLayout<BackdropUniforms>.stride, index: 0)
+        encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        encoder.endEncoding()
+    }
+
+    /// Shrinks the aspect-filled frame into the small targets and blurs it
+    /// there. Returns the texture holding the result.
+    private func encodeBackdrop(_ commandBuffer: MTLCommandBuffer, frame: MTLTexture,
+                                crop: WallpaperFrameCrop) -> MTLTexture? {
+        guard let targets = backdropTargets, let vertexBuffer, let unitQuadBuffer else { return nil }
+        let width = Float(targets.a.width), height = Float(targets.a.height)
+        let rect = crop.textureRect
+        // A quarter of the source area one small pixel covers, per tap.
+        let tapStep = SIMD2<Float>(Float(rect.width) / width / 4, Float(rect.height) / height / 4)
+        encodeBackdropPass(commandBuffer, into: targets.a, pipeline: downsamplePipelineState,
+                           quad: vertexBuffer, source: frame,
+                           uniforms: BackdropUniforms(step: tapStep, dim: 1))
+        for _ in 0..<Self.backdropBlurRounds {
+            encodeBackdropPass(commandBuffer, into: targets.b, pipeline: blurPipelineState,
+                               quad: unitQuadBuffer, source: targets.a,
+                               uniforms: BackdropUniforms(step: SIMD2<Float>(1.5 / width, 0), dim: 1))
+            encodeBackdropPass(commandBuffer, into: targets.a, pipeline: blurPipelineState,
+                               quad: unitQuadBuffer, source: targets.b,
+                               uniforms: BackdropUniforms(step: SIMD2<Float>(0, 1.5 / height), dim: 1))
+        }
+        return targets.a
+    }
+
+    // MARK: - Scaling
+
+    /// The scaling of the video about to be loaded. Call before `loadVideo`.
+    func prepareScaling(_ scaling: WallpaperScaling) {
+        loadScaling = scaling
+    }
+
+    /// An edit to the loaded video's scaling. It shows at once, also while
+    /// paused, and never restarts the player.
+    func applyScaling(_ scaling: WallpaperScaling) {
+        renderLock.lock()
+        loadScaling = scaling
+        let changed = playerScaling != scaling || currentFrame?.scaling != scaling
+        playerScaling = scaling
+        currentFrame?.scaling = scaling
+        renderLock.unlock()
+        if changed { metalView.draw() }
     }
 
     // MARK: - Video Loading
@@ -522,6 +705,7 @@ final class MetalVideoRenderer: NSObject {
         let previousPlayer = player
         videoOutput = output
         playerVideoSize = videoSize
+        playerScaling = loadScaling
         player = newPlayer
         appliedTrim = trim
         playerGeneration = generation
@@ -739,12 +923,14 @@ final class MetalVideoRenderer: NSObject {
 
         lastPresentedSeconds = seconds
         logFrameColorInfoOnce(pixelBuffer)
-        guard let frame = createTexture(from: pixelBuffer, videoSize: playerVideoSize) else { return nil }
+        guard let frame = createTexture(from: pixelBuffer, videoSize: playerVideoSize,
+                                        scaling: playerScaling) else { return nil }
         frameGeneration = playerGeneration
         return frame
     }
 
-    private func createTexture(from pixelBuffer: CVPixelBuffer, videoSize: CGSize) -> VideoFrame? {
+    private func createTexture(from pixelBuffer: CVPixelBuffer, videoSize: CGSize,
+                               scaling: WallpaperScaling) -> VideoFrame? {
         guard let textureCache = textureCache else { return nil }
 
         let width = CVPixelBufferGetWidth(pixelBuffer)
@@ -768,7 +954,8 @@ final class MetalVideoRenderer: NSObject {
         }
 
         guard let texture = CVMetalTextureGetTexture(cvTexture) else { return nil }
-        return VideoFrame(texture: texture, videoSize: videoSize, backing: cvTexture, cache: textureCache)
+        return VideoFrame(texture: texture, videoSize: videoSize, scaling: scaling,
+                          backing: cvTexture, cache: textureCache)
     }
 }
 
@@ -777,7 +964,7 @@ final class MetalVideoRenderer: NSObject {
 extension MetalVideoRenderer: MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         guard let frame = currentFrame else { return }
-        prepareQuad(forFrameOf: frame.videoSize, viewSize: size)
+        prepareQuad(forFrameOf: frame.videoSize, viewSize: size, scaling: frame.scaling)
     }
 
     func draw(in view: MTKView) {
@@ -792,12 +979,20 @@ extension MetalVideoRenderer: MTKViewDelegate {
         // the real wallpaper. Keep the last texture on screen across pause
         // and across a reload until the next frame arrives, with its own crop.
         guard let frame = currentFrame else { return }
-        prepareQuad(forFrameOf: frame.videoSize, viewSize: viewSize)
+        prepareQuad(forFrameOf: frame.videoSize, viewSize: viewSize, scaling: frame.scaling)
         guard let vertexBuffer,
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+              let commandBuffer = commandQueue.makeCommandBuffer() else {
+            return
+        }
+        // Fit with Blurred Backdrop: the blurred copy is made from this same
+        // texture in small offscreen passes before the drawable's pass.
+        var backdrop: MTLTexture?
+        if let crop = quadCrop, crop.drawsBackdrop {
+            backdrop = encodeBackdrop(commandBuffer, frame: frame.texture, crop: crop)
+        }
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
             return
         }
 
@@ -808,11 +1003,26 @@ extension MetalVideoRenderer: MTKViewDelegate {
             }
         }
 
-        // Render fullscreen quad with video texture
-        renderEncoder.setRenderPipelineState(pipelineState)
-        renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        renderEncoder.setFragmentTexture(frame.texture, index: 0)
-        renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        if let backdrop, let unitQuadBuffer, let fitQuadBuffer {
+            // The dimmed backdrop over the whole view, then the whole frame.
+            var dim = BackdropUniforms(step: .zero, dim: Self.backdropDim)
+            renderEncoder.setRenderPipelineState(blurPipelineState)
+            renderEncoder.setVertexBuffer(unitQuadBuffer, offset: 0, index: 0)
+            renderEncoder.setFragmentTexture(backdrop, index: 0)
+            renderEncoder.setFragmentBytes(&dim, length: MemoryLayout<BackdropUniforms>.stride, index: 0)
+            renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+
+            renderEncoder.setRenderPipelineState(pipelineState)
+            renderEncoder.setVertexBuffer(fitQuadBuffer, offset: 0, index: 0)
+            renderEncoder.setFragmentTexture(frame.texture, index: 0)
+            renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        } else {
+            // Render fullscreen quad with video texture
+            renderEncoder.setRenderPipelineState(pipelineState)
+            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+            renderEncoder.setFragmentTexture(frame.texture, index: 0)
+            renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        }
 
         renderEncoder.endEncoding()
         // A replacement/stop can release currentFrame before the GPU finishes.
