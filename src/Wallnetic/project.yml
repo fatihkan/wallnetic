@@ -41,6 +41,11 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_HARDENED_RUNTIME: YES
         SWIFT_OBJC_BRIDGING_HEADER: Utils/Wallnetic-Bridging-Header.h
+        # Interface strings live in Resources/Localizable.xcstrings (#351).
+        # The compiler reports every localizable string it sees, and
+        # scripts/sync-strings.sh merges them into the catalog.
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     info:
       path: Resources/Info.plist
       properties:

@@ -1,0 +1,1754 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    " sources" : {
+
+    },
+    " wallpaper" : {
+
+    },
+    " wallpapers" : {
+
+    },
+    "$%@/s" : {
+
+    },
+    "%@  ·  %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@  ·  %2$@"
+          }
+        }
+      }
+    },
+    "%@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "%@ wallpaper preview" : {
+
+    },
+    "%@ wallpapers" : {
+
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · macOS 13 or later" : {
+
+    },
+    "%@ • %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ • %2$@"
+          }
+        }
+      }
+    },
+    "%@, %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@ to %3$@"
+          }
+        }
+      }
+    },
+    "%@, %@, app-managed copy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, app-managed copy"
+          }
+        }
+      }
+    },
+    "%@, one frame" : {
+
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld files" : {
+
+    },
+    "%lld item(s) could not be processed — Show details" : {
+
+    },
+    "%lld left today" : {
+
+    },
+    "%lld min" : {
+
+    },
+    "%lld minutes" : {
+
+    },
+    "%lld of max %lld photo%@ selected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of max %2$lld photo%3$@ selected"
+          }
+        }
+      }
+    },
+    "%lld seconds" : {
+
+    },
+    "%lld videos" : {
+
+    },
+    "%lld wallpapers" : {
+
+    },
+    "%lld wallpapers · %@ total" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld wallpapers · %2$@ total"
+          }
+        }
+      }
+    },
+    "%lld × %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld × %2$lld"
+          }
+        }
+      }
+    },
+    "%lld × %lld · %@ fps · %@ seconds" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld × %2$lld · %3$@ fps · %4$@ seconds"
+          }
+        }
+      }
+    },
+    "%lld × %lld · %lld fps · %lld s · Silent H.264" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld × %2$lld · %3$lld fps · %4$lld s · Silent H.264"
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+
+    },
+    "%lld/%lld this month" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld this month"
+          }
+        }
+      }
+    },
+    "%llds" : {
+
+    },
+    "%lld×%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld×%2$lld"
+          }
+        }
+      }
+    },
+    "(Optional)" : {
+
+    },
+    "1 minute" : {
+
+    },
+    "10 sec" : {
+
+    },
+    "10 seconds" : {
+
+    },
+    "1080p" : {
+
+    },
+    "10s" : {
+
+    },
+    "1440p" : {
+
+    },
+    "24 hours" : {
+
+    },
+    "3s" : {
+
+    },
+    "4K" : {
+
+    },
+    "5 sec" : {
+
+    },
+    "5 seconds" : {
+
+    },
+    "5s" : {
+
+    },
+    "8s" : {
+
+    },
+    ":" : {
+
+    },
+    "A preview. Your desktop stays as it is until you apply." : {
+
+    },
+    "A rule pauses playback while its condition lasts and lets it continue afterwards. It never undoes your own Pause. The menu bar shows which rule is pausing." : {
+
+    },
+    "AI Video Generator" : {
+
+    },
+    "ANIME" : {
+
+    },
+    "API" : {
+
+    },
+    "AVPlayer keeps the video's original frame rate in every profile. Use Metal to apply frame-rate limits." : {
+
+    },
+    "Add App…" : {
+
+    },
+    "Add Wallpaper" : {
+
+    },
+    "Add a wallpaper" : {
+
+    },
+    "Add an image to animate it into a video, or leave empty for text-to-video" : {
+
+    },
+    "Add range…" : {
+
+    },
+    "Add saved choice…" : {
+
+    },
+    "Add to Collection" : {
+
+    },
+    "Add to Favorites" : {
+
+    },
+    "Add to Library" : {
+
+    },
+    "Add wallpapers to build your playlist." : {
+
+    },
+    "Add wallpapers to this collection from the library" : {
+
+    },
+    "Add wallpaper…" : {
+
+    },
+    "Adjustments" : {
+
+    },
+    "After" : {
+
+    },
+    "After regular app windows cover and then clear a display, replay its timed-out wallpaper once. Detection takes a few seconds." : {
+
+    },
+    "All" : {
+
+    },
+    "All colors" : {
+
+    },
+    "All displays (default)" : {
+
+    },
+    "Allow Photos Access" : {
+
+    },
+    "Allow Wallnetic in Login Items to finish enabling launch at login." : {
+
+    },
+    "Allow access to Photos to create slideshows from your library." : {
+
+    },
+    "Also available from the menu bar (⌘⇧M while Wallnetic is active) and Shortcuts on macOS 14 or later." : {
+
+    },
+    "Always play on battery (skip prompt)" : {
+
+    },
+    "An enabled daily schedule or playlist holds a manual choice for 30 minutes, then resumes." : {
+
+    },
+    "An end time before the start crosses midnight. Use 00:00–24:00 for a full day." : {
+
+    },
+    "Anime" : {
+
+    },
+    "Applied manually · no desktop binding" : {
+
+    },
+    "Applies immediately to all Metal displays at normal video speed. Resolution stays unchanged. Energy savings depend on the video and your Mac; decoding may continue at the source frame rate." : {
+
+    },
+    "Applies on battery power only. Playback continues when the Mac is plugged in or charges above this level." : {
+
+    },
+    "Applies to all displays. Enabling this turns off the daily schedule. Manual choices, including Space recovery, hold for 30 minutes." : {
+
+    },
+    "Apply" : {
+
+    },
+    "Apply %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apply %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Apply %@ to all displays and Spaces" : {
+
+    },
+    "Apply to" : {
+
+    },
+    "Apply to %@" : {
+
+    },
+    "Apply to All Displays" : {
+
+    },
+    "Apply to all displays and Spaces" : {
+
+    },
+    "Applying a saved choice sets the wallpaper on all displays and Spaces. It does not bind it to one desktop." : {
+
+    },
+    "Are you sure you want to delete all video history? This cannot be undone." : {
+
+    },
+    "Are you sure you want to delete this video? This cannot be undone." : {
+
+    },
+    "Aspect Ratio" : {
+
+    },
+    "Auto-generate anime wallpaper videos daily" : {
+
+    },
+    "Auto-resume when conditions change" : {
+
+    },
+    "Automatic per-Space switching is unavailable because individual desktops cannot be reliably identified." : {
+
+    },
+    "Automatically rotate wallpapers" : {
+
+    },
+    "Below" : {
+
+    },
+    "Both videos remain independent Library items. Use their context menu to switch back or delete either copy." : {
+
+    },
+    "Browse Packs" : {
+
+    },
+    "Browse sources" : {
+
+    },
+    "Calm Mode" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Cancel conversion" : {
+
+    },
+    "Cancelling and removing temporary files…" : {
+
+    },
+    "Change Icon" : {
+
+    },
+    "Change every" : {
+
+    },
+    "Check video again" : {
+
+    },
+    "Checking the completed video…" : {
+
+    },
+    "Checking video and codec support…" : {
+
+    },
+    "Choose File" : {
+
+    },
+    "Choose a wallpaper for each display above." : {
+
+    },
+    "Choose a wallpaper…" : {
+
+    },
+    "Choose from Library…" : {
+
+    },
+    "Choose wallpaper for %@" : {
+
+    },
+    "Choose wallpaper…" : {
+
+    },
+    "Choose…" : {
+
+    },
+    "Clear" : {
+
+    },
+    "Clear %lld cache file(s)?" : {
+
+    },
+    "Clear All" : {
+
+    },
+    "Clear All History" : {
+
+    },
+    "Clear unused caches…" : {
+
+    },
+    "Clears saved battery-mode choice so the prompt appears again." : {
+
+    },
+    "Close" : {
+
+    },
+    "Collection" : {
+
+    },
+    "Collection not found" : {
+
+    },
+    "Collections" : {
+
+    },
+    "Collections are no longer available. Choose another source." : {
+
+    },
+    "Color" : {
+
+    },
+    "Color Overlay" : {
+
+    },
+    "Connected Displays" : {
+
+    },
+    "Content License" : {
+
+    },
+    "Converting · %lld%%" : {
+
+    },
+    "Could not apply wallpaper. %@" : {
+
+    },
+    "Counted from the last key press, click or pointer movement. Playback continues at the next one." : {
+
+    },
+    "Create Collection" : {
+
+    },
+    "Create Optimized Copy…" : {
+
+    },
+    "Create Wallpaper" : {
+
+    },
+    "Create anime & loop videos with AI" : {
+
+    },
+    "Create collections to organize your wallpapers" : {
+
+    },
+    "Create copy" : {
+
+    },
+    "Create from Photos" : {
+
+    },
+    "Create from Photos…" : {
+
+    },
+    "Create optimized copy" : {
+
+    },
+    "Creates a separate, silent SDR video without enlarging the source. Lower frame rates reduce smoothness, not playback speed. HDR, transparency, wide-gamut and anamorphic videos are not supported. File size and energy savings vary." : {
+
+    },
+    "Crossfade" : {
+
+    },
+    "Current: %@" : {
+
+    },
+    "Custom…" : {
+
+    },
+    "DISPLAY NAME" : {
+
+    },
+    "Daily time range" : {
+
+    },
+    "Daily wallpaper schedule" : {
+
+    },
+    "Default Video Model" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete Collection" : {
+
+    },
+    "Delete Video" : {
+
+    },
+    "Deselect all" : {
+
+    },
+    "Desktop Clock" : {
+
+    },
+    "Discover Wallpapers" : {
+
+    },
+    "Dismiss" : {
+
+    },
+    "Display" : {
+
+    },
+    "Done" : {
+
+    },
+    "Download" : {
+
+    },
+    "Download / Retry" : {
+
+    },
+    "Download All" : {
+
+    },
+    "Download Pack" : {
+
+    },
+    "Downloads add library copies without starting playback. Closing this window keeps the current download running." : {
+
+    },
+    "Drag a bar or its handles · 5-minute steps" : {
+
+    },
+    "Drag end time" : {
+
+    },
+    "Drag start time" : {
+
+    },
+    "Drawn in English on the live wallpaper of every display, below desktop icons, with your region's date and time format. The lock screen and Mission Control do not show it." : {
+
+    },
+    "Drop image or" : {
+
+    },
+    "Drop to import" : {
+
+    },
+    "Drop videos to add to your library" : {
+
+    },
+    "Duration" : {
+
+    },
+    "Duration (seconds)" : {
+
+    },
+    "Duration in seconds (1–86,400)" : {
+
+    },
+    "Dynamic Island" : {
+
+    },
+    "Dynamic accent color from wallpaper" : {
+
+    },
+    "Edit" : {
+
+    },
+    "Edit %@" : {
+
+    },
+    "Edit Trim…" : {
+
+    },
+    "Edit range" : {
+
+    },
+    "Elapsed time includes sleep and time while the app is closed. On return, the playlist picks the current item. Editing the playlist starts a new cycle." : {
+
+    },
+    "Enable Daily Scheduler" : {
+
+    },
+    "Enable Notifications" : {
+
+    },
+    "Enable Space recovery" : {
+
+    },
+    "Enable Tint" : {
+
+    },
+    "Enable Vignette" : {
+
+    },
+    "Enable or disable Calm Mode without changing other playback restrictions." : {
+
+    },
+    "Enabled" : {
+
+    },
+    "End (HH:mm)" : {
+
+    },
+    "Endpoint" : {
+
+    },
+    "Estimated cost: $%@" : {
+
+    },
+    "Estimated cost: $%@ per generation" : {
+
+    },
+    "Failed" : {
+
+    },
+    "Favorite" : {
+
+    },
+    "Find a wallpaper for your next desktop." : {
+
+    },
+    "For example, Focus" : {
+
+    },
+    "Found %lld video%@ on this page" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Found %1$lld video%2$@ on this page"
+          }
+        }
+      }
+    },
+    "From Favorites Only" : {
+
+    },
+    "Gaps and missing wallpapers keep the current wallpaper. Ranges cannot overlap. Overnight ranges are supported." : {
+
+    },
+    "Generate Another" : {
+
+    },
+    "Generate Video" : {
+
+    },
+    "Generate anime video wallpapers automatically" : {
+
+    },
+    "Generating Video..." : {
+
+    },
+    "Generating slideshow…" : {
+
+    },
+    "Generating video..." : {
+
+    },
+    "Generation Failed" : {
+
+    },
+    "Get API Key" : {
+
+    },
+    "Get Current Wallpaper" : {
+
+    },
+    "Get the name of the current wallpaper" : {
+
+    },
+    "Getting Started" : {
+
+    },
+    "GitHub" : {
+
+    },
+    "Global Hotkeys" : {
+
+    },
+    "Hide Dock icon" : {
+
+    },
+    "Hold the current frame for focus or presentations. Turn off Calm Mode to restore prior playback. Manual pauses and other restrictions still apply. Calm Mode resets when Wallnetic quits." : {
+
+    },
+    "Hold wallpaper motion" : {
+
+    },
+    "Hold wallpaper motion, or restore previous playback when other pause conditions allow." : {
+
+    },
+    "Hold wallpaper motion; turning it off restores prior playback when other restrictions allow." : {
+
+    },
+    "Holding motion while the Mac cools down" : {
+
+    },
+    "Home, your library, or wallpaper sources to browse" : {
+
+    },
+    "Hour" : {
+
+    },
+    "ICON" : {
+
+    },
+    "Import Error" : {
+
+    },
+    "Import my video…" : {
+
+    },
+    "Import video file…" : {
+
+    },
+    "Import videos" : {
+
+    },
+    "Imported" : {
+
+    },
+    "Importing %lld file(s)…" : {
+
+    },
+    "Importing wallpaper" : {
+
+    },
+    "Included sample · 720p · 6 seconds · under 400 KB · Works offline" : {
+
+    },
+    "Ken Burns" : {
+
+    },
+    "Largest first" : {
+
+    },
+    "Last generation:" : {
+
+    },
+    "Launch at login" : {
+
+    },
+    "Launch at login could not be updated" : {
+
+    },
+    "Library" : {
+
+    },
+    "Live Video Wallpapers for macOS" : {
+
+    },
+    "Location" : {
+
+    },
+    "Lock Screen & Mission Control" : {
+
+    },
+    "Loop length %@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Loop length %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "Loop length %@, of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Loop length %1$@, of %2$@"
+          }
+        }
+      }
+    },
+    "MIT Content License" : {
+
+    },
+    "MP4 · MOV · M4V · HEVC · GIF · WebM · WebP" : {
+
+    },
+    "Main" : {
+
+    },
+    "Make your desktop your own" : {
+
+    },
+    "Managed storage" : {
+
+    },
+    "Menu bar icon is always shown" : {
+
+    },
+    "Metal provides better GPU acceleration. Restart app after changing." : {
+
+    },
+    "Metal renderer uses GPU for video playback (recommended)" : {
+
+    },
+    "Minute" : {
+
+    },
+    "Missing or unassigned · skipped" : {
+
+    },
+    "Model" : {
+
+    },
+    "Move %@ down" : {
+
+    },
+    "Move %@ up" : {
+
+    },
+    "NAME" : {
+
+    },
+    "NEW NAME" : {
+
+    },
+    "Name" : {
+
+    },
+    "Name this choice to remember where you want to use it. Saving keeps the selection without applying it or identifying a desktop." : {
+
+    },
+    "Needs reassignment" : {
+
+    },
+    "Never Pause" : {
+
+    },
+    "New Collection" : {
+
+    },
+    "Next Wallpaper" : {
+
+    },
+    "Next generation:" : {
+
+    },
+    "No Collections" : {
+
+    },
+    "No Video History" : {
+
+    },
+    "No Wallpapers" : {
+
+    },
+    "No collections yet" : {
+
+    },
+    "No fal.ai API key configured" : {
+
+    },
+    "No managed videos" : {
+
+    },
+    "No matching wallpapers" : {
+
+    },
+    "No packs are currently offered. Downloaded wallpapers remain in your library." : {
+
+    },
+    "No wallpapers in library" : {
+
+    },
+    "None" : {
+
+    },
+    "Not selected" : {
+
+    },
+    "Not set" : {
+
+    },
+    "Notification Types" : {
+
+    },
+    "Notifications are not authorized. Please enable in System Settings." : {
+
+    },
+    "OK" : {
+
+    },
+    "Ollama Server" : {
+
+    },
+    "On your desktop now" : {
+
+    },
+    "Only app-managed copies are listed. Your original source files are kept." : {
+
+    },
+    "Only loopback (localhost / 127.0.0.1 / ::1) or *.local (https) hosts are allowed — your wallpaper thumbnails never leave this Mac/LAN." : {
+
+    },
+    "Open Library" : {
+
+    },
+    "Open Library to choose a wallpaper for %@" : {
+
+    },
+    "Open Login Items" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Open System Settings" : {
+
+    },
+    "Open System Settings → Privacy & Security → Photos and grant access to Wallnetic." : {
+
+    },
+    "Open Wallnetic" : {
+
+    },
+    "Open in Finder" : {
+
+    },
+    "Optimized copy" : {
+
+    },
+    "Optional downloads from Wallnetic on GitHub. No account required." : {
+
+    },
+    "Options" : {
+
+    },
+    "Order" : {
+
+    },
+    "Original" : {
+
+    },
+    "Original %@  →  Copy %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Original %1$@  →  Copy %2$@"
+          }
+        }
+      }
+    },
+    "Original animations, clear licenses, optional downloads." : {
+
+    },
+    "Original video is no longer in Library" : {
+
+    },
+    "Overrides the pause: the live wallpaper keeps playing on battery without asking." : {
+
+    },
+    "Pack download progress" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Pause After" : {
+
+    },
+    "Pause Preview" : {
+
+    },
+    "Pause on low battery" : {
+
+    },
+    "Pause wallpaper" : {
+
+    },
+    "Pause wallpaper when the Mac gets hot" : {
+
+    },
+    "Pause when fullscreen app is active" : {
+
+    },
+    "Pause when on battery power" : {
+
+    },
+    "Pause when the Mac is idle" : {
+
+    },
+    "Pause while chosen apps are in front" : {
+
+    },
+    "Pause while chosen apps are running" : {
+
+    },
+    "Paused" : {
+
+    },
+    "Pauses after sustained heat, or immediately at critical pressure. After a minute of cooling, prior playback resumes if no other pause condition remains. No additional permissions are needed." : {
+
+    },
+    "Performance" : {
+
+    },
+    "Photos access is denied." : {
+
+    },
+    "Play" : {
+
+    },
+    "Play Preview" : {
+
+    },
+    "Play Sound" : {
+
+    },
+    "Play only on the display in use" : {
+
+    },
+    "Play or pause the live wallpaper" : {
+
+    },
+    "Play wallpaper" : {
+
+    },
+    "Playback" : {
+
+    },
+    "Playback Rules" : {
+
+    },
+    "Playback profile" : {
+
+    },
+    "Playback profile: %@" : {
+
+    },
+    "Playing" : {
+
+    },
+    "Playlist item" : {
+
+    },
+    "Plays in the order below, then repeats. Missing items are skipped." : {
+
+    },
+    "Please add your fal.ai API key in Settings" : {
+
+    },
+    "Position" : {
+
+    },
+    "Power Management" : {
+
+    },
+    "Preparing wallpaper…" : {
+
+    },
+    "Preset" : {
+
+    },
+    "Presets" : {
+
+    },
+    "Preview copy" : {
+
+    },
+    "Preview of the selected loop" : {
+
+    },
+    "Preview original" : {
+
+    },
+    "Preview…" : {
+
+    },
+    "Previously downloaded: %@" : {
+
+    },
+    "Prompt" : {
+
+    },
+    "Quit Wallnetic" : {
+
+    },
+    "Random Wallpaper" : {
+
+    },
+    "Random anime-optimized models: Kling, Minimax, Pika" : {
+
+    },
+    "Rate Wallnetic" : {
+
+    },
+    "Reading the video…" : {
+
+    },
+    "Ready" : {
+
+    },
+    "Refresh" : {
+
+    },
+    "Refresh Catalog" : {
+
+    },
+    "Reload this wallpaper while keeping manual pause and power restrictions." : {
+
+    },
+    "Remove" : {
+
+    },
+    "Remove %@" : {
+
+    },
+    "Remove %@ from playlist" : {
+
+    },
+    "Remove %lld library copy/copies?" : {
+
+    },
+    "Remove Copies…" : {
+
+    },
+    "Remove Trim" : {
+
+    },
+    "Remove downloaded copies?" : {
+
+    },
+    "Remove from Favorites" : {
+
+    },
+    "Remove range" : {
+
+    },
+    "Remove saved choice %@" : {
+
+    },
+    "Remove selected (%lld)…" : {
+
+    },
+    "Remove this choice; keep its Library media" : {
+
+    },
+    "Rename" : {
+
+    },
+    "Replay when the desktop becomes clear" : {
+
+    },
+    "Reset All Effects" : {
+
+    },
+    "Reset battery prompt" : {
+
+    },
+    "Reset filters" : {
+
+    },
+    "Reset to Full Video" : {
+
+    },
+    "Reset to original filename" : {
+
+    },
+    "Resolution" : {
+
+    },
+    "Resume playlist now" : {
+
+    },
+    "Resume schedule now" : {
+
+    },
+    "Retry" : {
+
+    },
+    "Retry wallpaper" : {
+
+    },
+    "Retry wallpaper on %@" : {
+
+    },
+    "Run" : {
+
+    },
+    "Run only in menu bar without showing in the Dock" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save a wallpaper here or use “Save for Space Recovery” in its Library menu. Your media stays in Library." : {
+
+    },
+    "Save for Space Recovery" : {
+
+    },
+    "Saved Space choice" : {
+
+    },
+    "Saved choices" : {
+
+    },
+    "Saved for Space Recovery" : {
+
+    },
+    "Scaling" : {
+
+    },
+    "Scan" : {
+
+    },
+    "Schedule Time (Turkey)" : {
+
+    },
+    "Scheduled Video Generation" : {
+
+    },
+    "Search" : {
+
+    },
+    "Search results" : {
+
+    },
+    "Search results are ordered by relevance" : {
+
+    },
+    "Search wallpapers" : {
+
+    },
+    "Section" : {
+
+    },
+    "Select Wallpaper" : {
+
+    },
+    "Select all" : {
+
+    },
+    "Selected" : {
+
+    },
+    "Set %@ as wallpaper" : {
+
+    },
+    "Set Calm Mode" : {
+
+    },
+    "Set Wallpaper" : {
+
+    },
+    "Set a duration for each item" : {
+
+    },
+    "Set a random wallpaper from your library or favorites" : {
+
+    },
+    "Set a specific wallpaper by name" : {
+
+    },
+    "Set as Wallpaper" : {
+
+    },
+    "Set as wallpaper" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Settings…" : {
+
+    },
+    "Show all wallpapers" : {
+
+    },
+    "Show clock" : {
+
+    },
+    "Show date" : {
+
+    },
+    "Show in Finder" : {
+
+    },
+    "Show in menu bar" : {
+
+    },
+    "Show wallpaper controls in a floating pill at the top of the screen" : {
+
+    },
+    "Show welcome tour and sample" : {
+
+    },
+    "Sign Out" : {
+
+    },
+    "Signed In" : {
+
+    },
+    "Signing in..." : {
+
+    },
+    "Size" : {
+
+    },
+    "Slideshow Error" : {
+
+    },
+    "Smart Tagging uses a local Ollama vision model to read each wallpaper thumbnail and suggest tags. Ollama must be running on your Mac — nothing is sent to the cloud." : {
+
+    },
+    "Sort" : {
+
+    },
+    "Sort the library" : {
+
+    },
+    "Source" : {
+
+    },
+    "Source Image" : {
+
+    },
+    "Source: %lld × %lld · %@ fps · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Source: %1$lld × %2$lld · %3$@ fps · %4$@"
+          }
+        }
+      }
+    },
+    "Start (HH:mm)" : {
+
+    },
+    "Start New List" : {
+
+    },
+    "Start Over" : {
+
+    },
+    "Start a new list…" : {
+
+    },
+    "Start a new saved list?" : {
+
+    },
+    "Start with a video you love. Add it to your library, then set it as your live wallpaper." : {
+
+    },
+    "Status" : {
+
+    },
+    "Step %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Storage details" : {
+
+    },
+    "Suggested models: llava, llava:13b, bakllava. Larger models give better tags but take longer." : {
+
+    },
+    "Support" : {
+
+    },
+    "Switch to the next wallpaper in the library" : {
+
+    },
+    "Sync video frame to system wallpaper" : {
+
+    },
+    "Tag Untagged Wallpapers" : {
+
+    },
+    "Test Now" : {
+
+    },
+    "The day is full. Shorten or remove a range to make room for another." : {
+
+    },
+    "The last frame stays visible when time runs out. Play, a wallpaper change, or an allowed resume after unlock starts a new interval. Manual Pause stays paused until you press Play." : {
+
+    },
+    "The original file is not changed. Each step moves to the next or previous frame; a loop is at least one second long." : {
+
+    },
+    "The original file is not changed. Steps use the video's shortest frame interval; a loop is at least one second long." : {
+
+    },
+    "The slideshow has been added to your library." : {
+
+    },
+    "The unreadable settings will be kept as a backup. Library media will stay unchanged." : {
+
+    },
+    "Theme" : {
+
+    },
+    "Thermal-aware Playback" : {
+
+    },
+    "This applies when more than one display is connected." : {
+
+    },
+    "This copy is not smaller than the original. Compare both before choosing which to keep." : {
+
+    },
+    "This removes verified pack copies from your library, including their playlist and schedule references. Changed files and unrelated imports are kept." : {
+
+    },
+    "This video has incomplete color tags and will be treated as SDR Rec.709. Compare its colors before applying the copy." : {
+
+    },
+    "Tint Color" : {
+
+    },
+    "Toggle Calm Mode" : {
+
+    },
+    "Toggle Playback" : {
+
+    },
+    "Toggle Wallpaper Playback" : {
+
+    },
+    "Transition" : {
+
+    },
+    "Trim loop" : {
+
+    },
+    "Trim not applied" : {
+
+    },
+    "Trim not applied, the full video plays" : {
+
+    },
+    "Trimmed loop, %@" : {
+
+    },
+    "Trim…" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Try a different search, or clear the filters to see your library." : {
+
+    },
+    "Try a sample" : {
+
+    },
+    "Try the included wallpaper or import a video. No account required." : {
+
+    },
+    "Turn Off Calm Mode" : {
+
+    },
+    "Turn On Calm Mode" : {
+
+    },
+    "UI accent color adapts to the current wallpaper's dominant color" : {
+
+    },
+    "Unassigned — keep current" : {
+
+    },
+    "Unassigned — skipped" : {
+
+    },
+    "Unused widget thumbnails can be cleared. System wallpaper images, current thumbnails and the search index are kept." : {
+
+    },
+    "Use 1–86,400 seconds (up to 24 hours). The video loops for this duration." : {
+
+    },
+    "Use Default" : {
+
+    },
+    "Use Default follows the global interval. Never Pause keeps this wallpaper moving regardless of the default." : {
+
+    },
+    "Use Metal Renderer" : {
+
+    },
+    "Use Original Video" : {
+
+    },
+    "Use optimized copy" : {
+
+    },
+    "Use original" : {
+
+    },
+    "Use random anime model" : {
+
+    },
+    "Uses local time on all displays. Enabling this turns off the playlist. Manual choices, including Space recovery, hold for 30 minutes." : {
+
+    },
+    "Using %@" : {
+
+    },
+    "Validate & Save" : {
+
+    },
+    "Version %@" : {
+
+    },
+    "Version %@ (Build %@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (Build %2$@)"
+          }
+        }
+      }
+    },
+    "Video Details" : {
+
+    },
+    "Video Duration" : {
+
+    },
+    "Video Generated!" : {
+
+    },
+    "Video Generation History" : {
+
+    },
+    "Video Model" : {
+
+    },
+    "Video generation can take 1-3 minutes" : {
+
+    },
+    "Video generation complete!" : {
+
+    },
+    "Vignette" : {
+
+    },
+    "Virtual Desktops (Spaces)" : {
+
+    },
+    "Wallnetic" : {
+
+    },
+    "Wallnetic Dynamic Island" : {
+
+    },
+    "Wallnetic applies a still frame of your current video to the system wallpaper. macOS controls how it appears on the lock screen, in Mission Control, and during Space transitions. Live lock-screen video playback is unavailable." : {
+
+    },
+    "Wallpaper" : {
+
+    },
+    "Wallpaper Created" : {
+
+    },
+    "Wallpaper Mode" : {
+
+    },
+    "Wallpaper Name" : {
+
+    },
+    "Wallpaper Packs" : {
+
+    },
+    "Wallpaper name" : {
+
+    },
+    "Wallpaper override" : {
+
+    },
+    "Wallpapers" : {
+
+    },
+    "Want it fully out of the way? Turn on Hide Dock icon in Settings → General to run from the menu bar." : {
+
+    },
+    "Website" : {
+
+    },
+    "Welcome tour, step %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Welcome tour, step %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "What each display is showing." : {
+
+    },
+    "What your display is showing." : {
+
+    },
+    "When enabled, Wallnetic asks before pausing (or pauses silently if you opted out of the prompt)." : {
+
+    },
+    "With several displays, the wallpaper keeps moving where the pointer or the active window is, and pauses on the others a few seconds after you leave them." : {
+
+    },
+    "Working…" : {
+
+    },
+    "You can also drag files into this window" : {
+
+    },
+    "Your AI-generated videos will appear here" : {
+
+    },
+    "Your library" : {
+
+    },
+    "Your local wallpapers are available in Library while the catalog is unavailable." : {
+
+    },
+    "Your wallpaper plays on the desktop — closing this window won't stop it." : {
+
+    },
+    "fal.ai API Key" : {
+
+    },
+    "for %@" : {
+
+    },
+    "http://localhost:11434/api/generate" : {
+
+    },
+    "llava" : {
+
+    },
+    "~/Library/Application Support/Wallnetic" : {
+
+    },
+    "© 2026 Wallnetic. All rights reserved." : {
+
+    },
+    "·" : {
+
+    },
+    "≤%llds" : {
+
+    },
+    "⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)" : {
+
+    },
+    "🎨" : {
+
+    }
+  },
+  "version" : "1.0"
+}

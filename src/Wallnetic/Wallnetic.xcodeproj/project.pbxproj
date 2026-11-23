@@ -126,6 +126,7 @@
 		88C6A7F9AD19AA876CEEC465 /* iCloudSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9960B917192178D2217E668 /* iCloudSyncManager.swift */; };
 		8AAE56E8D08264474270D889 /* AIGenerateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B59109A0A0707AFA611D15A /* AIGenerateViewModel.swift */; };
 		8BED6ED6D599D3F3C32821D5 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32AE3710192737ABA41FDA0 /* HistoryView.swift */; };
+		8C5FEA567C5FE3377D0208CB /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 639BBF68DC1FAE0569F7BEBB /* Localizable.xcstrings */; };
 		8EFAE3E67407537EC1B9A705 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB036BA69CC6D00731C1D273 /* DiscoverView.swift */; };
 		8F2D0FED99C580FCEA818DA9 /* WallpaperScalingStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224657433125C082805EABC9 /* WallpaperScalingStoreTests.swift */; };
 		914325E76A10DF63A2FD4174 /* WallpaperScaling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15F24AA14893D234B0AD7B71 /* WallpaperScaling.swift */; };
@@ -363,6 +364,7 @@
 		612CDAC2BDABA4CB58C5F812 /* WallpaperAspectFillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallpaperAspectFillTests.swift; sourceTree = "<group>"; };
 		6310D6571C0CE4B4692A88A8 /* SpaceWallpaperSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceWallpaperSelection.swift; sourceTree = "<group>"; };
 		632C30C0743E0B8691AFD923 /* VideoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPreviewView.swift; sourceTree = "<group>"; };
+		639BBF68DC1FAE0569F7BEBB /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		64729A01C00BA044744ED844 /* PlaybackStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStatusView.swift; sourceTree = "<group>"; };
 		6473E99775C442DD49993FFA /* PlaylistSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistSettingsView.swift; sourceTree = "<group>"; };
 		6581C17705CF0F9650F91F07 /* DynamicAccent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicAccent.swift; sourceTree = "<group>"; };
@@ -822,6 +824,7 @@
 			children = (
 				BF36E216B5F900C62E824B59 /* Assets.xcassets */,
 				843AD85E0F38C70B7B33DE40 /* Info.plist */,
+				639BBF68DC1FAE0569F7BEBB /* Localizable.xcstrings */,
 				827D82693E294BC4A990BA10 /* pack-LICENSE-MIT.txt */,
 				C788B7EDDB89E2E9EEB97E43 /* PrivacyInfo.xcprivacy */,
 				85B6064EF5DE550677698666 /* Wallnetic.entitlements */,
@@ -1064,6 +1067,7 @@
 			files = (
 				284D0925EA9AEC2B302910D1 /* Assets.xcassets in Resources */,
 				E65253060E628BDD6E4F32C4 /* AuroraSample.mp4 in Resources */,
+				8C5FEA567C5FE3377D0208CB /* Localizable.xcstrings in Resources */,
 				02D4C66A91485C3B8B1A4F2F /* PrivacyInfo.xcprivacy in Resources */,
 				B29970D2C363902C62330D7C /* README.md in Resources */,
 				44B8815CB886FEF2DAFF3586 /* pack-LICENSE-MIT.txt in Resources */,
@@ -1340,9 +1344,11 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app;
 				PRODUCT_NAME = Wallnetic;
 				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Utils/Wallnetic-Bridging-Header.h";
 			};
 			name = Debug;
@@ -1426,9 +1432,11 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app;
 				PRODUCT_NAME = Wallnetic;
 				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Utils/Wallnetic-Bridging-Header.h";
 			};
 			name = Release;
