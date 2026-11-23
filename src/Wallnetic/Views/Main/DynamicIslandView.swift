@@ -1,97 +1,72 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-// MARK: - Island Shape
-
-/// Flat top on notch Macs (it continues the notch), softly rounded top when
-/// floating on a display without one — a hard edge cut against the menu bar
-/// looked like a sticker, not a surface.
-struct IslandShape: InsettableShape {
-    var topRadius: CGFloat
-    var bottomRadius: CGFloat
-    var insetAmount: CGFloat = 0
-
-    var animatableData: AnimatablePair<CGFloat, CGFloat> {
-        get { AnimatablePair(topRadius, bottomRadius) }
-        set { topRadius = newValue.first; bottomRadius = newValue.second }
-    }
-
-    func inset(by amount: CGFloat) -> IslandShape {
-        var copy = self
-        copy.insetAmount += amount
-        return copy
-    }
-
-    func path(in outer: CGRect) -> Path {
-        let rect = outer.insetBy(dx: insetAmount, dy: insetAmount)
-        var path = Path()
-        let t = min(topRadius, rect.width / 2, rect.height / 2)
-        let b = min(bottomRadius, rect.width / 2, rect.height / 2)
-        path.move(to: CGPoint(x: rect.minX + t, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX - t, y: rect.minY))
-        if t > 0 {
-            path.addArc(center: CGPoint(x: rect.maxX - t, y: rect.minY + t),
-                        radius: t, startAngle: .degrees(-90), endAngle: .zero, clockwise: false)
-        }
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - b))
-        path.addArc(center: CGPoint(x: rect.maxX - b, y: rect.maxY - b),
-                    radius: b, startAngle: .zero, endAngle: .degrees(90), clockwise: false)
-        path.addLine(to: CGPoint(x: rect.minX + b, y: rect.maxY))
-        path.addArc(center: CGPoint(x: rect.minX + b, y: rect.maxY - b),
-                    radius: b, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + t))
-        if t > 0 {
-            path.addArc(center: CGPoint(x: rect.minX + t, y: rect.minY + t),
-                        radius: t, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
-        }
-        path.closeSubpath()
-        return path
-    }
-}
-
 // MARK: - Dynamic Island View
 
-/// The island is made of the wallpaper: its glass is tinted by the current
-/// wallpaper's derived accent, so it shifts colour when the wallpaper does.
-/// Compact stays near-black to merge with the notch; expanded opens into the
-/// app's Liquid Glass language.
+/// What sits on the island's liquid shape (#352). The shape itself is drawn
+/// behind this view by `IslandSurfaceView`.
+///
+/// - **Compact:** the wallpaper's thumbnail on the left and the playback state
+///   on the right. On a display with a notch they sit in the two ears beside
+///   it; on any other display the pill also has room for the name.
+/// - **Expanded:** the wallpaper's name and its display, and the controls:
+///   play or pause, next, Calm Mode, the playback profile and Open Wallnetic.
 struct DynamicIslandView: View {
+    let metrics: IslandMetrics
+    /// The display this island sits on.
+    let displayName: String
+
     @EnvironmentObject var wallpaperManager: WallpaperManager
     @EnvironmentObject var island: DynamicIslandController
+    @ObservedObject private var calm = CalmPlaybackSettings.shared
+    @ObservedObject private var performance = PerformanceManager.shared
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var accent: AccentTheme = .signature
     @State private var thumbnail: NSImage?
-    @State private var isRenaming = false
-    @State private var renameText = ""
     @State private var hoveredControl: String?
-    @FocusState private var renameFocused: Bool
 
     private let supportedTypes: [UTType] = [.movie, .video, .mpeg4Movie, .quickTimeMovie, .gif]
 
     private var isExpanded: Bool { island.state == .expanded }
-    private var topRadius: CGFloat { island.hasNotch ? 0 : (isExpanded ? 14 : 10) }
-    private var bottomRadius: CGFloat { isExpanded ? 22 : 16 }
+    private var bar: CGRect { IslandGeometry.compactBar(metrics) }
+    private var card: CGRect { IslandGeometry.expandedCard(metrics) }
+    private var isCalm: Bool { calm.state.isCalmEnabled }
 
-    private var stateAnimation: Animation {
-        reduceMotion
-            ? .easeOut(duration: Anim.fast)
-            : .spring(response: 0.36, dampingFraction: 0.82)
+    /// The content that leaves fades out at once. The content that arrives
+    /// waits until the shape has grown, or shrunk, around its place.
+    private func contentAnimation(arriving: Bool) -> Animation {
+        if reduceMotion { return .easeOut(duration: Anim.fast) }
+        return arriving ? .easeOut(duration: 0.18).delay(0.16) : .easeOut(duration: 0.08)
     }
 
     var body: some View {
-        Group {
-            if isExpanded {
-                expandedView
-            } else {
-                compactView
-            }
+        ZStack(alignment: .top) {
+            if island.drawsPlainShape { plainShape }
+
+            compactContent
+                .frame(width: bar.width, height: bar.height)
+                .offset(y: bar.minY)
+                .opacity(isExpanded ? 0 : 1)
+                .animation(contentAnimation(arriving: !isExpanded), value: island.state)
+                .allowsHitTesting(false)
+
+            expandedContent
+                .frame(width: card.width, height: card.height - IslandGeometry.hiddenTop(metrics))
+                .offset(y: card.minY + IslandGeometry.hiddenTop(metrics))
+                .opacity(isExpanded ? 1 : 0)
+                .animation(contentAnimation(arriving: isExpanded), value: island.state)
+                .allowsHitTesting(isExpanded)
+                .accessibilityHidden(!isExpanded)
+
+            stateOverlays
         }
-        .background(islandSurface)
-        .clipShape(IslandShape(topRadius: topRadius, bottomRadius: bottomRadius))
-        .overlay(stateOverlays)
+        // No minimum size: the expanded content is larger than the compact
+        // window, and a minimum would push the window's views out of place.
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
+        .contentShape(Rectangle())
         .onDrop(of: supportedTypes, isTargeted: $island.isDragOver) { providers in
             handleDrop(providers: providers)
             return true
@@ -105,58 +80,32 @@ struct DynamicIslandView: View {
         }
         .onChange(of: wallpaperManager.currentWallpaper?.id) { _ in loadThumbnail() }
         .task { loadThumbnail() }
-        .animation(stateAnimation, value: island.state)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Wallnetic Dynamic Island")
     }
 
     // MARK: - Surface
 
-    /// Near-black base so the compact pill continues the notch, with an
-    /// accent bloom that only reveals itself in the expanded state.
-    private var islandSurface: some View {
-        ZStack {
-            IslandShape(topRadius: topRadius, bottomRadius: bottomRadius)
-                .fill(Color.black.opacity(0.94))
+    /// The shape of the visible state, as a rounded rectangle.
+    private var outline: some InsettableShape {
+        RoundedRectangle(cornerRadius: isExpanded ? IslandGeometry.cardCornerRadius : bar.height / 2,
+                         style: .continuous)
+    }
 
-            // Accent bloom, anchored where the thumbnail sits.
-            IslandShape(topRadius: topRadius, bottomRadius: bottomRadius)
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            accent.primary.opacity((isExpanded ? 0.34 : 0.10) * accent.glow),
-                            accent.secondary.opacity((isExpanded ? 0.10 : 0.0) * accent.glow),
-                            .clear
-                        ],
-                        center: UnitPoint(x: 0.16, y: 0.42),
-                        startRadius: 6,
-                        endRadius: isExpanded ? 260 : 120
-                    )
-                )
-                .blendMode(.plusLighter)
+    private var shapeFrame: CGRect { isExpanded ? card : bar }
 
-            // Refractive hairline, shared with the app's glass controls.
-            IslandShape(topRadius: topRadius, bottomRadius: bottomRadius)
-                .strokeBorder(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .white.opacity(island.hasNotch ? 0.0 : 0.16), location: 0),
-                            .init(color: .white.opacity(0.06), location: 0.5),
-                            .init(color: accent.primary.opacity(0.22 * accent.glow), location: 1)
-                        ],
-                        startPoint: .top, endPoint: .bottom
-                    ),
-                    lineWidth: 0.75
-                )
-        }
-        .shadow(color: .black.opacity(0.55), radius: isExpanded ? 14 : 8, y: isExpanded ? 6 : 3)
-        .shadow(color: accent.primary.opacity(isExpanded ? 0.18 * accent.glow : 0), radius: 24, y: 8)
+    /// Drawn only when Metal is not usable: a plain dark shape, no liquid.
+    private var plainShape: some View {
+        outline
+            .fill(Color.black.opacity(0.94))
+            .frame(width: shapeFrame.width, height: shapeFrame.height)
+            .offset(y: shapeFrame.minY)
     }
 
     @ViewBuilder
     private var stateOverlays: some View {
         if island.isDragOver {
-            IslandShape(topRadius: topRadius, bottomRadius: bottomRadius)
+            outline
                 .strokeBorder(accent.primary.opacity(0.9), lineWidth: 1.5)
                 .overlay {
                     VStack(spacing: Space.xxs) {
@@ -171,9 +120,12 @@ struct DynamicIslandView: View {
                         }
                     }
                 }
+                .frame(width: shapeFrame.width, height: shapeFrame.height)
+                .offset(y: shapeFrame.minY)
+                .allowsHitTesting(false)
         }
         if island.isImporting {
-            IslandShape(topRadius: topRadius, bottomRadius: bottomRadius)
+            outline
                 .fill(.black.opacity(0.55))
                 .overlay {
                     ProgressView()
@@ -181,116 +133,95 @@ struct DynamicIslandView: View {
                         .scaleEffect(0.75)
                         .tint(accent.primary)
                 }
+                .frame(width: shapeFrame.width, height: shapeFrame.height)
+                .offset(y: shapeFrame.minY)
                 .accessibilityLabel("Importing wallpaper")
         }
     }
 
     // MARK: - Compact
 
-    private var compactView: some View {
-        HStack(spacing: 0) {
-            thumbnailView(size: 22, radius: 6)
-                .padding(.leading, 10)
-            Spacer()
-            playButton(size: 12, hit: 28, prominent: false)
-                .padding(.trailing, 6)
+    private var compactContent: some View {
+        HStack(spacing: Space.xs) {
+            thumbnailView(size: min(22, bar.height - 8), radius: 6)
+            if !metrics.hasNotch {
+                Text(wallpaperManager.currentWallpaper?.displayName ?? String(localized: "No wallpaper"))
+                    .font(Typo.caption)
+                    .foregroundColor(.white.opacity(0.85))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer(minLength: 0)
+            stateGlyph
         }
-        .frame(height: island.compactHeight)
+        // An ear is `earWidth` wide. Its content sits in the middle of it.
+        .padding(.horizontal, metrics.hasNotch ? (IslandGeometry.earWidth - 22) / 2 : 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(stateTitle)
+    }
+
+    /// Playing, paused or Calm Mode: a state to read, not a control.
+    private var stateGlyph: some View {
+        Image(systemName: isCalm ? "leaf.fill" : (wallpaperManager.isPlaying ? "play.fill" : "pause.fill"))
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(isCalm ? accent.primary : .white.opacity(wallpaperManager.isPlaying ? 0.9 : 0.55))
+            .frame(width: 22, height: 22)
+    }
+
+    private var stateTitle: String {
+        if isCalm { return String(localized: "Calm Mode") }
+        return wallpaperManager.isPlaying ? String(localized: "Playing") : String(localized: "Paused")
     }
 
     // MARK: - Expanded
 
-    private var expandedView: some View {
+    private var expandedContent: some View {
         VStack(spacing: 0) {
             HStack(spacing: Space.sm) {
-                Button { openMainWindow() } label: {
-                    thumbnailView(size: 56, radius: Radius.control)
-                }
-                .buttonStyle(.plain)
-                .suppressFocusRing()
-                .accessibilityLabel("Open Wallnetic")
+                thumbnailView(size: 44, radius: Radius.control)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    if isRenaming {
-                        TextField("Name", text: $renameText)
-                            .textFieldStyle(.plain)
-                            .font(Typo.button)
-                            .foregroundColor(.white)
-                            .focused($renameFocused)
-                            .onSubmit(commitRename)
-                            .onExitCommand(perform: cancelRename)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(
-                                RoundedRectangle(cornerRadius: Radius.accent, style: .continuous)
-                                    .fill(.white.opacity(0.08))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: Radius.accent, style: .continuous)
-                                            .stroke(accent.primary.opacity(0.6), lineWidth: 0.6)
-                                    )
-                            )
-                            .accessibilityLabel("Wallpaper name")
-                    } else {
-                        Text(wallpaperManager.currentWallpaper?.displayName ?? String(localized: "No wallpaper"))
-                            .font(Typo.button)
-                            .tracking(Typo.buttonTracking)
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
+                    Text(wallpaperManager.currentWallpaper?.displayName ?? String(localized: "No wallpaper"))
+                        .font(Typo.button)
+                        .tracking(Typo.buttonTracking)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
 
-                    if let wp = wallpaperManager.currentWallpaper {
-                        Text("\(wp.formattedResolution)  ·  \(wp.formattedDuration)")
-                            .font(Typo.data)
-                            .tracking(Typo.dataTracking)
-                            .foregroundColor(.white.opacity(0.45))
-                            .lineLimit(1)
-                    }
+                    Text("\(displayName)  ·  \(stateTitle)")
+                        .font(Typo.data)
+                        .tracking(Typo.dataTracking)
+                        .foregroundColor(.white.opacity(0.5))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
 
                 Spacer(minLength: Space.xs)
 
-                if isRenaming {
-                    iconButton("checkmark", label: String(localized: "Save name"), size: 12, hit: 28, tint: accent.primary, action: commitRename)
-                } else {
-                    iconButton("pencil", label: String(localized: "Rename wallpaper"), size: 12, hit: 28, action: beginRename)
-                        .disabled(wallpaperManager.currentWallpaper == nil)
-                }
+                iconButton("arrow.up.forward.app", label: String(localized: "Open Wallnetic"),
+                           size: 14, hit: 30, action: openMainWindow)
             }
             .padding(.horizontal, Space.md)
-            .padding(.top, Space.sm)
+            .padding(.top, metrics.hasNotch ? Space.xs : Space.sm)
 
             Spacer(minLength: 0)
 
-            HStack(spacing: Space.lg) {
-                iconButton("shuffle", label: String(localized: "Random wallpaper"), size: 13, hit: 32) {
-                    wallpaperManager.setRandomWallpaper()
-                }
-                iconButton("backward.fill", label: String(localized: "Previous wallpaper"), size: 14, hit: 32) {
-                    wallpaperManager.cycleToPreviousWallpaper()
-                }
-
-                playButton(size: 18, hit: 40, prominent: true)
-
+            HStack(spacing: Space.sm) {
+                playButton
                 iconButton("forward.fill", label: String(localized: "Next wallpaper"), size: 14, hit: 32) {
                     wallpaperManager.cycleToNextWallpaper()
                 }
-
-                let fav = wallpaperManager.currentWallpaper?.isFavorite == true
-                iconButton(
-                    fav ? "heart.fill" : "heart",
-                    label: fav ? String(localized: "Remove from favorites") : String(localized: "Add to favorites"),
-                    size: 13, hit: 32,
-                    tint: fav ? Color.pink : nil
-                ) {
-                    if let wp = wallpaperManager.currentWallpaper {
-                        wallpaperManager.toggleFavorite(wp)
-                    }
+                iconButton("leaf.fill",
+                           label: isCalm ? String(localized: "Turn Off Calm Mode") : String(localized: "Turn On Calm Mode"),
+                           size: 13, hit: 32, tint: isCalm ? accent.primary : nil) {
+                    calm.toggleCalmMode()
                 }
+                Spacer(minLength: 0)
+                profileButton
             }
+            .padding(.horizontal, Space.md)
             .padding(.bottom, Space.sm)
         }
-        .frame(width: 340, height: 132)
     }
 
     // MARK: - Components
@@ -318,29 +249,55 @@ struct DynamicIslandView: View {
         .accessibilityHidden(true)
     }
 
-    /// The one prominent control: an accent-filled disc in the expanded
-    /// state, a quiet glyph in the compact one.
-    private func playButton(size: CGFloat, hit: CGFloat, prominent: Bool) -> some View {
+    /// The one prominent control: a disc in the wallpaper's colour.
+    private var playButton: some View {
         let playing = wallpaperManager.isPlaying
         return Button {
             wallpaperManager.togglePlayback()
         } label: {
             Image(systemName: playing ? "pause.fill" : "play.fill")
-                .font(.system(size: size, weight: .semibold))
-                .foregroundColor(prominent ? accent.on : .white.opacity(0.85))
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(accent.on)
                 // Nudge the play triangle right so it reads centred.
-                .offset(x: playing || !prominent ? 0 : 1)
-                .frame(width: hit, height: hit)
-                .background(
-                    Circle()
-                        .fill(prominent ? accent.primary : .clear)
-                        .shadow(color: accent.primary.opacity(prominent ? 0.45 * accent.glow : 0), radius: 10, y: 3)
-                )
+                .offset(x: playing ? 0 : 1)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(accent.primary))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .suppressFocusRing()
         .accessibilityLabel(playing ? "Pause wallpaper" : "Play wallpaper")
+    }
+
+    /// Shows the playback profile. A click moves on to the next one.
+    private var profileButton: some View {
+        let mode = performance.mode
+        let hovered = hoveredControl == "profile"
+        return Button {
+            let all = PerformanceManager.PerformanceMode.allCases
+            let index = all.firstIndex(of: mode) ?? 0
+            performance.mode = all[(index + 1) % all.count]
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: mode.icon)
+                    .font(.system(size: 11, weight: .medium))
+                Text(mode.title)
+                    .font(Typo.caption)
+                    .lineLimit(1)
+            }
+            .foregroundColor(.white.opacity(hovered ? 0.95 : 0.7))
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(Capsule().fill(.white.opacity(hovered ? 0.14 : 0.08)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .suppressFocusRing()
+        .onHover { inside in
+            withAnimation(.easeOut(duration: Anim.micro)) { hoveredControl = inside ? "profile" : nil }
+        }
+        .accessibilityLabel("Playback profile: \(mode.title)")
+        .help("Playback profile")
     }
 
     private func iconButton(
@@ -368,39 +325,10 @@ struct DynamicIslandView: View {
             withAnimation(.easeOut(duration: Anim.micro)) { hoveredControl = h ? label : nil }
         }
         .accessibilityLabel(label)
+        .help(label)
     }
 
-    // MARK: - Rename (inline)
-
-    /// A `.sheet` cannot present from a borderless non-activating panel at
-    /// menu-bar level, which is what the island is — the old sheet-based
-    /// rename silently never appeared. Rename is inline instead.
-    private func beginRename() {
-        guard let wp = wallpaperManager.currentWallpaper else { return }
-        renameText = wp.displayName
-        island.isRenameActive = true
-        isRenaming = true
-        DispatchQueue.main.async { renameFocused = true }
-    }
-
-    private func commitRename() {
-        defer { endRename() }
-        guard let wp = wallpaperManager.currentWallpaper else { return }
-        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != wp.displayName else { return }
-        wallpaperManager.renameWallpaper(wp, to: trimmed)
-    }
-
-    private func cancelRename() {
-        endRename()
-    }
-
-    private func endRename() {
-        isRenaming = false
-        renameFocused = false
-        island.isRenameActive = false
-        island.scheduleCollapse()
-    }
+    // MARK: - Actions
 
     private func openMainWindow() {
         WindowManager.shared.showMainWindow {

@@ -2,17 +2,20 @@ import Cocoa
 import SwiftUI
 import Combine
 
-/// Dynamic Island — wraps around the notch on MacBooks, or floats at top-center on other Macs.
+/// Dynamic Island (#352): a liquid shape that flows out of the notch on a
+/// MacBook, or a pill that floats below the menu bar on any other display.
 ///
-/// Multi-monitor: when more than one display is attached, an island is rendered
-/// on every monitor and all of them share the same expand/collapse state (driven
-/// by `@Published state`, observed by the SwiftUI view).
+/// Every display gets its own island with its own geometry, and all of them
+/// share the same compact or expanded state.
 ///
 /// Interaction model: **hover peeks, leaving collapses.** Pointer entry expands;
 /// pointer exit collapses after a short grace period so a pointer that skims the
 /// edge doesn't flap it. There is deliberately no tap-to-toggle on the surface —
 /// on macOS a pointer always hovers before it clicks, so a toggle on tap fought
 /// the hover expansion and made clicks look like they did nothing.
+///
+/// The shape is drawn by `IslandSurfaceView`. A timer drives the spring only
+/// while the shape moves; a resting island draws nothing.
 class DynamicIslandController: ObservableObject {
     static let shared = DynamicIslandController()
 
@@ -25,26 +28,33 @@ class DynamicIslandController: ObservableObject {
 
     @Published var state: IslandState = .compact
     @Published var isVisible = false
-    @Published var isRenameActive = false
-    @Published var hasNotch = false
     @Published var isDragOver = false
     @Published var isImporting = false
-    /// Height of the compact pill. On notch Macs it matches the notch so the
-    /// island reads as an extension of it rather than a sticker beneath it.
-    @Published private(set) var compactHeight: CGFloat = 32
+    /// True when Metal is not usable. The view then draws a plain shape.
+    @Published private(set) var drawsPlainShape = false
 
-    private var islandWindows: [CGDirectDisplayID: NSPanel] = [:]
+    private struct Island {
+        let panel: NSPanel
+        let surface: IslandSurfaceView
+        let metrics: IslandMetrics
+        /// The island's top centre in screen coordinates.
+        let anchor: CGPoint
+    }
+
+    private var islands: [CGDirectDisplayID: Island] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var safetyCollapseTimer: Timer?
     private var hoverExitTimer: Timer?
-    private var screenObserver: NSObjectProtocol?
+    private var observers: [(NotificationCenter, NSObjectProtocol)] = []
 
-    // MARK: - Dimensions
+    private var morph = IslandSpring()
+    private var morphTimer: Timer?
+    private var lastTick: CFTimeInterval = 0
+    private var style = IslandStyle()
+    /// Looking at a state without a pointer, in debug builds only.
+    private var staysExpanded = false
+    private var debugCycleTimer: Timer?
 
-    private let baseCompactHeight: CGFloat = 32
-    private let expandedWidth: CGFloat = 340
-    private let expandedHeight: CGFloat = 132
-    private let compactWidth: CGFloat = 290
     /// Grace after the pointer leaves before collapsing.
     private let hoverExitGrace: TimeInterval = 0.6
     /// Safety net for a hover-exit that is never delivered (window reordering,
@@ -55,92 +65,137 @@ class DynamicIslandController: ObservableObject {
         if isEnabled { show() }
     }
 
-    // MARK: - Notch Detection
+    // MARK: - Displays
 
-    private func detectNotch(for screen: NSScreen) -> CGFloat {
-        if #available(macOS 12.0, *) {
-            return screen.safeAreaInsets.top
+    /// The notch of a display, or none. `safeAreaInsets` gives its height and
+    /// the two areas beside it give its width.
+    static func metrics(for screen: NSScreen, defaults: UserDefaults = .standard) -> IslandMetrics {
+        #if DEBUG
+        // A notch to look at on a Mac without one:
+        // -island.debugNotchWidth 200 -island.debugNotchHeight 32
+        let debugWidth = defaults.double(forKey: "island.debugNotchWidth")
+        let debugHeight = defaults.double(forKey: "island.debugNotchHeight")
+        if debugWidth > 0, debugHeight > 0 {
+            return IslandMetrics(notch: CGSize(width: debugWidth, height: debugHeight))
         }
-        return 0
+        #endif
+        let height = screen.safeAreaInsets.top
+        guard height > 0, let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea else {
+            return IslandMetrics()
+        }
+        let width = screen.frame.width - left.width - right.width
+        guard width > 0 else { return IslandMetrics() }
+        return IslandMetrics(notch: CGSize(width: width, height: height))
     }
 
-    private func tallestNotch() -> CGFloat {
-        NSScreen.screens.map { detectNotch(for: $0) }.max() ?? 0
+    private var reducesMotion: Bool {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "island.debugReduceMotion") { return true }
+        #endif
+        return NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private var increasesContrast: Bool {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "island.debugIncreaseContrast") { return true }
+        #endif
+        return NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
     }
 
     // MARK: - Show/Hide
 
     func show() {
-        guard islandWindows.isEmpty else { return }
-        let notch = tallestNotch()
-        hasNotch = notch > 0
-        compactHeight = hasNotch ? max(baseCompactHeight, notch) : baseCompactHeight
-        for screen in NSScreen.screens {
-            guard let id = screen.displayID else { continue }
-            islandWindows[id] = makePanel(for: screen)
-        }
+        guard islands.isEmpty else { return }
+        refreshStyle()
+        makeIslands()
         isEnabled = true
         isVisible = true
         observeWallpaperChanges()
-        observeScreenChanges()
+        observeEnvironment()
+        applyVisibility()
+        #if DEBUG
+        applyDebugState()
+        #endif
     }
 
     func hide() {
-        safetyCollapseTimer?.invalidate()
-        hoverExitTimer?.invalidate()
+        stopTimers()
         cancellables.removeAll()
-        if let screenObserver {
-            NotificationCenter.default.removeObserver(screenObserver)
-            self.screenObserver = nil
-        }
-        for panel in islandWindows.values {
-            panel.close()
-        }
-        islandWindows.removeAll()
+        for (center, observer) in observers { center.removeObserver(observer) }
+        observers.removeAll()
+        closeIslands()
         isEnabled = false
         isVisible = false
         state = .compact
+        morph = IslandSpring()
     }
 
     func toggle() {
         if isVisible { hide() } else { show() }
     }
 
+    private func stopTimers() {
+        safetyCollapseTimer?.invalidate()
+        hoverExitTimer?.invalidate()
+        debugCycleTimer?.invalidate()
+        morphTimer?.invalidate()
+        morphTimer = nil
+    }
+
+    private func makeIslands() {
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID else { continue }
+            islands[id] = makeIsland(for: screen)
+        }
+        drawsPlainShape = islands.values.contains { !$0.surface.isAvailable }
+        applyShape()
+    }
+
+    private func closeIslands() {
+        for island in islands.values { island.panel.close() }
+        islands.removeAll()
+    }
+
     // MARK: - Panel Factory
 
-    private func makePanel(for screen: NSScreen) -> NSPanel {
-        let frame = islandFrame(for: screen, width: compactWidth, height: compactHeight)
+    private func makeIsland(for screen: NSScreen) -> Island {
+        let metrics = Self.metrics(for: screen)
+        let anchor = IslandGeometry.anchor(screenFrame: screen.frame, visibleFrame: screen.visibleFrame,
+                                           metrics: metrics)
+        let frame = IslandGeometry.windowFrame(expanded: state == .expanded, metrics: metrics, anchor: anchor)
+
+        let surface = IslandSurfaceView()
         let hostingView = IslandHostingView(
-            rootView: DynamicIslandView()
+            rootView: DynamicIslandView(metrics: metrics, displayName: screen.localizedName)
                 .environmentObject(WallpaperManager.shared)
                 .environmentObject(self)
         )
+        // The controller sizes the window. SwiftUI's ideal size must not.
+        hostingView.sizingOptions = []
 
         // Hover is detected by an AppKit tracking area on this host, not by
         // SwiftUI's onHover — see IslandHostView.
         let host = IslandHostView(controller: self)
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
-        host.addSubview(hostingView)
-        NSLayoutConstraint.activate([
-            hostingView.leadingAnchor.constraint(equalTo: host.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: host.trailingAnchor),
-            hostingView.topAnchor.constraint(equalTo: host.topAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: host.bottomAnchor),
-        ])
+        for view in [surface, hostingView] as [NSView] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            host.addSubview(view)
+            NSLayoutConstraint.activate([
+                view.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+                view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+                view.topAnchor.constraint(equalTo: host.topAnchor),
+                view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+            ])
+        }
 
-        // isReleasedWhenClosed=false (factory) is critical here: an in-flight
-        // animator().setFrame (updateWindowFrames) would otherwise over-release
-        // the freed panel on the next CA transaction flush. [#206]
+        // isReleasedWhenClosed=false (factory) keeps a closed panel alive for
+        // anything still in flight on the next CA transaction flush. [#206]
         let panel = OverlayWindowFactory.makeOverlayPanel(contentRect: frame, canBecomeKey: true)
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) + 2)
         panel.acceptsMouseMovedEvents = true
-        // Only take key status when a field asks for it (rename); plain
-        // clicks on the controls must not pull focus from the user's app.
+        // Clicks on the controls must not pull focus from the user's app.
         panel.becomesKeyOnlyIfNeeded = true
         panel.contentView = host
-
-        panel.orderFront(nil)
-        return panel
+        return Island(panel: panel, surface: surface, metrics: metrics, anchor: anchor)
     }
 
     // MARK: - Pointer
@@ -164,7 +219,7 @@ class DynamicIslandController: ObservableObject {
     /// Authoritative: asks the window server which window is under the cursor.
     private func cursorIsOverIsland() -> Bool {
         let number = NSWindow.windowNumber(at: NSEvent.mouseLocation, belowWindowWithWindowNumber: 0)
-        return islandWindows.values.contains { $0.windowNumber == number }
+        return islands.values.contains { $0.panel.windowNumber == number }
     }
 
     // MARK: - State Transitions
@@ -175,28 +230,31 @@ class DynamicIslandController: ObservableObject {
             return
         }
         state = .expanded
-        updateWindowFrames(animated: true)
+        morph.target = 1
+        // The window takes its full size first; the shape then stretches
+        // inside it.
+        applyFrames()
+        startMorph()
         scheduleSafetyCollapse()
     }
 
     func collapse() {
         guard state != .compact else { return }
-        // A rename in progress or a file being dragged over must not be
-        // yanked away from under the pointer.
-        guard !isRenameActive, !isDragOver else { return }
+        // A file being dragged over must not lose its target.
+        guard !isDragOver, !staysExpanded else { return }
         safetyCollapseTimer?.invalidate()
         hoverExitTimer?.invalidate()
         state = .compact
-        updateWindowFrames(animated: true)
+        morph.target = 0
+        startMorph()
     }
 
     func toggleState() {
         if state == .compact { expand() } else { collapse() }
     }
 
-    /// Collapse after the hover grace period. Also used by callers that just
-    /// finished a modal interaction (rename) and want the island to go away
-    /// on its own shortly after.
+    /// Collapse after the hover grace period. Also used by callers that want
+    /// the island to go away on its own shortly after a peek.
     func scheduleCollapse() {
         hoverExitTimer?.invalidate()
         hoverExitTimer = Timer.scheduledTimer(withTimeInterval: hoverExitGrace, repeats: false) { [weak self] _ in
@@ -219,32 +277,88 @@ class DynamicIslandController: ObservableObject {
         }
     }
 
-    // MARK: - Window Frame
+    // MARK: - Morph
 
-    private func islandFrame(for screen: NSScreen, width: CGFloat, height: CGFloat) -> NSRect {
-        let screenFrame = screen.frame
-        let x = screenFrame.midX - width / 2
-        let y = screenFrame.maxY - height
-        return NSRect(x: x, y: y, width: width, height: height)
+    /// Runs the spring until it rests. The timer exists only while the shape
+    /// moves.
+    private func startMorph() {
+        guard morphTimer == nil else { return }
+        lastTick = CACurrentMediaTime()
+        let rate = max(60, NSScreen.screens.map(\.maximumFramesPerSecond).max() ?? 60)
+        let timer = Timer(timeInterval: 1.0 / Double(rate), repeats: true) { [weak self] _ in self?.tick() }
+        RunLoop.main.add(timer, forMode: .common)
+        morphTimer = timer
     }
 
-    private func updateWindowFrames(animated: Bool) {
-        let targetWidth = state == .expanded ? expandedWidth : compactWidth
-        let targetHeight = state == .expanded ? expandedHeight : compactHeight
+    private func tick() {
+        let now = CACurrentMediaTime()
+        let elapsed = CGFloat(now - lastTick)
+        lastTick = now
+        if reducesMotion {
+            morph.fade(by: elapsed)
+            if morph.value == morph.target { morph.settle() }
+        } else {
+            morph.advance(by: elapsed)
+        }
+        applyShape()
+        guard morph.isSettled else { return }
+        morphTimer?.invalidate()
+        morphTimer = nil
+        // After a collapse the window shrinks back around the compact shape.
+        applyFrames()
+    }
 
-        for (id, panel) in islandWindows {
-            guard let screen = NSScreen.screens.first(where: { $0.displayID == id }) else { continue }
-            let newFrame = islandFrame(for: screen, width: targetWidth, height: targetHeight)
+    /// A window is as large as the expanded shape while the island is open or
+    /// moving, and as small as the compact shape while it rests. The window
+    /// never animates: only the shape inside it does.
+    private func applyFrames() {
+        let expanded = state == .expanded || !morph.isSettled
+        for island in islands.values {
+            let frame = IslandGeometry.windowFrame(expanded: expanded, metrics: island.metrics,
+                                                   anchor: island.anchor)
+            if island.panel.frame != frame { island.panel.setFrame(frame, display: true) }
+        }
+    }
 
-            if animated {
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.28
-                    context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1.0)
-                    panel.animator().setFrame(newFrame, display: true)
-                }
-            } else {
-                panel.setFrame(newFrame, display: true)
+    private func applyShape() {
+        let crossFades = reducesMotion
+        for island in islands.values {
+            let shape = IslandGeometry.layout(progress: morph.value, metrics: island.metrics,
+                                              crossFades: crossFades)
+            island.surface.show(shape, style: style)
+        }
+    }
+
+    /// The glow follows the wallpaper's colour. Increase Contrast replaces it
+    /// with a solid fill and an outline.
+    private func refreshStyle() {
+        // The accent lives on the main actor. Callers are on the main thread
+        // already; the hop gives the compiler the isolation it wants.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            var next = IslandStyle()
+            let theme = DynamicAccent.shared.theme
+            if let colour = NSColor(theme.primary).usingColorSpace(.sRGB) {
+                next.glow = SIMD3(Float(colour.redComponent), Float(colour.greenComponent),
+                                  Float(colour.blueComponent))
             }
+            next.glowStrength = Float(0.35 + 0.35 * theme.glow)
+            next.increasesContrast = self.increasesContrast
+            self.style = next
+            self.applyShape()
+        }
+    }
+
+    /// The island steps aside while an app is in full screen.
+    private func applyVisibility() {
+        let shown = IslandPolicy.isShown(enabled: isVisible,
+                                         fullscreenAppActive: PowerManager.shared.isFullscreenAppActive)
+        for island in islands.values {
+            if shown { island.panel.orderFront(nil) } else { island.panel.orderOut(nil) }
+        }
+        if !shown, state == .expanded, !staysExpanded {
+            isDragOver = false
+            collapse()
         }
     }
 
@@ -252,60 +366,94 @@ class DynamicIslandController: ObservableObject {
 
     /// Peek open when the *user* changes the wallpaper. Automatic changes —
     /// playlist rotation, time-of-day, weather, launch restore — post the same
-    /// notification with `userInitiated: false`, and the island used to pop
-    /// open on every one of them, which on a five-minute playlist is a tic.
+    /// notification with `userInitiated: false`, and an island that opened on
+    /// every one of them would be a tic. It also stays closed while the user
+    /// is typing.
     private func observeWallpaperChanges() {
         NotificationCenter.default.publisher(for: .wallpaperDidChange)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] note in
                 guard let self, self.isVisible else { return }
                 let userInitiated = note.userInfo?["userInitiated"] as? Bool ?? true
-                guard userInitiated else { return }
+                let sinceKey = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
+                guard userInitiated, IslandPolicy.mayOpenUnasked(secondsSinceLastKey: sinceKey) else { return }
                 self.expand()
                 self.scheduleCollapse()
             }
             .store(in: &cancellables)
     }
 
-    /// Tracks display hot-plug / sleep / mirror toggles. Adds panels for
-    /// newly attached screens, drops panels for detached ones, and re-frames
-    /// the survivors so anchor math stays correct after a topology change.
-    private func observeScreenChanges() {
-        screenObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
+    private func observeEnvironment() {
+        Task { @MainActor [weak self] in
+            guard let self, self.isVisible else { return }
+            DynamicAccent.shared.$theme
+                .dropFirst()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.refreshStyle() }
+                .store(in: &self.cancellables)
+        }
+
+        NotificationCenter.default.publisher(for: .playbackRestrictionsDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.applyVisibility() }
+            .store(in: &cancellables)
+
+        // Display hot-plug, sleep, mirroring and resolution changes move the
+        // notch and the menu bar, so every island is made again.
+        observe(NotificationCenter.default, NSApplication.didChangeScreenParametersNotification) { [weak self] in
             self?.screensChanged()
         }
+        // Increase Contrast and Reduce Motion.
+        observe(NSWorkspace.shared.notificationCenter,
+                NSWorkspace.accessibilityDisplayOptionsDidChangeNotification) { [weak self] in
+            self?.refreshStyle()
+        }
+    }
+
+    private func observe(_ center: NotificationCenter, _ name: Notification.Name, _ action: @escaping () -> Void) {
+        let observer = center.addObserver(forName: name, object: nil, queue: .main) { _ in action() }
+        observers.append((center, observer))
     }
 
     private func screensChanged() {
         guard isVisible else { return }
-
-        let currentIDs = Set(NSScreen.screens.compactMap { $0.displayID })
-        let knownIDs = Set(islandWindows.keys)
-
-        let notch = tallestNotch()
-        hasNotch = notch > 0
-        compactHeight = hasNotch ? max(baseCompactHeight, notch) : baseCompactHeight
-
-        // Newly attached screens
-        for id in currentIDs.subtracting(knownIDs) {
-            if let screen = NSScreen.screens.first(where: { $0.displayID == id }) {
-                islandWindows[id] = makePanel(for: screen)
-            }
-        }
-
-        // Detached screens
-        for id in knownIDs.subtracting(currentIDs) {
-            islandWindows[id]?.close()
-            islandWindows.removeValue(forKey: id)
-        }
-
-        // Survivors may have moved (mirror on/off, resolution change)
-        updateWindowFrames(animated: false)
+        closeIslands()
+        makeIslands()
+        applyVisibility()
     }
+
+    // MARK: - Debug
+
+    #if DEBUG
+    /// States to look at without a pointer:
+    /// `-island.debugExpanded YES` keeps the island open,
+    /// `-island.debugProgress 0.5` holds the shape between the two states, and
+    /// `-island.debugCycle YES` opens and closes it every two seconds.
+    /// `-island.debugReduceMotion YES` and `-island.debugIncreaseContrast YES`
+    /// stand in for the two system settings.
+    private func applyDebugState() {
+        let defaults = UserDefaults.standard
+        if defaults.bool(forKey: "island.debugCycle") {
+            let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in self?.toggleState() }
+            RunLoop.main.add(timer, forMode: .common)
+            debugCycleTimer = timer
+        }
+        if defaults.bool(forKey: "island.debugExpanded") {
+            staysExpanded = true
+            expand()
+            safetyCollapseTimer?.invalidate()
+        }
+        if defaults.object(forKey: "island.debugProgress") != nil {
+            staysExpanded = true
+            stopTimers()
+            state = .expanded
+            morph.target = CGFloat(defaults.double(forKey: "island.debugProgress"))
+            morph.settle()
+            applyFrames()
+            applyShape()
+        }
+    }
+    #endif
 }
 
 // MARK: - Hover host
