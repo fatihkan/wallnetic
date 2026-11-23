@@ -7,7 +7,7 @@ struct PauseAfterSettingsView: View {
 
     var body: some View {
         Section("Pause After") {
-            PauseAfterDurationPicker(title: "Default interval", allowsInherit: false, seconds: Binding(
+            PauseAfterDurationPicker(title: String(localized: "Default interval"), allowsInherit: false, seconds: Binding(
                 get: { settings.preferences.defaultSeconds },
                 set: { settings.setDefault(seconds: $0 ?? 0) }
             ))
@@ -18,7 +18,7 @@ struct PauseAfterSettingsView: View {
                 }
             }
             if let wallpaper = wallpaperManager.wallpapers.first(where: { $0.url.standardizedFileURL.path == selectedPath }) {
-                PauseAfterDurationPicker(title: "This wallpaper", allowsInherit: true, seconds: Binding(
+                PauseAfterDurationPicker(title: String(localized: "This wallpaper"), allowsInherit: true, seconds: Binding(
                     get: { settings.preferences.overrides[selectedPath] },
                     set: { settings.setOverride(seconds: $0, for: wallpaper.url) }
                 ))

@@ -254,7 +254,7 @@ class DesktopWindowController {
         window.alphaValue = 0
         window.orderFront(nil)
 
-        let rendererName = useMetalRenderer ? "Metal" : "AVFoundation"
+        let rendererName = useMetalRenderer ? "Metal" : "AVFoundation" // l10n:ignore
         Log.window.debug("Created window for: \(screen.localizedName, privacy: .public) using \(rendererName, privacy: .public) renderer")
     }
 
@@ -505,7 +505,7 @@ class DesktopWindowController {
                 .suddenTerminationDisabled,
                 .automaticTerminationDisabled
             ],
-            reason: "Live wallpaper playback"
+            reason: "Live wallpaper playback" // l10n:ignore
         )
     }
 

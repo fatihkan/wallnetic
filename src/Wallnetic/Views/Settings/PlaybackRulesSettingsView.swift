@@ -20,12 +20,12 @@ struct PlaybackRulesSettingsView: View {
         Section {
             Toggle("Pause while chosen apps are in front", isOn: binding(\.pausesForFrontApps))
             if rules.pausesForFrontApps {
-                PlaybackRuleAppList(apps: binding(\.frontApps), emptyText: "No apps chosen. The rule does nothing yet.")
+                PlaybackRuleAppList(apps: binding(\.frontApps), emptyText: String(localized: "No apps chosen. The rule does nothing yet."))
             }
 
             Toggle("Pause while chosen apps are running", isOn: binding(\.pausesForRunningApps))
             if rules.pausesForRunningApps {
-                PlaybackRuleAppList(apps: binding(\.runningApps), emptyText: "No apps chosen. The rule does nothing yet.")
+                PlaybackRuleAppList(apps: binding(\.runningApps), emptyText: String(localized: "No apps chosen. The rule does nothing yet."))
             }
 
             Toggle("Pause when the Mac is idle", isOn: binding(\.pausesWhenIdle))
@@ -107,8 +107,8 @@ private struct PlaybackRuleAppList: View {
 
     private func chooseApps() {
         let panel = NSOpenPanel()
-        panel.title = "Choose Apps"
-        panel.prompt = "Add"
+        panel.title = String(localized: "Choose Apps")
+        panel.prompt = String(localized: "Add")
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false

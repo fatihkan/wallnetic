@@ -75,8 +75,8 @@ enum StorageError: LocalizedError {
     case unsafeFile, changedFile
     var errorDescription: String? {
         switch self {
-        case .unsafeFile: return "This is not a removable app-managed file."
-        case .changedFile: return "The file or its folder changed. Refresh and select it again."
+        case .unsafeFile: return String(localized: "This is not a removable app-managed file.")
+        case .changedFile: return String(localized: "The file or its folder changed. Refresh and select it again.")
         }
     }
 }

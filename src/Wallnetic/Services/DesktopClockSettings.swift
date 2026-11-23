@@ -13,12 +13,12 @@ final class DesktopClockSettings: ObservableObject {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .topLeading: return "Top Left"
-            case .topCenter: return "Top Center"
-            case .center: return "Center"
-            case .bottomLeading: return "Bottom Left"
-            case .bottomCenter: return "Bottom Center"
-            case .bottomTrailing: return "Bottom Right"
+            case .topLeading: return String(localized: "Top Left")
+            case .topCenter: return String(localized: "Top Center")
+            case .center: return String(localized: "Center")
+            case .bottomLeading: return String(localized: "Bottom Left")
+            case .bottomCenter: return String(localized: "Bottom Center")
+            case .bottomTrailing: return String(localized: "Bottom Right")
             }
         }
     }

@@ -102,21 +102,21 @@ class DeepLinkHandler {
             DispatchQueue.main.async {
                 ErrorReporter.shared.report(
                     DeepLinkError.invalidScheme,
-                    context: "Import refused: only HTTPS URLs are accepted from deep links."
+                    context: String(localized: "Import refused: only HTTPS URLs are accepted from deep links.")
                 )
             }
             return
         }
 
-        let host = importURL.host ?? "unknown source"
+        let host = importURL.host ?? String(localized: "unknown source")
 
         DispatchQueue.main.async {
             let alert = NSAlert()
-            alert.messageText = "Download wallpaper from \(host)?"
+            alert.messageText = String(localized: "Download wallpaper from \(host)?")
             alert.informativeText = "Wallnetic was asked to import a video from this URL:\n\n\(importURL.absoluteString)\n\nOnly proceed if you started this action."
             alert.alertStyle = .warning
             alert.addButton(withTitle: "Download & Import")
-            alert.addButton(withTitle: "Cancel")
+            alert.addButton(withTitle: String(localized: "Cancel"))
             NSApp.activate(ignoringOtherApps: true)
 
             let response = alert.runModal()
@@ -131,7 +131,7 @@ class DeepLinkHandler {
                     _ = try await WallpaperManager.shared.importVideo(from: downloaded)
                 } catch {
                     await MainActor.run {
-                        ErrorReporter.shared.report(error, context: "Import from deep link failed")
+                        ErrorReporter.shared.report(error, context: String(localized: "Import from deep link failed"))
                     }
                 }
             }
@@ -144,7 +144,7 @@ private enum DeepLinkError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidScheme: return "Only HTTPS URLs are accepted from deep links."
+        case .invalidScheme: return String(localized: "Only HTTPS URLs are accepted from deep links.")
         }
     }
 }

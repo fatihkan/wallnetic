@@ -124,7 +124,7 @@ extension AuthManager: ASAuthorizationControllerDelegate {
               let identityToken = credential.identityToken,
               let idToken = String(data: identityToken, encoding: .utf8) else {
             DispatchQueue.main.async {
-                self.error = "Failed to get Apple ID token"
+                self.error = "Failed to get Apple ID token" // l10n:ignore
                 self.isLoading = false
             }
             return

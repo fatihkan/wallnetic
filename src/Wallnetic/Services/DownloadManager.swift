@@ -319,9 +319,9 @@ enum SourceError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noAPIKey(let name): return "\(name) API key not configured"
-        case .parseFailed(let msg): return "Parse error: \(msg)"
-        case .networkError(let msg): return "Network error: \(msg)"
+        case .noAPIKey(let name): return String(localized: "\(name) API key not configured")
+        case .parseFailed(let msg): return String(localized: "Parse error: \(msg)")
+        case .networkError(let msg): return String(localized: "Network error: \(msg)")
         }
     }
 }

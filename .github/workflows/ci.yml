@@ -93,6 +93,14 @@ jobs:
             ENABLE_APP_SANDBOX=NO \
             DEBUG_INFORMATION_FORMAT=dwarf
 
+      # Every interface string must be translatable, and the string catalogs
+      # must list every string in the code (#351). Both read what the build
+      # above left in its derived data.
+      - name: Check localizable strings
+        run: |
+          python3 tools/l10n/check_strings.py --derived-data build
+          tools/l10n/sync_strings.sh build --check
+
       - name: Build Summary
         if: always()
         run: |

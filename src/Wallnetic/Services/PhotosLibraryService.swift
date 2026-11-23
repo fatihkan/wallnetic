@@ -48,7 +48,7 @@ final class PhotosLibraryService: ObservableObject {
             options: nil
         )
         if let collection = recents.firstObject {
-            result.append(AlbumDescriptor(collection: collection, displayName: "Recents"))
+            result.append(AlbumDescriptor(collection: collection, displayName: String(localized: "Recents")))
         }
 
         // Favorites smart album
@@ -58,7 +58,7 @@ final class PhotosLibraryService: ObservableObject {
             options: nil
         )
         if let collection = favorites.firstObject {
-            result.append(AlbumDescriptor(collection: collection, displayName: "Favorites"))
+            result.append(AlbumDescriptor(collection: collection, displayName: String(localized: "Favorites")))
         }
 
         // User-created albums
@@ -68,7 +68,7 @@ final class PhotosLibraryService: ObservableObject {
             options: nil
         )
         userAlbums.enumerateObjects { collection, _, _ in
-            let name = collection.localizedTitle ?? "Album"
+            let name = collection.localizedTitle ?? String(localized: "Album")
             result.append(AlbumDescriptor(collection: collection, displayName: name))
         }
 

@@ -77,7 +77,7 @@ enum OnboardingDemoError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .sampleUnavailable: return "The included sample is unavailable. You can still import your own video."
-        case .displayDisconnected: return "That display is no longer connected. Choose a connected display and try again."
+        case .displayDisconnected: return String(localized: "That display is no longer connected. Choose a connected display and try again.")
         }
     }
 }
@@ -130,7 +130,7 @@ final class OnboardingDemoModel: ObservableObject {
                 try Task.checkCancellation()
                 guard let self, generation == self.generation else { return }
                 try self.apply(wallpaper, display)
-                self.message = "Wallpaper applied. Playback follows your pause and power settings. Remove the sample from Library whenever you like."
+                self.message = String(localized: "Wallpaper applied. Playback follows your pause and power settings. Remove the sample from Library whenever you like.")
             } catch is CancellationError {
                 // Closing or cancelling onboarding is not an import error.
             } catch {

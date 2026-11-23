@@ -39,7 +39,7 @@ enum WallneticButton {
     }
 
     static func cancel(
-        _ title: String = "Cancel",
+        _ title: String = String(localized: "Cancel"),
         action: @escaping () -> Void
     ) -> some View {
         Button(title, action: action)

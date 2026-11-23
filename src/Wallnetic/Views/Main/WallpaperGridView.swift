@@ -270,13 +270,13 @@ struct WallpaperCard: View {
 
                 Divider().background(Surface.hairline)
 
-                metadataRow("Resolution", value: wallpaper.formattedResolution)
-                metadataRow("Duration", value: LoopRangeStatus.durationText(loopStatus, duration: wallpaper.duration))
+                metadataRow(String(localized: "Resolution"), value: wallpaper.formattedResolution)
+                metadataRow(String(localized: "Duration"), value: LoopRangeStatus.durationText(loopStatus, duration: wallpaper.duration))
                 if loopStatus == .notApplied {
-                    metadataRow("Loop", value: "Trim not applied")
+                    metadataRow(String(localized: "Loop"), value: String(localized: "Trim not applied"))
                 }
-                metadataRow("File Size", value: wallpaper.formattedFileSize)
-                metadataRow("Added", value: wallpaper.dateAdded.formatted(.dateTime.month().day().year()))
+                metadataRow(String(localized: "File Size"), value: wallpaper.formattedFileSize)
+                metadataRow(String(localized: "Added"), value: wallpaper.dateAdded.formatted(.dateTime.month().day().year()))
 
                 if wallpaper.isFavorite {
                     HStack(spacing: 4) {
@@ -483,7 +483,7 @@ struct SelectedWallpaperBar: View {
 
             Spacer()
 
-            WallneticButton.primary("Apply", icon: "play.fill") {
+            WallneticButton.primary(String(localized: "Apply"), icon: "play.fill") {
                 wallpaperManager.setWallpaper(wallpaper)
             }
         }
@@ -574,7 +574,7 @@ struct RenameWallpaperSheet: View {
     }
 
     var body: some View {
-        WallneticSheet(title: "Rename Wallpaper", icon: "play.rectangle.fill", width: 400) {
+        WallneticSheet(title: String(localized: "Rename Wallpaper"), icon: "play.rectangle.fill", width: 400) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("DISPLAY NAME")
                     .font(.system(size: 9, weight: .heavy, design: .monospaced))
@@ -608,7 +608,7 @@ struct RenameWallpaperSheet: View {
         } footer: {
             WallneticButton.cancel { onCancel() }
             Spacer()
-            WallneticButton.primary("Save", icon: "checkmark", isEnabled: !trimmed.isEmpty) {
+            WallneticButton.primary(String(localized: "Save"), icon: "checkmark", isEnabled: !trimmed.isEmpty) {
                 onSave(title)
             }
         }

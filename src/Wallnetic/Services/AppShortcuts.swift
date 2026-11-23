@@ -25,7 +25,7 @@ struct SetWallpaperIntent: AppIntent {
             WallpaperManager.shared.setWallpaper(wallpaper)
         }
 
-        return .result(value: "Set wallpaper to \(wallpaper.name)")
+        return .result(value: String(localized: "Set wallpaper to \(wallpaper.name)"))
     }
 }
 
@@ -43,10 +43,10 @@ struct NextWallpaperShortcutIntent: AppIntent {
         }
 
         let name = await MainActor.run {
-            WallpaperManager.shared.currentWallpaper?.name ?? "Unknown"
+            WallpaperManager.shared.currentWallpaper?.name ?? String(localized: "Unknown")
         }
 
-        return .result(value: "Switched to \(name)")
+        return .result(value: String(localized: "Switched to \(name)"))
     }
 }
 
@@ -64,7 +64,7 @@ struct TogglePlaybackIntent: AppIntent {
             return WallpaperManager.shared.isPlaying
         }
 
-        return .result(value: isPlaying ? "Playing" : "Paused")
+        return .result(value: isPlaying ? String(localized: "Playing") : String(localized: "Paused"))
     }
 }
 
@@ -81,7 +81,7 @@ struct ToggleCalmModeIntent: AppIntent {
             CalmPlaybackSettings.shared.toggleCalmMode()
             return CalmPlaybackSettings.shared.state.isCalmEnabled
         }
-        return .result(value: enabled ? "Calm Mode on" : "Calm Mode off; other pause conditions still apply")
+        return .result(value: enabled ? String(localized: "Calm Mode on") : String(localized: "Calm Mode off; other pause conditions still apply"))
     }
 }
 
@@ -126,7 +126,7 @@ struct RandomWallpaperIntent: AppIntent {
             WallpaperManager.shared.setWallpaper(random)
         }
 
-        return .result(value: "Set random wallpaper: \(random.name)")
+        return .result(value: String(localized: "Set random wallpaper: \(random.name)"))
     }
 }
 
@@ -140,7 +140,7 @@ struct GetCurrentWallpaperIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
         let name = await MainActor.run {
-            WallpaperManager.shared.currentWallpaper?.name ?? "None"
+            WallpaperManager.shared.currentWallpaper?.name ?? String(localized: "None")
         }
         return .result(value: name)
     }
@@ -153,7 +153,7 @@ struct WallneticShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: ToggleCalmModeIntent(),
-            phrases: ["Toggle Calm Mode in \(.applicationName)"],
+            phrases: ["Toggle Calm Mode in \(.applicationName)"], // l10n:ignore
             shortTitle: "Calm Mode",
             systemImageName: "leaf"
         )
@@ -161,9 +161,9 @@ struct WallneticShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: NextWallpaperShortcutIntent(),
             phrases: [
-                "Next wallpaper in \(.applicationName)",
-                "Change wallpaper in \(.applicationName)",
-                "Switch wallpaper in \(.applicationName)"
+                "Next wallpaper in \(.applicationName)", // l10n:ignore
+                "Change wallpaper in \(.applicationName)", // l10n:ignore
+                "Switch wallpaper in \(.applicationName)" // l10n:ignore
             ],
             shortTitle: "Next Wallpaper",
             systemImageName: "forward.fill"
@@ -172,9 +172,9 @@ struct WallneticShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: TogglePlaybackIntent(),
             phrases: [
-                "Pause wallpaper in \(.applicationName)",
-                "Play wallpaper in \(.applicationName)",
-                "Toggle \(.applicationName)"
+                "Pause wallpaper in \(.applicationName)", // l10n:ignore
+                "Play wallpaper in \(.applicationName)", // l10n:ignore
+                "Toggle \(.applicationName)" // l10n:ignore
             ],
             shortTitle: "Toggle Playback",
             systemImageName: "playpause.fill"
@@ -183,8 +183,8 @@ struct WallneticShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: RandomWallpaperIntent(),
             phrases: [
-                "Random wallpaper in \(.applicationName)",
-                "Surprise me with \(.applicationName)"
+                "Random wallpaper in \(.applicationName)", // l10n:ignore
+                "Surprise me with \(.applicationName)" // l10n:ignore
             ],
             shortTitle: "Random Wallpaper",
             systemImageName: "shuffle"
@@ -200,8 +200,8 @@ enum ShortcutError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .wallpaperNotFound(let name): return "No wallpaper found matching '\(name)'"
-        case .noWallpapers: return "No wallpapers in library"
+        case .wallpaperNotFound(let name): return String(localized: "No wallpaper found matching '\(name)'")
+        case .noWallpapers: return String(localized: "No wallpapers in library")
         }
     }
 }

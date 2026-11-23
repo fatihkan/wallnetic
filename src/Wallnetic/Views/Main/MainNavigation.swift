@@ -14,9 +14,9 @@ enum NavigationTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .home: return "Home"
-        case .library: return "Library"
-        case .discover: return "Discover"
+        case .home: return String(localized: "Home")
+        case .library: return String(localized: "Library")
+        case .discover: return String(localized: "Discover")
         }
     }
 
@@ -53,12 +53,12 @@ struct NowPlayingBar: View {
     private var summary: String {
         let all = statuses
         guard all.count > 1 else {
-            return all.first?.title ?? (wallpaperManager.isPlaying ? "Playing" : "Paused")
+            return all.first?.title ?? (wallpaperManager.isPlaying ? String(localized: "Playing") : String(localized: "Paused"))
         }
         let playing = all.filter { $0.state == .playing }.count
-        if playing == all.count { return "Playing on \(all.count) displays" }
-        if playing == 0 { return all.first(where: { $0.state != .playing })?.title ?? "Paused" }
-        return "Playing on \(playing) of \(all.count) displays"
+        if playing == all.count { return String(localized: "Playing on \(all.count) displays") }
+        if playing == 0 { return all.first(where: { $0.state != .playing })?.title ?? String(localized: "Paused") }
+        return String(localized: "Playing on \(playing) of \(all.count) displays")
     }
 
     /// Each display's own state, for the tooltip. Empty with one display,
@@ -100,7 +100,7 @@ struct NowPlayingBar: View {
                 Text(wallpaper.displayName)
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
-                Text(calm.state.isCalmEnabled ? "Calm Mode is on" : summary)
+                Text(calm.state.isCalmEnabled ? String(localized: "Calm Mode is on") : summary)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -112,19 +112,19 @@ struct NowPlayingBar: View {
 
             HStack(spacing: Space.xs) {
                 barButton(
-                    wallpaperManager.isPlaying ? "Pause" : "Play",
+                    wallpaperManager.isPlaying ? String(localized: "Pause") : String(localized: "Play"),
                     icon: wallpaperManager.isPlaying ? "pause.fill" : "play.fill"
                 ) {
                     wallpaperManager.togglePlayback()
                 }
                 .disabled(!canResume)
 
-                barButton("Next Wallpaper", icon: "forward.fill") {
+                barButton(String(localized: "Next Wallpaper"), icon: "forward.fill") {
                     wallpaperManager.cycleToNextWallpaper()
                 }
 
                 barButton(
-                    calm.state.isCalmEnabled ? "Turn Off Calm Mode" : "Turn On Calm Mode",
+                    calm.state.isCalmEnabled ? String(localized: "Turn Off Calm Mode") : String(localized: "Turn On Calm Mode"),
                     icon: calm.state.isCalmEnabled ? "leaf.fill" : "leaf",
                     isOn: calm.state.isCalmEnabled
                 ) {

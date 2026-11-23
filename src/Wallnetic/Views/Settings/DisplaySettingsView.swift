@@ -274,9 +274,9 @@ struct AISettingsView: View {
 
         var message: String {
             switch self {
-            case .notValidated: return "Not validated"
-            case .validating: return "Validating..."
-            case .valid: return "Connected"
+            case .notValidated: return String(localized: "Not validated")
+            case .validating: return String(localized: "Validating...")
+            case .valid: return String(localized: "Connected")
             case .invalid(let error): return error
             }
         }
@@ -374,7 +374,7 @@ struct AISettingsView: View {
                 await MainActor.run {
                     isValidating = false
                     if isValid { KeychainManager.shared.saveAPIKey(apiKey, for: apiProvider); validationStatus = .valid }
-                    else { validationStatus = .invalid("Invalid API key") }
+                    else { validationStatus = .invalid(String(localized: "Invalid API key")) }
                 }
             } catch {
                 await MainActor.run { isValidating = false; validationStatus = .invalid(error.localizedDescription) }

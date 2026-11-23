@@ -115,17 +115,17 @@ final class BatteryPromptService {
         dispatchPrecondition(condition: .onQueue(.main))
 
         let alert = NSAlert()
-        alert.messageText = "Running on battery"
+        alert.messageText = String(localized: "Running on battery")
         alert.informativeText = trigger == .launch
-            ? "Wallnetic paused the live wallpaper to save battery. Would you like to keep it playing?"
-            : "Power cable unplugged. Wallnetic paused the live wallpaper to save battery. Would you like to keep it playing?"
+            ? String(localized: "Wallnetic paused the live wallpaper to save battery. Would you like to keep it playing?")
+            : String(localized: "Power cable unplugged. Wallnetic paused the live wallpaper to save battery. Would you like to keep it playing?")
         alert.alertStyle = .informational
 
-        alert.addButton(withTitle: "Keep playing")
-        alert.addButton(withTitle: "Pause (save battery)")
+        alert.addButton(withTitle: String(localized: "Keep playing"))
+        alert.addButton(withTitle: String(localized: "Pause (save battery)"))
 
         let rememberCheckbox = NSButton(
-            checkboxWithTitle: "Don't ask again",
+            checkboxWithTitle: String(localized: "Don't ask again"),
             target: nil,
             action: nil
         )

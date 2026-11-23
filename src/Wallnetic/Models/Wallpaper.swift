@@ -103,7 +103,7 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
         guard let resolution = resolution,
               resolution.width.isFinite, resolution.height.isFinite,
               resolution.width > 0, resolution.height > 0,
-              resolution.width < CGFloat(Int.max), resolution.height < CGFloat(Int.max) else { return "Unknown" }
+              resolution.width < CGFloat(Int.max), resolution.height < CGFloat(Int.max) else { return String(localized: "Unknown") }
         return "\(Int(resolution.width))×\(Int(resolution.height))"
     }
 

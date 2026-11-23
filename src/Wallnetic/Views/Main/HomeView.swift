@@ -41,7 +41,7 @@ struct HomeView: View {
 
                 if !sections.recentlyUsed.isEmpty {
                     CarouselSection(
-                        title: "Recently Used",
+                        title: String(localized: "Recently Used"),
                         icon: "clock.arrow.circlepath",
                         iconColor: .teal,
                         wallpapers: sections.recentlyUsed
@@ -50,7 +50,7 @@ struct HomeView: View {
 
                 if !sections.favorites.isEmpty {
                     CarouselSection(
-                        title: "Favorites",
+                        title: String(localized: "Favorites"),
                         icon: "heart.fill",
                         iconColor: .pink,
                         wallpapers: sections.favorites
@@ -59,7 +59,7 @@ struct HomeView: View {
 
                 if !sections.recent.isEmpty {
                     CarouselSection(
-                        title: "Recently Added",
+                        title: String(localized: "Recently Added"),
                         icon: "sparkles",
                         iconColor: .yellow,
                         wallpapers: sections.recent
@@ -68,7 +68,7 @@ struct HomeView: View {
 
                 if !sections.all.isEmpty {
                     CarouselSection(
-                        title: "All Wallpapers",
+                        title: String(localized: "All Wallpapers"),
                         icon: "square.grid.2x2.fill",
                         iconColor: .blue,
                         wallpapers: sections.all
@@ -156,7 +156,7 @@ private struct DesktopTile: View {
 
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(wallpaper?.displayName ?? "No wallpaper")
+                    Text(wallpaper?.displayName ?? String(localized: "No wallpaper"))
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
                     HStack(spacing: 5) {

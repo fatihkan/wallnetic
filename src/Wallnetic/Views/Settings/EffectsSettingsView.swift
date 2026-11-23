@@ -21,16 +21,16 @@ struct EffectsSettingsView: View {
 
             // Adjustments
             Section("Adjustments") {
-                sliderRow("Brightness", icon: "sun.max", value: $effects.brightness,
+                sliderRow(String(localized: "Brightness"), icon: "sun.max", value: $effects.brightness,
                           range: -0.5...0.5, defaultValue: 0)
 
-                sliderRow("Contrast", icon: "circle.lefthalf.filled", value: $effects.contrast,
+                sliderRow(String(localized: "Contrast"), icon: "circle.lefthalf.filled", value: $effects.contrast,
                           range: 0.5...2.0, defaultValue: 1.0)
 
-                sliderRow("Saturation", icon: "paintpalette", value: $effects.saturation,
+                sliderRow(String(localized: "Saturation"), icon: "paintpalette", value: $effects.saturation,
                           range: 0...2.0, defaultValue: 1.0)
 
-                sliderRow("Blur", icon: "aqi.medium", value: $effects.blur,
+                sliderRow(String(localized: "Blur"), icon: "aqi.medium", value: $effects.blur,
                           range: 0...20, defaultValue: 0)
             }
 
@@ -41,7 +41,7 @@ struct EffectsSettingsView: View {
                 if effects.tintEnabled {
                     ColorPicker("Tint Color", selection: tintColorBinding)
 
-                    sliderRow("Opacity", icon: "drop.halffull", value: $effects.tintOpacity,
+                    sliderRow(String(localized: "Opacity"), icon: "drop.halffull", value: $effects.tintOpacity,
                               range: 0...0.8, defaultValue: 0.3)
                 }
             }
@@ -51,7 +51,7 @@ struct EffectsSettingsView: View {
                 Toggle("Enable Vignette", isOn: $effects.vignetteEnabled)
 
                 if effects.vignetteEnabled {
-                    sliderRow("Intensity", icon: "circle.dashed", value: $effects.vignetteIntensity,
+                    sliderRow(String(localized: "Intensity"), icon: "circle.dashed", value: $effects.vignetteIntensity,
                               range: 0...2.0, defaultValue: 0.5)
                 }
             }

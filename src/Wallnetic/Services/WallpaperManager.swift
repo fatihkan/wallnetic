@@ -15,9 +15,9 @@ enum WallpaperImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .duplicate(let name):
-            return "'\(name)' is already in your library"
+            return String(localized: "'\(name)' is already in your library")
         case .unsupportedFile:
-            return "Choose a video or animated image in MP4, MOV, M4V, HEVC, GIF, WebM, or WebP format."
+            return String(localized: "Choose a video or animated image in MP4, MOV, M4V, HEVC, GIF, WebM, or WebP format.")
         }
     }
 }
@@ -29,8 +29,8 @@ enum WallpaperMode: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .same: return "Same on all displays"
-        case .different: return "Different per display"
+        case .same: return String(localized: "Same on all displays")
+        case .different: return String(localized: "Different per display")
         }
     }
 }
@@ -418,16 +418,16 @@ class WallpaperManager: ObservableObject {
                     throw StorageError.unsafeFile
                 }
                 let alert = NSAlert()
-                alert.messageText = "Remove this library copy?"
-                alert.informativeText = "\(wallpaper.displayName) (\(ByteCountFormatter.string(fromByteCount: item.bytes, countStyle: .file))). This permanently removes the app-managed copy and its assignments. Your original source file is kept."
-                alert.addButton(withTitle: "Remove")
-                alert.addButton(withTitle: "Cancel")
+                alert.messageText = String(localized: "Remove this library copy?")
+                alert.informativeText = String(localized: "\(wallpaper.displayName) (\(ByteCountFormatter.string(fromByteCount: item.bytes, countStyle: .file))). This permanently removes the app-managed copy and its assignments. Your original source file is kept.")
+                alert.addButton(withTitle: String(localized: "Remove"))
+                alert.addButton(withTitle: String(localized: "Cancel"))
                 alert.buttons.first?.hasDestructiveAction = true
                 guard alert.runModal() == .alertFirstButtonReturn else { return }
                 let result = await removeStorageItems([item])
                 if !result.failures.isEmpty {
                     let failure = NSAlert()
-                    failure.messageText = "Could not remove the copy"
+                    failure.messageText = String(localized: "Could not remove the copy")
                     failure.informativeText = result.failures.joined(separator: "\n")
                     failure.runModal()
                 }
@@ -460,7 +460,7 @@ class WallpaperManager: ObservableObject {
             var failure: String?
             if service.thumbnailsURL != nil {
                 do { names.formUnion(try Self.storedThumbnailNames()) }
-                catch { failure = "Widget references could not be read; cache cleanup is unavailable. \(error.localizedDescription)" }
+                catch { failure = String(localized: "Widget references could not be read; cache cleanup is unavailable. \(error.localizedDescription)") }
             }
             var scan = try service.scan(protectedThumbnailNames: names)
             if let failure {
@@ -488,7 +488,7 @@ class WallpaperManager: ObservableObject {
                         do { names.formUnion(try Self.storedThumbnailNames()) }
                         catch {
                             var result = service.remove(items.filter { $0.category == .videos })
-                            result.failures.append("Cache cleanup skipped: widget references could not be read. \(error.localizedDescription)")
+                            result.failures.append(String(localized: "Cache cleanup skipped: widget references could not be read. \(error.localizedDescription)"))
                             return result
                         }
                     }

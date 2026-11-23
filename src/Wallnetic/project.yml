@@ -86,6 +86,9 @@ targets:
         CODE_SIGN_ENTITLEMENTS: ../WallneticWidget/Resources/WallneticWidget.entitlements
         SKIP_INSTALL: YES
         MACOSX_DEPLOYMENT_TARGET: "13.0"
+        # The widget is its own bundle, with its own string catalog (#351).
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
         LD_RUNPATH_SEARCH_PATHS:
           - $(inherited)
           - "@executable_path/../Frameworks"
@@ -128,6 +131,9 @@ schemes:
       config: Debug
     test:
       config: Debug
+      # Tests compare interface text in English, whatever the Mac's language.
+      language: en
+      region: US
       targets:
         - WallneticTests
     profile:

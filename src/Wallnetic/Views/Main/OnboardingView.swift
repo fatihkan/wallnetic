@@ -35,33 +35,33 @@ struct OnboardingTourContent: View {
     private let steps: [Step] = [
         Step(
             icon: "sparkles.tv.fill",
-            title: "Wallnetic",
-            kicker: "LIVE WALLPAPERS",
-            description: "Cinematic, GPU-accelerated motion behind every window. Built for macOS.",
+            title: "Wallnetic", // l10n:ignore
+            kicker: String(localized: "LIVE WALLPAPERS"),
+            description: String(localized: "Cinematic, GPU-accelerated motion behind every window. Built for macOS."),
             accent: Color(red: 0.42, green: 0.71, blue: 1.00),
             secondary: Color(red: 0.65, green: 0.45, blue: 1.00)
         ),
         Step(
             icon: "tray.and.arrow.down.fill",
-            title: "Bring Anything In",
+            title: String(localized: "Bring Anything In"),
             kicker: "01 · IMPORT",
-            description: "Drop video files, download from the built-in browser, or try a wallpaper pack — Wallnetic accepts it all.",
+            description: String(localized: "Drop video files, download from the built-in browser, or try a wallpaper pack — Wallnetic accepts it all."),
             accent: Color(red: 0.30, green: 0.85, blue: 0.92),
             secondary: Color(red: 0.28, green: 0.55, blue: 1.00)
         ),
         Step(
             icon: "rectangle.stack.fill.badge.person.crop",
-            title: "Curate Effortlessly",
+            title: String(localized: "Curate Effortlessly"),
             kicker: "02 · ORGANIZE",
-            description: "Favorites, color filters and search keep your library in order.",
+            description: String(localized: "Favorites, color filters and search keep your library in order."),
             accent: Color(red: 1.00, green: 0.45, blue: 0.72),
             secondary: Color(red: 0.95, green: 0.65, blue: 0.30)
         ),
         Step(
             icon: "display.2",
-            title: "Every Display, Its Own Mood",
+            title: String(localized: "Every Display, Its Own Mood"),
             kicker: "03 · MULTI-MONITOR",
-            description: "Choose a wallpaper for each display. Space recovery saves choices to apply manually to all displays and Spaces; automatic per-Space switching is unavailable.",
+            description: String(localized: "Choose a wallpaper for each display. Space recovery saves choices to apply manually to all displays and Spaces; automatic per-Space switching is unavailable."),
             accent: Color(red: 0.40, green: 0.95, blue: 0.55),
             secondary: Color(red: 0.20, green: 0.85, blue: 0.85)
         ),
@@ -272,11 +272,11 @@ struct OnboardingTourContent: View {
 
             HStack {
                 if currentStep > 0 {
-                    WallneticButton.cancel("Back") {
+                    WallneticButton.cancel(String(localized: "Back")) {
                         withAnimation(reduceMotion ? nil : .default) { currentStep -= 1 }
                     }
                 } else {
-                    WallneticButton.cancel("Skip") {
+                    WallneticButton.cancel(String(localized: "Skip")) {
                         finish()
                     }
                 }
@@ -284,11 +284,11 @@ struct OnboardingTourContent: View {
                 Spacer()
 
                 if currentStep < steps.count - 1 {
-                    WallneticButton.primary("Next", icon: "arrow.right", accent: step.accent) {
+                    WallneticButton.primary(String(localized: "Next"), icon: "arrow.right", accent: step.accent) {
                         withAnimation(reduceMotion ? nil : .default) { currentStep += 1 }
                     }
                 } else {
-                    WallneticButton.primary("Enter Wallnetic", icon: "sparkles", accent: step.accent) {
+                    WallneticButton.primary(String(localized: "Enter Wallnetic"), icon: "sparkles", accent: step.accent) {
                         finish()
                     }
                 }

@@ -51,7 +51,7 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
     @AppStorage("weather.city") var manualCity: String = ""
 
     @Published var currentCondition: WeatherCondition = .sunny
-    @Published var locationStatus: String = "Not started"
+    @Published var locationStatus: String = String(localized: "Not started")
     @Published var lastUpdate: Date?
 
     private let locationManager = CLLocationManager()
@@ -128,7 +128,7 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
             updateCondition(.sunny)
         }
 
-        locationStatus = "Updated"
+        locationStatus = String(localized: "Updated")
         lastUpdate = Date()
     }
 
@@ -154,6 +154,6 @@ class WeatherWallpaperManager: NSObject, ObservableObject, CLLocationManagerDele
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        locationStatus = "Location unavailable"
+        locationStatus = String(localized: "Location unavailable")
     }
 }

@@ -38,7 +38,7 @@ class CloudSyncManager: ObservableObject {
                     "was_img2vid": wasImg2Vid,
                     "cost": cost
                 ],
-                headers: ["Prefer": "return=minimal"]
+                headers: ["Prefer": "return=minimal"] // l10n:ignore
             )
             Log.cloud.info("Generation synced")
         } catch {

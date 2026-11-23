@@ -193,8 +193,9 @@ struct WallpaperPreviewSheet: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Preview of \(model.wallpaper.displayName)" +
-                            (model.target.map { " on \($0.name)" } ?? ""))
+        .accessibilityLabel(model.target.map {
+            String(localized: "Preview of \(model.wallpaper.displayName) on \($0.name)")
+        } ?? String(localized: "Preview of \(model.wallpaper.displayName)"))
         .accessibilityValue(model.isPlaying ? "Playing" : "Paused")
     }
 

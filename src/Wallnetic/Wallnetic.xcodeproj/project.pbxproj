@@ -53,6 +53,7 @@
 		35FE90E800935BC895D3B2A7 /* StorageSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31019824B827C1F369C262E /* StorageSettingsView.swift */; };
 		3694EFFC1639D101F12EBD74 /* WallpaperScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BB9E5D3E8D807E7ECD1D0EA /* WallpaperScheduleTests.swift */; };
 		38BD342CB024693C99DB8B35 /* AudioVisualizerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 082027791B67C0B2DBD43F97 /* AudioVisualizerManager.swift */; };
+		39BC989C54C037507E864BA6 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = D96FBF94BDA789531A88D524 /* Localizable.xcstrings */; };
 		39C032EFB614D68ADAE9403B /* PexelsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B960F4D2BFD36368F336A4 /* PexelsService.swift */; };
 		3ACABD266118F70AA54B934B /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D80208B9C31066D6C112FB /* ThemeManager.swift */; };
 		3BAAF032CF6402F975643659 /* PlaybackTrim.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225C9F80DF59562D4FBF43E6 /* PlaybackTrim.swift */; };
@@ -470,6 +471,7 @@
 		D7053DA494AD1DB578C10447 /* MediumWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediumWidgetView.swift; sourceTree = "<group>"; };
 		D78258413C6E41B4A9C95516 /* PlaybackTrimStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackTrimStore.swift; sourceTree = "<group>"; };
 		D897DB76AC3168D36AA4E383 /* PlaybackStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackStatusTests.swift; sourceTree = "<group>"; };
+		D96FBF94BDA789531A88D524 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		DA18283F2FD8E99F3FFDC805 /* FuzzySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzySearchTests.swift; sourceTree = "<group>"; };
 		DAF6B0FBCB4F3C87A0BBD4DD /* PauseAfterPlaybackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PauseAfterPlaybackTests.swift; sourceTree = "<group>"; };
 		DDB1C25115998357CDFF95EB /* DynamicIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandView.swift; sourceTree = "<group>"; };
@@ -698,6 +700,7 @@
 			isa = PBXGroup;
 			children = (
 				DFC7F5C372D751F46660FA5C /* Info.plist */,
+				D96FBF94BDA789531A88D524 /* Localizable.xcstrings */,
 				08B2A227CEA1CA39347CC37A /* WallneticWidget.entitlements */,
 			);
 			path = Resources;
@@ -973,6 +976,7 @@
 			buildConfigurationList = C8C17D5F470E1BC8713FCB3B /* Build configuration list for PBXNativeTarget "WallneticWidget" */;
 			buildPhases = (
 				5F3F52C60DA583A25A090D7D /* Sources */,
+				779E95251C91A125E42354A0 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1072,6 +1076,14 @@
 				B29970D2C363902C62330D7C /* README.md in Resources */,
 				44B8815CB886FEF2DAFF3586 /* pack-LICENSE-MIT.txt in Resources */,
 				F8787EBCDF4A938CD6B0FB89 /* wallpaper-packs-v1.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		779E95251C91A125E42354A0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				39BC989C54C037507E864BA6 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1452,11 +1464,13 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app.WallneticWidget;
 				PRODUCT_NAME = WallneticWidget;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
 		};
@@ -1489,11 +1503,13 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wallnetic.app.WallneticWidget;
 				PRODUCT_NAME = WallneticWidget;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Debug;
 		};

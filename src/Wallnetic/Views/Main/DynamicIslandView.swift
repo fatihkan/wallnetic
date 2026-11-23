@@ -231,7 +231,7 @@ struct DynamicIslandView: View {
                             )
                             .accessibilityLabel("Wallpaper name")
                     } else {
-                        Text(wallpaperManager.currentWallpaper?.displayName ?? "No wallpaper")
+                        Text(wallpaperManager.currentWallpaper?.displayName ?? String(localized: "No wallpaper"))
                             .font(Typo.button)
                             .tracking(Typo.buttonTracking)
                             .foregroundColor(.white)
@@ -251,9 +251,9 @@ struct DynamicIslandView: View {
                 Spacer(minLength: Space.xs)
 
                 if isRenaming {
-                    iconButton("checkmark", label: "Save name", size: 12, hit: 28, tint: accent.primary, action: commitRename)
+                    iconButton("checkmark", label: String(localized: "Save name"), size: 12, hit: 28, tint: accent.primary, action: commitRename)
                 } else {
-                    iconButton("pencil", label: "Rename wallpaper", size: 12, hit: 28, action: beginRename)
+                    iconButton("pencil", label: String(localized: "Rename wallpaper"), size: 12, hit: 28, action: beginRename)
                         .disabled(wallpaperManager.currentWallpaper == nil)
                 }
             }
@@ -263,23 +263,23 @@ struct DynamicIslandView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: Space.lg) {
-                iconButton("shuffle", label: "Random wallpaper", size: 13, hit: 32) {
+                iconButton("shuffle", label: String(localized: "Random wallpaper"), size: 13, hit: 32) {
                     wallpaperManager.setRandomWallpaper()
                 }
-                iconButton("backward.fill", label: "Previous wallpaper", size: 14, hit: 32) {
+                iconButton("backward.fill", label: String(localized: "Previous wallpaper"), size: 14, hit: 32) {
                     wallpaperManager.cycleToPreviousWallpaper()
                 }
 
                 playButton(size: 18, hit: 40, prominent: true)
 
-                iconButton("forward.fill", label: "Next wallpaper", size: 14, hit: 32) {
+                iconButton("forward.fill", label: String(localized: "Next wallpaper"), size: 14, hit: 32) {
                     wallpaperManager.cycleToNextWallpaper()
                 }
 
                 let fav = wallpaperManager.currentWallpaper?.isFavorite == true
                 iconButton(
                     fav ? "heart.fill" : "heart",
-                    label: fav ? "Remove from favorites" : "Add to favorites",
+                    label: fav ? String(localized: "Remove from favorites") : String(localized: "Add to favorites"),
                     size: 13, hit: 32,
                     tint: fav ? Color.pink : nil
                 ) {

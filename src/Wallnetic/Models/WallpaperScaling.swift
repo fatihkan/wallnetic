@@ -13,8 +13,8 @@ enum WallpaperScaling: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .fill: return "Fill"
-        case .fitBlurred: return "Fit with Blurred Backdrop"
+        case .fill: return String(localized: "Fill")
+        case .fitBlurred: return String(localized: "Fit with Blurred Backdrop")
         }
     }
 }

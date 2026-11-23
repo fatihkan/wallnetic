@@ -7,11 +7,11 @@ enum PackError: LocalizedError {
     case invalidCatalog, invalidMedia, transfer, changedContent, receipts
     var errorDescription: String? {
         switch self {
-        case .invalidCatalog: return "This catalog is unsupported or failed validation. The previous catalog is still available."
-        case .invalidMedia: return "The wallpaper failed its size, integrity, or video-format check."
-        case .transfer: return "The download could not be completed. Check your connection and retry."
-        case .changedContent: return "A downloaded file was changed or replaced. It has been kept in your library."
-        case .receipts: return "Pack ownership records could not be read or saved. Manage existing files in Library Storage."
+        case .invalidCatalog: return String(localized: "This catalog is unsupported or failed validation. The previous catalog is still available.")
+        case .invalidMedia: return String(localized: "The wallpaper failed its size, integrity, or video-format check.")
+        case .transfer: return String(localized: "The download could not be completed. Check your connection and retry.")
+        case .changedContent: return String(localized: "A downloaded file was changed or replaced. It has been kept in your library.")
+        case .receipts: return String(localized: "Pack ownership records could not be read or saved. Manage existing files in Library Storage.")
         }
     }
 }

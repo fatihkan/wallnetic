@@ -58,7 +58,7 @@ class PixabayService {
         category: String? = nil
     ) async throws -> SearchResponse {
         guard let apiKey = KeychainManager.shared.getAPIKey(for: .pixabay) else {
-            throw SourceError.noAPIKey("Pixabay")
+            throw SourceError.noAPIKey("Pixabay") // l10n:ignore
         }
 
         var components = URLComponents(string: baseURL)!
@@ -83,7 +83,7 @@ class PixabayService {
     /// Get popular videos
     func popular(page: Int = 1) async throws -> SearchResponse {
         guard let apiKey = KeychainManager.shared.getAPIKey(for: .pixabay) else {
-            throw SourceError.noAPIKey("Pixabay")
+            throw SourceError.noAPIKey("Pixabay") // l10n:ignore
         }
 
         var components = URLComponents(string: baseURL)!

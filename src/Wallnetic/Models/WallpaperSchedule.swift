@@ -33,11 +33,11 @@ enum WallpaperScheduleError: LocalizedError {
     case invalidRange, overlap(String, String), invalidDuration, tooManyItems, invalidData
     var errorDescription: String? {
         switch self {
-        case .invalidRange: return "Enter valid times. Start and end must differ; use 00:00–24:00 for a full day."
-        case .overlap(let a, let b): return "\(a) overlaps \(b). Move a boundary or choose a different time."
-        case .invalidDuration: return "Each duration must be between 1 and 86,400 seconds."
-        case .tooManyItems: return "Use at most 96 daily ranges or 500 playlist items."
-        case .invalidData: return "Saved settings could not be read. The original data has been kept."
+        case .invalidRange: return String(localized: "Enter valid times. Start and end must differ; use 00:00–24:00 for a full day.")
+        case .overlap(let a, let b): return String(localized: "\(a) overlaps \(b). Move a boundary or choose a different time.")
+        case .invalidDuration: return String(localized: "Each duration must be between 1 and 86,400 seconds.")
+        case .tooManyItems: return String(localized: "Use at most 96 daily ranges or 500 playlist items.")
+        case .invalidData: return String(localized: "Saved settings could not be read. The original data has been kept.")
         }
     }
 }
@@ -126,7 +126,7 @@ struct DailyScheduleDocument: Codable {
                                 endMinute: hours[(i + 1) % 4] * 60,
                                 wallpaperPath: defaults.string(forKey: "tod.\(slots[i])WallpaperPath") ?? "")
         }
-        return Self(ranges: ranges, migrationNotice: valid ? nil : "The previous start times were invalid or out of order. Default times were restored; all wallpaper selections were kept.")
+        return Self(ranges: ranges, migrationNotice: valid ? nil : String(localized: "The previous start times were invalid or out of order. Default times were restored; all wallpaper selections were kept."))
     }
 }
 
