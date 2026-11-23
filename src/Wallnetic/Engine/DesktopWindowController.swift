@@ -88,6 +88,7 @@ class DesktopWindowController {
     private var durationTimer: Timer?
     private var durationSettingsObserver: AnyCancellable?
     private var calmSettingsObserver: AnyCancellable?
+    private var displayRuleObserver: AnyCancellable?
     private let desktopClearMonitor = DesktopClearMonitor()
     private var reportedPlaying: Bool?
     private var reportedDurationPause: Bool?
@@ -137,9 +138,17 @@ class DesktopWindowController {
             self?.applyScalingEdits(scalings)
         }
         durationPlayback.onChange = { [weak self] in self?.refreshPlaybackLifecycle() }
-        calmSettingsObserver = CalmPlaybackSettings.shared.$state
-            .map(\.holds).removeDuplicates().sink { [weak self] holds in
+        // Calm Mode, the thermal hold and the playback rules (#350) are
+        // holds of one set: releasing one never releases another.
+        calmSettingsObserver = CalmPlaybackSettings.shared.$state.map(\.holds)
+            .combineLatest(PlaybackRulesMonitor.shared.$holds)
+            .map { $0.union($1) }
+            .removeDuplicates().sink { [weak self] holds in
                 self?.durationPlayback.setHolds(holds)
+            }
+        displayRuleObserver = PlaybackRulesMonitor.shared.$inactiveDisplays
+            .removeDuplicates().sink { [weak self] displays in
+                self?.durationPlayback.setInactiveDisplays(displays)
             }
         durationSettingsObserver = PauseAfterSettings.shared.$preferences.sink { [weak self] preferences in
             self?.durationPlayback.updatePreferences(preferences)
@@ -436,6 +445,7 @@ class DesktopWindowController {
             var reasons = restrictions
             reasons.append(contentsOf: durationPlayback.holds.map(\.pauseReason))
             if durationPlayback.isManuallyPaused { reasons.append(.manual) }
+            if durationPlayback.inactiveDisplays.contains(id) { reasons.append(.otherDisplay) }
             if durationPlayback.isExpired(on: id) { reasons.append(.timer) }
             clockDisplays.append(.init(id: id, hasPresentedFrame: renderer.hasPresentedFrame, reasons: reasons))
             return DisplayPlaybackStatus(id: id, displayName: screen.localizedName,
@@ -746,6 +756,7 @@ class DesktopWindowController {
         onDisplayStatusesChanged = nil
         durationSettingsObserver = nil
         calmSettingsObserver = nil
+        displayRuleObserver = nil
         durationTimer?.invalidate()
         durationTimer = nil
         desktopClearMonitor.stop()

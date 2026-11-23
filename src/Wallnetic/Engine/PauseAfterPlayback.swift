@@ -18,6 +18,12 @@ final class PauseAfterPlayback {
     private(set) var isManuallyPaused = false
     private(set) var holds: Set<PlaybackHold> = []
     private var heldAt: TimeInterval?
+    /// Displays held by "play only on the display in use" (#350). Like a
+    /// hold, it stops motion there without touching the user's intent.
+    private(set) var inactiveDisplays: Set<UInt32> = []
+    /// When each inactive display's own hold began, less any time a general
+    /// hold has already credited to its interval.
+    private var displayHeldAt: [UInt32: TimeInterval] = [:]
     var onChange: (() -> Void)?
 
     init(now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
@@ -26,17 +32,21 @@ final class PauseAfterPlayback {
         self.canPlay = canPlay
     }
 
-    var hasActivePlayback: Bool { isRequested && holds.isEmpty && entries.values.contains { !$0.expired } }
+    var hasActivePlayback: Bool {
+        isRequested && holds.isEmpty && entries.contains { !$0.value.expired && !inactiveDisplays.contains($0.key) }
+    }
     var isPausedAfterDuration: Bool { isRequested && !entries.isEmpty && entries.values.allSatisfy { $0.expired } }
     var needsTimer: Bool {
-        isRequested && holds.isEmpty && entries.values.contains {
-            !$0.expired && $0.duration != nil && $0.renderer.playbackMonitor.hasFrameForCurrentLoad
+        isRequested && holds.isEmpty && entries.contains {
+            !inactiveDisplays.contains($0.key) && !$0.value.expired && $0.value.duration != nil
+                && $0.value.renderer.playbackMonitor.hasFrameForCurrentLoad
         }
     }
     var hasTimedWallpapers: Bool { entries.values.contains { $0.duration != nil } }
 
     func shouldPlay(on display: UInt32) -> Bool {
-        isRequested && holds.isEmpty && canPlay() && entries[display].map { !$0.expired } == true
+        isRequested && holds.isEmpty && !inactiveDisplays.contains(display) && canPlay()
+            && entries[display].map { !$0.expired } == true
     }
 
     func isExpired(on display: UInt32) -> Bool { entries[display]?.expired == true }
@@ -65,9 +75,37 @@ final class PauseAfterPlayback {
                 for id in Array(entries.keys) {
                     if let started = entries[id]?.startedAt { entries[id]?.startedAt = started + elapsed }
                 }
+                // That time is credited now, so a display that is still
+                // inactive does not get it again when it is released.
+                for id in Array(displayHeldAt.keys) { displayHeldAt[id]? += elapsed }
             }
             heldAt = nil
             for (id, entry) in entries where shouldPlay(on: id) { entry.renderer.play() }
+        }
+        onChange?()
+    }
+
+    /// Displays that stop while another display is in use. A released
+    /// display plays again only if nothing else stops it, and its Pause After
+    /// interval does not count the time it was held.
+    func setInactiveDisplays(_ next: Set<UInt32>) {
+        guard next != inactiveDisplays else { return }
+        let time = now()
+        let added = next.subtracting(inactiveDisplays)
+        let removed = inactiveDisplays.subtracting(next)
+        inactiveDisplays = next
+        for id in added {
+            displayHeldAt[id] = time
+            entries[id]?.renderer.pause()
+        }
+        for id in removed {
+            if let began = displayHeldAt.removeValue(forKey: id), let started = entries[id]?.startedAt {
+                // While a general hold is active, it will credit its own
+                // span when it ends; credit only the time before it began.
+                let end = heldAt.map { min($0, time) } ?? time
+                entries[id]?.startedAt = started + max(0, end - began)
+            }
+            if let entry = entries[id], shouldPlay(on: id) { entry.renderer.play() }
         }
         onChange?()
     }
@@ -119,7 +157,7 @@ final class PauseAfterPlayback {
         guard time.isFinite else { return }
         var changed = false
         for id in Array(entries.keys) {
-            guard var entry = entries[id], !entry.expired,
+            guard !inactiveDisplays.contains(id), var entry = entries[id], !entry.expired,
                   let duration = entry.duration, entry.renderer.hasPresentedFrame,
                   entry.renderer.playbackMonitor.hasFrameForCurrentLoad else { continue }
             // A retained frame can belong to the previous wallpaper. Only the
@@ -136,7 +174,8 @@ final class PauseAfterPlayback {
     }
 
     func replayExpiredDisplay(_ display: UInt32) {
-        guard isRequested, holds.isEmpty, !isManuallyPaused, canPlay(), entries[display]?.expired == true else { return }
+        guard isRequested, holds.isEmpty, !inactiveDisplays.contains(display), !isManuallyPaused, canPlay(),
+              entries[display]?.expired == true else { return }
         entries[display]?.expired = false
         entries[display]?.startedAt = nil
         entries[display]?.renderer.play()
@@ -146,6 +185,7 @@ final class PauseAfterPlayback {
 
     func remove(_ display: UInt32) {
         entries.removeValue(forKey: display)
+        displayHeldAt.removeValue(forKey: display)
         onChange?()
     }
 

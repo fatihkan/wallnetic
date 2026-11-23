@@ -1,10 +1,22 @@
 import Foundation
 import Combine
 
+/// Something that stops motion without touching the user's own Play or
+/// Pause: Calm Mode, the thermal hold, and the playback rules (#350).
 enum PlaybackHold: Hashable {
     case calm, thermal
+    case frontApp, runningApp, idle, lowBattery
 
-    var pauseReason: PlaybackPauseReason { self == .calm ? .calm : .thermal }
+    var pauseReason: PlaybackPauseReason {
+        switch self {
+        case .calm: return .calm
+        case .thermal: return .thermal
+        case .frontApp: return .frontApp
+        case .runningApp: return .runningApp
+        case .idle: return .idle
+        case .lowBattery: return .lowBattery
+        }
+    }
 }
 
 /// Main-thread settings and thermal observation. Calm Mode is session-only;

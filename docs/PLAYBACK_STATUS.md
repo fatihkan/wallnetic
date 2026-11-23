@@ -18,7 +18,9 @@ change alone is not evidence that the renderer has stopped.
 
 The deterministic priority is manual pause, Calm Mode, thermal hold,
 inactive/locked session, sleeping display, screen saver, Low Power Mode, battery
-policy, fullscreen restriction, then expiration of the playback timer.
+policy, the low battery rule, fullscreen restriction, the app in front rule,
+the running app rule, the idle rule, the display in use rule, then expiration
+of the playback timer. The rules are described in `PLAYBACK_RULES.md`.
 Additional active reasons remain in the detail. File failures take precedence so the recovery
 action remains visible, while pause reasons are retained alongside it.
 

@@ -16,7 +16,8 @@ final class DesktopClockTests: XCTestCase {
     /// Pauses that keep a still frame on screen. With the session reasons,
     /// every pause reason is in exactly one set, so a new one needs a decision.
     private let framedPauseReasons: Set<PlaybackPauseReason> = [.manual, .timer, .calm, .thermal, .battery,
-                                                                .lowPower, .fullscreen]
+                                                                .lowPower, .fullscreen, .lowBattery, .frontApp,
+                                                                .runningApp, .idle, .otherDisplay]
     private var suite: String!
     private var defaults: UserDefaults!
 

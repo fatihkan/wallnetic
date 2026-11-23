@@ -1,7 +1,9 @@
 import Foundation
 
 enum PlaybackPauseReason: Int, CaseIterable, Equatable {
-    case manual, calm, thermal, sessionInactive, sleeping, screenSaver, lowPower, battery, fullscreen, timer
+    // The order is the priority: the first reason present names the pause.
+    case manual, calm, thermal, sessionInactive, sleeping, screenSaver, lowPower, battery, lowBattery
+    case fullscreen, frontApp, runningApp, idle, otherDisplay, timer
 
     var title: String {
         switch self {
@@ -13,7 +15,12 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
         case .screenSaver: return "Paused for the screen saver"
         case .lowPower: return "Paused in Low Power Mode"
         case .battery: return "Paused on battery"
+        case .lowBattery: return "Paused on low battery"
         case .fullscreen: return "Paused for a fullscreen app"
+        case .frontApp: return "Paused for the app in front"
+        case .runningApp: return "Paused while a chosen app is running"
+        case .idle: return "Paused while the Mac is idle"
+        case .otherDisplay: return "Paused while another display is in use"
         case .timer: return "Playback timer finished"
         }
     }
@@ -30,7 +37,12 @@ enum PlaybackPauseReason: Int, CaseIterable, Equatable {
         case .screenSaver: return "screen saver"
         case .lowPower: return "Low Power Mode"
         case .battery: return "battery policy"
+        case .lowBattery: return "low battery rule"
         case .fullscreen: return "fullscreen app"
+        case .frontApp: return "app in front rule"
+        case .runningApp: return "running app rule"
+        case .idle: return "idle rule"
+        case .otherDisplay: return "display in use rule"
         case .timer: return "finished playback timer"
         }
     }
@@ -118,7 +130,9 @@ struct DisplayPlaybackStatus: Equatable, Identifiable {
         case .paused:
             let holds = [
                 reasons.contains(.calm) ? "Turn off Calm Mode to release its hold." : nil,
-                reasons.contains(.thermal) ? "The heat hold clears after one minute of cooling, or when thermal-aware playback is turned off." : nil
+                reasons.contains(.thermal) ? "The heat hold clears after one minute of cooling, or when thermal-aware playback is turned off." : nil,
+                reasons.contains(.idle) ? "Move the pointer or press a key to continue." : nil,
+                reasons.contains(.otherDisplay) ? "Use this display to continue here." : nil
             ].compactMap { $0 }
             let restoration: String
             if reasons.contains(where: \.blocksResume) {
