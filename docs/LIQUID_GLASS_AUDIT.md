@@ -127,12 +127,21 @@ things recorded above:
   surface on `.bar` material, so it joins the B3 list in place of the
   `TopNavigationBar` background.
 
-Conflict 1 is still open. The window keeps the #237 settings: an opaque
-background and no `.fullSizeContentView`, guarded by
-`testNativeControlsStayOutsideContentAfterChromeUpdates`. Content therefore
-ends below the toolbar and does not scroll under it. Letting it scroll under
-the glass toolbar on macOS 26 means relaxing that guard for the main window
-only, and it needs a check of the window controls on macOS 26 first.
+Conflict 1 is resolved for the main window on macOS 26. With the #237
+settings the toolbar sat on a grey title-bar strip above the content. Now
+`WindowChrome.configureAppWindow(_:hostsToolbar:)` keeps
+`.fullSizeContentView` there, which is SwiftUI's default for a window with a
+toolbar: the page background and scrolled rows pass under the glass toolbar,
+and the window controls stay in the toolbar above the content.
+- Settings, which has no toolbar, keeps the #237 title bar on every system.
+- On macOS 13–25 the main window keeps it too.
+- `testToolbarWindowFollowsTheSystemAndKeepsItsControls` covers the new case,
+  and the #237 test still covers the old one.
+
+**Checked by running the app on macOS 27.2.1** with two displays, in dark and
+light appearance: Home, Library, Discover, search, a rename sheet, full screen
+and back. The window controls stayed visible throughout. Not checked: macOS
+26.6.2, where #237 was reported, and macOS 13–25.
 
 ## Result of B3 (adaptive glass)
 
