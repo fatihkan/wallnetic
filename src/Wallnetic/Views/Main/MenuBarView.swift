@@ -86,7 +86,7 @@ struct MenuBarView: View {
             // mechanism that no longer exists, so open the window directly.
             // Activation/dock-icon handling lives in SettingsView.onAppear.
             Button {
-                openWindow(id: "settings")
+                WindowManager.shared.showSettingsWindow { openWindow(id: "settings") }
             } label: {
                 Label("Settings…", systemImage: "gear")
             }

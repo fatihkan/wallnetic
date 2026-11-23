@@ -34,7 +34,7 @@ struct ContentView: View {
                 // which is when the misconception arises.
                 if hasCompletedOnboarding && !hasSeenDesktopHint && !wallpaperManager.wallpapers.isEmpty {
                     DesktopKeepsPlayingHint(
-                        openSettings: { openWindow(id: "settings") },
+                        openSettings: { WindowManager.shared.showSettingsWindow { openWindow(id: "settings") } },
                         dismiss: {
                             withAnimation(.easeOut(duration: Anim.medium)) { hasSeenDesktopHint = true }
                         }
@@ -194,7 +194,7 @@ struct ContentView: View {
             .help("Add a wallpaper")
 
             Button {
-                openWindow(id: "settings")
+                WindowManager.shared.showSettingsWindow { openWindow(id: "settings") }
             } label: {
                 Label("Settings", systemImage: "gearshape")
             }

@@ -121,11 +121,19 @@ private final class WindowAwareView: NSView {
 extension View {
     /// Theme-aware native title bar. Apply only at the main/settings scene root;
     /// sheets, panels and borderless wallpaper windows keep their own chrome.
-    func cinematicWindowChrome(isMainWindow: Bool = false, hostsToolbar: Bool? = nil,
-                               showsTitle: Bool = false) -> some View {
+    func cinematicWindowChrome(isMainWindow: Bool = false, isSettingsWindow: Bool = false,
+                               hostsToolbar: Bool? = nil, showsTitle: Bool = false) -> some View {
         let toolbar = hostsToolbar ?? isMainWindow
+        let register: ((NSWindow) -> Void)?
+        if isMainWindow {
+            register = WindowManager.shared.registerMainWindow
+        } else if isSettingsWindow {
+            register = WindowManager.shared.registerSettingsWindow
+        } else {
+            register = nil
+        }
         return background(WindowChrome(
             configure: { WindowChrome.configureAppWindow($0, hostsToolbar: toolbar, showsTitle: showsTitle) },
-            onAttach: isMainWindow ? WindowManager.shared.registerMainWindow : nil))
+            onAttach: register))
     }
 }
