@@ -94,7 +94,8 @@ struct WallneticApp: App {
         WindowGroup(id: "settings") {
             SettingsView()
                 .environmentObject(wallpaperManager)
-                .cinematicWindowChrome()
+                // The sidebar's split view brings a system toolbar (#343 B3b).
+                .cinematicWindowChrome(hostsToolbar: true, showsTitle: true)
         }
         .windowStyle(.titleBar)
         .windowResizability(.contentSize)

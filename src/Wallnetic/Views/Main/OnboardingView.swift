@@ -185,20 +185,6 @@ struct OnboardingTourContent: View {
                     .opacity(0.6 - Double(i) * 0.18)
             }
 
-            // Glow blob
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [step.accent.opacity(0.55), step.secondary.opacity(0.15), .clear],
-                        center: .center,
-                        startRadius: 4,
-                        endRadius: 130
-                    )
-                )
-                .frame(width: 220, height: 220)
-                .blur(radius: 8)
-                .scaleEffect(1 + phase * 0.03)
-
             // Core disk
             Circle()
                 .fill(
@@ -211,7 +197,6 @@ struct OnboardingTourContent: View {
                 .overlay(
                     Circle().stroke(.white.opacity(0.25), lineWidth: 0.5)
                 )
-                .shadow(color: step.accent.opacity(0.7), radius: 24, y: 8)
 
             // Icon
             Image(systemName: step.icon)
@@ -280,7 +265,6 @@ struct OnboardingTourContent: View {
                                 startPoint: .leading, endPoint: .trailing
                             )) : AnyShapeStyle(Color.primary.opacity(0.18)))
                         .frame(width: i == currentStep ? 28 : 12, height: 4)
-                        .shadow(color: i == currentStep ? step.accent.opacity(0.6) : .clear, radius: 4)
                         .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.75), value: currentStep)
                         .accessibilityHidden(true)
                 }

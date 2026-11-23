@@ -33,13 +33,16 @@ struct WindowChrome: NSViewRepresentable {
         configureAppWindow(window, hostsToolbar: false)
     }
 
-    /// - Parameter hostsToolbar: the window has a system toolbar that holds
-    ///   the window controls (the main window). Settings has none.
-    static func configureAppWindow(_ window: NSWindow, hostsToolbar: Bool) {
+    /// - Parameters:
+    ///   - hostsToolbar: the window has a system toolbar that holds the
+    ///     window controls: the main window's tabs, or Settings' sidebar.
+    ///   - showsTitle: the title bar names the page (Settings). The main
+    ///     window's tabs already say where the user is.
+    static func configureAppWindow(_ window: NSWindow, hostsToolbar: Bool, showsTitle: Bool = false) {
         guard window.styleMask.contains(.titled),
               !(window is NSPanel), !window.isSheet else { return }
 
-        window.titleVisibility = .hidden
+        window.titleVisibility = showsTitle ? .visible : .hidden
         if hostsToolbar && toolbarFloatsOverContent {
             // The controls sit in the toolbar, which AppKit keeps above the
             // content, and SwiftUI keeps the content's own controls out of
@@ -118,8 +121,11 @@ private final class WindowAwareView: NSView {
 extension View {
     /// Theme-aware native title bar. Apply only at the main/settings scene root;
     /// sheets, panels and borderless wallpaper windows keep their own chrome.
-    func cinematicWindowChrome(isMainWindow: Bool = false) -> some View {
-        background(WindowChrome(configure: { WindowChrome.configureAppWindow($0, hostsToolbar: isMainWindow) },
-                                onAttach: isMainWindow ? WindowManager.shared.registerMainWindow : nil))
+    func cinematicWindowChrome(isMainWindow: Bool = false, hostsToolbar: Bool? = nil,
+                               showsTitle: Bool = false) -> some View {
+        let toolbar = hostsToolbar ?? isMainWindow
+        return background(WindowChrome(
+            configure: { WindowChrome.configureAppWindow($0, hostsToolbar: toolbar, showsTitle: showsTitle) },
+            onAttach: isMainWindow ? WindowManager.shared.registerMainWindow : nil))
     }
 }
