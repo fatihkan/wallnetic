@@ -167,6 +167,19 @@ final class WindowPresentationTests: XCTestCase {
         }
     }
 
+    /// Settings names its page in the title bar; the main window's tabs do
+    /// that job, so its title stays hidden.
+    @MainActor
+    func testOnlyAWindowThatAsksForItShowsItsTitle() {
+        let settings = makeWindow()
+        let main = makeWindow()
+        defer { settings.close(); main.close() }
+        WindowChrome.configureAppWindow(settings, hostsToolbar: true, showsTitle: true)
+        WindowChrome.configureAppWindow(main, hostsToolbar: true)
+        XCTAssertEqual(settings.titleVisibility, .visible)
+        XCTAssertEqual(main.titleVisibility, .hidden)
+    }
+
     @MainActor
     func testChromeLeavesPanelsAndBorderlessWindowsAlone() {
         let panel = NSPanel(contentRect: .zero, styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)

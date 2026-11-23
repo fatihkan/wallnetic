@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// 2026 Liquid Glass button family. Replaces SwiftUI's `.borderedProminent`
-/// which leaks system chrome into our dark cinematic surfaces.
+/// The app's sheet and onboarding buttons, built on the system button
+/// styles so they match Trim, Optimize and the rest of macOS, and take
+/// Liquid Glass from the system on macOS 26 (#343 B3b).
 ///
 /// Three tiers:
-///  * `.primary`   — accent gradient + inner highlight stroke + soft shadow.
-///                   One per surface; bound to ⌘↩.
-///  * `.ghost`     — liquid-glass capsule with neutral tint.
-///  * `.cancel`    — chromeless minimal; bound to ⎋.
+///  * `.primary`   — the prominent default button. One per surface; ⏎.
+///  * `.ghost`     — a bordered secondary button.
+///  * `.cancel`    — a bordered button bound to ⎋.
 enum WallneticButton {
     static func primary(
         _ title: String,
@@ -17,20 +17,13 @@ enum WallneticButton {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: Space.xs) {
-                if let icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                Text(title)
-                    .font(Typo.button)
-                    .tracking(Typo.buttonTracking)
-            }
+            label(title, icon: icon)
         }
-        .buttonStyle(LiquidPrimaryButtonStyle(accent: accent, isEnabled: isEnabled))
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(accent)
         .disabled(!isEnabled)
-        .keyboardShortcut(.return)
-        .suppressFocusRing()
+        .keyboardShortcut(.defaultAction)
     }
 
     static func ghost(
@@ -39,165 +32,47 @@ enum WallneticButton {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: Space.xxs + 2) {
-                if let icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 11))
-                }
-                Text(title)
-                    .font(.system(size: 13, weight: .medium))
-            }
+            label(title, icon: icon)
         }
-        .buttonStyle(LiquidGhostButtonStyle())
-        .suppressFocusRing()
+        .buttonStyle(.bordered)
+        .controlSize(.large)
     }
 
     static func cancel(
         _ title: String = "Cancel",
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        Button(title, action: action)
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .keyboardShortcut(.cancelAction)
+    }
+
+    @ViewBuilder
+    private static func label(_ title: String, icon: String?) -> some View {
+        if let icon {
+            Label(title, systemImage: icon)
+        } else {
             Text(title)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.primary.opacity(0.65))
         }
-        .buttonStyle(.plain)
-        .keyboardShortcut(.escape)
-        .suppressFocusRing()
     }
 }
 
-// MARK: - Primary (Liquid Glass + accent)
+// MARK: - Text Field
 
-private struct LiquidPrimaryButtonStyle: ButtonStyle {
-    let accent: Color
-    let isEnabled: Bool
-    @State private var wobble: CGFloat = 1.0
-
-    func makeBody(configuration: Configuration) -> some View {
-        // Primary button keeps "dark text on accent fill" everywhere —
-        // the accent gradient is dense enough that white text loses
-        // contrast against it in both light and dark mode.
-        configuration.label
-            .foregroundColor(isEnabled ? .black : .primary.opacity(0.45))
-            .padding(.horizontal, Space.lg)
-            .padding(.vertical, 10)
-            .background(
-                ZStack {
-                    Capsule(style: .continuous)
-                        .fill(isEnabled
-                              ? AnyShapeStyle(LinearGradient(
-                                    colors: [accent, accent.opacity(0.75)],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing))
-                              : AnyShapeStyle(Surface.glassControl))
-
-                    // Top inner highlight — light catching the lens edge
-                    Capsule(style: .continuous)
-                        .strokeBorder(LinearGradient(
-                            stops: [
-                                .init(color: .white.opacity(isEnabled ? 0.55 : 0.10), location: 0),
-                                .init(color: .white.opacity(0), location: 0.55),
-                                .init(color: .black.opacity(isEnabled ? 0.20 : 0.05), location: 1)
-                            ],
-                            startPoint: .top, endPoint: .bottom
-                        ), lineWidth: 0.75)
-                }
-            )
-            // A short, soft shadow that lifts the button; not a glow.
-            .shadow(
-                color: isEnabled ? accent.opacity(configuration.isPressed ? 0.10 : 0.22) : .clear,
-                radius: configuration.isPressed ? 2 : 5,
-                y: configuration.isPressed ? 1 : 2
-            )
-            // Press: compress to 0.96. Release: bouncy spring back through
-            // 1.0 → ~1.025 → 1.0. Wobble is purely visual; the action
-            // already fired on touch-up.
-            .scaleEffect(configuration.isPressed ? 0.96 : wobble)
-            .onChange(of: configuration.isPressed) { newPressed in
-                guard isEnabled else { return }
-                if !newPressed {
-                    wobble = 1.025
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.55)) {
-                        wobble = 1.0
-                    }
-                }
-            }
-            .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Ghost (Liquid Glass neutral)
-
-private struct LiquidGhostButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundColor(.primary.opacity(0.85))
-            .padding(.horizontal, Space.md)
-            .padding(.vertical, 9)
-            .background(
-                ZStack {
-                    Capsule(style: .continuous)
-                        .fill(Surface.glassControl.opacity(configuration.isPressed ? 0.6 : 1.0))
-                    Capsule(style: .continuous)
-                        .strokeBorder(LinearGradient(
-                            stops: [
-                                .init(color: Surface.glassTopStroke, location: 0),
-                                .init(color: Surface.glassInnerHighlight, location: 0.5),
-                                .init(color: Surface.glassBottomStroke, location: 1)
-                            ],
-                            startPoint: .top, endPoint: .bottom
-                        ), lineWidth: 0.6)
-                }
-            )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Liquid Glass Text Field
-
-/// Replaces `.textFieldStyle(.roundedBorder)` which renders macOS chrome.
+/// A single-line field for sheets, with the system's border and focus ring.
 struct WallneticTextField: View {
     let placeholder: String
     @Binding var text: String
+    /// Kept for call sites; the system field shows no leading icon.
     var icon: String? = nil
     var accent: Color = .accentColor
     var onSubmit: (() -> Void)? = nil
 
-    @FocusState private var focused: Bool
-
     var body: some View {
-        HStack(spacing: Space.xs + 2) {
-            if let icon {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(focused ? accent : .primary.opacity(0.5))
-            }
-            TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.primary.opacity(0.4)))
-                .textFieldStyle(.plain)
-                .foregroundColor(.primary)
-                .font(Typo.body)
-                .focused($focused)
-                .onSubmit { onSubmit?() }
-        }
-        .padding(.horizontal, Space.sm)
-        .padding(.vertical, 10)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .fill(Surface.glassControl.opacity(focused ? 1.5 : 1.0))
-                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .strokeBorder(LinearGradient(
-                        stops: [
-                            .init(color: focused ? accent.opacity(0.55) : Surface.glassTopStroke, location: 0),
-                            .init(color: focused ? accent.opacity(0.25) : Surface.glassInnerHighlight, location: 0.5),
-                            .init(color: focused ? accent.opacity(0.45) : Surface.glassBottomStroke, location: 1)
-                        ],
-                        startPoint: .top, endPoint: .bottom
-                    ), lineWidth: focused ? 1 : 0.6)
-            }
-        )
-        .focusHalo(focused, radius: Radius.control, accent: accent)
-        .animation(.easeOut(duration: 0.16), value: focused)
+        TextField(placeholder, text: $text)
+            .textFieldStyle(.roundedBorder)
+            .controlSize(.large)
+            .onSubmit { onSubmit?() }
     }
 }

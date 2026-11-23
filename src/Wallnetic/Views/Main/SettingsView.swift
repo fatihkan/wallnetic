@@ -1,39 +1,34 @@
 import SwiftUI
 import AppKit
 
+/// The Settings window: a standard sidebar and one page per section
+/// (#343 B3b). The sidebar is the system's, so it is Liquid Glass on
+/// macOS 26 and a regular sidebar on earlier systems.
 struct SettingsView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
-    @State private var selection: SettingsSection = .general
+    /// Optional because a sidebar list can have no selection; the detail
+    /// then falls back to General.
+    @State private var selection: SettingsSection? = .general
+
+    private var current: SettingsSection { selection ?? .general }
 
     var body: some View {
-        ZStack {
-            // Full bleed theme-aware backdrop replacing the system Form chrome
-            Surface.windowFill
-                .ignoresSafeArea()
-            // Subtle ambient tint — kept very low contrast and supported
-            // by a grain overlay below so the radial doesn't band.
-            RadialGradient(
-                colors: [
-                    Color.accentColor.opacity(0.08),
-                    Color.accentColor.opacity(0.02),
-                    .clear
-                ],
-                center: UnitPoint(x: 0.05, y: 0.05),
-                startRadius: 5, endRadius: 480
-            )
-            .ignoresSafeArea()
-
-            HStack(spacing: 0) {
-                sidebar
-                Divider()
-                    .overlay(Surface.hairline)
-                detail
-            }
-
-            // Anti-banding noise — kills the concentric ring artifacts
-            // that show on dark radial gradients at 8-bit color depth.
-            GrainOverlay(intensity: 0.045)
-                .ignoresSafeArea()
+        NavigationSplitView {
+            sidebar
+        } detail: {
+            content
+                // A split view sizes itself by its detail's minimum height.
+                // A page that is not a scroll view (Storage) reports a very
+                // tall one when probed at zero width, which pushed the whole
+                // window's content out of view. Pages take the space given.
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
+                // The pages are grouped forms. They sit on the window's own
+                // floor instead of the form's default backdrop, and the
+                // title bar stays clear on pages that do not scroll.
+                .scrollContentBackground(.hidden)
+                .toolbarBackground(.hidden, for: .windowToolbar)
+                .navigationTitle(current.title)
+                .navigationSubtitle(current.tagline)
         }
         .frame(width: 820, height: 540)
         .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
@@ -52,150 +47,36 @@ struct SettingsView: View {
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // The wordmark sits in the sidebar, below the native title bar.
-            HStack(spacing: 0) {
-                Text("Wallnetic")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary.opacity(0.92))
-                    .tracking(-0.1)
-                Text(" Settings")
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundColor(.primary.opacity(0.45))
-                    .tracking(-0.1)
-                Spacer()
-            }
-            .padding(.leading, Space.md)
-            .padding(.trailing, Space.sm)
-            .frame(height: 28)
-            .padding(.bottom, Space.xs)
-
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(SettingsSection.allCases.filter { !$0.isFooter }) { section in
-                        SidebarRow(section: section, isSelected: selection == section) {
-                            withAnimation(.easeOut(duration: 0.18)) { selection = section }
-                        }
-                    }
-
-                    Rectangle()
-                        .fill(Surface.hairline)
-                        .frame(height: 0.5)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 14)
-
-                    ForEach(SettingsSection.allCases.filter { $0.isFooter }) { section in
-                        SidebarRow(section: section, isSelected: selection == section) {
-                            withAnimation(.easeOut(duration: 0.18)) { selection = section }
-                        }
-                    }
+        List(selection: $selection) {
+            Section {
+                ForEach(SettingsSection.allCases.filter { !$0.isFooter }) { section in
+                    Label(section.title, systemImage: section.icon).tag(section)
                 }
-                .padding(.horizontal, 10)
             }
-
-            Spacer(minLength: 0)
-
-            // Version badge
-            HStack(spacing: Space.xxs + 2) {
-                Circle()
-                    .fill(.green)
-                    .frame(width: 5, height: 5)
-                    .shadow(color: .green.opacity(0.65), radius: 3)
-                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
-                    .styledData(color: .primary.opacity(0.5))
-                Spacer()
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 9))
-                    .foregroundColor(.primary.opacity(0.3))
+            Section {
+                ForEach(SettingsSection.allCases.filter { $0.isFooter }) { section in
+                    Label(section.title, systemImage: section.icon).tag(section)
+                }
             }
-            .padding(.horizontal, Space.lg + 2)
-            .padding(.bottom, Space.md + 2)
         }
-        .frame(width: 224)
-        .background(
-            // Translucent over content — Liquid Glass sidebar
-            ZStack {
-                Rectangle().fill(.ultraThinMaterial)
-                Rectangle().fill(Surface.glassProminent)
-                // Inner accent wash
-                LinearGradient(
-                    colors: [Color.accentColor.opacity(0.08), .clear],
-                    startPoint: .topLeading, endPoint: .center
-                )
-            }
-        )
-        .overlay(alignment: .trailing) {
-            // Right-edge refractive hairline
-            Rectangle()
-                .fill(LinearGradient(
-                    colors: [Surface.glassInnerHighlight, Surface.glassTopStroke, Surface.glassInnerHighlight],
-                    startPoint: .top, endPoint: .bottom
-                ))
-                .frame(width: 0.5)
+        .listStyle(.sidebar)
+        .navigationSplitViewColumnWidth(220)
+        .modifier(FixedSidebar())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Space.md)
+                .padding(.vertical, Space.xs)
         }
     }
 
-    // MARK: - Detail Pane
-
-    private var detail: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Title-bar stripe — matches sidebar wordmark row height so the
-            // window top is one continuous horizontal band. Empty by design;
-            // gives the eye a clean rest above the section header. Closing is
-            // the native traffic light (top-left), restored in #228.
-            Color.clear.frame(height: 28)
-
-            HStack(spacing: Space.sm) {
-                Image(systemName: selection.icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(selection.accent)
-                    .frame(width: 26, height: 26)
-                    .background(
-                        ZStack {
-                            Circle().fill(selection.accent.opacity(0.16))
-                            Circle().strokeBorder(selection.accent.opacity(0.30), lineWidth: 0.5)
-                        }
-                    )
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(selection.title)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-                        .tracking(-0.2)
-                    Text(selection.tagline)
-                        .font(.system(size: 11))
-                        .foregroundColor(.primary.opacity(0.42))
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, Space.xl + 4)
-            .padding(.top, Space.xs)
-            .padding(.bottom, Space.md - 2)
-
-            Divider()
-                .overlay(LinearGradient(
-                    colors: [.clear, selection.accent.opacity(0.35), .clear],
-                    startPoint: .leading, endPoint: .trailing
-                ))
-                .frame(height: 0.5)
-
-            ZStack {
-                content
-                    .scrollContentBackground(.hidden)
-            }
-            .id(selection)
-            .transition(.asymmetric(
-                insertion: .offset(y: 8).combined(with: .opacity),
-                removal: .opacity
-            ))
-        }
-        .background(Color.clear)
-    }
+    // MARK: - Detail
 
     @ViewBuilder
     private var content: some View {
-        switch selection {
+        switch current {
         case .general:    GeneralSettingsView()
         case .storage:    StorageSettingsView()
         case .appearance: AppearanceSettingsView()
@@ -206,6 +87,18 @@ struct SettingsView: View {
         case .spaces:     SpaceSettingsView()
         case .display:    DisplaySettingsView()
         case .about:      AboutSettingsView()
+        }
+    }
+}
+
+/// Settings always shows its sidebar, so the button that hides it is
+/// removed where the system allows (macOS 14 and later).
+private struct FixedSidebar: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content.toolbar(removing: .sidebarToggle)
+        } else {
+            content
         }
     }
 }
@@ -257,99 +150,15 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general:       return "gear"
         case .storage:       return "externaldrive"
-        case .appearance:    return "paintbrush.fill"
-        case .playback:      return "play.fill"
+        case .appearance:    return "paintbrush"
+        case .playback:      return "play"
         case .effects:       return "wand.and.stars"
         case .schedule:      return "clock.arrow.2.circlepath"
         case .playlist:      return "shuffle"
-        case .spaces:        return "square.stack.3d.up.fill"
+        case .spaces:        return "square.stack.3d.up"
         case .display:       return "display"
-        case .about:         return "info.circle.fill"
+        case .about:         return "info.circle"
         }
-    }
-
-    var accent: Color {
-        switch self {
-        case .storage:       return .teal
-        case .general:       return Color(red: 0.42, green: 0.71, blue: 1.00)
-        case .appearance:    return Color(red: 1.00, green: 0.45, blue: 0.72)
-        case .playback:      return Color(red: 0.40, green: 0.95, blue: 0.55)
-        case .effects:       return Color(red: 0.85, green: 0.55, blue: 1.00)
-        case .schedule:      return Color(red: 1.00, green: 0.75, blue: 0.35)
-        case .playlist:      return Color(red: 0.40, green: 0.85, blue: 0.85)
-        case .spaces:        return Color(red: 0.55, green: 0.80, blue: 1.00)
-        case .display:       return Color(red: 0.65, green: 0.85, blue: 0.50)
-        case .about:         return Color.primary.opacity(0.85)
-        }
-    }
-}
-
-private struct SidebarRow: View {
-    let section: SettingsSection
-    let isSelected: Bool
-    let action: () -> Void
-
-    @State private var hover = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Space.xs + 2) {
-                ZStack {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: Radius.accent, style: .continuous)
-                            .fill(section.accent.opacity(0.22))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Radius.accent, style: .continuous)
-                                    .strokeBorder(section.accent.opacity(0.4), lineWidth: 0.5)
-                            )
-                            .shadow(color: section.accent.opacity(0.45), radius: 4)
-                    }
-                    Image(systemName: section.icon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isSelected ? .primary : .primary.opacity(hover ? 0.75 : 0.55))
-                }
-                .frame(width: 22, height: 22)
-
-                Text(section.title)
-                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-                    .foregroundColor(isSelected ? .primary : .primary.opacity(hover ? 0.85 : 0.7))
-                    .tracking(isSelected ? 0.2 : 0)
-
-                Spacer()
-
-                if isSelected {
-                    Circle()
-                        .fill(section.accent)
-                        .frame(width: 4, height: 4)
-                        .shadow(color: section.accent.opacity(0.8), radius: 4)
-                }
-            }
-            .padding(.horizontal, Space.sm - 2)
-            .padding(.vertical, Space.xs - 1)
-            .background(
-                ZStack {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
-                            .fill(Surface.glassControl)
-                        RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
-                            .strokeBorder(LinearGradient(
-                                colors: [Surface.glassTopStroke, Surface.glassInnerHighlight],
-                                startPoint: .top, endPoint: .bottom
-                            ), lineWidth: 0.5)
-                    } else if hover {
-                        RoundedRectangle(cornerRadius: Radius.tag, style: .continuous)
-                            .fill(Surface.glassControl)
-                    }
-                }
-            )
-        }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
-        .accessibilityLabel(section.title)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-        .onHover { hover = $0 }
-        .animation(.easeOut(duration: 0.12), value: hover)
-        .animation(.easeOut(duration: 0.18), value: isSelected)
     }
 }
 

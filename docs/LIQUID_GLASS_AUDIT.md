@@ -182,6 +182,31 @@ Left as they were, on purpose:
 - **The polyfill's accent shadow.** macOS 26 no longer draws the polyfill, and
   earlier systems keep their look.
 
+## Result of B3b (remaining screens)
+
+The owner asked for the same treatment outside the main window.
+
+- **Settings.** The hand-built sidebar, its backdrop gradient and grain, and
+  the per-section header are replaced by a `NavigationSplitView`: the
+  system's sidebar and selection, with the section's name and tagline in the
+  title bar. The window follows the main window's rule, so on macOS 26 there
+  is no grey title-bar strip. This resolves conflict 5.
+  - A split view sizes itself by its detail's minimum height. Storage, the one
+    page that is not a scroll view, reported a very tall one and pushed every
+    page's content out of view. The detail now takes the space it is given.
+- **Sheet buttons and fields.** `WallneticButton` and `WallneticTextField`
+  use the system styles, like Trim and Optimize already did. The accent glow
+  under the primary button and the glowing focus halo are gone.
+- **Onboarding.** The glow behind the icon and under the progress bar is
+  removed. Its backdrop and rings stay.
+
+Checked by running the app on macOS 27.2.1 in dark appearance: every Settings
+page, the rename sheet and the first onboarding step. Not checked: light
+appearance for these screens, and macOS 13–25.
+
+Screens the app cannot open today, left as they are: Collections, History,
+AI Generate, the in-app browser and `WallpaperGridView`.
+
 ## Screens to confirm visually
 
 Check each on macOS 26 and on macOS 13, in light and dark appearance:
