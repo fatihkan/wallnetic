@@ -509,7 +509,9 @@ struct AsyncThumbnailView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .task {
+        // Keyed by the file, so a view that stays on screen while its
+        // wallpaper changes (a display tile, the now-playing bar) reloads.
+        .task(id: wallpaper.url) {
             thumbnail = await wallpaper.generateThumbnail(size: size)?.image
         }
     }

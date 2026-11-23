@@ -1,372 +1,193 @@
 import SwiftUI
 
-private struct HeroScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
 // DUSUK-2: scoped to HomeView so it can't accidentally be reused as
 // app-wide. Access via `HomeView.horizontalInset`.
 extension HomeView {
-    static let horizontalInset: CGFloat = 48
+    /// The same page margin as Library, so content does not shift sideways
+    /// when the tab changes.
+    static let horizontalInset: CGFloat = Space.lg
 }
 private var homeHorizontalInset: CGFloat { HomeView.horizontalInset }
 
-/// Striking home with cinematic hero and glass carousel cards
+/// Home starts from the user's own desktop: what each display shows now,
+/// then recently used wallpapers, favourites, recent additions and the whole
+/// library (#343 B2). It replaced an auto-rotating hero banner; the rules
+/// are in `HomeSections`.
 struct HomeView: View {
+    /// Shows the Library tab, for a display that has no wallpaper yet.
+    var onOpenLibrary: () -> Void = {}
     @EnvironmentObject var wallpaperManager: WallpaperManager
-    @State private var selectedHeroID: UUID?
-    @State private var isHeroHovered = false
-    @State private var isAutoAdvancing = true
-    @State private var heroScrollY: CGFloat = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
+    @State private var screens: [NSScreen] = NSScreen.screens
 
-    private var featuredWallpapers: [Wallpaper] {
-        Array(wallpaperManager.wallpapers.prefix(5))
-    }
-
-    private var selectedHero: Wallpaper? {
-        WallpaperBrowsing.selected(in: featuredWallpapers, currentID: selectedHeroID)
-    }
-
-    private var shouldAutoAdvance: Bool {
-        isAutoAdvancing && !reduceMotion && !isHeroHovered && scenePhase == .active && featuredWallpapers.count > 1
+    private var sections: HomeSections {
+        HomeSections.make(
+            wallpapers: wallpaperManager.wallpapers,
+            displays: wallpaperManager.displayPlaybackStatuses,
+            wallpaperForDisplay: { displayID in
+                screens.first { $0.displayID == displayID }
+                    .flatMap { wallpaperManager.wallpaper(for: $0)?.id }
+            },
+            recentlyUsedPaths: wallpaperManager.recentlyUsedPaths
+        )
     }
 
     var body: some View {
+        let sections = sections
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 0) {
-                heroBanner
-                    .onHover { isHeroHovered = $0 }
-                    .padding(.top, -46)
-                    // P0-2: replaces the recursive DispatchQueue.async +
-                    // @State write antipattern. PreferenceKey reports
-                    // upward once per actual layout pass; no body
-                    // invalidation loop.
-                    .background(GeometryReader { geo in
-                        Color.clear.preference(
-                            key: HeroScrollOffsetKey.self,
-                            value: geo.frame(in: .named("homeScroll")).minY
-                        )
-                    })
-
-                VStack(spacing: 28) {
-                    if !favoritesWallpapers.isEmpty {
-                        CarouselSection(
-                            title: "My List",
-                            icon: "heart.fill",
-                            iconColor: .pink,
-                            wallpapers: favoritesWallpapers
-                        )
-                    }
-
-                    if !recentWallpapers.isEmpty {
-                        CarouselSection(
-                            title: "Recently Added",
-                            icon: "sparkles",
-                            iconColor: .yellow,
-                            wallpapers: recentWallpapers
-                        )
-                    }
-
-                    if wallpaperManager.wallpapers.count > 3 {
-                        CarouselSection(
-                            title: "All Wallpapers",
-                            icon: "square.grid.2x2.fill",
-                            iconColor: .blue,
-                            wallpapers: wallpaperManager.wallpapers
-                        )
-                    }
-
-                    Spacer(minLength: 60)
-                }
-                .padding(.top, 20)
-            }
-        }
-        .coordinateSpace(name: "homeScroll")
-        .onPreferenceChange(HeroScrollOffsetKey.self) { value in
-            // Coalesced: only ever a single write per layout pass.
-            heroScrollY = value
-        }
-        .background(Color.clear)
-        .task(id: shouldAutoAdvance) {
-            guard shouldAutoAdvance else { return }
-            while !Task.isCancelled {
-                do { try await Task.sleep(nanoseconds: 7_000_000_000) }
-                catch { return }
-                guard !Task.isCancelled else { return }
-                advanceHero(backwards: false)
-            }
-        }
-        .modifier(KeyPressModifier(
-            onSpace: {
-                if let wp = selectedHero {
-                    isAutoAdvancing = false
-                    wallpaperManager.setWallpaper(wp)
-                }
-            },
-            onLeft: { heroPrev() },
-            onRight: { heroNext() }
-        ))
-    }
-
-    // MARK: - Cinematic Hero Banner
-
-    private var heroBanner: some View {
-        let wallpapers = featuredWallpapers
-        let currentWallpaper = selectedHero
-
-        // Scroll-driven parallax: scale up + push down as user scrolls
-        let parallax = reduceMotion ? 0 : max(-200, min(200, heroScrollY))
-        let scale = 1.0 + max(0, parallax) * 0.0008
-        let yOffset = parallax * 0.45
-
-        return VStack(spacing: 0) {
-            ZStack {
-                if let wp = currentWallpaper {
-                    HeroBannerCard(wallpaper: wp)
-                        .id(wp.id)
-                        .scaleEffect(scale)
-                        .offset(y: yOffset * 0.3)
-                        .transition(.opacity)
-                        .animation(reduceMotion ? nil : .easeInOut(duration: Anim.hero), value: wp.id)
+            VStack(alignment: .leading, spacing: 28) {
+                if !sections.desktop.isEmpty {
+                    DesktopNowSection(items: sections.desktop, onOpenLibrary: onOpenLibrary)
                 }
 
-                // Cinematic gradient overlay (fades hero into window backdrop)
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0.2),
-                        .init(color: Surface.deepFade.opacity(0.5), location: 0.5),
-                        .init(color: Surface.deepFade, location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .allowsHitTesting(false)
-
-                // Side vignette
-                HStack {
-                    LinearGradient(
-                        colors: [Surface.vignetteEdge.opacity(1.2), .clear],
-                        startPoint: .leading, endPoint: .trailing
+                if !sections.recentlyUsed.isEmpty {
+                    CarouselSection(
+                        title: "Recently Used",
+                        icon: "clock.arrow.circlepath",
+                        iconColor: .teal,
+                        wallpapers: sections.recentlyUsed
                     )
-                    .frame(width: 120)
-                    Spacer()
-                    LinearGradient(
-                        colors: [.clear, Surface.vignetteEdge.opacity(1.2)],
-                        startPoint: .leading, endPoint: .trailing
+                }
+
+                if !sections.favorites.isEmpty {
+                    CarouselSection(
+                        title: "Favorites",
+                        icon: "heart.fill",
+                        iconColor: .pink,
+                        wallpapers: sections.favorites
                     )
-                    .frame(width: 120)
                 }
-                .allowsHitTesting(false)
-            }
-            .frame(height: 400)
-            .clipped()
 
-            // Info section
-            if let wp = currentWallpaper {
-                heroInfo(wp, wallpapers: wallpapers)
+                if !sections.recent.isEmpty {
+                    CarouselSection(
+                        title: "Recently Added",
+                        icon: "sparkles",
+                        iconColor: .yellow,
+                        wallpapers: sections.recent
+                    )
+                }
+
+                if !sections.all.isEmpty {
+                    CarouselSection(
+                        title: "All Wallpapers",
+                        icon: "square.grid.2x2.fill",
+                        iconColor: .blue,
+                        wallpapers: sections.all
+                    )
+                }
+
+                Spacer(minLength: 40)
             }
+            .padding(.top, 24)
         }
-    }
-
-    @ViewBuilder
-    private func heroInfo(_ wp: Wallpaper, wallpapers: [Wallpaper]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(wp.displayName)
-                .font(Typo.display)
-                .tracking(Typo.displayTracking)
-                .foregroundColor(.primary)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .shadow(color: Surface.vignetteEdge.opacity(1.6), radius: 8, y: 2)
-
-            // Metadata pills
-            HStack(spacing: 8) {
-                metadataPill(wp.formattedResolution, color: .primary.opacity(0.7))
-                metadataPill(wp.formattedDuration, color: .primary.opacity(0.7))
-                metadataPill(wp.formattedFileSize, color: .primary.opacity(0.7))
-
-                if wp.id == wallpaperManager.currentWallpaper?.id {
-                    HStack(spacing: 4) {
-                        Image(systemName: wallpaperManager.isPlaying ? "play.fill" : "pause.fill")
-                            .font(.system(size: 9, weight: .semibold))
-                        Text(wallpaperManager.isPlaying ? "Playing" : "Paused")
-                    }
-                    .foregroundStyle(.primary)
-                    .font(.system(size: 11, weight: .semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Surface.glassControl))
-                }
-            }
-
-            // Action buttons
-            HStack(spacing: Space.xs + 2) {
-                Button {
-                    isAutoAdvancing = false
-                    wallpaperManager.setWallpaper(wp)
-                } label: {
-                    Label("Set wallpaper", systemImage: "play.fill")
-                        .font(Typo.button)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-
-                WallneticButton.ghost(
-                    wp.isFavorite ? "In My List" : "Add to My List",
-                    icon: wp.isFavorite ? "checkmark" : "plus"
-                ) {
-                    withAnimation(.spring(response: Anim.medium, dampingFraction: 0.5)) {
-                        wallpaperManager.toggleFavorite(wp)
-                    }
-                }
-
-                Spacer()
-
-                if wallpapers.count > 1 {
-                    HStack(spacing: Space.xxs) {
-                        Button(action: heroPrev) {
-                            Image(systemName: "chevron.left").frame(width: 28, height: 28)
-                        }
-                        .help("Previous featured wallpaper")
-                        .accessibilityLabel("Previous featured wallpaper")
-
-                        ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                            Button {
-                                isAutoAdvancing = false
-                                withAnimation(reduceMotion ? nil : Anim.transition) { selectedHeroID = wallpaper.id }
-                            } label: {
-                                Capsule()
-                                    .fill(wallpaper.id == wp.id ? Color.accentColor : Color.primary.opacity(0.25))
-                                    .frame(width: wallpaper.id == wp.id ? 20 : 8, height: 4)
-                                    .frame(width: 24, height: 28)
-                                    .contentShape(Rectangle())
-                            }
-                            .accessibilityLabel("Featured wallpaper \(index + 1): \(wallpaper.displayName)")
-                            .accessibilityAddTraits(wallpaper.id == wp.id ? [.isSelected] : [])
-                        }
-
-                        Button(action: heroNext) {
-                            Image(systemName: "chevron.right").frame(width: 28, height: 28)
-                        }
-                        .help("Next featured wallpaper")
-                        .accessibilityLabel("Next featured wallpaper")
-
-                        if !reduceMotion {
-                            Button { isAutoAdvancing.toggle() } label: {
-                                Image(systemName: isAutoAdvancing ? "pause.fill" : "play.fill")
-                                    .frame(width: 28, height: 28)
-                            }
-                            .help(isAutoAdvancing ? "Pause slideshow" : "Resume slideshow")
-                            .accessibilityLabel(isAutoAdvancing ? "Pause slideshow" : "Resume slideshow")
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            screens = NSScreen.screens
         }
-        .padding(.horizontal, homeHorizontalInset)
-        .padding(.top, -40)
-        .padding(.bottom, 16)
-    }
-
-    @ViewBuilder
-    private func metadataPill(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .medium, design: .monospaced))
-            .foregroundColor(color)
-    }
-
-    // MARK: - Data
-
-    private var favoritesWallpapers: [Wallpaper] {
-        wallpaperManager.wallpapers.filter { $0.isFavorite }
-    }
-
-    private var recentWallpapers: [Wallpaper] {
-        let oneWeek = Date().addingTimeInterval(-7 * 24 * 60 * 60)
-        return wallpaperManager.wallpapers
-            .filter { $0.dateAdded > oneWeek }
-            .sorted { $0.dateAdded > $1.dateAdded }
-    }
-
-    private func advanceHero(backwards: Bool) {
-        let next = WallpaperBrowsing.adjacent(in: featuredWallpapers, currentID: selectedHero?.id, backwards: backwards)
-        withAnimation(reduceMotion ? nil : Anim.transition) { selectedHeroID = next?.id }
-    }
-
-    private func heroNext() {
-        isAutoAdvancing = false
-        advanceHero(backwards: false)
-    }
-
-    private func heroPrev() {
-        isAutoAdvancing = false
-        advanceHero(backwards: true)
     }
 }
 
-// MARK: - Hero Banner Card
+// MARK: - On your desktop now
 
-struct HeroBannerCard: View {
-    let wallpaper: Wallpaper
-    @State private var thumbnail: NSImage?
-    @State private var startDate: Date = Date()
-    @State private var isWindowVisible: Bool = true
-    @State private var isLoadingThumbnail = true
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
+/// One tile per display: its wallpaper, its name, how it is playing and,
+/// when the display needs attention, the control that fixes it.
+struct DesktopNowSection: View {
+    let items: [HomeSections.DesktopItem]
+    var onOpenLibrary: () -> Void = {}
+    @EnvironmentObject var wallpaperManager: WallpaperManager
 
     var body: some View {
-        // Stop decorative frame updates while inactive or when Reduce Motion
-        // is enabled. Scene activity does not imply per-window visibility.
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !isWindowVisible || reduceMotion || scenePhase != .active)) { ctx in
-            let elapsed = ctx.date.timeIntervalSince(startDate)
-            let cycle: Double = 14
-            let raw = (elapsed.truncatingRemainder(dividingBy: cycle)) / cycle
-            let phase = raw < 0.5 ? raw * 2 : (1 - raw) * 2
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("On your desktop now")
+                    .font(Typo.title1)
+                    .tracking(Typo.title1Tracking)
+                Text(items.count == 1 ? "What your display is showing." : "What each display is showing.")
+                    .font(Typo.body)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, homeHorizontalInset)
 
-            Group {
-                if let thumbnail = thumbnail {
-                    Image(nsImage: thumbnail)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .scaleEffect(reduceMotion ? 1 : 1.06 + phase * 0.06)
-                        .offset(
-                            x: reduceMotion ? 0 : (phase - 0.5) * 36,
-                            y: reduceMotion ? 0 : (phase - 0.5) * 22
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 16) {
+                    ForEach(items) { item in
+                        DesktopTile(
+                            item: item,
+                            wallpaper: item.wallpaperID.flatMap { id in
+                                wallpaperManager.wallpapers.first { $0.id == id }
+                            },
+                            onRetry: { wallpaperManager.retryWallpaper(on: item.id) },
+                            onOpenLibrary: onOpenLibrary
                         )
-                } else {
-                    Surface.deepFade
-                        .overlay {
-                            if isLoadingThumbnail {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Label("Preview unavailable", systemImage: "film")
-                                    .font(Typo.body)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+                    }
                 }
+                .padding(.horizontal, homeHorizontalInset)
+                .padding(.vertical, 4)
             }
         }
-        .task(id: wallpaper.id) {
-            thumbnail = nil
-            isLoadingThumbnail = true
-            let image = await wallpaper.generateThumbnail(size: CGSize(width: 1280, height: 720))?.image
-            guard !Task.isCancelled else { return }
-            thumbnail = image
-            isLoadingThumbnail = false
+    }
+}
+
+private struct DesktopTile: View {
+    let item: HomeSections.DesktopItem
+    let wallpaper: Wallpaper?
+    let onRetry: () -> Void
+    let onOpenLibrary: () -> Void
+
+    private let size = CGSize(width: 320, height: 200)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+                if let wallpaper {
+                    AsyncThumbnailView(wallpaper: wallpaper, size: size, cornerRadius: 12)
+                } else {
+                    Image(systemName: "display")
+                        .font(.system(size: 30, weight: .light))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: size.width, height: size.height)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+            )
+
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(wallpaper?.displayName ?? "No wallpaper")
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    HStack(spacing: 5) {
+                        Image(systemName: item.statusSymbol)
+                        Text("\(item.displayName) · \(item.statusTitle)")
+                            .lineLimit(1)
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(item.statusDetail)
+
+                Spacer(minLength: 0)
+
+                // One control, and only when this display needs it. Play,
+                // Next and Calm Mode act on every display and are in the
+                // now-playing bar.
+                if item.canRetry {
+                    Button("Retry", action: onRetry)
+                        .controlSize(.small)
+                        .accessibilityLabel("Retry wallpaper on \(item.displayName)")
+                } else if wallpaper == nil {
+                    Button("Open Library", action: onOpenLibrary)
+                        .controlSize(.small)
+                        .accessibilityLabel("Open Library to choose a wallpaper for \(item.displayName)")
+                }
+            }
+            .frame(width: size.width, alignment: .leading)
         }
-        .onAppear {
-            startDate = Date()
-            isWindowVisible = true
-        }
-        .onDisappear { isWindowVisible = false }
+        .help(item.statusDetail)
     }
 }
 
@@ -446,6 +267,13 @@ struct CarouselCard: View {
         return Double(pointer.x - 0.5) * 8  // right → tilt right
     }
 
+    /// The duration arrives a moment after launch. `Wallpaper` equality
+    /// leaves it out, so SwiftUI keeps the copy this card was created with;
+    /// read the library's current copy instead.
+    private var durationText: String {
+        (wallpaperManager.wallpapers.first { $0.id == wallpaper.id } ?? wallpaper).formattedDuration
+    }
+
     private var glareOffset: CGFloat {
         min(1, max(0, pointer.x))
     }
@@ -508,7 +336,7 @@ struct CarouselCard: View {
                     VStack {
                         HStack {
                             Spacer()
-                            Text(wallpaper.formattedDuration)
+                            Text(durationText)
                                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 6)

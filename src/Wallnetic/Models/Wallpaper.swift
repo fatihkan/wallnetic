@@ -30,16 +30,30 @@ struct Wallpaper: Identifiable, Equatable, Hashable, Codable {
         self.name = url.deletingPathExtension().lastPathComponent
         self.customTitle = nil
         self.tags = []
-        self.dateAdded = Date()
         self.isFavorite = isFavorite
 
-        // Only file size — cheap FileManager call
+        // Only file size and dates — cheap file-system calls
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         self.fileSize = (attributes?[.size] as? Int64) ?? 0
+        // Read through a separate URL value. Resource values are cached on
+        // the URL they were asked of, and `url` outlives changes to the file.
+        let dates = try? URL(fileURLWithPath: url.path)
+            .resourceValues(forKeys: [.addedToDirectoryDateKey, .creationDateKey])
+        self.dateAdded = Self.dateAdded(addedToLibrary: dates?.addedToDirectoryDate,
+                                        created: dates?.creationDate, now: Date())
 
         // Metadata loaded async via loadMetadata()
         self.duration = nil
         self.resolution = nil
+    }
+
+    /// When the file joined the library. Wallpapers are rebuilt from the
+    /// library folder on every launch, so the date comes from the file: the
+    /// day it was added to the folder, which an import sets even for an old
+    /// video, then its creation date, then `now` for a file that is not on
+    /// disk.
+    static func dateAdded(addedToLibrary: Date?, created: Date?, now: Date) -> Date {
+        addedToLibrary ?? created ?? now
     }
 
     /// Async metadata loading — call after init, off main thread

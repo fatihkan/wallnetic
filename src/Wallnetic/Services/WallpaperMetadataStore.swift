@@ -12,6 +12,7 @@ final class WallpaperMetadataStore {
     @AppStorage("customWallpaperTitles") private var customWallpaperTitlesData: String = ""
     @AppStorage("wallpaperColors") private var wallpaperColorsData: String = ""
     @AppStorage("wallpaperTags") private var wallpaperTagsData: String = ""
+    @AppStorage("recentlyUsedWallpaperPaths") private var recentlyUsedWallpaperPaths: String = ""
 
     // MARK: - In-memory caches (avoid repeated JSON decode)
 
@@ -24,6 +25,29 @@ final class WallpaperMetadataStore {
         _customWallpaperTitlesData = AppStorage(wrappedValue: "", "customWallpaperTitles", store: defaults)
         _wallpaperColorsData = AppStorage(wrappedValue: "", "wallpaperColors", store: defaults)
         _wallpaperTagsData = AppStorage(wrappedValue: "", "wallpaperTags", store: defaults)
+        _recentlyUsedWallpaperPaths = AppStorage(wrappedValue: "", "recentlyUsedWallpaperPaths", store: defaults)
+    }
+
+    // MARK: - Recently used
+
+    /// How many recently used wallpapers are remembered.
+    static let recentlyUsedLimit = 12
+
+    /// Paths of the wallpapers the user chose most recently, newest first
+    /// (#343 B2). Home's "Recently Used" row reads it.
+    var recentlyUsedPaths: [String] {
+        get { recentlyUsedWallpaperPaths.split(separator: "\n").map(String.init) }
+        set { recentlyUsedWallpaperPaths = newValue.joined(separator: "\n") }
+    }
+
+    /// Moves `path` to the front of the recently used list and returns the list.
+    @discardableResult
+    func recordUse(of path: String) -> [String] {
+        var paths = recentlyUsedPaths.filter { $0 != path }
+        paths.insert(path, at: 0)
+        paths = Array(paths.prefix(Self.recentlyUsedLimit))
+        recentlyUsedPaths = paths
+        return paths
     }
 
     // MARK: - Favorites

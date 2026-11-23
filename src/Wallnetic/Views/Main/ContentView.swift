@@ -11,7 +11,6 @@ struct ContentView: View {
     @State private var isImporting = false
     @State private var showingPhotosImport = false
     @State private var searchText = ""
-    @State private var scrollOffset: CGFloat = 0
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasSeenDesktopHint") private var hasSeenDesktopHint = false
     @State private var showingOnboarding = false
@@ -23,15 +22,6 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                TopNavigationBar(
-                    selectedTab: $selectedTab,
-                    searchText: $searchText,
-                    isImporting: $isImporting,
-                    showingPhotosImport: $showingPhotosImport,
-                    isScrolled: scrollOffset > 50
-                )
-                .zIndex(10)
-
                 // Download progress bar
                 if !downloadManager.downloads.isEmpty {
                     DownloadProgressBar(downloads: downloadManager.downloads)
@@ -65,20 +55,26 @@ struct ContentView: View {
                             }
                     } else {
                         switch selectedTab {
-                        case .home:
-                            HomeView()
-                        case .explore:
-                            ExploreView(searchText: $searchText)
-                        case .popular:
-                            PopularView()
+                        case .library:
+                            LibraryView(searchText: $searchText)
                         default:
-                            HomeView()
+                            HomeView(onOpenLibrary: { selectedTab = .library })
                         }
                     }
                 }
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                NowPlayingBar()
+            }
         }
         .ambientStage()
+        .toolbar { toolbarContent }
+        .searchable(text: $searchText, placement: .toolbar, prompt: "Search wallpapers")
+        .modifier(SearchFocusShortcut())
+        // Search runs over the library, so typing anywhere shows Library.
+        .onChange(of: searchText) { text in
+            if !text.isEmpty, selectedTab != .library { selectedTab = .library }
+        }
         .preferredColorScheme(themeManager.appearanceMode.swiftUIColorScheme)
         .fileImporter(
             isPresented: $isImporting,
@@ -116,6 +112,8 @@ struct ContentView: View {
                 .padding(Space.md)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.control))
                 .padding(Space.lg)
+                // Clear the now-playing bar.
+                .padding(.bottom, wallpaperManager.currentWallpaper == nil ? 0 : 52)
             }
         }
         .frame(minWidth: 900, minHeight: 600)
@@ -152,6 +150,53 @@ struct ContentView: View {
         }
         .onChange(of: wallpaperManager.currentWallpaper) { newWp in
             dynamicAccent.applyFrom(wallpaper: newWp)
+        }
+    }
+
+    // MARK: - Toolbar
+
+    /// One glass toolbar on macOS 26 (a unified toolbar earlier): the
+    /// sections in the middle, then Add and Settings before the search field.
+    /// It replaced a hand-built bar under the title bar (#343 B2).
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Picker("Section", selection: $selectedTab) {
+                ForEach(NavigationTab.allCases) { tab in
+                    Text(tab.title).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 270)
+            .help("Home, your library, or wallpaper sources to browse")
+        }
+
+        ToolbarItemGroup(placement: .primaryAction) {
+            Menu {
+                Button {
+                    isImporting = true
+                } label: {
+                    Label("Import video file…", systemImage: "film")
+                }
+                .keyboardShortcut("i", modifiers: .command)
+
+                Button {
+                    showingPhotosImport = true
+                } label: {
+                    Label("Create from Photos…", systemImage: "photo.on.rectangle.angled")
+                }
+            } label: {
+                Label("Add Wallpaper", systemImage: "plus")
+            }
+            .help("Add a wallpaper")
+
+            Button {
+                openWindow(id: "settings")
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+            }
+            .help("Settings")
         }
     }
 
