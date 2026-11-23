@@ -4,7 +4,7 @@ import SwiftUI
 /// which leaks system chrome into our dark cinematic surfaces.
 ///
 /// Three tiers:
-///  * `.primary`   — accent gradient + inner highlight stroke + soft glow.
+///  * `.primary`   — accent gradient + inner highlight stroke + soft shadow.
 ///                   One per surface; bound to ⌘↩.
 ///  * `.ghost`     — liquid-glass capsule with neutral tint.
 ///  * `.cancel`    — chromeless minimal; bound to ⎋.
@@ -103,10 +103,11 @@ private struct LiquidPrimaryButtonStyle: ButtonStyle {
                         ), lineWidth: 0.75)
                 }
             )
+            // A short, soft shadow that lifts the button; not a glow.
             .shadow(
-                color: isEnabled ? accent.opacity(configuration.isPressed ? 0.20 : 0.55) : .clear,
-                radius: configuration.isPressed ? 4 : 12,
-                y: configuration.isPressed ? 1 : 5
+                color: isEnabled ? accent.opacity(configuration.isPressed ? 0.10 : 0.22) : .clear,
+                radius: configuration.isPressed ? 2 : 5,
+                y: configuration.isPressed ? 1 : 2
             )
             // Press: compress to 0.96. Release: bouncy spring back through
             // 1.0 → ~1.025 → 1.0. Wobble is purely visual; the action

@@ -162,6 +162,16 @@ Also changed:
 - `WallneticSheet`'s title and the Now Playing overlay's text use `.primary`
   and `.secondary` instead of hard-coded white, so they stay readable in light
   appearance. The sheet icon lost its accent glow.
+- The primary button's accent glow became a short, soft shadow.
+
+**Checked by running the app on macOS 27.2.1**, in dark and light appearance:
+the now-playing bar with rows scrolling under it, the desktop hint and a
+rename sheet. Not checked:
+- the import toast and the download bar, which need a real import or download;
+- the grid HUD, the preview control panel and the Now Playing overlay card.
+  Nothing in the app opens `WallpaperGridView` or starts
+  `NowPlayingOverlayController` today, so these three cannot be reached.
+- macOS 13–25.
 
 Left as they were, on purpose:
 - **Onboarding's white icon.** It sits on a coloured disk in both appearances,
