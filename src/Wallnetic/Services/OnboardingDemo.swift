@@ -76,7 +76,7 @@ enum OnboardingDemoError: LocalizedError {
     case sampleUnavailable, displayDisconnected
     var errorDescription: String? {
         switch self {
-        case .sampleUnavailable: return "The included sample is unavailable. You can still import your own video."
+        case .sampleUnavailable: return String(localized: "The included sample is unavailable. You can still import your own video.")
         case .displayDisconnected: return String(localized: "That display is no longer connected. Choose a connected display and try again.")
         }
     }

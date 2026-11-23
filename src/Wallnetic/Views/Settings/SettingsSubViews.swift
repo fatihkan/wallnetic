@@ -124,6 +124,7 @@ struct GeneralSettingsView: View {
     @AppStorage("island.enabled") private var islandEnabled = false
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = false
     @AppStorage("nowPlayingOverlay.enabled") private var nowPlayingEnabled = false
+    @ObservedObject private var language = AppLanguageSettings.shared
 
     var body: some View {
         Form {
@@ -162,6 +163,24 @@ struct GeneralSettingsView: View {
                     .help("Show wallpaper controls at the notch, or at the top edge of a display without one")
                 Toggle("Global Hotkeys", isOn: $globalHotkeysEnabled)
                     .help("⌘⇧→ Next, ⌘⇧← Prev, ⌘⇧P Play/Pause, ⌘⇧R Random (restart required)")
+            }
+            Section {
+                Picker("Language", selection: Binding(get: { language.selection }, set: { language.select($0) })) {
+                    ForEach(AppLanguage.allCases) { choice in
+                        Text(choice.title).tag(choice)
+                    }
+                }
+                .help("The language of Wallnetic's interface. System Default follows your Mac's language list.")
+                if language.needsRestart {
+                    HStack {
+                        Text("Restart Wallnetic to use the new language.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Restart Now") { AppLanguageSettings.relaunch() }
+                            .controlSize(.small)
+                    }
+                }
             }
             Section("Getting Started") {
                 Button("Show welcome tour and sample") { showingOnboarding = true }

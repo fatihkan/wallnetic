@@ -36,13 +36,21 @@ IGNORED_FILES = [
     r"|WallpaperStoreManager|CollectionManager|NowPlayingManager|AudioVisualizerManager)\.swift$",
 ]
 
-# Lines whose strings are not interface text: logs, keys, identifiers.
+# Lines whose strings are not interface text: logs, stored settings and
+# declarations. The words must be code, so `import` counts only as a
+# statement: a rule that matched it anywhere skipped every line with a string
+# such as "Drag & drop import failed".
 SKIPPED_LINE = re.compile(
     r"\b(Log\.\w+\.|logger\.|print\(|fatalError\(|assertionFailure\(|precondition\(|preconditionFailure\("
-    r"|NSLog\(|os_log|Logger\(|forKey:|UserDefaults|@AppStorage|Notification\.Name\(|systemImage:"
-    r"|systemName:|named:|CIFilter\(name:|DispatchQueue\(label:|withExtension|forResource|URL\(string:"
-    r"|appendingPathComponent|makeFunction\(name:|#available|#Preview|import |sqlite3_|PRAGMA |keyPath:)"
-    r"|^\s*case\s+\"|^\s*case .*= \"|^\s*@available"
+    r"|NSLog\(|os_log|Logger\(|UserDefaults|@AppStorage|#available|#Preview|sqlite3_|PRAGMA )"
+    r"|^\s*import\s|^\s*case\s+\"|^\s*case .*= \"|^\s*@available"
+)
+# One string that is a key, a symbol name or a path, right after its label.
+# Only that string is left out; other strings on the line are still checked.
+SKIPPED_ARGUMENT = re.compile(
+    r"(?:forKey:|Notification\.Name\(|systemImage:|systemName:|named:|CIFilter\(name:|DispatchQueue\(label:"
+    r"|withExtension:|forResource:|URL\(string:|appendingPathComponent\(|makeFunction\(name:|keyPath:)"
+    r'\s*"(?:[^"\\\n]|\\.)*"'
 )
 LITERAL = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
 
@@ -77,7 +85,13 @@ def is_prose(text):
     # A label in capitals beside other text, as in "01 · IMPORT".
     if " " in text.strip() and re.search(r"(?<![A-Za-z])[A-Z]{4,}(?![A-Za-z])", text):
         return True
-    return bool(re.search(r"[A-Za-z]{2,} [A-Za-z(\\]", text))
+    if re.search(r"[A-Za-z]{2,} [A-Za-z(\\]", text):
+        return True
+    # Two words with something else between them, as in "Download & Import".
+    # Names inside \( … ) are code, not words.
+    plain = re.sub(r"\\\((?:[^()]|\([^()]*\))*\)", "", text)
+    plain = re.sub(r"\\\(.*$", "", plain)
+    return len(re.findall(r"[A-Za-z]{3,}", plain)) >= 2
 
 
 def localized_lines(derived_data):
@@ -115,6 +129,7 @@ def candidates(source, localized):
             continue
         if SKIPPED_LINE.search(code) or number in localized:
             continue
+        code = SKIPPED_ARGUMENT.sub("", code)
         for match in LITERAL.finditer(code):
             if is_prose(match.group(1)):
                 yield relative, number, match.group(1)

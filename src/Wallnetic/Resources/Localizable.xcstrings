@@ -6207,6 +6207,34 @@
         }
       }
     },
+    "Download & Import": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Laden & importieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Télécharger et importer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ダウンロードして読み込む"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "下载并导入"
+          }
+        }
+      }
+    },
     "Download / Retry": {
       "localizations": {
         "de": {
@@ -6483,6 +6511,34 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "下载会将副本添加到资料库，但不会开始播放。关闭此窗口后，当前下载仍会继续。"
+          }
+        }
+      }
+    },
+    "Drag & drop import failed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Import per Drag & Drop fehlgeschlagen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Échec de l’importation par glisser-déposer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ドラッグ＆ドロップでの読み込みに失敗しました"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "拖放导入失败"
           }
         }
       }
@@ -9336,6 +9392,34 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "动态壁纸"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Sprache"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Langue"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "言語"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "语言"
           }
         }
       }
@@ -15874,6 +15958,62 @@
         }
       }
     },
+    "Restart Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Jetzt neu starten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Redémarrer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "今すぐ再起動"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "立即重新启动"
+          }
+        }
+      }
+    },
+    "Restart Wallnetic to use the new language.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Starte Wallnetic neu, um die neue Sprache zu verwenden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Redémarrez Wallnetic pour utiliser la nouvelle langue."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "新しい言語を使用するには、Wallneticを再起動してください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "重新启动 Wallnetic 以使用新语言。"
+          }
+        }
+      }
+    },
     "Resume playlist now": {
       "localizations": {
         "de": {
@@ -18374,6 +18514,34 @@
         }
       }
     },
+    "System Default": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Systemstandard"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Réglage du système"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "システムデフォルト"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "系统默认"
+          }
+        }
+      }
+    },
     "Tag Untagged Wallpapers": {
       "shouldTranslate": false
     },
@@ -18712,6 +18880,62 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "降温一分钟后，或关闭温控播放后，过热暂停会解除。"
+          }
+        }
+      }
+    },
+    "The included sample is unavailable. You can still import your own video.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Das mitgelieferte Beispiel ist nicht verfügbar. Du kannst trotzdem dein eigenes Video importieren."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "L’exemple inclus est indisponible. Vous pouvez tout de même importer votre propre vidéo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "付属のサンプルは利用できません。お手持ちのビデオは読み込めます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "内置示例不可用。你仍可导入自己的视频。"
+          }
+        }
+      }
+    },
+    "The language of Wallnetic's interface. System Default follows your Mac's language list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Die Sprache der Wallnetic-Oberfläche. „Systemstandard“ folgt der Sprachliste deines Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "La langue de l’interface de Wallnetic. « Réglage du système » suit la liste des langues de votre Mac."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallneticのインターフェイスの言語です。“システムデフォルト”はMacの言語リストに従います。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic 界面的语言。“系统默认”会跟随 Mac 的语言列表。"
           }
         }
       }
@@ -21384,6 +21608,34 @@
         }
       }
     },
+    "Wallnetic could not restart": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic konnte nicht neu gestartet werden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Impossible de redémarrer Wallnetic"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallneticを再起動できませんでした"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic 无法重新启动"
+          }
+        }
+      }
+    },
     "Wallnetic paused the live wallpaper to save battery. Would you like to keep it playing?": {
       "localizations": {
         "de": {
@@ -21408,6 +21660,34 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "Wallnetic 已暂停动态壁纸以节省电量。要让它继续播放吗？"
+          }
+        }
+      }
+    },
+    "Wallnetic was asked to import a video from this URL:\n\n%@\n\nOnly proceed if you started this action.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic soll ein Video von dieser URL importieren:\n\n%@\n\nFahre nur fort, wenn du diese Aktion gestartet hast."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic a reçu une demande d’importation d’une vidéo depuis cette URL :\n\n%@\n\nNe continuez que si vous êtes à l’origine de cette action."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallneticは、このURLからビデオを読み込むよう求められました：\n\n%@\n\nご自身で開始した操作の場合のみ続けてください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Wallnetic 收到从此 URL 导入视频的请求：\n\n%@\n\n仅当此操作由你发起时才继续。"
           }
         }
       }

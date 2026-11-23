@@ -31,6 +31,9 @@ Planned as 1.6.0.
   picks the language from the system's language list and falls back to
   English. The translations are drafts until a native speaker has reviewed
   them; a language that is not reviewed is left out of the release.
+- A Language choice in Settings > General: System Default or one of the
+  app's languages. It takes effect after a restart, which the same row
+  offers.
 
 ### Changed
 - Home starts with your desktop: what each display is showing, with its

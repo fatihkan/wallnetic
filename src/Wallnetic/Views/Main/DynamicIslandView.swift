@@ -400,7 +400,7 @@ struct DynamicIslandView: View {
             } catch {
                 await MainActor.run {
                     island.isImporting = false
-                    ErrorReporter.shared.report(error, context: "Drag & drop import failed")
+                    ErrorReporter.shared.report(error, context: String(localized: "Drag & drop import failed"))
                 }
             }
         }
